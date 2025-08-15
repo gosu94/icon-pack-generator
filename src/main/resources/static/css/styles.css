@@ -1,0 +1,196 @@
+body, html {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+}
+
+.left-panel {
+    border-right: 1px solid #dee2e6;
+    max-height: 100vh;
+    overflow-y: auto;
+}
+
+.right-panel {
+    max-height: 100vh;
+    overflow-y: auto;
+}
+
+.icon-field {
+    margin-bottom: 0.5rem;
+}
+
+.icon-field input {
+    font-size: 0.9rem;
+    padding: 0.375rem 0.75rem;
+}
+
+.icon-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+    margin-top: 1rem;
+}
+
+.icon-item {
+    border: 1px solid #dee2e6;
+    border-radius: 0.375rem;
+    padding: 1rem;
+    text-align: center;
+    background: white;
+    transition: box-shadow 0.2s;
+}
+
+.icon-item:hover {
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+}
+
+.icon-item img {
+    max-width: 100%;
+    height: auto;
+    border-radius: 0.25rem;
+}
+
+.icon-description {
+    font-size: 0.875rem;
+    color: #6c757d;
+    margin-top: 0.5rem;
+}
+
+#generateBtn.loading {
+    pointer-events: none;
+}
+
+#exportBtn {
+    font-size: 0.9rem;
+    padding: 0.5rem 1rem;
+    transition: all 0.2s ease;
+}
+
+#exportBtn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 0.25rem 0.5rem rgba(0, 0, 0, 0.1);
+}
+
+.fade-in {
+    animation: fadeIn 0.5s ease-in;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.grid-container {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+    max-width: 600px;
+}
+
+/* Service sections and separator styles */
+.services-container {
+    display: flex;
+    flex-direction: row;
+    gap: 1.5rem;
+    width: 100%;
+}
+
+.service-section {
+    flex: 1;
+    min-width: 0;
+}
+
+.service-header {
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid #e9ecef;
+}
+
+.service-title {
+    margin: 0;
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: #495057;
+}
+
+.service-status {
+    margin: 0.25rem 0 0 0;
+    font-size: 0.875rem;
+    color: #6c757d;
+}
+
+.fal-ai-section .service-title {
+    color: #7c3aed;
+}
+
+.openai-section .service-title {
+    color: #059669;
+}
+
+.recraft-section .service-title {
+    color: #dc2626;
+}
+
+.service-separator {
+    display: flex;
+    align-items: stretch;
+    margin: 0 1rem;
+}
+
+.separator-line {
+    width: 1px;
+    background: linear-gradient(to bottom, #e9ecef, #6c757d, #e9ecef);
+    min-height: 100%;
+}
+
+.service-badge {
+    position: absolute;
+    top: 0.5rem;
+    right: 0.5rem;
+    background: rgba(0, 0, 0, 0.7);
+    color: white;
+    font-size: 0.7rem;
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.25rem;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+}
+
+.icon-item {
+    position: relative;
+}
+
+.icon-item:hover .service-badge {
+    opacity: 1;
+}
+
+.service-icons-grid {
+    margin-top: 0;
+}
+
+@media (max-width: 768px) {
+    .container-fluid .row {
+        flex-direction: column;
+    }
+    
+    .left-panel, .right-panel {
+        max-height: none;
+    }
+    
+    .grid-container {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .services-container {
+        flex-direction: column;
+        gap: 2rem;
+    }
+    
+    .service-separator {
+        display: none;
+    }
+    
+    .separator-line {
+        display: none;
+    }
+}
