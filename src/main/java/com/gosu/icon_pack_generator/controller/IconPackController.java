@@ -3,6 +3,7 @@ package com.gosu.icon_pack_generator.controller;
 import com.gosu.icon_pack_generator.dto.IconExportRequest;
 import com.gosu.icon_pack_generator.dto.IconGenerationRequest;
 import com.gosu.icon_pack_generator.dto.IconGenerationResponse;
+import com.gosu.icon_pack_generator.config.AIServicesConfig;
 import com.gosu.icon_pack_generator.service.FalAiModelService;
 import com.gosu.icon_pack_generator.service.OpenAiModelService;
 import com.gosu.icon_pack_generator.service.RecraftModelService;
@@ -34,6 +35,7 @@ public class IconPackController {
     private final FalAiModelService falAiModelService;
     private final OpenAiModelService openAiModelService;
     private final RecraftModelService recraftModelService;
+    private final AIServicesConfig aiServicesConfig;
     
     @GetMapping("/")
     public String index(Model model) {
@@ -117,11 +119,24 @@ public class IconPackController {
     public CompletableFuture<ResponseEntity<Map<String, Object>>> checkFalAiHealth() {
         log.info("Checking fal.ai API health");
         
+        if (!aiServicesConfig.isFluxAiEnabled()) {
+            Map<String, Object> health = new HashMap<>();
+            health.put("service", "fal.ai");
+            health.put("status", "DISABLED");
+            health.put("enabled", false);
+            health.put("available", false);
+            health.put("model", falAiModelService.getModelName());
+            health.put("timestamp", System.currentTimeMillis());
+            health.put("message", "Fal.ai service is disabled in configuration");
+            return CompletableFuture.completedFuture(ResponseEntity.ok(health));
+        }
+        
         return falAiModelService.testConnection()
                 .thenApply(isConnected -> {
                     Map<String, Object> health = new HashMap<>();
                     health.put("service", "fal.ai");
                     health.put("status", isConnected ? "UP" : "DOWN");
+                    health.put("enabled", true);
                     health.put("available", falAiModelService.isAvailable());
                     health.put("model", falAiModelService.getModelName());
                     health.put("timestamp", System.currentTimeMillis());
@@ -139,6 +154,7 @@ public class IconPackController {
                     Map<String, Object> health = new HashMap<>();
                     health.put("service", "fal.ai");
                     health.put("status", "ERROR");
+                    health.put("enabled", true);
                     health.put("available", false);
                     health.put("error", error.getMessage());
                     health.put("timestamp", System.currentTimeMillis());
@@ -151,11 +167,24 @@ public class IconPackController {
     public CompletableFuture<ResponseEntity<Map<String, Object>>> checkOpenAiHealth() {
         log.info("Checking OpenAI API health");
         
+        if (!aiServicesConfig.isOpenAiEnabled()) {
+            Map<String, Object> health = new HashMap<>();
+            health.put("service", "openai");
+            health.put("status", "DISABLED");
+            health.put("enabled", false);
+            health.put("available", false);
+            health.put("model", openAiModelService.getModelName());
+            health.put("timestamp", System.currentTimeMillis());
+            health.put("message", "OpenAI service is disabled in configuration");
+            return CompletableFuture.completedFuture(ResponseEntity.ok(health));
+        }
+        
         return openAiModelService.testConnection()
                 .thenApply(isConnected -> {
                     Map<String, Object> health = new HashMap<>();
                     health.put("service", "openai");
                     health.put("status", isConnected ? "UP" : "DOWN");
+                    health.put("enabled", true);
                     health.put("available", openAiModelService.isAvailable());
                     health.put("model", openAiModelService.getModelName());
                     health.put("timestamp", System.currentTimeMillis());
@@ -173,6 +202,7 @@ public class IconPackController {
                     Map<String, Object> health = new HashMap<>();
                     health.put("service", "openai");
                     health.put("status", "ERROR");
+                    health.put("enabled", true);
                     health.put("available", false);
                     health.put("error", error.getMessage());
                     health.put("timestamp", System.currentTimeMillis());
@@ -187,11 +217,24 @@ public class IconPackController {
     public CompletableFuture<ResponseEntity<Map<String, Object>>> checkRecraftHealth() {
         log.info("Checking Recraft API health");
         
+        if (!aiServicesConfig.isRecraftEnabled()) {
+            Map<String, Object> health = new HashMap<>();
+            health.put("service", "recraft");
+            health.put("status", "DISABLED");
+            health.put("enabled", false);
+            health.put("available", false);
+            health.put("model", recraftModelService.getModelName());
+            health.put("timestamp", System.currentTimeMillis());
+            health.put("message", "Recraft service is disabled in configuration");
+            return CompletableFuture.completedFuture(ResponseEntity.ok(health));
+        }
+        
         return recraftModelService.testConnection()
                 .thenApply(isConnected -> {
                     Map<String, Object> health = new HashMap<>();
                     health.put("service", "recraft");
                     health.put("status", isConnected ? "UP" : "DOWN");
+                    health.put("enabled", true);
                     health.put("available", recraftModelService.isAvailable());
                     health.put("model", recraftModelService.getModelName());
                     health.put("timestamp", System.currentTimeMillis());
@@ -209,6 +252,7 @@ public class IconPackController {
                     Map<String, Object> health = new HashMap<>();
                     health.put("service", "recraft");
                     health.put("status", "ERROR");
+                    health.put("enabled", true);
                     health.put("available", false);
                     health.put("error", error.getMessage());
                     health.put("timestamp", System.currentTimeMillis());
@@ -221,9 +265,15 @@ public class IconPackController {
     public CompletableFuture<ResponseEntity<Map<String, Object>>> checkAllServicesHealth() {
         log.info("Checking health of all AI services including Recraft");
         
-        CompletableFuture<Boolean> falAiFuture = falAiModelService.testConnection();
-        CompletableFuture<Boolean> openAiFuture = openAiModelService.testConnection();
-        CompletableFuture<Boolean> recraftFuture = recraftModelService.testConnection();
+        // Only test connections for enabled services
+        CompletableFuture<Boolean> falAiFuture = aiServicesConfig.isFluxAiEnabled() ?
+                falAiModelService.testConnection() : CompletableFuture.completedFuture(false);
+        
+        CompletableFuture<Boolean> openAiFuture = aiServicesConfig.isOpenAiEnabled() ? 
+                openAiModelService.testConnection() : CompletableFuture.completedFuture(false);
+        
+        CompletableFuture<Boolean> recraftFuture = aiServicesConfig.isRecraftEnabled() ? 
+                recraftModelService.testConnection() : CompletableFuture.completedFuture(false);
         
         return CompletableFuture.allOf(falAiFuture, openAiFuture, recraftFuture)
                 .thenApply(v -> {
@@ -234,41 +284,71 @@ public class IconPackController {
                     Map<String, Object> health = new HashMap<>();
                     health.put("timestamp", System.currentTimeMillis());
                     
+                    int enabledCount = (aiServicesConfig.isFluxAiEnabled() ? 1 : 0) +
+                                     (aiServicesConfig.isOpenAiEnabled() ? 1 : 0) + 
+                                     (aiServicesConfig.isRecraftEnabled() ? 1 : 0);
+                    
                     int successCount = (falAiStatus ? 1 : 0) + (openAiStatus ? 1 : 0) + (recraftStatus ? 1 : 0);
-                    health.put("overallStatus", successCount == 3 ? "UP" : 
-                                               successCount > 0 ? "PARTIAL" : "DOWN");
+                    
+                    String overallStatus;
+                    if (enabledCount == 0) {
+                        overallStatus = "ALL_DISABLED";
+                    } else if (successCount == enabledCount) {
+                        overallStatus = "UP";
+                    } else if (successCount > 0) {
+                        overallStatus = "PARTIAL";
+                    } else {
+                        overallStatus = "DOWN";
+                    }
+                    
+                    health.put("overallStatus", overallStatus);
+                    health.put("enabledCount", enabledCount);
+                    health.put("successCount", successCount);
                     
                     Map<String, Object> falAiHealth = new HashMap<>();
-                    falAiHealth.put("status", falAiStatus ? "UP" : "DOWN");
-                    falAiHealth.put("available", falAiModelService.isAvailable());
+                    falAiHealth.put("enabled", aiServicesConfig.isFluxAiEnabled());
+                    falAiHealth.put("status", aiServicesConfig.isFluxAiEnabled() ?
+                            (falAiStatus ? "UP" : "DOWN") : "DISABLED");
+                    falAiHealth.put("available", aiServicesConfig.isFluxAiEnabled() && falAiModelService.isAvailable());
                     falAiHealth.put("model", falAiModelService.getModelName());
                     
                     Map<String, Object> openAiHealth = new HashMap<>();
-                    openAiHealth.put("status", openAiStatus ? "UP" : "DOWN");
-                    openAiHealth.put("available", openAiModelService.isAvailable());
+                    openAiHealth.put("enabled", aiServicesConfig.isOpenAiEnabled());
+                    openAiHealth.put("status", aiServicesConfig.isOpenAiEnabled() ? 
+                            (openAiStatus ? "UP" : "DOWN") : "DISABLED");
+                    openAiHealth.put("available", aiServicesConfig.isOpenAiEnabled() && openAiModelService.isAvailable());
                     openAiHealth.put("model", openAiModelService.getModelName());
                     
                     Map<String, Object> recraftHealth = new HashMap<>();
-                    recraftHealth.put("status", recraftStatus ? "UP" : "DOWN");
-                    recraftHealth.put("available", recraftModelService.isAvailable());
+                    recraftHealth.put("enabled", aiServicesConfig.isRecraftEnabled());
+                    recraftHealth.put("status", aiServicesConfig.isRecraftEnabled() ? 
+                            (recraftStatus ? "UP" : "DOWN") : "DISABLED");
+                    recraftHealth.put("available", aiServicesConfig.isRecraftEnabled() && recraftModelService.isAvailable());
                     recraftHealth.put("model", recraftModelService.getModelName());
                     
                     health.put("falAi", falAiHealth);
                     health.put("openAi", openAiHealth);
                     health.put("recraft", recraftHealth);
                     
-                    if (successCount == 3) {
-                        health.put("message", "All three AI services are operational");
-                        return ResponseEntity.ok(health);
-                    } else if (successCount == 2) {
-                        health.put("message", "Two AI services are operational");
-                        return ResponseEntity.status(207).body(health); // Multi-Status
-                    } else if (successCount == 1) {
-                        health.put("message", "One AI service is operational");
-                        return ResponseEntity.status(207).body(health);
+                    String message;
+                    if (enabledCount == 0) {
+                        message = "All AI services are disabled in configuration";
+                    } else if (successCount == enabledCount) {
+                        message = "All enabled AI services are operational";
+                    } else if (successCount > 0) {
+                        message = successCount + " out of " + enabledCount + " enabled services are operational";
                     } else {
-                        health.put("message", "All AI services are down");
+                        message = "All enabled AI services are down";
+                    }
+                    
+                    health.put("message", message);
+                    
+                    if (enabledCount == 0 || successCount == 0) {
                         return ResponseEntity.status(503).body(health);
+                    } else if (successCount == enabledCount) {
+                        return ResponseEntity.ok(health);
+                    } else {
+                        return ResponseEntity.status(207).body(health); // Multi-Status
                     }
                 })
                 .exceptionally(error -> {

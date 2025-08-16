@@ -1,5 +1,6 @@
 package com.gosu.icon_pack_generator.service;
 
+import com.gosu.icon_pack_generator.config.AIServicesConfig;
 import com.gosu.icon_pack_generator.dto.IconGenerationRequest;
 import com.gosu.icon_pack_generator.dto.IconGenerationResponse;
 import com.gosu.icon_pack_generator.exception.FalAiException;
@@ -22,30 +23,42 @@ public class IconGenerationService {
     private final RecraftModelService recraftModelService;
     private final ImageProcessingService imageProcessingService;
     private final PromptGenerationService promptGenerationService;
+    private final AIServicesConfig aiServicesConfig;
     
     public CompletableFuture<IconGenerationResponse> generateIcons(IconGenerationRequest request) {
-        log.info("Starting icon generation for {} icons with theme: {} using FalAI, OpenAI, and Recraft", 
-                request.getIconCount(), request.getGeneralDescription());
+        List<String> enabledServices = new ArrayList<>();
+        if (aiServicesConfig.isFluxAiEnabled()) enabledServices.add("FalAI");
+        if (aiServicesConfig.isOpenAiEnabled()) enabledServices.add("OpenAI");
+        if (aiServicesConfig.isRecraftEnabled()) enabledServices.add("Recraft");
+        
+        log.info("Starting icon generation for {} icons with theme: {} using enabled services: {}", 
+                request.getIconCount(), request.getGeneralDescription(), enabledServices);
         
         String requestId = UUID.randomUUID().toString();
         
-        // Generate icons with all three services simultaneously
+        // Generate icons only with enabled services
         CompletableFuture<IconGenerationResponse.ServiceResults> falAiFuture = 
-                generateIconsWithService(request, requestId, falAiModelService, "fal-ai");
+                aiServicesConfig.isFluxAiEnabled() ?
+                generateIconsWithService(request, requestId, falAiModelService, "fal-ai") :
+                CompletableFuture.completedFuture(createDisabledServiceResult("fal-ai"));
         
         CompletableFuture<IconGenerationResponse.ServiceResults> openAiFuture = 
-                generateIconsWithService(request, requestId, openAiModelService, "openai");
+                aiServicesConfig.isOpenAiEnabled() ? 
+                generateIconsWithService(request, requestId, openAiModelService, "openai") :
+                CompletableFuture.completedFuture(createDisabledServiceResult("openai"));
         
         CompletableFuture<IconGenerationResponse.ServiceResults> recraftFuture = 
-                generateIconsWithService(request, requestId, recraftModelService, "recraft");
+                aiServicesConfig.isRecraftEnabled() ? 
+                generateIconsWithService(request, requestId, recraftModelService, "recraft") :
+                CompletableFuture.completedFuture(createDisabledServiceResult("recraft"));
         
         return CompletableFuture.allOf(falAiFuture, openAiFuture, recraftFuture)
                 .thenApply(v -> {
                     IconGenerationResponse.ServiceResults falAiResults = falAiFuture.join();
-//                    IconGenerationResponse.ServiceResults openAiResults = openAiFuture.join();
+                    IconGenerationResponse.ServiceResults openAiResults = openAiFuture.join();
                     IconGenerationResponse.ServiceResults recraftResults = recraftFuture.join();
                     
-                    return createCombinedResponse(requestId, falAiResults, null, recraftResults);
+                    return createCombinedResponse(requestId, falAiResults, openAiResults, recraftResults);
                 })
                 .exceptionally(error -> {
                     log.error("Error generating icons for request {}", requestId, error);
@@ -184,33 +197,52 @@ public class IconGenerationService {
         
         // Set overall status
         int successCount = 0;
+        int enabledCount = 0;
         List<String> successfulServices = new ArrayList<>();
+        List<String> enabledServices = new ArrayList<>();
         
-        if ("success".equals(falAiResults.getStatus())) {
-            successCount++;
-            successfulServices.add("Flux-Pro");
-        }
-        if ("success".equals(openAiResults.getStatus())) {
-            successCount++;
-            successfulServices.add("GPT-Image");
-        }
-        if ("success".equals(recraftResults.getStatus())) {
-            successCount++;
-            successfulServices.add("Recraft");
+        if (!"disabled".equals(falAiResults.getStatus())) {
+            enabledCount++;
+            enabledServices.add("Flux-Pro");
+            if ("success".equals(falAiResults.getStatus())) {
+                successCount++;
+                successfulServices.add("Flux-Pro");
+            }
         }
         
-        if (successCount > 0) {
+        if (!"disabled".equals(openAiResults.getStatus())) {
+            enabledCount++;
+            enabledServices.add("GPT-Image");
+            if ("success".equals(openAiResults.getStatus())) {
+                successCount++;
+                successfulServices.add("GPT-Image");
+            }
+        }
+        
+        if (!"disabled".equals(recraftResults.getStatus())) {
+            enabledCount++;
+            enabledServices.add("Recraft");
+            if ("success".equals(recraftResults.getStatus())) {
+                successCount++;
+                successfulServices.add("Recraft");
+            }
+        }
+        
+        if (enabledCount == 0) {
+            response.setStatus("error");
+            response.setMessage("All AI services are disabled in configuration");
+        } else if (successCount > 0) {
             response.setStatus("success");
-            if (successCount == 3) {
-                response.setMessage("Icons generated successfully with all three services");
-            } else if (successCount == 2) {
-                response.setMessage("Icons generated successfully with " + String.join(" and ", successfulServices));
-            } else {
+            if (successCount == enabledCount) {
+                response.setMessage("Icons generated successfully with all enabled services");
+            } else if (successCount == 1) {
                 response.setMessage("Icons generated successfully with " + successfulServices.get(0));
+            } else {
+                response.setMessage("Icons generated successfully with " + String.join(" and ", successfulServices));
             }
         } else {
             response.setStatus("error");
-            response.setMessage("All services failed to generate icons");
+            response.setMessage("All enabled services failed to generate icons");
         }
         
         return response;
@@ -244,5 +276,15 @@ public class IconGenerationService {
             return error.getMessage();
         }
         return serviceName + " service failed: " + (message != null ? message : "Unknown error");
+    }
+    
+    private IconGenerationResponse.ServiceResults createDisabledServiceResult(String serviceName) {
+        IconGenerationResponse.ServiceResults result = new IconGenerationResponse.ServiceResults();
+        result.setServiceName(serviceName);
+        result.setStatus("disabled");
+        result.setMessage("Service is disabled in configuration");
+        result.setIcons(new ArrayList<>());
+        result.setGenerationTimeMs(0L);
+        return result;
     }
 }

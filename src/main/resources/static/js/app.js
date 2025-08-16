@@ -160,15 +160,15 @@ document.addEventListener('DOMContentLoaded', function() {
         
         let hasMultipleSections = false;
         
-        // Display FalAI results
-        if (data.falAiResults && data.falAiResults.icons && data.falAiResults.icons.length > 0) {
+        // Display FalAI results (including disabled status)
+        if (data.falAiResults && (data.falAiResults.icons && data.falAiResults.icons.length > 0 || data.falAiResults.status === 'disabled')) {
             const falAiSection = createServiceSection('Flux-Pro', data.falAiResults, 'fal-ai');
             servicesContainer.appendChild(falAiSection);
             hasMultipleSections = true;
         }
         
-        // Display OpenAI results
-        if (data.openAiResults && data.openAiResults.icons && data.openAiResults.icons.length > 0) {
+        // Display OpenAI results (including disabled status)
+        if (data.openAiResults && (data.openAiResults.icons && data.openAiResults.icons.length > 0 || data.openAiResults.status === 'disabled')) {
             if (hasMultipleSections) {
                 const separator = document.createElement('div');
                 separator.className = 'service-separator';
@@ -180,8 +180,8 @@ document.addEventListener('DOMContentLoaded', function() {
             hasMultipleSections = true;
         }
         
-        // Display Recraft results
-        if (data.recraftResults && data.recraftResults.icons && data.recraftResults.icons.length > 0) {
+        // Display Recraft results (including disabled status)
+        if (data.recraftResults && (data.recraftResults.icons && data.recraftResults.icons.length > 0 || data.recraftResults.status === 'disabled')) {
             if (hasMultipleSections) {
                 const separator = document.createElement('div');
                 separator.className = 'service-separator';
@@ -205,8 +205,16 @@ document.addEventListener('DOMContentLoaded', function() {
         const header = document.createElement('div');
         header.className = 'service-header';
         
-        const statusIcon = serviceResults.status === 'success' ? '✅' : '❌';
-        const generationTime = serviceResults.generationTimeMs ? 
+        let statusIcon;
+        if (serviceResults.status === 'success') {
+            statusIcon = '✅';
+        } else if (serviceResults.status === 'disabled') {
+            statusIcon = '⚫';
+        } else {
+            statusIcon = '❌';
+        }
+        
+        const generationTime = serviceResults.generationTimeMs && serviceResults.generationTimeMs > 0 ? 
             ` (${(serviceResults.generationTimeMs / 1000).toFixed(1)}s)` : '';
         
         header.innerHTML = `

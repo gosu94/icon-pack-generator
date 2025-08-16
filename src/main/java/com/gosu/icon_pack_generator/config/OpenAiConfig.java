@@ -13,6 +13,7 @@ public class OpenAiConfig {
     private String model = "gpt-image-1";
     private int timeoutSeconds = 120;
     private int maxRetries = 3;
+    private boolean enabled = true;
     
     public String getApiKeyHeader() {
         return "Bearer " + apiKey;
