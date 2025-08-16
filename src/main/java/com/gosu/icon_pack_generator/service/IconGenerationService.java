@@ -39,8 +39,8 @@ public class IconGenerationService {
         // Generate icons only with enabled services
         CompletableFuture<IconGenerationResponse.ServiceResults> falAiFuture = 
                 aiServicesConfig.isFluxAiEnabled() ?
-                generateIconsWithService(request, requestId, falAiModelService, "fal-ai") :
-                CompletableFuture.completedFuture(createDisabledServiceResult("fal-ai"));
+                generateIconsWithService(request, requestId, falAiModelService, "flux") :
+                CompletableFuture.completedFuture(createDisabledServiceResult("flux"));
         
         CompletableFuture<IconGenerationResponse.ServiceResults> openAiFuture = 
                 aiServicesConfig.isOpenAiEnabled() ? 
@@ -118,7 +118,7 @@ public class IconGenerationService {
     
     private CompletableFuture<List<IconGenerationResponse.GeneratedIcon>> generateDoubleGridWithService(
             IconGenerationRequest request, AIModelService aiService, String serviceName) {
-        // For 18 icons, generate two 3x3 grids
+        // For 18 icons, generate first grid normally, then use image-to-image for second grid
         List<String> firstNineDescriptions = request.getIndividualDescriptions() != null ? 
                 request.getIndividualDescriptions().subList(0, Math.min(9, request.getIndividualDescriptions().size())) : 
                 new ArrayList<>();
@@ -130,24 +130,38 @@ public class IconGenerationService {
         
         String firstPrompt = promptGenerationService.generatePromptFor3x3Grid(
                 request.getGeneralDescription(), firstNineDescriptions);
-        String secondPrompt = promptGenerationService.generatePromptFor3x3Grid(
-                request.getGeneralDescription(), secondNineDescriptions);
         
-        CompletableFuture<byte[]> firstImageFuture = aiService.generateImage(firstPrompt);
-        CompletableFuture<byte[]> secondImageFuture = aiService.generateImage(secondPrompt);
-        
-        return CompletableFuture.allOf(firstImageFuture, secondImageFuture)
-                .thenApply(v -> {
-                    byte[] firstImageData = firstImageFuture.join();
-                    byte[] secondImageData = secondImageFuture.join();
-                    
+        // Generate first grid
+        return aiService.generateImage(firstPrompt)
+                .thenCompose(firstImageData -> {
                     List<String> firstGrid = imageProcessingService.cropIconsFromGrid(firstImageData, 9);
-                    List<String> secondGrid = imageProcessingService.cropIconsFromGrid(secondImageData, 9);
                     
-                    List<String> allIcons = new ArrayList<>(firstGrid);
-                    allIcons.addAll(secondGrid);
+                    // Use image-to-image for second grid if service supports it
+                    String secondPrompt = promptGenerationService.generatePromptFor3x3Grid(
+                            request.getGeneralDescription(), secondNineDescriptions);
                     
-                    return createIconList(allIcons, request, serviceName);
+                    if (supportsImageToImage(aiService)) {
+                        return generateImageToImageWithService(aiService, secondPrompt, firstImageData)
+                                .thenApply(secondImageData -> {
+                                    List<String> secondGrid = imageProcessingService.cropIconsFromGrid(secondImageData, 9);
+                                    
+                                    List<String> allIcons = new ArrayList<>(firstGrid);
+                                    allIcons.addAll(secondGrid);
+                                    
+                                    return createIconList(allIcons, request, serviceName);
+                                });
+                    } else {
+                        // Fallback to regular generation for services that don't support image-to-image
+                        return aiService.generateImage(secondPrompt)
+                                .thenApply(secondImageData -> {
+                                    List<String> secondGrid = imageProcessingService.cropIconsFromGrid(secondImageData, 9);
+                                    
+                                    List<String> allIcons = new ArrayList<>(firstGrid);
+                                    allIcons.addAll(secondGrid);
+                                    
+                                    return createIconList(allIcons, request, serviceName);
+                                });
+                    }
                 });
     }
     
@@ -286,5 +300,50 @@ public class IconGenerationService {
         result.setIcons(new ArrayList<>());
         result.setGenerationTimeMs(0L);
         return result;
+    }
+    
+    private boolean supportsImageToImage(AIModelService aiService) {
+        // Check if the service supports image-to-image generation
+        return aiService instanceof FalAiModelService || aiService instanceof RecraftModelService;
+    }
+    
+    private CompletableFuture<byte[]> generateImageToImageWithService(AIModelService aiService, String prompt, byte[] sourceImageData) {
+        log.info("Attempting image-to-image generation with service: {}", aiService.getClass().getSimpleName());
+        
+        try {
+            if (aiService instanceof FalAiModelService) {
+                log.info("Using FalAiModelService generateImageToImage for image-to-image");
+                return ((FalAiModelService) aiService).generateImageToImage(prompt, sourceImageData)
+                        .handle((result, throwable) -> {
+                            if (throwable != null) {
+                                log.error("FalAiModelService image-to-image failed, falling back to regular generation", throwable);
+                                return aiService.generateImage(prompt).join();
+                            }
+                            return result;
+                        });
+            } else if (aiService instanceof RecraftModelService) {
+                log.info("Using RecraftModelService generateImageToImage for image-to-image");
+                return ((RecraftModelService) aiService).generateImageToImage(prompt, sourceImageData)
+                        .handle((result, throwable) -> {
+                            if (throwable != null) {
+                                log.error("RecraftModelService image-to-image failed, falling back to regular generation", throwable);
+                                try {
+                                    return aiService.generateImage(prompt).join();
+                                } catch (Exception fallbackError) {
+                                    log.error("Fallback generation also failed for Recraft", fallbackError);
+                                    throw new RuntimeException("Both image-to-image and fallback generation failed for Recraft", fallbackError);
+                                }
+                            }
+                            return result;
+                        });
+            } else {
+                log.info("Service doesn't support image-to-image, using regular generation");
+                // Fallback to regular generation
+                return aiService.generateImage(prompt);
+            }
+        } catch (Exception e) {
+            log.error("Error in image-to-image generation, falling back to regular generation", e);
+            return aiService.generateImage(prompt);
+        }
     }
 }

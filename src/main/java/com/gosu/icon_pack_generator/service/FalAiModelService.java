@@ -15,6 +15,7 @@ import org.springframework.stereotype.Service;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.URI;
 import java.net.URL;
 import java.util.Base64;
 import java.util.HashMap;
@@ -138,7 +139,7 @@ public class FalAiModelService implements AIModelService {
     private byte[] downloadImageFromUrl(String imageUrl) {
         try {
             log.debug("Downloading image from URL: {}", imageUrl);
-            URL url = new URL(imageUrl);
+            URL url = URI.create(imageUrl).toURL();
             
             try (InputStream inputStream = url.openStream();
                  ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
@@ -162,6 +163,117 @@ public class FalAiModelService implements AIModelService {
     
     private long generateRandomSeed() {
         return System.currentTimeMillis() + (long) (Math.random() * 1000);
+    }
+    
+    /**
+     * Generate image with custom endpoint and input map (used by other services)
+     */
+    public byte[] generateImageWithCustomEndpoint(String endpoint, Map<String, Object> input) {
+        try {
+            validateConfiguration();
+            
+            log.info("Making fal.ai API call to custom endpoint: {} with input keys: {}", endpoint, input.keySet());
+            
+            Output<JsonObject> output = falClient.subscribe(endpoint,
+                SubscribeOptions.<JsonObject>builder()
+                    .input(input)
+                    .logs(true)
+                    .resultType(JsonObject.class)
+                    .build()
+            );
+            log.debug("Received output from fal.ai custom endpoint API: {}", output);
+            
+            JsonObject result = output.getData();
+            log.debug("Extracted result: {}", result);
+            
+            JsonNode jsonResult = objectMapper.readTree(result.toString());
+            
+            return extractImageFromResult(jsonResult);
+            
+        } catch (Exception e) {
+            log.error("Error calling fal.ai custom endpoint API", e);
+            throw new FalAiException("Failed to generate image with custom endpoint: " + e.getMessage(), e);
+        }
+    }
+    
+    /**
+     * Generate image using image-to-image functionality for consistency
+     */
+    public CompletableFuture<byte[]> generateImageToImage(String prompt, byte[] sourceImageData) {
+        log.info("Generating image-to-image with Fal.ai for prompt: {}", 
+                prompt.substring(0, Math.min(100, prompt.length())));
+        
+        return generateImageToImageAsync(prompt, sourceImageData)
+                .whenComplete((bytes, error) -> {
+                    if (error != null) {
+                        log.error("Error generating image-to-image", error);
+                    } else {
+                        log.info("Successfully generated image-to-image, size: {} bytes", bytes.length);
+                    }
+                });
+    }
+    
+    private CompletableFuture<byte[]> generateImageToImageAsync(String prompt, byte[] sourceImageData) {
+        return CompletableFuture.supplyAsync(() -> {
+            try {
+                validateConfiguration();
+                
+                // Convert image data to data URL for image_url parameter
+                String imageDataUrl = convertToDataUrl(sourceImageData);
+                
+                Map<String, Object> input = createImageToImageInputMap(prompt, imageDataUrl);
+                log.info("Making fal.ai image-to-image API call to endpoint: {} with input keys: {}", 
+                        "fal-ai/flux-pro/kontext", input.keySet());
+                
+                Output<JsonObject> output = falClient.subscribe("fal-ai/flux-pro/kontext",
+                    SubscribeOptions.<JsonObject>builder()
+                        .input(input)
+                        .logs(true)
+                        .resultType(JsonObject.class)
+                        .build()
+                );
+                log.debug("Received output from fal.ai image-to-image API: {}", output);
+                
+                JsonObject result = output.getData();
+                log.debug("Extracted result: {}", result);
+                
+                JsonNode jsonResult = objectMapper.readTree(result.toString());
+                
+                return extractImageFromResult(jsonResult);
+                
+            } catch (Exception e) {
+                log.error("Error calling fal.ai image-to-image API", e);
+                throw new FalAiException("Failed to generate image-to-image with fal.ai: " + e.getMessage(), e);
+            }
+        });
+    }
+    
+    private Map<String, Object> createImageToImageInputMap(String prompt, String imageDataUrl) {
+        Map<String, Object> input = new HashMap<>();
+        input.put("prompt", prompt);
+        input.put("image_url", imageDataUrl);  // This is the key parameter for image-to-image!
+        input.put("aspect_ratio", config.getAspectRatio());
+        input.put("num_images", config.getNumImages());
+        input.put("enable_safety_checker", config.isEnableSafetyChecker());
+        input.put("output_format", config.getOutputFormat());
+        input.put("safety_tolerance", config.getSafetyTolerance());
+        
+        // Image-to-image specific parameters
+        input.put("guidance_scale", 3.5);
+        input.put("seed", generateRandomSeed());
+        
+        log.debug("Image-to-image input parameters: {}", input);
+        return input;
+    }
+    
+    private String convertToDataUrl(byte[] imageData) {
+        try {
+            String base64Data = Base64.getEncoder().encodeToString(imageData);
+            return "data:image/png;base64," + base64Data;
+        } catch (Exception e) {
+            log.error("Error converting image to data URL", e);
+            throw new FalAiException("Failed to convert image to data URL", e);
+        }
     }
     
     @Override
@@ -256,6 +368,8 @@ public class FalAiModelService implements AIModelService {
         
         return config.getApiKey().substring(0, 8) + "***";
     }
+    
+
     
     /**
      * Test the API connection with a simple request
