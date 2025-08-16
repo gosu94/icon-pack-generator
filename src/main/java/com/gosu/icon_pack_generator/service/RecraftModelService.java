@@ -37,8 +37,9 @@ public class RecraftModelService implements AIModelService {
             try {
                 log.info("Generating Recraft image with endpoint: fal-ai/recraft/v3/text-to-image");
                 
-                // Apply Recraft-specific styling to the prompt
-                String recraftPrompt = "digital illustration style: " + prompt;
+                        // Apply Recraft-specific styling to the prompt with explicit constraints
+        String recraftPrompt = "digital illustration style: " + prompt + 
+                " No text, no labels, no grid lines, no borders. Clean icon design only.";
                 
                 Map<String, Object> input = createRecraftTextToImageInputMap(recraftPrompt);
                 log.info("Making Recraft text-to-image API call with input keys: {}", input.keySet());
@@ -49,7 +50,8 @@ public class RecraftModelService implements AIModelService {
             } catch (Exception e) {
                 log.error("Error calling Recraft text-to-image API, falling back to FalAI generation", e);
                 // Fallback to FalAI generation with modified prompt
-                String recraftPrompt = "digital illustration style: " + prompt;
+                String recraftPrompt = "digital illustration style: " + prompt + 
+                        " No text, no labels, no grid lines, no borders. Clean icon design only.";
                 return falAiModelService.generateImage(recraftPrompt).join();
             }
         });
@@ -103,8 +105,9 @@ public class RecraftModelService implements AIModelService {
                 // Convert image data to data URL for image_url parameter
                 String imageDataUrl = convertToDataUrl(sourceImageData);
                 
-                // Apply Recraft-specific styling to the prompt
-                String recraftPrompt = "digital illustration style, consistent with source image: " + prompt;
+                // Apply Recraft-specific styling to the prompt with explicit constraints
+                String recraftPrompt = "digital illustration style, consistent with source image: " + prompt + 
+                        " No text, no labels, no grid lines, no borders. Clean icon design only.";
                 
                 Map<String, Object> input = createRecraftImageToImageInputMap(recraftPrompt, imageDataUrl);
                 log.info("Making Recraft image-to-image API call with input keys: {}", input.keySet());
@@ -115,7 +118,8 @@ public class RecraftModelService implements AIModelService {
             } catch (Exception e) {
                 log.error("Error calling Recraft image-to-image API, falling back to regular generation", e);
                 // Fallback to regular generation with modified prompt
-                String recraftPrompt = "digital illustration style, consistent with source image: " + prompt;
+                String recraftPrompt = "digital illustration style, consistent with source image: " + prompt + 
+                        " No text, no labels, no grid lines, no borders. Clean icon design only.";
                 return falAiModelService.generateImage(recraftPrompt).join();
             }
         });
