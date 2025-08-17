@@ -128,9 +128,12 @@ public class IconGenerationService {
                 .thenCompose(firstImageData -> {
                     List<String> firstGrid = imageProcessingService.cropIconsFromGrid(firstImageData, 9);
                     
+                    // Create a list of icons to avoid for the second grid
+                    List<String> iconsToAvoid = createAvoidanceList(firstNineDescriptions, request.getGeneralDescription());
+                    
                     // Use image-to-image for second grid if service supports it
                     String secondPrompt = promptGenerationService.generatePromptFor3x3Grid(
-                            request.getGeneralDescription(), secondNineDescriptions);
+                            request.getGeneralDescription(), secondNineDescriptions, iconsToAvoid);
                     
                     if (supportsImageToImage(aiService)) {
                         return generateImageToImageWithService(aiService, secondPrompt, firstImageData)
@@ -157,6 +160,23 @@ public class IconGenerationService {
                 });
     }
     
+    /**
+     * Create a list of icon descriptions to avoid when generating the second grid
+     * This includes specified descriptions from the first grid
+     */
+    private List<String> createAvoidanceList(List<String> firstGridDescriptions, String generalTheme) {
+        List<String> avoidanceList = new ArrayList<>();
+        
+        // Add any specific descriptions that were provided for the first grid
+        if (firstGridDescriptions != null) {
+            firstGridDescriptions.stream()
+                    .filter(desc -> desc != null && !desc.trim().isEmpty())
+                    .forEach(avoidanceList::add);
+        }
+        
+        return avoidanceList;
+    }
+    
     private List<IconGenerationResponse.GeneratedIcon> createIconList(List<String> base64Icons, IconGenerationRequest request, String serviceName) {
         List<IconGenerationResponse.GeneratedIcon> icons = new ArrayList<>();
         
@@ -167,8 +187,7 @@ public class IconGenerationService {
             IconGenerationResponse.GeneratedIcon icon = new IconGenerationResponse.GeneratedIcon();
             icon.setId(UUID.randomUUID().toString());
             icon.setBase64Data(base64Icons.get(i));
-            icon.setDescription(i < descriptions.size() && !descriptions.get(i).isEmpty() ? 
-                    descriptions.get(i) : "Generated icon " + (i + 1));
+            icon.setDescription("");
             icon.setGridPosition(i);
             icon.setServiceSource(serviceName);
             icons.add(icon);

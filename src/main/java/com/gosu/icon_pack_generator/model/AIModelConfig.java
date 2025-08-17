@@ -10,7 +10,7 @@ import org.springframework.stereotype.Component;
 public class AIModelConfig {
     
     private String apiKey;
-    private String modelEndpoint = "fal-ai/flux/dev";
+    private String modelEndpoint = "fal-ai/flux-pro/kontext/text-to-image";
     private int timeoutSeconds = 120;
     private int maxRetries = 3;
     private String aspectRatio = "1:1";
