@@ -191,8 +191,9 @@ public class FalAiModelService implements AIModelService {
             return extractImageFromResult(jsonResult);
             
         } catch (Exception e) {
-            log.error("Error calling fal.ai custom endpoint API", e);
-            throw new FalAiException("Failed to generate image with custom endpoint: " + e.getMessage(), e);
+            String detailedError = createDetailedErrorMessage(e, endpoint, input);
+            log.error("Error calling fal.ai custom endpoint API: {}", detailedError, e);
+            throw new FalAiException(detailedError, e);
         }
     }
     
@@ -420,5 +421,51 @@ public class FalAiModelService implements AIModelService {
                 return false;
             }
         });
+    }
+    
+    /**
+     * Create a detailed error message for API failures with parameter information
+     */
+    private String createDetailedErrorMessage(Exception e, String endpoint, Map<String, Object> input) {
+        StringBuilder errorMsg = new StringBuilder();
+        errorMsg.append("Failed to generate image with endpoint '").append(endpoint).append("': ");
+        
+        // Extract status code and details from FalException
+        if (e instanceof ai.fal.client.exception.FalException) {
+            ai.fal.client.exception.FalException falEx = (ai.fal.client.exception.FalException) e;
+            String message = falEx.getMessage();
+            
+            if (message.contains("Request failed with code: 422")) {
+                errorMsg.append("HTTP 422 Unprocessable Entity - Invalid request parameters. ");
+                errorMsg.append("This usually means the request parameters are incorrect or incompatible. ");
+                
+                // Log the parameters that caused the issue
+                errorMsg.append("Request parameters: ");
+                input.forEach((key, value) -> {
+                    String valueStr = value != null ? value.toString() : "null";
+                    // Truncate long values for readability
+                    if (valueStr.length() > 100) {
+                        valueStr = valueStr.substring(0, 100) + "...";
+                    }
+                    errorMsg.append(key).append("=").append(valueStr).append(", ");
+                });
+                
+                // Remove trailing comma and space
+                if (errorMsg.length() > 2) {
+                    errorMsg.setLength(errorMsg.length() - 2);
+                }
+                
+                // Add suggestions for common 422 issues
+                errorMsg.append(". Common causes: incompatible image_size/aspect_ratio, invalid style parameters, ");
+                errorMsg.append("or model-specific parameter conflicts. Check that all parameters are valid for the '");
+                errorMsg.append(endpoint).append("' endpoint.");
+            } else {
+                errorMsg.append(message);
+            }
+        } else {
+            errorMsg.append(e.getMessage());
+        }
+        
+        return errorMsg.toString();
     }
 }

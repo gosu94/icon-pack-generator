@@ -34,6 +34,7 @@ public class RecraftModelService implements AIModelService {
     
     private CompletableFuture<byte[]> generateRecraftImageAsync(String prompt) {
         return CompletableFuture.supplyAsync(() -> {
+            Map<String, Object> input = null;
             try {
                 log.info("Generating Recraft image with endpoint: fal-ai/recraft/v3/text-to-image");
                 
@@ -41,17 +42,29 @@ public class RecraftModelService implements AIModelService {
         String recraftPrompt = "digital illustration style: " + prompt + 
                 " No text, no labels, no grid lines, no borders. Clean icon design only.";
                 
-                Map<String, Object> input = createRecraftTextToImageInputMap(recraftPrompt);
+                input = createRecraftTextToImageInputMap(recraftPrompt);
                 log.info("Making Recraft text-to-image API call with input keys: {}", input.keySet());
                 
                 // Use the same falClient from FalAiModelService since both use fal.ai infrastructure
                 return falAiModelService.generateImageWithCustomEndpoint("fal-ai/recraft/v3/text-to-image", input);
                 
             } catch (Exception e) {
-                log.error("Error calling Recraft text-to-image API, falling back to FalAI generation", e);
+                log.error("Error calling Recraft text-to-image API, falling back to FalAI generation. " +
+                         "Original parameters that failed: {}", input != null ? input : "unknown", e);
+                
+                // Check if it's a parameter validation error
+                if (e.getMessage() != null && e.getMessage().contains("422")) {
+                    log.warn("Recraft API returned 422 error - this suggests parameter incompatibility. " +
+                            "Common issues: unsupported image_size, invalid style, or endpoint parameter mismatch.");
+                }
+                
                 // Fallback to FalAI generation with modified prompt
                 String recraftPrompt = "digital illustration style: " + prompt + 
                         " No text, no labels, no grid lines, no borders. Clean icon design only.";
+                        
+                log.info("Falling back to standard FalAI generation with prompt: {}", 
+                        recraftPrompt.length() > 100 ? recraftPrompt.substring(0, 100) + "..." : recraftPrompt);
+                
                 return falAiModelService.generateImage(recraftPrompt).join();
             }
         });
