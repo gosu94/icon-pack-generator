@@ -109,7 +109,7 @@ class ImageProcessingServiceSpec extends Specification {
         int targetSize = 512
 
         when: "Centering with specific target size"
-        BufferedImage centeredIcon = imageProcessingService.cen8ierIcon(originalImage, targetSize)
+        BufferedImage centeredIcon = imageProcessingService.centerIcon(originalImage, targetSize)
 
         then: "Image has correct target dimensions"
         centeredIcon != null

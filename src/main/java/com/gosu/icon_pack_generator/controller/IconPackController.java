@@ -5,7 +5,7 @@ import com.gosu.icon_pack_generator.dto.IconGenerationRequest;
 import com.gosu.icon_pack_generator.dto.IconGenerationResponse;
 import com.gosu.icon_pack_generator.config.AIServicesConfig;
 import com.gosu.icon_pack_generator.service.FalAiModelService;
-import com.gosu.icon_pack_generator.service.OpenAiModelService;
+
 import com.gosu.icon_pack_generator.service.RecraftModelService;
 import com.gosu.icon_pack_generator.service.IconExportService;
 import com.gosu.icon_pack_generator.service.IconGenerationService;
@@ -33,7 +33,6 @@ public class IconPackController {
     private final IconGenerationService iconGenerationService;
     private final IconExportService iconExportService;
     private final FalAiModelService falAiModelService;
-    private final OpenAiModelService openAiModelService;
     private final RecraftModelService recraftModelService;
     private final AIServicesConfig aiServicesConfig;
     
@@ -162,53 +161,7 @@ public class IconPackController {
                 });
     }
     
-    @GetMapping("/health/openai")
-    @ResponseBody
-    public CompletableFuture<ResponseEntity<Map<String, Object>>> checkOpenAiHealth() {
-        log.info("Checking OpenAI API health");
-        
-        if (!aiServicesConfig.isOpenAiEnabled()) {
-            Map<String, Object> health = new HashMap<>();
-            health.put("service", "openai");
-            health.put("status", "DISABLED");
-            health.put("enabled", false);
-            health.put("available", false);
-            health.put("model", openAiModelService.getModelName());
-            health.put("timestamp", System.currentTimeMillis());
-            health.put("message", "OpenAI service is disabled in configuration");
-            return CompletableFuture.completedFuture(ResponseEntity.ok(health));
-        }
-        
-        return openAiModelService.testConnection()
-                .thenApply(isConnected -> {
-                    Map<String, Object> health = new HashMap<>();
-                    health.put("service", "openai");
-                    health.put("status", isConnected ? "UP" : "DOWN");
-                    health.put("enabled", true);
-                    health.put("available", openAiModelService.isAvailable());
-                    health.put("model", openAiModelService.getModelName());
-                    health.put("timestamp", System.currentTimeMillis());
-                    
-                    if (isConnected) {
-                        health.put("message", "OpenAI API is responding correctly");
-                        return ResponseEntity.ok(health);
-                    } else {
-                        health.put("message", "OpenAI API connection failed. Check logs for details.");
-                        return ResponseEntity.status(503).body(health);
-                    }
-                })
-                .exceptionally(error -> {
-                    log.error("Error during OpenAI health check", error);
-                    Map<String, Object> health = new HashMap<>();
-                    health.put("service", "openai");
-                    health.put("status", "ERROR");
-                    health.put("enabled", true);
-                    health.put("available", false);
-                    health.put("error", error.getMessage());
-                    health.put("timestamp", System.currentTimeMillis());
-                    return ResponseEntity.status(503).body(health);
-                });
-    }
+
     
 
     
@@ -269,26 +222,21 @@ public class IconPackController {
         CompletableFuture<Boolean> falAiFuture = aiServicesConfig.isFluxAiEnabled() ?
                 falAiModelService.testConnection() : CompletableFuture.completedFuture(false);
         
-        CompletableFuture<Boolean> openAiFuture = aiServicesConfig.isOpenAiEnabled() ? 
-                openAiModelService.testConnection() : CompletableFuture.completedFuture(false);
-        
         CompletableFuture<Boolean> recraftFuture = aiServicesConfig.isRecraftEnabled() ? 
                 recraftModelService.testConnection() : CompletableFuture.completedFuture(false);
         
-        return CompletableFuture.allOf(falAiFuture, openAiFuture, recraftFuture)
+        return CompletableFuture.allOf(falAiFuture, recraftFuture)
                 .thenApply(v -> {
                     boolean falAiStatus = falAiFuture.join();
-                    boolean openAiStatus = openAiFuture.join();
                     boolean recraftStatus = recraftFuture.join();
                     
                     Map<String, Object> health = new HashMap<>();
                     health.put("timestamp", System.currentTimeMillis());
                     
                     int enabledCount = (aiServicesConfig.isFluxAiEnabled() ? 1 : 0) +
-                                     (aiServicesConfig.isOpenAiEnabled() ? 1 : 0) + 
                                      (aiServicesConfig.isRecraftEnabled() ? 1 : 0);
                     
-                    int successCount = (falAiStatus ? 1 : 0) + (openAiStatus ? 1 : 0) + (recraftStatus ? 1 : 0);
+                    int successCount = (falAiStatus ? 1 : 0) + (recraftStatus ? 1 : 0);
                     
                     String overallStatus;
                     if (enabledCount == 0) {
@@ -312,12 +260,7 @@ public class IconPackController {
                     falAiHealth.put("available", aiServicesConfig.isFluxAiEnabled() && falAiModelService.isAvailable());
                     falAiHealth.put("model", falAiModelService.getModelName());
                     
-                    Map<String, Object> openAiHealth = new HashMap<>();
-                    openAiHealth.put("enabled", aiServicesConfig.isOpenAiEnabled());
-                    openAiHealth.put("status", aiServicesConfig.isOpenAiEnabled() ? 
-                            (openAiStatus ? "UP" : "DOWN") : "DISABLED");
-                    openAiHealth.put("available", aiServicesConfig.isOpenAiEnabled() && openAiModelService.isAvailable());
-                    openAiHealth.put("model", openAiModelService.getModelName());
+
                     
                     Map<String, Object> recraftHealth = new HashMap<>();
                     recraftHealth.put("enabled", aiServicesConfig.isRecraftEnabled());
@@ -327,7 +270,6 @@ public class IconPackController {
                     recraftHealth.put("model", recraftModelService.getModelName());
                     
                     health.put("falAi", falAiHealth);
-                    health.put("openAi", openAiHealth);
                     health.put("recraft", recraftHealth);
                     
                     String message;

@@ -12,7 +12,6 @@ public class IconGenerationResponse {
     private List<GeneratedIcon> icons;
     private String requestId;
     private ServiceResults falAiResults;
-    private ServiceResults openAiResults;
     private ServiceResults recraftResults;
     
     @Data
@@ -21,7 +20,7 @@ public class IconGenerationResponse {
         private String base64Data;
         private String description;
         private int gridPosition;
-        private String serviceSource; // "fal-ai" or "openai"
+        private String serviceSource; // "fal-ai" or "recraft"
     }
     
     @Data

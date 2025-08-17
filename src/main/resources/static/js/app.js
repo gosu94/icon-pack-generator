@@ -167,18 +167,7 @@ document.addEventListener('DOMContentLoaded', function() {
             hasMultipleSections = true;
         }
         
-        // Display OpenAI results (including disabled status)
-        if (data.openAiResults && (data.openAiResults.icons && data.openAiResults.icons.length > 0 || data.openAiResults.status === 'disabled')) {
-            if (hasMultipleSections) {
-                const separator = document.createElement('div');
-                separator.className = 'service-separator';
-                separator.innerHTML = '<div class="separator-line"></div>';
-                servicesContainer.appendChild(separator);
-            }
-            const openAiSection = createServiceSection('GPT-Image', data.openAiResults, 'openai');
-            servicesContainer.appendChild(openAiSection);
-            hasMultipleSections = true;
-        }
+
         
         // Display Recraft results (including disabled status)
         if (data.recraftResults && (data.recraftResults.icons && data.recraftResults.icons.length > 0 || data.recraftResults.status === 'disabled')) {

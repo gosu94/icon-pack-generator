@@ -10,7 +10,6 @@ import org.springframework.context.annotation.Configuration;
 public class AIServicesConfig {
     
     private ServiceEnabled fluxAi = new ServiceEnabled();
-    private ServiceEnabled openai = new ServiceEnabled();
     private ServiceEnabled recraft = new ServiceEnabled();
     
     @Data
@@ -20,10 +19,6 @@ public class AIServicesConfig {
     
     public boolean isFluxAiEnabled() {
         return fluxAi.isEnabled();
-    }
-    
-    public boolean isOpenAiEnabled() {
-        return openai.isEnabled();
     }
     
     public boolean isRecraftEnabled() {
