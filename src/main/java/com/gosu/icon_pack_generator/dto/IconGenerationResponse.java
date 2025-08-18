@@ -13,6 +13,7 @@ public class IconGenerationResponse {
     private String requestId;
     private ServiceResults falAiResults;
     private ServiceResults recraftResults;
+    private ServiceResults photonResults;
     
     @Data
     public static class GeneratedIcon {
@@ -20,7 +21,7 @@ public class IconGenerationResponse {
         private String base64Data;
         private String description;
         private int gridPosition;
-        private String serviceSource; // "fal-ai" or "recraft"
+        private String serviceSource; // "flux", "recraft", or "photon"
     }
     
     @Data

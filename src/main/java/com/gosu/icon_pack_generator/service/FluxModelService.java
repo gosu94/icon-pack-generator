@@ -25,7 +25,7 @@ import java.util.concurrent.CompletableFuture;
 @Service
 @RequiredArgsConstructor
 @Slf4j
-public class FalAiModelService implements AIModelService {
+public class FluxModelService implements AIModelService {
     
     private final AIModelConfig config;
     private final ObjectMapper objectMapper;
@@ -52,7 +52,7 @@ public class FalAiModelService implements AIModelService {
                 validateConfiguration();
                 
                 Map<String, Object> input = createInputMap(prompt);
-                log.info("Making fal.ai API call to endpoint: {} with input keys: {}", 
+                log.info("Making fal.ai API call to endpoint: {} with input keys: {}",
                         config.getModelEndpoint(), input.keySet());
                 
                 // Using the fal.ai client API with SubscribeOptions as per documentation
@@ -224,9 +224,9 @@ public class FalAiModelService implements AIModelService {
                 
                 Map<String, Object> input = createImageToImageInputMap(prompt, imageDataUrl);
                 log.info("Making fal.ai image-to-image API call to endpoint: {} with input keys: {}", 
-                        "fal-ai/flux-pro/kontext", input.keySet());
+                        "fal-ai/flux-pro/v1.1/redux", input.keySet());
                 
-                Output<JsonObject> output = falClient.subscribe("fal-ai/flux-pro/kontext",
+                Output<JsonObject> output = falClient.subscribe("fal-ai/flux-pro/v1.1/redux",
                     SubscribeOptions.<JsonObject>builder()
                         .input(input)
                         .logs(true)

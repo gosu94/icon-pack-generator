@@ -4,9 +4,10 @@ import com.gosu.icon_pack_generator.dto.IconExportRequest;
 import com.gosu.icon_pack_generator.dto.IconGenerationRequest;
 import com.gosu.icon_pack_generator.dto.IconGenerationResponse;
 import com.gosu.icon_pack_generator.config.AIServicesConfig;
-import com.gosu.icon_pack_generator.service.FalAiModelService;
+import com.gosu.icon_pack_generator.service.FluxModelService;
 
 import com.gosu.icon_pack_generator.service.RecraftModelService;
+import com.gosu.icon_pack_generator.service.PhotonModelService;
 import com.gosu.icon_pack_generator.service.IconExportService;
 import com.gosu.icon_pack_generator.service.IconGenerationService;
 import com.gosu.icon_pack_generator.service.BackgroundRemovalService;
@@ -36,8 +37,9 @@ public class IconPackController {
     
     private final IconGenerationService iconGenerationService;
     private final IconExportService iconExportService;
-    private final FalAiModelService falAiModelService;
+    private final FluxModelService fluxModelService;
     private final RecraftModelService recraftModelService;
+    private final PhotonModelService photonModelService;
     private final AIServicesConfig aiServicesConfig;
     private final BackgroundRemovalService backgroundRemovalService;
     
@@ -130,20 +132,20 @@ public class IconPackController {
             health.put("status", "DISABLED");
             health.put("enabled", false);
             health.put("available", false);
-            health.put("model", falAiModelService.getModelName());
+            health.put("model", fluxModelService.getModelName());
             health.put("timestamp", System.currentTimeMillis());
             health.put("message", "Fal.ai service is disabled in configuration");
             return CompletableFuture.completedFuture(ResponseEntity.ok(health));
         }
         
-        return falAiModelService.testConnection()
+        return fluxModelService.testConnection()
                 .thenApply(isConnected -> {
                     Map<String, Object> health = new HashMap<>();
                     health.put("service", "fal.ai");
                     health.put("status", isConnected ? "UP" : "DOWN");
                     health.put("enabled", true);
-                    health.put("available", falAiModelService.isAvailable());
-                    health.put("model", falAiModelService.getModelName());
+                    health.put("available", fluxModelService.isAvailable());
+                    health.put("model", fluxModelService.getModelName());
                     health.put("timestamp", System.currentTimeMillis());
                     
                     if (isConnected) {
@@ -219,30 +221,83 @@ public class IconPackController {
                 });
     }
     
+    @GetMapping("/health/photon")
+    @ResponseBody
+    public CompletableFuture<ResponseEntity<Map<String, Object>>> checkPhotonHealth() {
+        log.info("Checking Photon API health");
+        
+        if (!aiServicesConfig.isPhotonEnabled()) {
+            Map<String, Object> health = new HashMap<>();
+            health.put("service", "photon");
+            health.put("status", "DISABLED");
+            health.put("enabled", false);
+            health.put("available", false);
+            health.put("model", photonModelService.getModelName());
+            health.put("timestamp", System.currentTimeMillis());
+            health.put("message", "Photon service is disabled in configuration");
+            return CompletableFuture.completedFuture(ResponseEntity.ok(health));
+        }
+        
+        return photonModelService.testConnection()
+                .thenApply(isConnected -> {
+                    Map<String, Object> health = new HashMap<>();
+                    health.put("service", "photon");
+                    health.put("status", isConnected ? "UP" : "DOWN");
+                    health.put("enabled", true);
+                    health.put("available", photonModelService.isAvailable());
+                    health.put("model", photonModelService.getModelName());
+                    health.put("timestamp", System.currentTimeMillis());
+                    
+                    if (isConnected) {
+                        health.put("message", "Photon API is responding correctly");
+                        return ResponseEntity.ok(health);
+                    } else {
+                        health.put("message", "Photon API connection failed. Check logs for details.");
+                        return ResponseEntity.status(503).body(health);
+                    }
+                })
+                .exceptionally(error -> {
+                    log.error("Error during Photon health check", error);
+                    Map<String, Object> health = new HashMap<>();
+                    health.put("service", "photon");
+                    health.put("status", "ERROR");
+                    health.put("enabled", true);
+                    health.put("available", false);
+                    health.put("error", error.getMessage());
+                    health.put("timestamp", System.currentTimeMillis());
+                    return ResponseEntity.status(503).body(health);
+                });
+    }
+    
     @GetMapping("/health/all")
     @ResponseBody
     public CompletableFuture<ResponseEntity<Map<String, Object>>> checkAllServicesHealth() {
-        log.info("Checking health of all AI services including Recraft");
+        log.info("Checking health of all AI services including Recraft and Photon");
         
         // Only test connections for enabled services
         CompletableFuture<Boolean> falAiFuture = aiServicesConfig.isFluxAiEnabled() ?
-                falAiModelService.testConnection() : CompletableFuture.completedFuture(false);
+                fluxModelService.testConnection() : CompletableFuture.completedFuture(false);
         
         CompletableFuture<Boolean> recraftFuture = aiServicesConfig.isRecraftEnabled() ? 
                 recraftModelService.testConnection() : CompletableFuture.completedFuture(false);
         
-        return CompletableFuture.allOf(falAiFuture, recraftFuture)
+        CompletableFuture<Boolean> photonFuture = aiServicesConfig.isPhotonEnabled() ? 
+                photonModelService.testConnection() : CompletableFuture.completedFuture(false);
+        
+        return CompletableFuture.allOf(falAiFuture, recraftFuture, photonFuture)
                 .thenApply(v -> {
                     boolean falAiStatus = falAiFuture.join();
                     boolean recraftStatus = recraftFuture.join();
+                    boolean photonStatus = photonFuture.join();
                     
                     Map<String, Object> health = new HashMap<>();
                     health.put("timestamp", System.currentTimeMillis());
                     
                     int enabledCount = (aiServicesConfig.isFluxAiEnabled() ? 1 : 0) +
-                                     (aiServicesConfig.isRecraftEnabled() ? 1 : 0);
+                                     (aiServicesConfig.isRecraftEnabled() ? 1 : 0) +
+                                     (aiServicesConfig.isPhotonEnabled() ? 1 : 0);
                     
-                    int successCount = (falAiStatus ? 1 : 0) + (recraftStatus ? 1 : 0);
+                    int successCount = (falAiStatus ? 1 : 0) + (recraftStatus ? 1 : 0) + (photonStatus ? 1 : 0);
                     
                     String overallStatus;
                     if (enabledCount == 0) {
@@ -263,8 +318,8 @@ public class IconPackController {
                     falAiHealth.put("enabled", aiServicesConfig.isFluxAiEnabled());
                     falAiHealth.put("status", aiServicesConfig.isFluxAiEnabled() ?
                             (falAiStatus ? "UP" : "DOWN") : "DISABLED");
-                    falAiHealth.put("available", aiServicesConfig.isFluxAiEnabled() && falAiModelService.isAvailable());
-                    falAiHealth.put("model", falAiModelService.getModelName());
+                    falAiHealth.put("available", aiServicesConfig.isFluxAiEnabled() && fluxModelService.isAvailable());
+                    falAiHealth.put("model", fluxModelService.getModelName());
                     
 
                     
@@ -275,8 +330,16 @@ public class IconPackController {
                     recraftHealth.put("available", aiServicesConfig.isRecraftEnabled() && recraftModelService.isAvailable());
                     recraftHealth.put("model", recraftModelService.getModelName());
                     
+                    Map<String, Object> photonHealth = new HashMap<>();
+                    photonHealth.put("enabled", aiServicesConfig.isPhotonEnabled());
+                    photonHealth.put("status", aiServicesConfig.isPhotonEnabled() ? 
+                            (photonStatus ? "UP" : "DOWN") : "DISABLED");
+                    photonHealth.put("available", aiServicesConfig.isPhotonEnabled() && photonModelService.isAvailable());
+                    photonHealth.put("model", photonModelService.getModelName());
+                    
                     health.put("falAi", falAiHealth);
                     health.put("recraft", recraftHealth);
+                    health.put("photon", photonHealth);
                     
                     String message;
                     if (enabledCount == 0) {

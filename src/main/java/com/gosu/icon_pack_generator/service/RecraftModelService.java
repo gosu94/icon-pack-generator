@@ -12,10 +12,10 @@ import java.util.Map;
 @Slf4j
 public class RecraftModelService implements AIModelService {
     
-    private final FalAiModelService falAiModelService;
+    private final FluxModelService fluxModelService;
     
-    public RecraftModelService(FalAiModelService falAiModelService) {
-        this.falAiModelService = falAiModelService;
+    public RecraftModelService(FluxModelService fluxModelService) {
+        this.fluxModelService = fluxModelService;
     }
     
     @Override
@@ -46,7 +46,7 @@ public class RecraftModelService implements AIModelService {
                 log.info("Making Recraft text-to-image API call with input keys: {}", input.keySet());
                 
                 // Use the same falClient from FalAiModelService since both use fal.ai infrastructure
-                return falAiModelService.generateImageWithCustomEndpoint("fal-ai/recraft/v3/text-to-image", input);
+                return fluxModelService.generateImageWithCustomEndpoint("fal-ai/recraft/v3/text-to-image", input);
                 
             } catch (Exception e) {
                 log.error("Error calling Recraft text-to-image API, falling back to FalAI generation. " +
@@ -65,7 +65,7 @@ public class RecraftModelService implements AIModelService {
                 log.info("Falling back to standard FalAI generation with prompt: {}", 
                         recraftPrompt.length() > 100 ? recraftPrompt.substring(0, 100) + "..." : recraftPrompt);
                 
-                return falAiModelService.generateImage(recraftPrompt).join();
+                return fluxModelService.generateImage(recraftPrompt).join();
             }
         });
     }
@@ -91,7 +91,7 @@ public class RecraftModelService implements AIModelService {
     @Override
     public boolean isAvailable() {
         // Recraft is available if FalAI is available
-        return falAiModelService.isAvailable();
+        return fluxModelService.isAvailable();
     }
     
     /**
@@ -126,14 +126,14 @@ public class RecraftModelService implements AIModelService {
                 log.info("Making Recraft image-to-image API call with input keys: {}", input.keySet());
                 
                 // Use the same falClient from FalAiModelService since both use fal.ai infrastructure
-                return falAiModelService.generateImageWithCustomEndpoint("fal-ai/recraft/v3/image-to-image", input);
+                return fluxModelService.generateImageWithCustomEndpoint("fal-ai/recraft/v3/image-to-image", input);
                 
             } catch (Exception e) {
                 log.error("Error calling Recraft image-to-image API, falling back to regular generation", e);
                 // Fallback to regular generation with modified prompt
                 String recraftPrompt = "digital illustration style, consistent with source image: " + prompt + 
                         " No text, no labels, no grid lines, no borders. Clean icon design only.";
-                return falAiModelService.generateImage(recraftPrompt).join();
+                return fluxModelService.generateImage(recraftPrompt).join();
             }
         });
     }
@@ -167,6 +167,6 @@ public class RecraftModelService implements AIModelService {
      * Test the API connection by using the FalAI service
      */
     public CompletableFuture<Boolean> testConnection() {
-        return falAiModelService.testConnection();
+        return fluxModelService.testConnection();
     }
 }

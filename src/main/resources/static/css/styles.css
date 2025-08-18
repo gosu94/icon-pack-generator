@@ -127,6 +127,10 @@ body, html {
     color: #dc2626;
 }
 
+.photon-section .service-title {
+    color: #059669;
+}
+
 .service-separator {
     display: flex;
     align-items: stretch;

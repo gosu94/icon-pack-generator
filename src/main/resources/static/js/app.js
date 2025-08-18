@@ -214,6 +214,19 @@ document.addEventListener('DOMContentLoaded', function() {
             hasMultipleSections = true;
         }
         
+        // Display Photon results (including disabled status)
+        if (data.photonResults && (data.photonResults.icons && data.photonResults.icons.length > 0 || data.photonResults.status === 'disabled')) {
+            if (hasMultipleSections) {
+                const separator = document.createElement('div');
+                separator.className = 'service-separator';
+                separator.innerHTML = '<div class="separator-line"></div>';
+                servicesContainer.appendChild(separator);
+            }
+            const photonSection = createServiceSection('Luma Photon', data.photonResults, 'photon');
+            servicesContainer.appendChild(photonSection);
+            hasMultipleSections = true;
+        }
+        
         resultsGrid.appendChild(servicesContainer);
         setUIState('results');
     }

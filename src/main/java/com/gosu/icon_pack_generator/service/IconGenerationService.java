@@ -18,8 +18,9 @@ import java.util.concurrent.CompletableFuture;
 @Slf4j
 public class IconGenerationService {
     
-    private final FalAiModelService falAiModelService;
+    private final FluxModelService fluxModelService;
     private final RecraftModelService recraftModelService;
+    private final PhotonModelService photonModelService;
     private final ImageProcessingService imageProcessingService;
     private final PromptGenerationService promptGenerationService;
     private final AIServicesConfig aiServicesConfig;
@@ -28,6 +29,7 @@ public class IconGenerationService {
         List<String> enabledServices = new ArrayList<>();
         if (aiServicesConfig.isFluxAiEnabled()) enabledServices.add("FalAI");
         if (aiServicesConfig.isRecraftEnabled()) enabledServices.add("Recraft");
+        if (aiServicesConfig.isPhotonEnabled()) enabledServices.add("Photon");
         
         log.info("Starting icon generation for {} icons with theme: {} using enabled services: {}", 
                 request.getIconCount(), request.getGeneralDescription(), enabledServices);
@@ -37,7 +39,7 @@ public class IconGenerationService {
         // Generate icons only with enabled services
                 CompletableFuture<IconGenerationResponse.ServiceResults> falAiFuture = 
                 aiServicesConfig.isFluxAiEnabled() ? 
-                generateIconsWithService(request, requestId, falAiModelService, "flux") :
+                generateIconsWithService(request, requestId, fluxModelService, "flux") :
                 CompletableFuture.completedFuture(createDisabledServiceResult("flux"));
         
         CompletableFuture<IconGenerationResponse.ServiceResults> recraftFuture = 
@@ -45,12 +47,18 @@ public class IconGenerationService {
                 generateIconsWithService(request, requestId, recraftModelService, "recraft") :
                 CompletableFuture.completedFuture(createDisabledServiceResult("recraft"));
         
-        return CompletableFuture.allOf(falAiFuture, recraftFuture)
+        CompletableFuture<IconGenerationResponse.ServiceResults> photonFuture = 
+                aiServicesConfig.isPhotonEnabled() ? 
+                generateIconsWithService(request, requestId, photonModelService, "photon") :
+                CompletableFuture.completedFuture(createDisabledServiceResult("photon"));
+        
+        return CompletableFuture.allOf(falAiFuture, recraftFuture, photonFuture)
                 .thenApply(v -> {
                     IconGenerationResponse.ServiceResults falAiResults = falAiFuture.join();
                     IconGenerationResponse.ServiceResults recraftResults = recraftFuture.join();
+                    IconGenerationResponse.ServiceResults photonResults = photonFuture.join();
                     
-                    return createCombinedResponse(requestId, falAiResults, recraftResults);
+                    return createCombinedResponse(requestId, falAiResults, recraftResults, photonResults);
                 })
                 .exceptionally(error -> {
                     log.error("Error generating icons for request {}", requestId, error);
@@ -180,9 +188,6 @@ public class IconGenerationService {
     private List<IconGenerationResponse.GeneratedIcon> createIconList(List<String> base64Icons, IconGenerationRequest request, String serviceName) {
         List<IconGenerationResponse.GeneratedIcon> icons = new ArrayList<>();
         
-        List<String> descriptions = request.getIndividualDescriptions() != null ? 
-                request.getIndividualDescriptions() : new ArrayList<>();
-        
         for (int i = 0; i < base64Icons.size(); i++) {
             IconGenerationResponse.GeneratedIcon icon = new IconGenerationResponse.GeneratedIcon();
             icon.setId(UUID.randomUUID().toString());
@@ -198,12 +203,14 @@ public class IconGenerationService {
     
     private IconGenerationResponse createCombinedResponse(String requestId, 
             IconGenerationResponse.ServiceResults falAiResults, 
-            IconGenerationResponse.ServiceResults recraftResults) {
+            IconGenerationResponse.ServiceResults recraftResults,
+            IconGenerationResponse.ServiceResults photonResults) {
         
         IconGenerationResponse response = new IconGenerationResponse();
         response.setRequestId(requestId);
         response.setFalAiResults(falAiResults);
         response.setRecraftResults(recraftResults);
+        response.setPhotonResults(photonResults);
         
         // Combine all icons for backward compatibility
         List<IconGenerationResponse.GeneratedIcon> allIcons = new ArrayList<>();
@@ -212,6 +219,9 @@ public class IconGenerationService {
         }
         if (recraftResults.getIcons() != null) {
             allIcons.addAll(recraftResults.getIcons());
+        }
+        if (photonResults.getIcons() != null) {
+            allIcons.addAll(photonResults.getIcons());
         }
         response.setIcons(allIcons);
         
@@ -238,6 +248,15 @@ public class IconGenerationService {
             if ("success".equals(recraftResults.getStatus())) {
                 successCount++;
                 successfulServices.add("Recraft");
+            }
+        }
+        
+        if (!"disabled".equals(photonResults.getStatus())) {
+            enabledCount++;
+            enabledServices.add("Photon");
+            if ("success".equals(photonResults.getStatus())) {
+                successCount++;
+                successfulServices.add("Photon");
             }
         }
         
@@ -276,6 +295,7 @@ public class IconGenerationService {
         
         response.setFalAiResults(errorResult);
         response.setRecraftResults(errorResult);
+        response.setPhotonResults(errorResult);
         
         return response;
     }
@@ -302,16 +322,17 @@ public class IconGenerationService {
     
     private boolean supportsImageToImage(AIModelService aiService) {
         // Check if the service supports image-to-image generation
-        return aiService instanceof FalAiModelService || aiService instanceof RecraftModelService;
+        // PhotonModelService delegates to FluxModelService for image-to-image
+        return aiService instanceof FluxModelService || aiService instanceof RecraftModelService || aiService instanceof PhotonModelService;
     }
     
     private CompletableFuture<byte[]> generateImageToImageWithService(AIModelService aiService, String prompt, byte[] sourceImageData) {
         log.info("Attempting image-to-image generation with service: {}", aiService.getClass().getSimpleName());
         
         try {
-            if (aiService instanceof FalAiModelService) {
+            if (aiService instanceof FluxModelService) {
                 log.info("Using FalAiModelService generateImageToImage for image-to-image");
-                return ((FalAiModelService) aiService).generateImageToImage(prompt, sourceImageData)
+                return ((FluxModelService) aiService).generateImageToImage(prompt, sourceImageData)
                         .handle((result, throwable) -> {
                             if (throwable != null) {
                                 log.error("FalAiModelService image-to-image failed, falling back to regular generation", throwable);
@@ -330,6 +351,21 @@ public class IconGenerationService {
                                 } catch (Exception fallbackError) {
                                     log.error("Fallback generation also failed for Recraft", fallbackError);
                                     throw new RuntimeException("Both image-to-image and fallback generation failed for Recraft", fallbackError);
+                                }
+                            }
+                            return result;
+                        });
+            } else if (aiService instanceof PhotonModelService) {
+                log.info("Using PhotonModelService generateImageToImage (delegates to Flux) for image-to-image");
+                return ((PhotonModelService) aiService).generateImageToImage(prompt, sourceImageData)
+                        .handle((result, throwable) -> {
+                            if (throwable != null) {
+                                log.error("PhotonModelService image-to-image failed, falling back to regular generation", throwable);
+                                try {
+                                    return aiService.generateImage(prompt).join();
+                                } catch (Exception fallbackError) {
+                                    log.error("Fallback generation also failed for Photon", fallbackError);
+                                    throw new RuntimeException("Both image-to-image and fallback generation failed for Photon", fallbackError);
                                 }
                             }
                             return result;
