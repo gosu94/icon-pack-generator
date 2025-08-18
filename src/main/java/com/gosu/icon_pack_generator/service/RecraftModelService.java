@@ -20,7 +20,7 @@ public class RecraftModelService implements AIModelService {
     
     @Override
     public CompletableFuture<byte[]> generateImage(String prompt) {
-        log.info("Generating image with Recraft V3 for prompt: {}", prompt.substring(0, Math.min(100, prompt.length())));
+        log.info("Generating image with Recraft V3 for prompt: {}", prompt);
         
         return generateRecraftImageAsync(prompt)
                 .whenComplete((bytes, error) -> {

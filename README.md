@@ -8,13 +8,15 @@ A Spring Boot web application for generating custom icon packs using AI. This ap
 - **AI Integration**: Integrated with Flux-1-Kontext-Pro model for high-quality icon generation
 - **Flexible Icon Counts**: Generate 9 or 18 icons at once
 - **Automated Processing**: Automatic image cropping to extract individual icons from generated grids
+- **Background Removal**: Intelligent background removal using rembg before icon processing
 - **Real-time Results**: Live display of generated icons in the browser
 
 ## Prerequisites
 
 - Java 21 or higher
-- Gradle 7.x or higher
+- Gradle 7.x or higher  
 - Flux AI API key (or compatible AI service)
+- Python 3.9+ with rembg installed (for background removal, optional)
 
 ## Setup
 
@@ -84,6 +86,7 @@ The application also provides REST API endpoints:
   - `FalAiModelService` - Concrete implementation using fal.ai Java client
   - `IconExportService` - Handles ZIP file creation for icon downloads
   - `ImageProcessingService` - Handles image cropping and processing
+  - `BackgroundRemovalService` - Handles background removal using rembg
   - `PromptGenerationService` - Generates optimized prompts for AI models
 - **Model Layer**: DTOs and configuration classes
 - **Configuration**: `FalAiConfig` - Configures the fal.ai client
@@ -111,6 +114,12 @@ fal.ai.enable-safety-checker=true
 # Server Settings
 server.port=8080
 
+# Background Removal Settings  
+background-removal.enabled=true
+background-removal.rembg-command=rembg
+background-removal.timeout-seconds=30
+background-removal.model=u2net
+
 # Development Settings
 spring.thymeleaf.cache=false
 spring.web.resources.cache.period=0
@@ -129,9 +138,57 @@ spring.web.resources.cache.period=0
 
 Modify the `PromptGenerationService` to customize how prompts are generated for the AI model.
 
-### Adding Background Removal
+## Background Removal
 
-The application is designed with future rembg integration in mind. You can extend the `ImageProcessingService` to add background removal capabilities.
+The application includes intelligent background removal using the `rembg` Python library. This feature automatically removes backgrounds from generated images before processing individual icons, resulting in cleaner icon extraction.
+
+### Configuration
+
+Background removal can be configured in `application.properties`:
+
+```properties
+# Background Removal Configuration
+background-removal.enabled=true
+background-removal.rembg-command=rembg
+background-removal.timeout-seconds=30
+background-removal.model=u2net
+```
+
+### Setup Options
+
+#### Option 1: Local Python Installation
+
+1. Install Python 3.9+ and rembg:
+   ```bash
+   pip install rembg[new]
+   ```
+
+2. Verify installation:
+   ```bash
+   rembg --help
+   ```
+
+#### Option 2: Docker (Recommended)
+
+Use the provided Dockerfile which includes Python and rembg:
+
+```bash
+docker build -t icon-pack-generator .
+docker run -p 8080:8080 -e FAL_API_KEY=your-key icon-pack-generator
+```
+
+### Health Monitoring
+
+The application includes a health indicator for background removal:
+- Visit `http://localhost:8080/actuator/health` to check if rembg is properly configured
+- The health check verifies that the rembg command is available and working
+
+### Fallback Behavior
+
+If rembg is not available or fails:
+- The application will log warnings but continue processing
+- Images will be processed without background removal
+- No functionality is lost - it's a graceful degradation
 
 ## Troubleshooting
 
@@ -181,18 +238,60 @@ java -jar build/libs/icon-pack-generator-0.0.1-SNAPSHOT.jar
 
 ### Running Tests
 
+#### Local Testing (without rembg)
 ```bash
 ./gradlew test
 ```
 
+#### Docker Testing (with rembg support)
+
+For comprehensive testing including background removal functionality:
+
+**Option 1: Test only background removal**
+```bash
+./test-docker.sh
+```
+
+**Option 2: Test everything**
+```bash
+./test-docker-all.sh
+```
+
+**Manual Docker testing:**
+```bash
+# Build the image
+docker build -t icon-pack-generator-test .
+
+# Run background removal tests
+docker run --rm \
+    -v "$(pwd)/src/test/resources/images/output:/app/src/test/resources/images/output" \
+    -e "test.rembg.enabled=true" \
+    icon-pack-generator-test \
+    ./gradlew test --tests "*BackgroundRemovalServiceSpec*" -Dtest.rembg.enabled=true
+```
+
+#### Test Output
+
+Tests generate visual output files in `src/test/resources/images/output/`:
+- `rembg_sample_processed.png` - Processed test image
+- `rembg_sample_background_removed.png` - Background removed result
+- `bg_removed_icon_*.png` - Sample icons with background removal
+- `original_icon_*.png` - Sample icons without background removal
+
+The background removal test (`BackgroundRemovalServiceSpec`) will:
+- ✅ Work locally (graceful fallback when rembg unavailable)
+- ✅ Work in Docker (full rembg functionality)
+- ✅ Test integration with the image processing pipeline
+- ✅ Generate comparison images for visual verification
+
 ## Future Enhancements
 
-- Background removal using rembg
 - Multiple output formats (SVG, different sizes)
 - Batch processing capabilities
 - User authentication and project management
 - Template and style presets
 - Integration with additional AI models
+- Advanced background removal models and options
 
 ## License
 

@@ -1,0 +1,22 @@
+version: '3.8'
+
+services:
+  icon-pack-generator:
+    build: .
+    ports:
+      - "8080:8080"
+    # The `env_file` directive is the standard way to load all variables from your .env file.
+    env_file:
+      - .env
+    # You can also define variables explicitly using the `environment` key.
+    # This is useful for clarity or for overriding values from the env_file.
+    # The `${FAL_KEY}` syntax tells Docker Compose to find the value from your
+    # shell or the .env file and substitute it here.
+    environment:
+     - FAL_KEY=${FAL_KEY}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s

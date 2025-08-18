@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Background Removal - Icon Pack Generator</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="/css/styles.css" rel="stylesheet">
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container">
+            <a class="navbar-brand" href="/">
+                <i class="bi bi-image"></i> Icon Pack Generator
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="/">
+                            <i class="bi bi-grid-3x3"></i> Icon Generator
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link active" href="/background-removal">
+                            <i class="bi bi-scissors"></i> Background Removal
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container-fluid h-100">
+        <div class="row h-100">
+            <!-- Left Panel - Upload Form -->
+            <div class="col-md-4 bg-light p-4 left-panel">
+                <h2 class="mb-4">
+                    <i class="bi bi-scissors text-primary"></i> 
+                    Background Removal
+                </h2>
+                
+                <!-- Service Status -->
+                <div class="alert" th:classappend="${isRembgAvailable} ? 'alert-success' : 'alert-warning'" role="alert">
+                    <i class="bi" th:classappend="${isRembgAvailable} ? 'bi-check-circle' : 'bi-exclamation-triangle'"></i>
+                    <strong>Service Status:</strong><br>
+                    <span th:text="${serviceInfo}">Service information</span>
+                </div>
+                
+                <form id="backgroundRemovalForm" enctype="multipart/form-data">
+                    <!-- File Upload -->
+                    <div class="mb-4">
+                        <label for="imageUpload" class="form-label">
+                            <i class="bi bi-cloud-upload"></i> Select Image
+                        </label>
+                        <input type="file" class="form-control" id="imageUpload" name="image" 
+                               accept="image/*" required>
+                        <div class="form-text">
+                            Supported formats: JPG, PNG, GIF, WebP (max 10MB)
+                        </div>
+                        <div class="invalid-feedback">
+                            Please select an image file.
+                        </div>
+                    </div>
+                    
+                    <!-- Preview of selected image -->
+                    <div id="imagePreviewContainer" class="mb-3 d-none">
+                        <label class="form-label">Preview:</label>
+                        <div class="text-center">
+                            <img id="imagePreview" class="img-fluid rounded border" style="max-height: 200px;" alt="Preview">
+                            <p class="small text-muted mt-1" id="imageInfo"></p>
+                        </div>
+                    </div>
+                    
+                    <!-- Process Button -->
+                    <button type="submit" class="btn btn-primary w-100 mb-3" id="processBtn">
+                        <span class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
+                        <i class="bi bi-magic"></i>
+                        Remove Background
+                    </button>
+                </form>
+                
+                <!-- Processing Info -->
+                <div class="card mt-3 d-none" id="processingInfo">
+                    <div class="card-body">
+                        <h6 class="card-title">
+                            <i class="bi bi-info-circle"></i> Processing Information
+                        </h6>
+                        <p class="card-text small">
+                            <strong>Model:</strong> <span id="modelInfo">isnet-general-use</span><br>
+                            <strong>Processing time:</strong> <span id="processingTime">-</span><br>
+                            <strong>File size reduction:</strong> <span id="sizeReduction">-</span>
+                        </p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Right Panel - Results -->
+            <div class="col-md-8 p-4 right-panel">
+                <h3 class="mb-4">
+                    <i class="bi bi-images text-primary"></i> 
+                    Results
+                </h3>
+                
+                <!-- Initial State -->
+                <div id="initialState" class="text-center py-5">
+                    <i class="bi bi-cloud-upload display-1 text-muted"></i>
+                    <h4 class="mt-3 text-muted">Upload an image to get started</h4>
+                    <p class="text-muted">
+                        Select an image from your computer and click "Remove Background" to see the magic happen!
+                    </p>
+                </div>
+                
+                <!-- Loading State -->
+                <div id="loadingState" class="text-center py-5 d-none">
+                    <div class="spinner-border text-primary" style="width: 3rem; height: 3rem;" role="status">
+                        <span class="visually-hidden">Processing...</span>
+                    </div>
+                    <h4 class="mt-3 text-primary">Processing image...</h4>
+                    <p class="text-muted">This may take a few seconds depending on image size and complexity.</p>
+                </div>
+                
+                <!-- Error State -->
+                <div id="errorState" class="d-none">
+                    <div class="alert alert-danger" role="alert">
+                        <i class="bi bi-exclamation-triangle"></i>
+                        <strong>Error:</strong> <span id="errorMessage"></span>
+                    </div>
+                    <div class="text-center">
+                        <button class="btn btn-outline-primary" onclick="resetToInitialState()">
+                            <i class="bi bi-arrow-clockwise"></i> Try Again
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Results -->
+                <div id="resultsContainer" class="d-none">
+                    <div class="row">
+                        <!-- Original Image -->
+                        <div class="col-md-6">
+                            <div class="card h-100">
+                                <div class="card-header">
+                                    <h5 class="mb-0">
+                                        <i class="bi bi-image"></i> Original
+                                        <span class="badge bg-secondary ms-2" id="originalSize"></span>
+                                    </h5>
+                                </div>
+                                <div class="card-body text-center p-2">
+                                    <img id="originalImage" class="img-fluid rounded" style="max-height: 400px;" alt="Original">
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Processed Image -->
+                        <div class="col-md-6">
+                            <div class="card h-100">
+                                <div class="card-header">
+                                    <h5 class="mb-0">
+                                        <i class="bi bi-scissors"></i> Background Removed
+                                        <span class="badge bg-success ms-2" id="processedSize"></span>
+                                    </h5>
+                                </div>
+                                <div class="card-body text-center p-2">
+                                    <img id="processedImage" class="img-fluid rounded" style="max-height: 400px;" alt="Processed">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Action Buttons -->
+                    <div class="row mt-3">
+                        <div class="col-12 text-center">
+                            <div class="btn-group" role="group">
+                                <button type="button" class="btn btn-success" id="downloadBtn">
+                                    <i class="bi bi-download"></i> Download Result
+                                </button>
+                                <button type="button" class="btn btn-outline-primary" onclick="resetToInitialState()">
+                                    <i class="bi bi-arrow-clockwise"></i> Process Another
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Stats -->
+                    <div class="row mt-3">
+                        <div class="col-12">
+                            <div class="card">
+                                <div class="card-body">
+                                    <h6 class="card-title">
+                                        <i class="bi bi-bar-chart"></i> Processing Statistics
+                                    </h6>
+                                    <div class="row text-center">
+                                        <div class="col-md-3">
+                                            <div class="border-end">
+                                                <h5 class="text-primary mb-0" id="statOriginalSize">-</h5>
+                                                <small class="text-muted">Original Size</small>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <div class="border-end">
+                                                <h5 class="text-success mb-0" id="statProcessedSize">-</h5>
+                                                <small class="text-muted">Processed Size</small>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <div class="border-end">
+                                                <h5 class="text-info mb-0" id="statReduction">-</h5>
+                                                <small class="text-muted">Size Change</small>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <h5 class="text-warning mb-0" id="statStatus">-</h5>
+                                            <small class="text-muted">Status</small>
+                                        </div>
+                                    </div>
+                                    <div class="mt-2">
+                                        <small class="text-muted" id="processingMessage"></small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="/js/app.js"></script>
+    <script src="/js/background-removal.js"></script>
+</body>
+</html>

@@ -1,5 +1,6 @@
 package com.gosu.icon_pack_generator.service;
 
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
@@ -16,8 +17,11 @@ import java.util.List;
 import java.util.Iterator;
 
 @Service
+@RequiredArgsConstructor
 @Slf4j
 public class ImageProcessingService {
+    
+    private final BackgroundRemovalService backgroundRemovalService;
     
     /**
      * Crop a 3x3 grid of icons from the generated image
@@ -38,6 +42,19 @@ public class ImageProcessingService {
      * @return List of cropped icon images as base64 strings
      */
     public List<String> cropIconsFromGrid(byte[] imageData, int iconCount, boolean centerIcons, int targetSize) {
+        return cropIconsFromGrid(imageData, iconCount, centerIcons, targetSize, true);
+    }
+    
+    /**
+     * Crop a 3x3 grid of icons from the generated image with optional centering and background removal
+     * @param imageData The original image as byte array
+     * @param iconCount The number of icons to extract (9 or 18)
+     * @param centerIcons Whether to center the icons on their canvas
+     * @param targetSize Target size for centered icons (0 = auto-size based on original)
+     * @param removeBackground Whether to remove background from the entire grid before cropping
+     * @return List of cropped icon images as base64 strings
+     */
+    public List<String> cropIconsFromGrid(byte[] imageData, int iconCount, boolean centerIcons, int targetSize, boolean removeBackground) {
         try {
             // Add validation and logging
             if (imageData == null) {
@@ -52,22 +69,34 @@ public class ImageProcessingService {
             
             log.info("Processing image data of size: {} bytes", imageData.length);
             
+            // Remove background from the entire grid image before processing
+            byte[] processedImageData = imageData;
+            if (removeBackground) {
+                log.info("Removing background from grid image before cropping icons");
+                processedImageData = backgroundRemovalService.removeBackground(imageData);
+                
+                if (processedImageData.length != imageData.length) {
+                    log.info("Background removal changed image size from {} to {} bytes", 
+                            imageData.length, processedImageData.length);
+                }
+            }
+            
             BufferedImage originalImage = null;
             
             // Check if it's WebP format for better logging
-            if (isWebPFormat(imageData)) {
+            if (isWebPFormat(processedImageData)) {
                 log.info("WebP format detected. Attempting to decode using TwelveMonkeys ImageIO WebP support...");
-                originalImage = readImageWithWebPSupport(imageData);
+                originalImage = readImageWithWebPSupport(processedImageData);
             } else {
                 log.debug("Standard image format detected, using regular ImageIO...");
-                originalImage = ImageIO.read(new ByteArrayInputStream(imageData));
+                originalImage = ImageIO.read(new ByteArrayInputStream(processedImageData));
             }
             
             if (originalImage == null) {
-                log.error("Failed to parse image data - ImageIO.read() returned null. Data size: {} bytes", imageData.length);
+                log.error("Failed to parse image data - ImageIO.read() returned null. Data size: {} bytes", processedImageData.length);
                 // Log first few bytes to help debug
-                if (imageData.length > 10) {
-                    byte[] firstBytes = java.util.Arrays.copyOf(imageData, 10);
+                if (processedImageData.length > 10) {
+                    byte[] firstBytes = java.util.Arrays.copyOf(processedImageData, 10);
                     log.error("First 10 bytes of image data: {}", java.util.Arrays.toString(firstBytes));
                 }
                 throw new RuntimeException("Failed to parse image data - ImageIO returned null");
@@ -76,7 +105,7 @@ public class ImageProcessingService {
             log.info("Successfully parsed image: {}x{} pixels", originalImage.getWidth(), originalImage.getHeight());
             
             // Add image diagnostics
-            performImageDiagnostics(originalImage, imageData.length);
+            performImageDiagnostics(originalImage, processedImageData.length);
             
             List<String> croppedIcons = new ArrayList<>();
             

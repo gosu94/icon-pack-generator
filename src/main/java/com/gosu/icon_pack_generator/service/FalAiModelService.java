@@ -33,7 +33,7 @@ public class FalAiModelService implements AIModelService {
     
     @Override
     public CompletableFuture<byte[]> generateImage(String prompt) {
-        log.info("Generating image with Fal.ai model for prompt: {}", prompt.substring(0, Math.min(100, prompt.length())));
+        log.info("Generating image with Fal.ai model for prompt: {}", prompt);
         
         return generateImageAsync(prompt)
                 .whenComplete((bytes, error) -> {
@@ -295,7 +295,7 @@ public class FalAiModelService implements AIModelService {
     
     private void validateConfiguration() {
         if (config.getApiKey() == null || config.getApiKey().trim().isEmpty()) {
-            throw new FalAiException("Fal.ai API key is not configured. Please set FAL_API_KEY environment variable or fal.ai.api-key property.");
+            throw new FalAiException("Fal.ai API key is not configured. Please set FAL_KEY environment variable or fal.ai.api-key property.");
         }
         
         if (config.getApiKey().equals("your-fal-api-key-here")) {
@@ -379,13 +379,6 @@ public class FalAiModelService implements AIModelService {
         return CompletableFuture.supplyAsync(() -> {
             try {
                 validateConfiguration();
-                
-                // Check if environment variable is set correctly
-                String envKey = System.getProperty("FAL_KEY");
-                if (envKey == null || envKey.isEmpty()) {
-                    log.error("FAL_KEY system property is not set");
-                    return false;
-                }
                 
                 // Create a minimal test input according to documentation
                 Map<String, Object> testInput = new HashMap<>();
