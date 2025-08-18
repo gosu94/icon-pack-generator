@@ -10,12 +10,12 @@ import org.springframework.stereotype.Component;
 public class AIModelConfig {
     
     private String apiKey;
-    private String modelEndpoint = "fal-ai/flux-pro/kontext/text-to-image";
+    private String modelEndpoint = "fal-ai/flux-pro/v1.1";
     private int timeoutSeconds = 120;
     private int maxRetries = 3;
     private String aspectRatio = "1:1";
     private int numImages = 1;
     private boolean enableSafetyChecker = true;
     private String outputFormat = "jpeg";
-    private String safetyTolerance = "2";
+    private String safetyTolerance = "4";
 }

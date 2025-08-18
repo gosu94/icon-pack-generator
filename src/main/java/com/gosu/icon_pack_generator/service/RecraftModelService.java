@@ -75,9 +75,7 @@ public class RecraftModelService implements AIModelService {
         input.put("prompt", prompt);
         input.put("image_size", "square_hd"); // Recraft uses image_size instead of aspect_ratio
         input.put("style", "digital_illustration"); // Recraft-specific style parameter
-        input.put("enable_safety_checker", true);
-        input.put("output_format", "png"); // Explicitly request PNG format
-        
+
         log.info("Recraft text-to-image requesting PNG format explicitly");
         log.debug("Recraft text-to-image input parameters: {}", input);
         return input;
@@ -137,16 +135,16 @@ public class RecraftModelService implements AIModelService {
             }
         });
     }
-    
+
+
+
     private Map<String, Object> createRecraftImageToImageInputMap(String prompt, String imageDataUrl) {
         Map<String, Object> input = new HashMap<>();
         input.put("prompt", prompt);
         input.put("image_url", imageDataUrl);  // This is the key parameter for image-to-image!
         input.put("image_size", "square_hd"); // Recraft uses image_size instead of aspect_ratio
         input.put("style", "digital_illustration"); // Recraft-specific style parameter
-        input.put("enable_safety_checker", true);
-        input.put("output_format", "png"); // Explicitly request PNG format
-        
+
         log.info("Recraft image-to-image requesting PNG format explicitly");
         log.debug("Recraft image-to-image input parameters: {}", input);
         return input;
