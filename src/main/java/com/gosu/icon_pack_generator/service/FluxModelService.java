@@ -164,16 +164,16 @@ public class FluxModelService implements AIModelService {
     private long generateRandomSeed() {
         return System.currentTimeMillis() + (long) (Math.random() * 1000);
     }
-    
+
     /**
      * Generate image with custom endpoint and input map (used by other services)
      */
     public byte[] generateImageWithCustomEndpoint(String endpoint, Map<String, Object> input) {
         try {
             validateConfiguration();
-            
+
             log.info("Making fal.ai API call to custom endpoint: {} with input keys: {}", endpoint, input.keySet());
-            
+
             Output<JsonObject> output = falClient.subscribe(endpoint,
                 SubscribeOptions.<JsonObject>builder()
                     .input(input)
@@ -182,14 +182,14 @@ public class FluxModelService implements AIModelService {
                     .build()
             );
             log.debug("Received output from fal.ai custom endpoint API: {}", output);
-            
+
             JsonObject result = output.getData();
             log.debug("Extracted result: {}", result);
-            
+
             JsonNode jsonResult = objectMapper.readTree(result.toString());
-            
+
             return extractImageFromResult(jsonResult);
-            
+
         } catch (Exception e) {
             String detailedError = createDetailedErrorMessage(e, endpoint, input);
             log.error("Error calling fal.ai custom endpoint API: {}", detailedError, e);
@@ -369,53 +369,7 @@ public class FluxModelService implements AIModelService {
         
         return config.getApiKey().substring(0, 8) + "***";
     }
-    
 
-    
-    /**
-     * Test the API connection with a simple request
-     */
-    public CompletableFuture<Boolean> testConnection() {
-        return CompletableFuture.supplyAsync(() -> {
-            try {
-                validateConfiguration();
-                
-                // Create a minimal test input according to documentation
-                Map<String, Object> testInput = new HashMap<>();
-                testInput.put("prompt", "test");
-                testInput.put("aspect_ratio", "1:1");
-                testInput.put("num_images", 1);
-                testInput.put("output_format", "jpeg");
-                testInput.put("safety_tolerance", "2");
-                
-                log.info("Testing fal.ai connection with endpoint: {}", config.getModelEndpoint());
-                log.debug("Test input: {}", testInput);
-                
-                try {
-                    // Use the correct subscribe method as per fal.ai documentation
-                    Output<JsonObject> output = falClient.subscribe(config.getModelEndpoint(),
-                        SubscribeOptions.<JsonObject>builder()
-                            .input(testInput)
-                            .logs(true)
-                            .resultType(JsonObject.class)
-                            .build()
-                    );
-                    JsonObject result = output.getData();
-                    log.debug("API call completed, result: {}", result);
-                    log.info("Fal.ai connection test successful, result: {}", result);
-                    return true;
-                } catch (Exception apiException) {
-                    log.error("API call failed", apiException);
-                    throw apiException;
-                }
-                
-            } catch (Exception e) {
-                log.error("Fal.ai connection test failed: {}", getDetailedErrorMessage(e), e);
-                return false;
-            }
-        });
-    }
-    
     /**
      * Create a detailed error message for API failures with parameter information
      */

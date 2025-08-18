@@ -207,43 +207,5 @@ public class PhotonModelService implements AIModelService {
             return false;
         }
     }
-    
-    /**
-     * Test the API connection with a simple request
-     */
-    public CompletableFuture<Boolean> testConnection() {
-        return CompletableFuture.supplyAsync(() -> {
-            try {
-                log.info("Testing Photon connection with endpoint: {}", PHOTON_ENDPOINT);
-                
-                // Create a minimal test input
-                Map<String, Object> testInput = new HashMap<>();
-                testInput.put("prompt", "test icon");
-                
-                log.debug("Photon test input: {}", testInput);
-                
-                try {
-                    // Use the fal.ai client to test connection
-                    Output<JsonObject> output = falClient.subscribe(PHOTON_ENDPOINT,
-                        SubscribeOptions.<JsonObject>builder()
-                            .input(testInput)
-                            .logs(true)
-                            .resultType(JsonObject.class)
-                            .build()
-                    );
-                    JsonObject result = output.getData();
-                    log.debug("Photon API call completed, result: {}", result);
-                    log.info("Photon connection test successful, result: {}", result);
-                    return true;
-                } catch (Exception apiException) {
-                    log.error("Photon API call failed", apiException);
-                    throw apiException;
-                }
-                
-            } catch (Exception e) {
-                log.error("Photon connection test failed: {}", e.getMessage(), e);
-                return false;
-            }
-        });
-    }
+
 }

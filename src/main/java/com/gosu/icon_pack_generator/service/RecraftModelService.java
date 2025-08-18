@@ -69,7 +69,7 @@ public class RecraftModelService implements AIModelService {
             }
         });
     }
-    
+
     private Map<String, Object> createRecraftTextToImageInputMap(String prompt) {
         Map<String, Object> input = new HashMap<>();
         input.put("prompt", prompt);
@@ -162,11 +162,5 @@ public class RecraftModelService implements AIModelService {
             return null;
         }
     }
-    
-    /**
-     * Test the API connection by using the FalAI service
-     */
-    public CompletableFuture<Boolean> testConnection() {
-        return fluxModelService.testConnection();
-    }
+
 }
