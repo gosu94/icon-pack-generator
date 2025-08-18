@@ -103,4 +103,53 @@ public class PromptGenerationService {
         
         return prompt.toString();
     }
+    
+    /**
+     * Generate a prompt specifically for missing icons using image-to-image generation
+     * This prompt emphasizes style consistency with the reference image
+     */
+    public String generatePromptForMissingIcons(String generalDescription, List<String> missingIconDescriptions) {
+        StringBuilder prompt = new StringBuilder();
+        
+        // Start with the instruction to match the existing style
+        prompt.append("Generate 3x3 icon grid in the exact same style, design, and color scheme as shown in this reference image. ");
+        prompt.append("Maintain the same visual consistency, line thickness, color palette, and overall aesthetic. ");
+        
+        // Add the general theme context
+        prompt.append("General theme: ").append(generalDescription).append(". ");
+        
+        // Specify the missing icons to generate
+        if (missingIconDescriptions != null && !missingIconDescriptions.isEmpty()) {
+            // Filter out empty descriptions
+            List<String> validDescriptions = missingIconDescriptions.stream()
+                    .filter(desc -> desc != null && !desc.trim().isEmpty())
+                    .toList();
+            
+            if (!validDescriptions.isEmpty()) {
+                String iconsToGenerate = String.join(", ", validDescriptions);
+                prompt.append("But with these specific icons: ").append(iconsToGenerate).append(". ");
+                
+                // If we don't have 9 icons, fill the rest
+                if (validDescriptions.size() < 9) {
+                    int missingCount = 9 - validDescriptions.size();
+                    prompt.append("For the remaining ").append(missingCount).append(" positions, ");
+                    prompt.append("create icons that complement the specified ones and fit the general theme. ");
+                }
+            }
+        }
+        
+        // Emphasize style matching and layout requirements
+        prompt.append("CRITICAL: Match the exact style, color scheme, and design approach from the reference image. ");
+        prompt.append("Arrange the icons in a clean 3x3 grid layout with consistent spacing. ");
+        prompt.append("Each icon should be contained within its own square area of equal size. ");
+        prompt.append("The background should match the reference image background. ");
+        prompt.append("IMPORTANT: Do NOT add visible grid lines, borders, or separators between icons. ");
+        prompt.append("Do NOT add any text, labels, numbers, or captions. ");
+        prompt.append("Ensure the new icons blend seamlessly with the style shown in the reference image.");
+        
+        String finalPrompt = prompt.toString();
+        log.info("Generated missing icons prompt: {}", finalPrompt.substring(0, Math.min(150, finalPrompt.length())));
+        
+        return finalPrompt;
+    }
 }

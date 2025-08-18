@@ -3,6 +3,8 @@ package com.gosu.icon_pack_generator.controller;
 import com.gosu.icon_pack_generator.dto.IconExportRequest;
 import com.gosu.icon_pack_generator.dto.IconGenerationRequest;
 import com.gosu.icon_pack_generator.dto.IconGenerationResponse;
+import com.gosu.icon_pack_generator.dto.MissingIconsRequest;
+import com.gosu.icon_pack_generator.dto.MissingIconsResponse;
 import com.gosu.icon_pack_generator.config.AIServicesConfig;
 import com.gosu.icon_pack_generator.service.FluxModelService;
 
@@ -11,6 +13,8 @@ import com.gosu.icon_pack_generator.service.PhotonModelService;
 import com.gosu.icon_pack_generator.service.IconExportService;
 import com.gosu.icon_pack_generator.service.IconGenerationService;
 import com.gosu.icon_pack_generator.service.BackgroundRemovalService;
+import com.gosu.icon_pack_generator.service.PromptGenerationService;
+import com.gosu.icon_pack_generator.service.ImageProcessingService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpHeaders;
@@ -27,7 +31,9 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
 @Controller
@@ -40,6 +46,8 @@ public class IconPackController {
     private final FluxModelService fluxModelService;
     private final RecraftModelService recraftModelService;
     private final PhotonModelService photonModelService;
+    private final PromptGenerationService promptGenerationService;
+    private final ImageProcessingService imageProcessingService;
     private final AIServicesConfig aiServicesConfig;
     private final BackgroundRemovalService backgroundRemovalService;
     
@@ -118,9 +126,126 @@ public class IconPackController {
             log.error("Error creating icon pack export", e);
             return ResponseEntity.internalServerError()
                     .body("Error creating icon pack".getBytes());
+                }
+    }
+    
+    @PostMapping("/generate-missing")
+    @ResponseBody
+    public CompletableFuture<MissingIconsResponse> generateMissingIcons(@RequestBody MissingIconsRequest request) {
+        log.info("Received missing icons generation request for service: {} with {} missing descriptions", 
+                request.getServiceName(), 
+                request.getMissingIconDescriptions() != null ? request.getMissingIconDescriptions().size() : 0);
+        
+        return CompletableFuture.supplyAsync(() -> {
+            long startTime = System.currentTimeMillis();
+            
+            try {
+                // Validate request
+                if (request.getServiceName() == null || request.getServiceName().trim().isEmpty()) {
+                    return createErrorResponse(request, "Service name is required", startTime);
+                }
+                
+                if (request.getOriginalImageBase64() == null || request.getOriginalImageBase64().trim().isEmpty()) {
+                    return createErrorResponse(request, "Original image is required", startTime);
+                }
+                
+                if (request.getMissingIconDescriptions() == null || request.getMissingIconDescriptions().isEmpty()) {
+                    return createErrorResponse(request, "Missing icon descriptions are required", startTime);
+                }
+                
+                // Convert base64 to byte array
+                byte[] originalImageData = Base64.getDecoder().decode(request.getOriginalImageBase64());
+                
+                // Generate prompt specifically for missing icons (image-to-image)
+                String prompt = promptGenerationService.generatePromptForMissingIcons(
+                    request.getGeneralDescription(), 
+                    request.getMissingIconDescriptions()
+                );
+                
+                // Get the appropriate service and generate icons
+                CompletableFuture<byte[]> generationFuture = getServiceAndGenerate(request.getServiceName(), prompt, originalImageData);
+                
+                byte[] newImageData = generationFuture.join();
+                
+                // Process the generated image to extract individual icons
+                List<String> base64Icons = imageProcessingService.cropIconsFromGrid(newImageData, 9, true, 0, false);
+                
+                // Create icon objects
+                List<IconGenerationResponse.GeneratedIcon> newIcons = createIconList(base64Icons, request);
+                
+                // Create successful response
+                MissingIconsResponse response = new MissingIconsResponse();
+                response.setStatus("success");
+                response.setMessage("Missing icons generated successfully");
+                response.setServiceName(request.getServiceName());
+                response.setNewIcons(newIcons);
+                response.setOriginalRequestId(request.getOriginalRequestId());
+                response.setGenerationTimeMs(System.currentTimeMillis() - startTime);
+                
+                log.info("Successfully generated {} missing icons for service: {} in {}ms", 
+                        newIcons.size(), request.getServiceName(), response.getGenerationTimeMs());
+                
+                return response;
+                
+            } catch (Exception e) {
+                log.error("Error generating missing icons for service: {}", request.getServiceName(), e);
+                return createErrorResponse(request, "Failed to generate missing icons: " + e.getMessage(), startTime);
+            }
+        });
+    }
+    
+    private CompletableFuture<byte[]> getServiceAndGenerate(String serviceName, String prompt, byte[] originalImageData) {
+        switch (serviceName.toLowerCase()) {
+            case "flux":
+                if (!aiServicesConfig.isFluxAiEnabled()) {
+                    throw new RuntimeException("Flux service is disabled");
+                }
+                return fluxModelService.generateImageToImage(prompt, originalImageData);
+                
+            case "recraft":
+                if (!aiServicesConfig.isRecraftEnabled()) {
+                    throw new RuntimeException("Recraft service is disabled");
+                }
+                return recraftModelService.generateImageToImage(prompt, originalImageData);
+                
+            case "photon":
+                if (!aiServicesConfig.isPhotonEnabled()) {
+                    throw new RuntimeException("Photon service is disabled");
+                }
+                return photonModelService.generateImageToImage(prompt, originalImageData);
+                
+            default:
+                throw new RuntimeException("Unknown service: " + serviceName);
         }
     }
-
+    
+    private List<IconGenerationResponse.GeneratedIcon> createIconList(List<String> base64Icons, MissingIconsRequest request) {
+        List<IconGenerationResponse.GeneratedIcon> icons = new ArrayList<>();
+        
+        for (int i = 0; i < base64Icons.size() && i < request.getMissingIconDescriptions().size(); i++) {
+            IconGenerationResponse.GeneratedIcon icon = new IconGenerationResponse.GeneratedIcon();
+            icon.setId(UUID.randomUUID().toString());
+            icon.setBase64Data(base64Icons.get(i));
+            icon.setDescription(request.getMissingIconDescriptions().get(i));
+            icon.setGridPosition(i);
+            icon.setServiceSource(request.getServiceName());
+            icons.add(icon);
+        }
+        
+        return icons;
+    }
+    
+    private MissingIconsResponse createErrorResponse(MissingIconsRequest request, String errorMessage, long startTime) {
+        MissingIconsResponse response = new MissingIconsResponse();
+        response.setStatus("error");
+        response.setMessage(errorMessage);
+        response.setServiceName(request.getServiceName());
+        response.setNewIcons(new ArrayList<>());
+        response.setOriginalRequestId(request.getOriginalRequestId());
+        response.setGenerationTimeMs(System.currentTimeMillis() - startTime);
+        return response;
+    }
+    
     /**
      * Background Removal Page
      */

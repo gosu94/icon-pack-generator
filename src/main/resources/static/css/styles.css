@@ -402,6 +402,72 @@ body, html {
     animation: spin 1s linear infinite;
 }
 
+/* Missing Icons Section Styles */
+.missing-icons-section {
+    border-top: 1px solid #e9ecef;
+    padding-top: 1rem;
+    margin-top: 1rem;
+    background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+    border-radius: 8px;
+    padding: 1rem;
+}
+
+.missing-icons-header h6 {
+    color: #6c757d;
+    font-weight: 600;
+}
+
+.missing-icons-checkboxes {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.missing-icons-checkboxes .form-check {
+    margin-bottom: 0.5rem;
+    padding: 0.25rem 0.5rem;
+    background: rgba(255, 255, 255, 0.8);
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    transition: all 0.2s ease;
+}
+
+.missing-icons-checkboxes .form-check:hover {
+    background: rgba(13, 110, 253, 0.05);
+    border-color: #0d6efd;
+}
+
+.missing-icons-checkboxes .form-check-input:checked + .form-check-label {
+    color: #0d6efd;
+    font-weight: 500;
+}
+
+.missing-icons-actions .btn {
+    font-size: 0.875rem;
+    padding: 0.375rem 0.75rem;
+}
+
+.missing-icons-results .alert-sm {
+    padding: 0.5rem 0.75rem;
+    margin-bottom: 0.5rem;
+    font-size: 0.875rem;
+}
+
+.missing-icons-results .service-badge {
+    background: #28a745 !important;
+    color: white;
+}
+
+.missing-icons-results .icon-item {
+    border: 2px solid #28a745;
+    background: linear-gradient(135deg, #d4edda 0%, #ffffff 100%);
+}
+
+.missing-icons-results .icon-item:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(40, 167, 69, 0.3);
+}
+
 /* Responsive toast notifications */
 @media (max-width: 576px) {
     .toast-notification {
@@ -414,5 +480,19 @@ body, html {
     
     .toast-notification.show {
         transform: translateY(0);
+    }
+    
+    .missing-icons-checkboxes {
+        flex-direction: column;
+    }
+    
+    .missing-icons-actions {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+    
+    .missing-icons-actions .btn {
+        width: 100%;
     }
 }

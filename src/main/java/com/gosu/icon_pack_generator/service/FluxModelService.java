@@ -256,7 +256,7 @@ public class FluxModelService implements AIModelService {
         Map<String, Object> input = new HashMap<>();
         input.put("prompt", prompt);
         input.put("image_url", imageDataUrl);  // This is the key parameter for image-to-image!
-        input.put("aspect_ratio", config.getAspectRatio());
+        input.put("image_size", "square_hd"); // Recraft uses image_size instead of aspect_ratio
         input.put("num_images", config.getNumImages());
         input.put("enable_safety_checker", config.isEnableSafetyChecker());
         input.put("output_format", config.getOutputFormat());
