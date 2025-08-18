@@ -9,4 +9,6 @@ public class IconExportRequest {
     
     private String requestId;
     private List<IconGenerationResponse.GeneratedIcon> icons;
+
+    private boolean removeBackground = true;
 }

@@ -30,7 +30,7 @@ public class ImageProcessingService {
      * @return List of cropped icon images as base64 strings
      */
     public List<String> cropIconsFromGrid(byte[] imageData, int iconCount) {
-        return cropIconsFromGrid(imageData, iconCount, true, 0);
+        return cropIconsFromGrid(imageData, iconCount, true, 0, false);
     }
     
     /**
@@ -42,7 +42,7 @@ public class ImageProcessingService {
      * @return List of cropped icon images as base64 strings
      */
     public List<String> cropIconsFromGrid(byte[] imageData, int iconCount, boolean centerIcons, int targetSize) {
-        return cropIconsFromGrid(imageData, iconCount, centerIcons, targetSize, true);
+        return cropIconsFromGrid(imageData, iconCount, centerIcons, targetSize, false);
     }
     
     /**
@@ -51,7 +51,7 @@ public class ImageProcessingService {
      * @param iconCount The number of icons to extract (9 or 18)
      * @param centerIcons Whether to center the icons on their canvas
      * @param targetSize Target size for centered icons (0 = auto-size based on original)
-     * @param removeBackground Whether to remove background from the entire grid before cropping
+     * @param removeBackground Whether to remove background from the entire grid before cropping (typically false during generation, true during export)
      * @return List of cropped icon images as base64 strings
      */
     public List<String> cropIconsFromGrid(byte[] imageData, int iconCount, boolean centerIcons, int targetSize, boolean removeBackground) {
@@ -69,7 +69,9 @@ public class ImageProcessingService {
             
             log.info("Processing image data of size: {} bytes", imageData.length);
             
-            // Remove background from the entire grid image before processing
+            // Optionally remove background from the entire grid image before processing
+            // During generation, background removal is typically disabled to preserve content bounds
+            // During export, background removal may be enabled per user preference
             byte[] processedImageData = imageData;
             if (removeBackground) {
                 log.info("Removing background from grid image before cropping icons");
@@ -79,6 +81,8 @@ public class ImageProcessingService {
                     log.info("Background removal changed image size from {} to {} bytes", 
                             imageData.length, processedImageData.length);
                 }
+            } else {
+                log.debug("Background removal disabled - preserving original image for better content bounds detection");
             }
             
             BufferedImage originalImage = null;
@@ -176,6 +180,29 @@ public class ImageProcessingService {
     public String centerIconToBase64(BufferedImage iconImage, int targetSize) throws IOException {
         BufferedImage centeredIcon = centerIcon(iconImage, targetSize);
         return bufferedImageToBase64(centeredIcon);
+    }
+    
+    /**
+     * Remove background from an individual icon's base64 data
+     * @param base64IconData The icon as base64 string
+     * @return The icon with background removed as base64 string
+     */
+    public String removeBackgroundFromIcon(String base64IconData) {
+        try {
+            // Decode base64 to byte array
+            byte[] iconBytes = Base64.getDecoder().decode(base64IconData);
+            
+            // Remove background
+            byte[] processedBytes = backgroundRemovalService.removeBackground(iconBytes);
+            
+            // Encode back to base64
+            return Base64.getEncoder().encodeToString(processedBytes);
+            
+        } catch (Exception e) {
+            log.error("Error removing background from individual icon", e);
+            // Return original icon if background removal fails
+            return base64IconData;
+        }
     }
     
     /**

@@ -2,6 +2,7 @@ package com.gosu.icon_pack_generator.service;
 
 import com.gosu.icon_pack_generator.dto.IconExportRequest;
 import com.gosu.icon_pack_generator.dto.IconGenerationResponse;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
@@ -12,8 +13,11 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
 @Service
+@RequiredArgsConstructor
 @Slf4j
 public class IconExportService {
+    
+    private final ImageProcessingService imageProcessingService;
     
     /**
      * Create a ZIP file containing all the generated icons as PNG files
@@ -21,7 +25,18 @@ public class IconExportService {
      * @return byte array representing the ZIP file
      */
     public byte[] createIconPackZip(IconExportRequest exportRequest) {
-        log.info("Creating icon pack ZIP for request: {}", exportRequest.getRequestId());
+        return createIconPackZip(exportRequest, false);
+    }
+    
+    /**
+     * Create a ZIP file containing all the generated icons as PNG files with optional background removal
+     * @param exportRequest The export request containing icons data
+     * @param removeBackground Whether to remove background from icons during export
+     * @return byte array representing the ZIP file
+     */
+    public byte[] createIconPackZip(IconExportRequest exportRequest, boolean removeBackground) {
+        log.info("Creating icon pack ZIP for request: {} (background removal: {})", 
+                exportRequest.getRequestId(), removeBackground);
         
         try (ByteArrayOutputStream baos = new ByteArrayOutputStream();
              ZipOutputStream zos = new ZipOutputStream(baos)) {
@@ -29,14 +44,22 @@ public class IconExportService {
             int iconIndex = 1;
             for (IconGenerationResponse.GeneratedIcon icon : exportRequest.getIcons()) {
                 String fileName = createFileName(icon, iconIndex);
-                byte[] iconData = Base64.getDecoder().decode(icon.getBase64Data());
+                
+                // Get icon data, applying background removal if requested
+                String iconBase64Data = icon.getBase64Data();
+                if (removeBackground) {
+                    log.debug("Removing background from icon {} before adding to ZIP", iconIndex);
+                    iconBase64Data = imageProcessingService.removeBackgroundFromIcon(iconBase64Data);
+                }
+                
+                byte[] iconData = Base64.getDecoder().decode(iconBase64Data);
                 
                 ZipEntry zipEntry = new ZipEntry(fileName);
                 zos.putNextEntry(zipEntry);
                 zos.write(iconData);
                 zos.closeEntry();
                 
-                log.debug("Added icon {} to ZIP: {}", iconIndex, fileName);
+                log.debug("Added icon {} to ZIP: {} (processed: {})", iconIndex, fileName, removeBackground);
                 iconIndex++;
             }
             

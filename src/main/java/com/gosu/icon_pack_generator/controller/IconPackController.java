@@ -93,11 +93,12 @@ public class IconPackController {
     @PostMapping("/export")
     @ResponseBody
     public ResponseEntity<byte[]> exportIcons(@RequestBody IconExportRequest exportRequest) {
-        log.info("Received export request for {} icons", 
-                exportRequest.getIcons() != null ? exportRequest.getIcons().size() : 0);
+        log.info("Received export request for {} icons (background removal: {})", 
+                exportRequest.getIcons() != null ? exportRequest.getIcons().size() : 0,
+                exportRequest.isRemoveBackground());
         
         try {
-            byte[] zipData = iconExportService.createIconPackZip(exportRequest);
+            byte[] zipData = iconExportService.createIconPackZip(exportRequest, exportRequest.isRemoveBackground());
             
             String fileName = "icon-pack-" + exportRequest.getRequestId() + ".zip";
             

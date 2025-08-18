@@ -9,7 +9,22 @@ document.addEventListener('DOMContentLoaded', function() {
     const resultsGrid = document.getElementById('resultsGrid');
     const initialState = document.getElementById('initialState');
     
+    // Export modal elements
+    const exportModal = document.getElementById('exportModal');
+    const exportProgressModal = document.getElementById('exportProgressModal');
+    const removeBackgroundToggle = document.getElementById('removeBackgroundToggle');
+    const confirmExportBtn = document.getElementById('confirmExportBtn');
+    const exportIconCount = document.getElementById('exportIconCount');
+    
+    // Progress modal elements
+    const exportProgressTitle = document.getElementById('exportProgressTitle');
+    const exportProgressMessage = document.getElementById('exportProgressMessage');
+    const currentStep = document.getElementById('currentStep');
+    const totalSteps = document.getElementById('totalSteps');
+    
     let currentIcons = []; // Store current icons for export
+    let exportModalInstance = null;
+    let progressModalInstance = null;
 
     // Handle icon count change to show/hide individual description fields
     iconCountSelect.addEventListener('change', function() {
@@ -26,12 +41,29 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    // Handle export button click
+    // Initialize Bootstrap modals
+    if (exportModal) {
+        exportModalInstance = new bootstrap.Modal(exportModal);
+    }
+    if (exportProgressModal) {
+        progressModalInstance = new bootstrap.Modal(exportProgressModal);
+    }
+
+    // Handle export button click - show options modal
     exportBtn.addEventListener('click', function() {
         if (currentIcons.length > 0) {
-            exportIcons(currentIcons);
+            showExportModal();
         }
     });
+
+    // Handle export confirmation
+    if (confirmExportBtn) {
+        confirmExportBtn.addEventListener('click', function() {
+            const removeBackground = removeBackgroundToggle.checked;
+            exportModalInstance.hide();
+            exportIcons(currentIcons, removeBackground);
+        });
+    }
 
     function updateIconDescriptionFields(count) {
         iconDescriptionsContainer.innerHTML = '';
@@ -245,13 +277,62 @@ document.addEventListener('DOMContentLoaded', function() {
         setUIState('error');
     }
 
-    function exportIcons(icons) {
+    function showExportModal() {
+        // Update icon count in modal
+        if (exportIconCount) {
+            exportIconCount.textContent = currentIcons.length;
+        }
+        
+        // Show the modal
+        if (exportModalInstance) {
+            exportModalInstance.show();
+        }
+    }
+
+    function showExportProgress(step, message, progressPercent) {
+        // Update progress content
+        if (exportProgressTitle) {
+            exportProgressTitle.textContent = message;
+        }
+        
+        if (currentStep) {
+            currentStep.textContent = `Step ${step}`;
+        }
+        
+        // Update progress bar
+        const progressBar = document.querySelector('#exportProgressModal .progress-bar');
+        if (progressBar) {
+            progressBar.style.width = `${progressPercent}%`;
+        }
+        
+        // Show progress modal if not already shown
+        if (progressModalInstance && !exportProgressModal.classList.contains('show')) {
+            progressModalInstance.show();
+        }
+    }
+
+    function hideExportProgress() {
+        if (progressModalInstance) {
+            progressModalInstance.hide();
+        }
+    }
+
+    function exportIcons(icons, removeBackground = false) {
         const requestId = Date.now(); // Simple request ID for this export
+        
+        // Show progress - Step 1
+        showExportProgress(1, 'Preparing export request...', 25);
         
         const exportData = {
             requestId: requestId,
-            icons: icons
+            icons: icons,
+            removeBackground: removeBackground
         };
+        
+        // Show progress - Step 2
+        setTimeout(() => {
+            showExportProgress(2, removeBackground ? 'Processing icons and removing backgrounds...' : 'Processing icons...', 50);
+        }, 500);
         
         // Create a blob URL for the export endpoint
         fetch('/export', {
@@ -262,27 +343,82 @@ document.addEventListener('DOMContentLoaded', function() {
             body: JSON.stringify(exportData)
         })
         .then(response => {
+            // Show progress - Step 3
+            showExportProgress(3, 'Creating ZIP file...', 75);
+            
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
             return response.blob();
         })
         .then(blob => {
-            // Create download link
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.style.display = 'none';
-            a.href = url;
-            a.download = `icon-pack-${requestId}.zip`;
-            document.body.appendChild(a);
-            a.click();
-            window.URL.revokeObjectURL(url);
-            document.body.removeChild(a);
+            // Show progress - Step 4
+            showExportProgress(4, 'Finalizing download...', 100);
+            
+            // Small delay to show completion
+            setTimeout(() => {
+                hideExportProgress();
+                
+                // Create download link
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.style.display = 'none';
+                a.href = url;
+                a.download = `icon-pack-${requestId}.zip`;
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                document.body.removeChild(a);
+                
+                // Show success message
+                showSuccessToast('Icon pack downloaded successfully!');
+            }, 1000);
         })
         .catch(error => {
             console.error('Error exporting icons:', error);
-            alert('Failed to export icons. Please try again.');
+            hideExportProgress();
+            showErrorToast('Failed to export icons. Please try again.');
         });
+    }
+
+    function showSuccessToast(message) {
+        // Create and show a temporary success message
+        const toast = document.createElement('div');
+        toast.className = 'toast-notification toast-success';
+        toast.innerHTML = `
+            <div class="d-flex align-items-center">
+                <i class="bi bi-check-circle-fill me-2"></i>
+                <span>${message}</span>
+            </div>
+        `;
+        document.body.appendChild(toast);
+        
+        // Show and auto-hide
+        setTimeout(() => toast.classList.add('show'), 100);
+        setTimeout(() => {
+            toast.classList.remove('show');
+            setTimeout(() => document.body.removeChild(toast), 300);
+        }, 3000);
+    }
+
+    function showErrorToast(message) {
+        // Create and show a temporary error message
+        const toast = document.createElement('div');
+        toast.className = 'toast-notification toast-error';
+        toast.innerHTML = `
+            <div class="d-flex align-items-center">
+                <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                <span>${message}</span>
+            </div>
+        `;
+        document.body.appendChild(toast);
+        
+        // Show and auto-hide
+        setTimeout(() => toast.classList.add('show'), 100);
+        setTimeout(() => {
+            toast.classList.remove('show');
+            setTimeout(() => document.body.removeChild(toast), 300);
+        }, 5000);
     }
 
     // Initialize with no fields showing
