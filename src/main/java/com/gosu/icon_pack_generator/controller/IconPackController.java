@@ -89,7 +89,7 @@ public class IconPackController {
     
     @PostMapping("/generate-stream")
     @ResponseBody
-    public ResponseEntity<Map<String, String>> startStreamingGeneration(@Valid @RequestBody IconGenerationRequest request) {
+    public ResponseEntity<Map<String, Object>> startStreamingGeneration(@Valid @RequestBody IconGenerationRequest request) {
         log.info("Starting streaming icon generation for {} icons", request.getIconCount());
         
         // Generate a unique request ID for this generation
@@ -104,9 +104,18 @@ public class IconPackController {
             processStreamingGeneration(requestId, request);
         });
         
-        // Return the request ID for the client to connect to SSE
-        Map<String, String> response = new HashMap<>();
+        // Return the request ID and enabled services for the client to connect to SSE
+        Map<String, Object> response = new HashMap<>();
         response.put("requestId", requestId);
+        
+        // Include which services are enabled so frontend knows which sections to create
+        Map<String, Boolean> enabledServices = new HashMap<>();
+        enabledServices.put("flux", aiServicesConfig.isFluxAiEnabled());
+        enabledServices.put("recraft", aiServicesConfig.isRecraftEnabled());
+        enabledServices.put("photon", aiServicesConfig.isPhotonEnabled());
+        enabledServices.put("gpt", aiServicesConfig.isGptEnabled());
+        response.put("enabledServices", enabledServices);
+        
         return ResponseEntity.ok(response);
     }
     

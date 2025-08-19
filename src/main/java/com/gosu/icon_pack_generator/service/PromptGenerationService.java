@@ -10,10 +10,10 @@ import java.util.List;
 public class PromptGenerationService {
     
     private static final String BASE_PROMPT_TEMPLATE = 
-            "Create a 3x3 arrangement of minimalist, clean icons in a consistent style. " +
+            "Create a 3x3 arrangement of clean icons in a consistent style. " +
             "Each icon should be contained within its own square area of equal size. " +
             "The background should be white or transparent. " +
-            "Icons should be simple, and use a consistent color scheme. " +
+            "Icons should use a consistent color scheme. " +
             "IMPORTANT: Do NOT add visible grid lines, borders, or separators between icons. " +
             "Do NOT add any text, labels, numbers, or captions below or around the icons. " +
             "General theme: %s. ";
@@ -35,8 +35,7 @@ public class PromptGenerationService {
             "Create completely different and unique icons that still fit the general theme. ";
     
     private static final String STYLE_GUIDELINES = 
-            "Style guidelines: Icons should be scalable vector-style graphics, " +
-            "with clear shapes and minimal detail. Use consistent line thickness. " + //and a professional color palette.
+            "Style guidelines: " + //and a professional color palette.
             "Ensure each icon is clearly distinguishable " +
             "and fits well within its area with appropriate padding. " +
             "NO grid lines, NO text labels, NO captions - just clean icons arranged in a 3x3 layout.";

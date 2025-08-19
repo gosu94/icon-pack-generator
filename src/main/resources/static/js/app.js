@@ -145,7 +145,12 @@ document.addEventListener('DOMContentLoaded', function() {
         })
         .then(data => {
             const requestId = data.requestId;
+            const enabledServices = data.enabledServices;
             console.log('Generation started with request ID:', requestId);
+            console.log('Enabled services:', enabledServices);
+            
+            // Update the streaming UI to only show enabled services
+            updateStreamingUIForEnabledServices(enabledServices);
             
             // Step 2: Connect to SSE stream
             const eventSource = new EventSource(`/stream/${requestId}`);
@@ -251,15 +256,30 @@ document.addEventListener('DOMContentLoaded', function() {
         servicesContainer.className = 'services-container streaming';
         servicesContainer.id = 'streamingContainer';
         
-        // Create sections for each potential service
-        const services = [
+        // Initially create container, services will be added based on enabled services
+        resultsGrid.appendChild(servicesContainer);
+    }
+
+    function updateStreamingUIForEnabledServices(enabledServices) {
+        const servicesContainer = document.getElementById('streamingContainer');
+        if (!servicesContainer) return;
+        
+        // Clear any existing content
+        servicesContainer.innerHTML = '';
+        
+        // Define all possible services
+        const allServices = [
             { id: 'flux', name: 'Flux-Pro' },
             { id: 'recraft', name: 'Recraft V3' },
             { id: 'photon', name: 'Luma Photon' },
             { id: 'gpt', name: 'GPT Image' }
         ];
         
-        services.forEach((service, index) => {
+        // Filter to only enabled services
+        const enabledServicesList = allServices.filter(service => enabledServices[service.id]);
+        
+        // Create sections only for enabled services
+        enabledServicesList.forEach((service, index) => {
             if (index > 0) {
                 const separator = document.createElement('div');
                 separator.className = 'service-separator';
@@ -270,8 +290,6 @@ document.addEventListener('DOMContentLoaded', function() {
             const section = createStreamingServiceSection(service.name, service.id);
             servicesContainer.appendChild(section);
         });
-        
-        resultsGrid.appendChild(servicesContainer);
     }
 
     function createStreamingServiceSection(serviceName, serviceId) {
@@ -363,14 +381,6 @@ document.addEventListener('DOMContentLoaded', function() {
                     timeElement.textContent = ` (${(update.generationTimeMs / 1000).toFixed(1)}s)`;
                 }
                 break;
-                
-            case 'disabled':
-                statusIcon.textContent = '⚫';
-                progressBar.style.width = '100%';
-                progressBar.classList.remove('progress-bar-animated');
-                progressBar.classList.add('bg-secondary');
-                messageElement.textContent = 'Service is disabled';
-                break;
         }
     }
 
@@ -459,17 +469,15 @@ document.addEventListener('DOMContentLoaded', function() {
         
         let hasMultipleSections = false;
         
-        // Display FalAI results (including disabled status)
-        if (data.falAiResults && (data.falAiResults.icons && data.falAiResults.icons.length > 0 || data.falAiResults.status === 'disabled')) {
+        // Display FalAI results (only if enabled and has results)
+        if (data.falAiResults && data.falAiResults.status !== 'disabled' && data.falAiResults.icons && data.falAiResults.icons.length > 0) {
             const falAiSection = createServiceSection('Flux-Pro', data.falAiResults, 'flux');
             servicesContainer.appendChild(falAiSection);
             hasMultipleSections = true;
         }
         
-
-        
-        // Display Recraft results (including disabled status)
-        if (data.recraftResults && (data.recraftResults.icons && data.recraftResults.icons.length > 0 || data.recraftResults.status === 'disabled')) {
+        // Display Recraft results (only if enabled and has results)
+        if (data.recraftResults && data.recraftResults.status !== 'disabled' && data.recraftResults.icons && data.recraftResults.icons.length > 0) {
             if (hasMultipleSections) {
                 const separator = document.createElement('div');
                 separator.className = 'service-separator';
@@ -481,8 +489,8 @@ document.addEventListener('DOMContentLoaded', function() {
             hasMultipleSections = true;
         }
         
-        // Display Photon results (including disabled status)
-        if (data.photonResults && (data.photonResults.icons && data.photonResults.icons.length > 0 || data.photonResults.status === 'disabled')) {
+        // Display Photon results (only if enabled and has results)
+        if (data.photonResults && data.photonResults.status !== 'disabled' && data.photonResults.icons && data.photonResults.icons.length > 0) {
             if (hasMultipleSections) {
                 const separator = document.createElement('div');
                 separator.className = 'service-separator';
@@ -494,8 +502,8 @@ document.addEventListener('DOMContentLoaded', function() {
             hasMultipleSections = true;
         }
         
-        // Display GPT results (including disabled status)
-        if (data.gptResults && (data.gptResults.icons && data.gptResults.icons.length > 0 || data.gptResults.status === 'disabled')) {
+        // Display GPT results (only if enabled and has results)
+        if (data.gptResults && data.gptResults.status !== 'disabled' && data.gptResults.icons && data.gptResults.icons.length > 0) {
             if (hasMultipleSections) {
                 const separator = document.createElement('div');
                 separator.className = 'service-separator';

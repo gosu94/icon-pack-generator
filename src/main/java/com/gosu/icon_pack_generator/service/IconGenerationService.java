@@ -50,30 +50,22 @@ public class IconGenerationService {
         
         String requestId = UUID.randomUUID().toString();
         
-        // Send initial progress updates for enabled services
+        // Send initial progress updates only for enabled services
         if (progressCallback != null) {
             if (aiServicesConfig.isFluxAiEnabled()) {
                 progressCallback.onUpdate(ServiceProgressUpdate.serviceStarted(requestId, "flux"));
-            } else {
-                progressCallback.onUpdate(ServiceProgressUpdate.serviceDisabled(requestId, "flux"));
             }
             
             if (aiServicesConfig.isRecraftEnabled()) {
                 progressCallback.onUpdate(ServiceProgressUpdate.serviceStarted(requestId, "recraft"));
-            } else {
-                progressCallback.onUpdate(ServiceProgressUpdate.serviceDisabled(requestId, "recraft"));
             }
             
             if (aiServicesConfig.isPhotonEnabled()) {
                 progressCallback.onUpdate(ServiceProgressUpdate.serviceStarted(requestId, "photon"));
-            } else {
-                progressCallback.onUpdate(ServiceProgressUpdate.serviceDisabled(requestId, "photon"));
             }
             
             if (aiServicesConfig.isGptEnabled()) {
                 progressCallback.onUpdate(ServiceProgressUpdate.serviceStarted(requestId, "gpt"));
-            } else {
-                progressCallback.onUpdate(ServiceProgressUpdate.serviceDisabled(requestId, "gpt"));
             }
         }
         

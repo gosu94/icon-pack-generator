@@ -38,11 +38,6 @@ public class ServiceProgressUpdate {
                 errorMessage, null, null, generationTimeMs, "service_update");
     }
     
-    public static ServiceProgressUpdate serviceDisabled(String requestId, String serviceName) {
-        return new ServiceProgressUpdate(requestId, serviceName, "disabled", 
-                "Service is disabled in configuration", null, null, 0L, "service_update");
-    }
-    
     public static ServiceProgressUpdate allComplete(String requestId, String message) {
         return new ServiceProgressUpdate(requestId, null, "complete", 
                 message, null, null, null, "generation_complete");
