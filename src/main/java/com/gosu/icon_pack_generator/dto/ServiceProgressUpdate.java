@@ -1,0 +1,50 @@
+package com.gosu.icon_pack_generator.dto;
+
+import lombok.Data;
+import lombok.AllArgsConstructor;
+import lombok.NoArgsConstructor;
+
+import java.util.List;
+
+@Data
+@AllArgsConstructor
+@NoArgsConstructor
+public class ServiceProgressUpdate {
+    
+    private String requestId;
+    private String serviceName; // "flux", "recraft", "photon", "gpt"
+    private String status; // "started", "success", "error", "complete"
+    private String message;
+    private List<IconGenerationResponse.GeneratedIcon> icons;
+    private String originalGridImageBase64;
+    private Long generationTimeMs;
+    private String eventType; // "service_update", "generation_complete"
+    
+    // Static factory methods for different update types
+    public static ServiceProgressUpdate serviceStarted(String requestId, String serviceName) {
+        return new ServiceProgressUpdate(requestId, serviceName, "started", 
+                "Generation started", null, null, null, "service_update");
+    }
+    
+    public static ServiceProgressUpdate serviceCompleted(String requestId, String serviceName, 
+            List<IconGenerationResponse.GeneratedIcon> icons, String originalGridImageBase64, Long generationTimeMs) {
+        return new ServiceProgressUpdate(requestId, serviceName, "success", 
+                "Generation completed", icons, originalGridImageBase64, generationTimeMs, "service_update");
+    }
+    
+    public static ServiceProgressUpdate serviceFailed(String requestId, String serviceName, 
+            String errorMessage, Long generationTimeMs) {
+        return new ServiceProgressUpdate(requestId, serviceName, "error", 
+                errorMessage, null, null, generationTimeMs, "service_update");
+    }
+    
+    public static ServiceProgressUpdate serviceDisabled(String requestId, String serviceName) {
+        return new ServiceProgressUpdate(requestId, serviceName, "disabled", 
+                "Service is disabled in configuration", null, null, 0L, "service_update");
+    }
+    
+    public static ServiceProgressUpdate allComplete(String requestId, String message) {
+        return new ServiceProgressUpdate(requestId, null, "complete", 
+                message, null, null, null, "generation_complete");
+    }
+}

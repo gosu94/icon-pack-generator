@@ -107,8 +107,8 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function generateIcons() {
-        // Show loading state
-        setUIState('loading');
+        // Show streaming loading state
+        setUIState('streaming');
         
         // Collect form data
         const formData = {
@@ -126,8 +126,11 @@ document.addEventListener('DOMContentLoaded', function() {
         // Store current request for missing icons feature
         currentRequest = { ...formData };
 
-        // Make API call
-        fetch('/generate', {
+        // Initialize streaming UI
+        initializeStreamingUI();
+
+        // Step 1: Start the generation process and get request ID
+        fetch('/generate-stream', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -141,15 +144,57 @@ document.addEventListener('DOMContentLoaded', function() {
             return response.json();
         })
         .then(data => {
-            if (data.status === 'success') {
-                displayResults(data);
-            } else {
-                showError(data.message || 'Failed to generate icons');
-            }
+            const requestId = data.requestId;
+            console.log('Generation started with request ID:', requestId);
+            
+            // Step 2: Connect to SSE stream
+            const eventSource = new EventSource(`/stream/${requestId}`);
+            
+            // Handle service updates
+            eventSource.addEventListener('service_update', function(event) {
+                try {
+                    const update = JSON.parse(event.data);
+                    handleServiceUpdate(update);
+                } catch (error) {
+                    console.error('Error parsing service update:', error);
+                }
+            });
+
+            // Handle generation completion
+            eventSource.addEventListener('generation_complete', function(event) {
+                try {
+                    const update = JSON.parse(event.data);
+                    handleGenerationComplete(update);
+                    eventSource.close();
+                } catch (error) {
+                    console.error('Error parsing completion update:', error);
+                    eventSource.close();
+                }
+            });
+
+            // Handle errors
+            eventSource.addEventListener('generation_error', function(event) {
+                try {
+                    const update = JSON.parse(event.data);
+                    showError(update.message || 'Generation failed');
+                    eventSource.close();
+                } catch (error) {
+                    console.error('Error parsing error update:', error);
+                    showError('Generation failed with unknown error');
+                    eventSource.close();
+                }
+            });
+
+            // Handle EventSource errors
+            eventSource.onerror = function(error) {
+                console.error('EventSource error:', error);
+                showError('Connection error. Please try again.');
+                eventSource.close();
+            };
         })
         .catch(error => {
-            console.error('Error:', error);
-            showError('Network error occurred. Please try again.');
+            console.error('Error starting generation:', error);
+            showError('Failed to start generation. Please try again.');
         });
     }
 
@@ -169,6 +214,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 generateBtn.disabled = true;
                 spinner.classList.remove('d-none');
                 break;
+            case 'streaming':
+                resultsGrid.classList.remove('d-none');
+                generateBtn.disabled = true;
+                spinner.classList.remove('d-none');
+                break;
             case 'error':
                 errorState.classList.remove('d-none');
                 generateBtn.disabled = false;
@@ -185,6 +235,217 @@ document.addEventListener('DOMContentLoaded', function() {
                 generateBtn.disabled = false;
                 spinner.classList.add('d-none');
         }
+    }
+
+    // Global variables for streaming
+    let streamingServices = {};
+    let streamingResults = {};
+
+    function initializeStreamingUI() {
+        resultsGrid.innerHTML = '';
+        streamingServices = {};
+        streamingResults = {};
+        
+        // Create container for streaming results
+        const servicesContainer = document.createElement('div');
+        servicesContainer.className = 'services-container streaming';
+        servicesContainer.id = 'streamingContainer';
+        
+        // Create sections for each potential service
+        const services = [
+            { id: 'flux', name: 'Flux-Pro' },
+            { id: 'recraft', name: 'Recraft V3' },
+            { id: 'photon', name: 'Luma Photon' },
+            { id: 'gpt', name: 'GPT Image' }
+        ];
+        
+        services.forEach((service, index) => {
+            if (index > 0) {
+                const separator = document.createElement('div');
+                separator.className = 'service-separator';
+                separator.innerHTML = '<div class="separator-line"></div>';
+                servicesContainer.appendChild(separator);
+            }
+            
+            const section = createStreamingServiceSection(service.name, service.id);
+            servicesContainer.appendChild(section);
+        });
+        
+        resultsGrid.appendChild(servicesContainer);
+    }
+
+    function createStreamingServiceSection(serviceName, serviceId) {
+        const section = document.createElement('div');
+        section.className = `service-section ${serviceId}-section streaming`;
+        section.id = `section-${serviceId}`;
+        
+        // Create header with progress indicator
+        const header = document.createElement('div');
+        header.className = 'service-header';
+        header.innerHTML = `
+            <h4 class="service-title">
+                <span class="service-status-icon" id="status-${serviceId}">⏳</span> 
+                ${serviceName}
+                <span class="generation-time" id="time-${serviceId}"></span>
+            </h4>
+            <div class="progress mb-2" id="progress-${serviceId}" style="height: 4px;">
+                <div class="progress-bar progress-bar-striped progress-bar-animated" 
+                     role="progressbar" style="width: 0%" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">
+                </div>
+            </div>
+            <p class="service-status" id="message-${serviceId}">Initializing...</p>
+        `;
+        section.appendChild(header);
+        
+        // Create placeholder for icons
+        const iconsContainer = document.createElement('div');
+        iconsContainer.className = 'service-icons-container';
+        iconsContainer.id = `icons-${serviceId}`;
+        section.appendChild(iconsContainer);
+        
+        return section;
+    }
+
+    function handleServiceUpdate(update) {
+        const serviceId = update.serviceName;
+        const statusIcon = document.getElementById(`status-${serviceId}`);
+        const progressBar = document.querySelector(`#progress-${serviceId} .progress-bar`);
+        const messageElement = document.getElementById(`message-${serviceId}`);
+        const timeElement = document.getElementById(`time-${serviceId}`);
+        const iconsContainer = document.getElementById(`icons-${serviceId}`);
+        
+        if (!statusIcon || !progressBar || !messageElement) {
+            console.warn('Service UI elements not found for:', serviceId);
+            return;
+        }
+        
+        switch (update.status) {
+            case 'started':
+                statusIcon.textContent = '🔄';
+                progressBar.style.width = '25%';
+                messageElement.textContent = 'Generation started...';
+                break;
+                
+            case 'success':
+                statusIcon.textContent = '✅';
+                progressBar.style.width = '100%';
+                progressBar.classList.remove('progress-bar-animated');
+                messageElement.textContent = update.message || 'Generation completed successfully';
+                
+                // Display generation time
+                if (update.generationTimeMs) {
+                    timeElement.textContent = ` (${(update.generationTimeMs / 1000).toFixed(1)}s)`;
+                }
+                
+                // Display icons
+                if (update.icons && update.icons.length > 0) {
+                    displayServiceIcons(serviceId, update.icons, getServiceDisplayName(serviceId));
+                    
+                    // Store results for final export
+                    streamingResults[serviceId] = {
+                        icons: update.icons,
+                        originalGridImageBase64: update.originalGridImageBase64,
+                        generationTimeMs: update.generationTimeMs,
+                        status: 'success',
+                        message: update.message
+                    };
+                }
+                break;
+                
+            case 'error':
+                statusIcon.textContent = '❌';
+                progressBar.style.width = '100%';
+                progressBar.classList.remove('progress-bar-animated');
+                progressBar.classList.add('bg-danger');
+                messageElement.textContent = update.message || 'Generation failed';
+                
+                if (update.generationTimeMs) {
+                    timeElement.textContent = ` (${(update.generationTimeMs / 1000).toFixed(1)}s)`;
+                }
+                break;
+                
+            case 'disabled':
+                statusIcon.textContent = '⚫';
+                progressBar.style.width = '100%';
+                progressBar.classList.remove('progress-bar-animated');
+                progressBar.classList.add('bg-secondary');
+                messageElement.textContent = 'Service is disabled';
+                break;
+        }
+    }
+
+    function displayServiceIcons(serviceId, icons, serviceName) {
+        const iconsContainer = document.getElementById(`icons-${serviceId}`);
+        if (!iconsContainer) return;
+        
+        const iconsGrid = document.createElement('div');
+        iconsGrid.className = 'row g-3 service-icons-grid';
+        
+        icons.forEach((icon, index) => {
+            const iconDiv = document.createElement('div');
+            iconDiv.className = 'col-md-4 col-sm-6';
+            iconDiv.innerHTML = `
+                <div class="icon-item fade-in">
+                    <img src="data:image/png;base64,${icon.base64Data}" 
+                         alt="Generated Icon ${index + 1}" 
+                         class="img-fluid">
+                    <div class="icon-description">${icon.description || `Icon ${index + 1}`}</div>
+                    <div class="service-badge">${serviceName}</div>
+                </div>
+            `;
+            iconsGrid.appendChild(iconDiv);
+        });
+        
+        iconsContainer.appendChild(iconsGrid);
+    }
+
+    function handleGenerationComplete(update) {
+        console.log('Generation completed:', update);
+        
+        // Combine all successful results for export
+        let allIcons = [];
+        Object.values(streamingResults).forEach(result => {
+            if (result.icons) {
+                allIcons = allIcons.concat(result.icons);
+            }
+        });
+        
+        currentIcons = allIcons;
+        currentResponse = {
+            icons: allIcons,
+            falAiResults: streamingResults.flux,
+            recraftResults: streamingResults.recraft,
+            photonResults: streamingResults.photon,
+            gptResults: streamingResults.gpt
+        };
+        
+        // Show export button and enable generate button
+        setUIState('results');
+        
+        // Add missing icons sections if we have individual descriptions
+        if (currentRequest && currentRequest.individualDescriptions && currentRequest.individualDescriptions.length > 0) {
+            Object.keys(streamingResults).forEach(serviceId => {
+                const result = streamingResults[serviceId];
+                if (result && result.status === 'success') {
+                    const serviceName = getServiceDisplayName(serviceId);
+                    const section = document.getElementById(`section-${serviceId}`);
+                    if (section) {
+                        const missingSection = createMissingIconsSection(serviceId, serviceName);
+                        section.appendChild(missingSection);
+                    }
+                }
+            });
+        }
+    }
+
+    function getServiceDisplayName(serviceId) {
+        const serviceNames = {
+            'flux': 'Flux-Pro',
+            'recraft': 'Recraft V3',
+            'photon': 'Luma Photon',
+            'gpt': 'GPT Image'
+        };
+        return serviceNames[serviceId] || serviceId;
     }
 
     function displayResults(data) {
@@ -230,6 +491,19 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             const photonSection = createServiceSection('Luma Photon', data.photonResults, 'photon');
             servicesContainer.appendChild(photonSection);
+            hasMultipleSections = true;
+        }
+        
+        // Display GPT results (including disabled status)
+        if (data.gptResults && (data.gptResults.icons && data.gptResults.icons.length > 0 || data.gptResults.status === 'disabled')) {
+            if (hasMultipleSections) {
+                const separator = document.createElement('div');
+                separator.className = 'service-separator';
+                separator.innerHTML = '<div class="separator-line"></div>';
+                servicesContainer.appendChild(separator);
+            }
+            const gptSection = createServiceSection('GPT Image', data.gptResults, 'gpt');
+            servicesContainer.appendChild(gptSection);
             hasMultipleSections = true;
         }
         

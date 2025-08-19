@@ -12,6 +12,7 @@ public class AIServicesConfig {
     private ServiceEnabled fluxAi = new ServiceEnabled();
     private ServiceEnabled recraft = new ServiceEnabled();
     private ServiceEnabled photon = new ServiceEnabled();
+    private ServiceEnabled gpt = new ServiceEnabled();
     
     @Data
     public static class ServiceEnabled {
@@ -28,5 +29,9 @@ public class AIServicesConfig {
     
     public boolean isPhotonEnabled() {
         return photon.isEnabled();
+    }
+    
+    public boolean isGptEnabled() {
+        return gpt.isEnabled();
     }
 }

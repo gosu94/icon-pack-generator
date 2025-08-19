@@ -3,6 +3,7 @@ package com.gosu.icon_pack_generator.service;
 import com.gosu.icon_pack_generator.config.AIServicesConfig;
 import com.gosu.icon_pack_generator.dto.IconGenerationRequest;
 import com.gosu.icon_pack_generator.dto.IconGenerationResponse;
+import com.gosu.icon_pack_generator.dto.ServiceProgressUpdate;
 import com.gosu.icon_pack_generator.exception.FalAiException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -22,15 +23,24 @@ public class IconGenerationService {
     private final FluxModelService fluxModelService;
     private final RecraftModelService recraftModelService;
     private final PhotonModelService photonModelService;
+    private final GptModelService gptModelService;
     private final ImageProcessingService imageProcessingService;
     private final PromptGenerationService promptGenerationService;
     private final AIServicesConfig aiServicesConfig;
     
     public CompletableFuture<IconGenerationResponse> generateIcons(IconGenerationRequest request) {
+        return generateIcons(request, null);
+    }
+    
+    /**
+     * Generate icons with optional progress callback for real-time updates
+     */
+    public CompletableFuture<IconGenerationResponse> generateIcons(IconGenerationRequest request, ProgressUpdateCallback progressCallback) {
         List<String> enabledServices = new ArrayList<>();
         if (aiServicesConfig.isFluxAiEnabled()) enabledServices.add("FalAI");
         if (aiServicesConfig.isRecraftEnabled()) enabledServices.add("Recraft");
         if (aiServicesConfig.isPhotonEnabled()) enabledServices.add("Photon");
+        if (aiServicesConfig.isGptEnabled()) enabledServices.add("GPT");
         
         // Generate or use provided seed for consistent results across services
         Long seed = request.getSeed() != null ? request.getSeed() : generateRandomSeed();
@@ -40,33 +50,93 @@ public class IconGenerationService {
         
         String requestId = UUID.randomUUID().toString();
         
+        // Send initial progress updates for enabled services
+        if (progressCallback != null) {
+            if (aiServicesConfig.isFluxAiEnabled()) {
+                progressCallback.onUpdate(ServiceProgressUpdate.serviceStarted(requestId, "flux"));
+            } else {
+                progressCallback.onUpdate(ServiceProgressUpdate.serviceDisabled(requestId, "flux"));
+            }
+            
+            if (aiServicesConfig.isRecraftEnabled()) {
+                progressCallback.onUpdate(ServiceProgressUpdate.serviceStarted(requestId, "recraft"));
+            } else {
+                progressCallback.onUpdate(ServiceProgressUpdate.serviceDisabled(requestId, "recraft"));
+            }
+            
+            if (aiServicesConfig.isPhotonEnabled()) {
+                progressCallback.onUpdate(ServiceProgressUpdate.serviceStarted(requestId, "photon"));
+            } else {
+                progressCallback.onUpdate(ServiceProgressUpdate.serviceDisabled(requestId, "photon"));
+            }
+            
+            if (aiServicesConfig.isGptEnabled()) {
+                progressCallback.onUpdate(ServiceProgressUpdate.serviceStarted(requestId, "gpt"));
+            } else {
+                progressCallback.onUpdate(ServiceProgressUpdate.serviceDisabled(requestId, "gpt"));
+            }
+        }
+        
         // Generate icons only with enabled services
-                CompletableFuture<IconGenerationResponse.ServiceResults> falAiFuture = 
+        CompletableFuture<IconGenerationResponse.ServiceResults> falAiFuture = 
                 aiServicesConfig.isFluxAiEnabled() ? 
-                generateIconsWithService(request, requestId, fluxModelService, "flux", seed) :
+                generateIconsWithServiceAndCallback(request, requestId, fluxModelService, "flux", seed, progressCallback) :
                 CompletableFuture.completedFuture(createDisabledServiceResult("flux"));
         
         CompletableFuture<IconGenerationResponse.ServiceResults> recraftFuture = 
                 aiServicesConfig.isRecraftEnabled() ? 
-                generateIconsWithService(request, requestId, recraftModelService, "recraft", seed) :
+                generateIconsWithServiceAndCallback(request, requestId, recraftModelService, "recraft", seed, progressCallback) :
                 CompletableFuture.completedFuture(createDisabledServiceResult("recraft"));
         
         CompletableFuture<IconGenerationResponse.ServiceResults> photonFuture = 
                 aiServicesConfig.isPhotonEnabled() ? 
-                generateIconsWithService(request, requestId, photonModelService, "photon", seed) :
+                generateIconsWithServiceAndCallback(request, requestId, photonModelService, "photon", seed, progressCallback) :
                 CompletableFuture.completedFuture(createDisabledServiceResult("photon"));
         
-        return CompletableFuture.allOf(falAiFuture, recraftFuture, photonFuture)
+        CompletableFuture<IconGenerationResponse.ServiceResults> gptFuture = 
+                aiServicesConfig.isGptEnabled() ? 
+                generateIconsWithServiceAndCallback(request, requestId, gptModelService, "gpt", seed, progressCallback) :
+                CompletableFuture.completedFuture(createDisabledServiceResult("gpt"));
+        
+        return CompletableFuture.allOf(falAiFuture, recraftFuture, photonFuture, gptFuture)
                 .thenApply(v -> {
                     IconGenerationResponse.ServiceResults falAiResults = falAiFuture.join();
                     IconGenerationResponse.ServiceResults recraftResults = recraftFuture.join();
                     IconGenerationResponse.ServiceResults photonResults = photonFuture.join();
+                    IconGenerationResponse.ServiceResults gptResults = gptFuture.join();
                     
-                    return createCombinedResponse(requestId, falAiResults, recraftResults, photonResults, seed);
+                    IconGenerationResponse finalResponse = createCombinedResponse(requestId, falAiResults, recraftResults, photonResults, gptResults, seed);
+                    
+                    // Send final completion update
+                    if (progressCallback != null) {
+                        progressCallback.onUpdate(ServiceProgressUpdate.allComplete(requestId, finalResponse.getMessage()));
+                    }
+                    
+                    return finalResponse;
                 })
                 .exceptionally(error -> {
                     log.error("Error generating icons for request {}", requestId, error);
                     return createErrorResponse(requestId, "Failed to generate icons: " + error.getMessage());
+                });
+    }
+    
+    private CompletableFuture<IconGenerationResponse.ServiceResults> generateIconsWithServiceAndCallback(
+            IconGenerationRequest request, String requestId, AIModelService aiService, String serviceName, Long seed, ProgressUpdateCallback progressCallback) {
+        
+        return generateIconsWithService(request, requestId, aiService, serviceName, seed)
+                .whenComplete((result, error) -> {
+                    if (progressCallback != null) {
+                        if (error != null) {
+                            progressCallback.onUpdate(ServiceProgressUpdate.serviceFailed(
+                                    requestId, serviceName, getDetailedErrorMessage(error, serviceName), result != null ? result.getGenerationTimeMs() : 0L));
+                        } else if ("success".equals(result.getStatus())) {
+                            progressCallback.onUpdate(ServiceProgressUpdate.serviceCompleted(
+                                    requestId, serviceName, result.getIcons(), result.getOriginalGridImageBase64(), result.getGenerationTimeMs()));
+                        } else if ("error".equals(result.getStatus())) {
+                            progressCallback.onUpdate(ServiceProgressUpdate.serviceFailed(
+                                    requestId, serviceName, result.getMessage(), result.getGenerationTimeMs()));
+                        }
+                    }
                 });
     }
     
@@ -240,13 +310,15 @@ public class IconGenerationService {
     private IconGenerationResponse createCombinedResponse(String requestId, 
             IconGenerationResponse.ServiceResults falAiResults, 
             IconGenerationResponse.ServiceResults recraftResults,
-            IconGenerationResponse.ServiceResults photonResults, Long seed) {
+            IconGenerationResponse.ServiceResults photonResults,
+            IconGenerationResponse.ServiceResults gptResults, Long seed) {
         
         IconGenerationResponse response = new IconGenerationResponse();
         response.setRequestId(requestId);
         response.setFalAiResults(falAiResults);
         response.setRecraftResults(recraftResults);
         response.setPhotonResults(photonResults);
+        response.setGptResults(gptResults);
         response.setSeed(seed);
         
         // Combine all icons for backward compatibility
@@ -259,6 +331,9 @@ public class IconGenerationService {
         }
         if (photonResults.getIcons() != null) {
             allIcons.addAll(photonResults.getIcons());
+        }
+        if (gptResults.getIcons() != null) {
+            allIcons.addAll(gptResults.getIcons());
         }
         response.setIcons(allIcons);
         
@@ -294,6 +369,15 @@ public class IconGenerationService {
             if ("success".equals(photonResults.getStatus())) {
                 successCount++;
                 successfulServices.add("Photon");
+            }
+        }
+        
+        if (!"disabled".equals(gptResults.getStatus())) {
+            enabledCount++;
+            enabledServices.add("GPT");
+            if ("success".equals(gptResults.getStatus())) {
+                successCount++;
+                successfulServices.add("GPT");
             }
         }
         
@@ -333,6 +417,7 @@ public class IconGenerationService {
         response.setFalAiResults(errorResult);
         response.setRecraftResults(errorResult);
         response.setPhotonResults(errorResult);
+        response.setGptResults(errorResult);
         
         return response;
     }
@@ -360,7 +445,8 @@ public class IconGenerationService {
     private boolean supportsImageToImage(AIModelService aiService) {
         // Check if the service supports image-to-image generation
         // PhotonModelService delegates to FluxModelService for image-to-image
-        return aiService instanceof FluxModelService || aiService instanceof RecraftModelService || aiService instanceof PhotonModelService;
+        return aiService instanceof FluxModelService || aiService instanceof RecraftModelService || 
+               aiService instanceof PhotonModelService || aiService instanceof GptModelService;
     }
     
     private CompletableFuture<byte[]> generateImageToImageWithService(AIModelService aiService, String prompt, byte[] sourceImageData, Long seed) {
@@ -407,6 +493,21 @@ public class IconGenerationService {
                             }
                             return result;
                         });
+            } else if (aiService instanceof GptModelService) {
+                log.info("Using GptModelService generateImageToImage for image-to-image");
+                return ((GptModelService) aiService).generateImageToImage(prompt, sourceImageData, seed)
+                        .handle((result, throwable) -> {
+                            if (throwable != null) {
+                                log.error("GptModelService image-to-image failed, falling back to regular generation", throwable);
+                                try {
+                                    return generateImageWithSeed(aiService, prompt, seed).join();
+                                } catch (Exception fallbackError) {
+                                    log.error("Fallback generation also failed for GPT", fallbackError);
+                                    throw new RuntimeException("Both image-to-image and fallback generation failed for GPT", fallbackError);
+                                }
+                            }
+                            return result;
+                        });
             } else {
                 log.info("Service doesn't support image-to-image, using regular generation");
                 // Fallback to regular generation
@@ -429,6 +530,8 @@ public class IconGenerationService {
             return ((RecraftModelService) aiService).generateImage(prompt, seed);
         } else if (aiService instanceof PhotonModelService) {
             return ((PhotonModelService) aiService).generateImage(prompt, seed);
+        } else if (aiService instanceof GptModelService) {
+            return ((GptModelService) aiService).generateImage(prompt, seed);
         } else {
             // Fallback to basic generateImage method for unknown service types
             return aiService.generateImage(prompt);

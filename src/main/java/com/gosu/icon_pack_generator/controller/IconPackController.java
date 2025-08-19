@@ -5,9 +5,10 @@ import com.gosu.icon_pack_generator.dto.IconGenerationRequest;
 import com.gosu.icon_pack_generator.dto.IconGenerationResponse;
 import com.gosu.icon_pack_generator.dto.MissingIconsRequest;
 import com.gosu.icon_pack_generator.dto.MissingIconsResponse;
+import com.gosu.icon_pack_generator.dto.ServiceProgressUpdate;
 import com.gosu.icon_pack_generator.config.AIServicesConfig;
 import com.gosu.icon_pack_generator.service.FluxModelService;
-
+import com.gosu.icon_pack_generator.service.GptModelService;
 import com.gosu.icon_pack_generator.service.RecraftModelService;
 import com.gosu.icon_pack_generator.service.PhotonModelService;
 import com.gosu.icon_pack_generator.service.IconExportService;
@@ -20,6 +21,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
@@ -29,6 +31,7 @@ import org.springframework.web.multipart.MultipartFile;
 import jakarta.validation.Valid;
 import java.io.IOException;
 import java.util.ArrayList;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.Base64;
 import java.util.HashMap;
 import java.util.List;
@@ -46,10 +49,12 @@ public class IconPackController {
     private final FluxModelService fluxModelService;
     private final RecraftModelService recraftModelService;
     private final PhotonModelService photonModelService;
+    private final GptModelService gptModelService;
     private final PromptGenerationService promptGenerationService;
     private final ImageProcessingService imageProcessingService;
     private final AIServicesConfig aiServicesConfig;
     private final BackgroundRemovalService backgroundRemovalService;
+    private final ObjectMapper objectMapper;
     
     @GetMapping("/")
     public String index(Model model) {
@@ -80,6 +85,130 @@ public class IconPackController {
                         log.info("Successfully generated icons for request: {}", response.getRequestId());
                     }
                 });
+    }
+    
+    @PostMapping("/generate-stream")
+    @ResponseBody
+    public ResponseEntity<Map<String, String>> startStreamingGeneration(@Valid @RequestBody IconGenerationRequest request) {
+        log.info("Starting streaming icon generation for {} icons", request.getIconCount());
+        
+        // Generate a unique request ID for this generation
+        String requestId = UUID.randomUUID().toString();
+        
+        // Store the request for the SSE endpoint to pick up
+        // In a real application, you'd use a proper cache/storage mechanism
+        streamingRequests.put(requestId, request);
+        
+        // Start the generation process asynchronously
+        CompletableFuture.runAsync(() -> {
+            processStreamingGeneration(requestId, request);
+        });
+        
+        // Return the request ID for the client to connect to SSE
+        Map<String, String> response = new HashMap<>();
+        response.put("requestId", requestId);
+        return ResponseEntity.ok(response);
+    }
+    
+    // Temporary storage for streaming requests - in production use Redis or similar
+    private final Map<String, IconGenerationRequest> streamingRequests = new HashMap<>();
+    private final Map<String, SseEmitter> activeEmitters = new HashMap<>();
+    
+    @GetMapping("/stream/{requestId}")
+    @ResponseBody
+    public SseEmitter connectToStream(@PathVariable String requestId) {
+        log.info("Client connecting to stream for request: {}", requestId);
+        
+        // Create SSE emitter with 5 minute timeout
+        SseEmitter emitter = new SseEmitter(300_000L);
+        
+        // Store the emitter for this request
+        activeEmitters.put(requestId, emitter);
+        
+        // Handle emitter completion and cleanup
+        emitter.onCompletion(() -> {
+            log.info("SSE completed for request: {}", requestId);
+            activeEmitters.remove(requestId);
+            streamingRequests.remove(requestId);
+        });
+        emitter.onTimeout(() -> {
+            log.warn("SSE timeout for request: {}", requestId);
+            activeEmitters.remove(requestId);
+            streamingRequests.remove(requestId);
+            emitter.complete();
+        });
+        emitter.onError(throwable -> {
+            log.error("SSE error for request: {}", requestId, throwable);
+            activeEmitters.remove(requestId);
+            streamingRequests.remove(requestId);
+            emitter.completeWithError(throwable);
+        });
+        
+        return emitter;
+    }
+    
+    private void processStreamingGeneration(String requestId, IconGenerationRequest request) {
+        try {
+            // Ensure individual descriptions list is properly sized
+            if (request.getIndividualDescriptions() == null) {
+                request.setIndividualDescriptions(new ArrayList<>());
+            }
+            
+            // Pad the list with empty strings if needed
+            while (request.getIndividualDescriptions().size() < request.getIconCount()) {
+                request.getIndividualDescriptions().add("");
+            }
+            
+            // Start generation with progress callback
+            iconGenerationService.generateIcons(request, update -> {
+                SseEmitter emitter = activeEmitters.get(requestId);
+                if (emitter != null) {
+                    try {
+                        // Send the update as JSON
+                        String jsonUpdate = objectMapper.writeValueAsString(update);
+                        emitter.send(SseEmitter.event()
+                                .name(update.getEventType())
+                                .data(jsonUpdate));
+                        
+                        // Complete the stream when all generation is done
+                        if ("generation_complete".equals(update.getEventType())) {
+                            emitter.complete();
+                        }
+                    } catch (Exception e) {
+                        log.error("Error sending SSE update for request: {}", requestId, e);
+                        emitter.completeWithError(e);
+                    }
+                }
+            }).whenComplete((response, error) -> {
+                SseEmitter emitter = activeEmitters.get(requestId);
+                if (emitter != null && error != null) {
+                    log.error("Error in streaming generation for request: {}", requestId, error);
+                    try {
+                        // Send error update
+                        ServiceProgressUpdate errorUpdate = new ServiceProgressUpdate();
+                        errorUpdate.setRequestId(requestId);
+                        errorUpdate.setEventType("generation_error");
+                        errorUpdate.setStatus("error");
+                        errorUpdate.setMessage("Generation failed: " + error.getMessage());
+                        
+                        String jsonUpdate = objectMapper.writeValueAsString(errorUpdate);
+                        emitter.send(SseEmitter.event()
+                                .name("generation_error")
+                                .data(jsonUpdate));
+                    } catch (Exception e) {
+                        log.error("Error sending error update for request: {}", requestId, e);
+                    }
+                    emitter.completeWithError(error);
+                }
+            });
+            
+        } catch (Exception e) {
+            log.error("Error in processStreamingGeneration for request: {}", requestId, e);
+            SseEmitter emitter = activeEmitters.get(requestId);
+            if (emitter != null) {
+                emitter.completeWithError(e);
+            }
+        }
     }
     
     @PostMapping("/generate-form")
@@ -215,6 +344,12 @@ public class IconPackController {
                     throw new RuntimeException("Photon service is disabled");
                 }
                 return photonModelService.generateImageToImage(prompt, originalImageData, seed);
+                
+            case "gpt":
+                if (!aiServicesConfig.isGptEnabled()) {
+                    throw new RuntimeException("GPT service is disabled");
+                }
+                return gptModelService.generateImageToImage(prompt, originalImageData, seed);
                 
             default:
                 throw new RuntimeException("Unknown service: " + serviceName);
