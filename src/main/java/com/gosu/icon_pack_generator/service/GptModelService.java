@@ -132,8 +132,7 @@ public class GptModelService implements AIModelService {
      * Generate image using image-to-image functionality with optional seed.
      */
     public CompletableFuture<byte[]> generateImageToImage(String prompt, byte[] sourceImageData, Long seed) {
-        log.info("Generating image-to-image with GPT Image for prompt: {} (seed: {})", 
-                prompt.substring(0, Math.min(100, prompt.length())), seed);
+        log.info("Generating image-to-image with GPT Image for prompt: {}", prompt);
         
         return generateGptImageToImageAsync(prompt, sourceImageData, seed)
                 .whenComplete((bytes, error) -> {

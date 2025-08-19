@@ -400,7 +400,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     <img src="data:image/png;base64,${icon.base64Data}" 
                          alt="Generated Icon ${index + 1}" 
                          class="img-fluid">
-                    <div class="icon-description">${icon.description || `Icon ${index + 1}`}</div>
+<!--                    <div class="icon-description">${icon.description || `Icon ${index + 1}`}</div>-->
                     <div class="service-badge">${serviceName}</div>
                 </div>
             `;
@@ -434,20 +434,18 @@ document.addEventListener('DOMContentLoaded', function() {
         // Show export button and enable generate button
         setUIState('results');
         
-        // Add missing icons sections if we have individual descriptions
-        if (currentRequest && currentRequest.individualDescriptions && currentRequest.individualDescriptions.length > 0) {
-            Object.keys(streamingResults).forEach(serviceId => {
-                const result = streamingResults[serviceId];
-                if (result && result.status === 'success') {
-                    const serviceName = getServiceDisplayName(serviceId);
-                    const section = document.getElementById(`section-${serviceId}`);
-                    if (section) {
-                        const missingSection = createMissingIconsSection(serviceId, serviceName);
-                        section.appendChild(missingSection);
-                    }
+        // Add "Generate More With Same Style" sections for successful services
+        Object.keys(streamingResults).forEach(serviceId => {
+            const result = streamingResults[serviceId];
+            if (result && result.status === 'success') {
+                const serviceName = getServiceDisplayName(serviceId);
+                const section = document.getElementById(`section-${serviceId}`);
+                if (section) {
+                    const moreIconsSection = createGenerateMoreSection(serviceId, serviceName);
+                    section.appendChild(moreIconsSection);
                 }
-            });
-        }
+            }
+        });
     }
 
     function getServiceDisplayName(serviceId) {
@@ -586,65 +584,67 @@ document.addEventListener('DOMContentLoaded', function() {
             section.appendChild(iconsGrid);
         }
         
-        // Add "What is missing" section if service was successful and we have individual descriptions
-        if (serviceResults.status === 'success' && currentRequest && currentRequest.individualDescriptions && currentRequest.individualDescriptions.length > 0) {
-            const missingSection = createMissingIconsSection(serviceId, serviceName);
-            section.appendChild(missingSection);
+        // Add "Generate More With Same Style" section if service was successful
+        if (serviceResults.status === 'success') {
+            const moreIconsSection = createGenerateMoreSection(serviceId, serviceName);
+            section.appendChild(moreIconsSection);
         }
         
         return section;
     }
 
-    function createMissingIconsSection(serviceId, serviceName) {
-        const missingSection = document.createElement('div');
-        missingSection.className = 'missing-icons-section mt-4';
-        missingSection.id = `missing-${serviceId}`;
+    function createGenerateMoreSection(serviceId, serviceName) {
+        const moreSection = document.createElement('div');
+        moreSection.className = 'generate-more-section mt-4';
+        moreSection.id = `more-${serviceId}`;
         
-        // Get non-empty individual descriptions
-        const nonEmptyDescriptions = currentRequest.individualDescriptions.filter(desc => desc && desc.trim() !== '');
-        
-        if (nonEmptyDescriptions.length === 0) {
-            return missingSection; // Return empty section if no descriptions
-        }
-        
-        missingSection.innerHTML = `
-            <div class="missing-icons-header">
+        moreSection.innerHTML = `
+            <div class="generate-more-header">
                 <h6 class="text-muted mb-3">
-                    <i class="bi bi-plus-circle me-2"></i>What is missing?
+                    <i class="bi bi-plus-circle me-2"></i>Generate More With Same Style
                 </h6>
                 <p class="small text-muted mb-3">
-                    Select the icons you want to generate using ${serviceName} image-to-image:
+                    Create 9 more icons using ${serviceName} with the same style as above:
                 </p>
             </div>
-            <div class="missing-icons-checkboxes mb-3">
-                ${nonEmptyDescriptions.map((desc, index) => `
-                    <div class="form-check form-check-inline me-3 mb-2">
-                        <input class="form-check-input" type="checkbox" 
-                               id="missing-${serviceId}-${index}" 
-                               value="${desc}">
-                        <label class="form-check-label small" for="missing-${serviceId}-${index}">
-                            ${desc}
-                        </label>
-                    </div>
-                `).join('')}
-            </div>
-            <div class="missing-icons-actions">
+            <div class="generate-more-actions mb-3">
                 <button class="btn btn-outline-primary btn-sm" 
-                        onclick="generateMissingIcons('${serviceId}', '${serviceName}')"
-                        id="generate-missing-${serviceId}">
-                    <i class="bi bi-magic me-2"></i>Generate Selected
-                </button>
-                <button class="btn btn-outline-secondary btn-sm ms-2" 
-                        onclick="selectAllMissing('${serviceId}')">
-                    Select All
+                        onclick="showMoreIconsForm('${serviceId}')"
+                        id="show-more-form-${serviceId}">
+                    <i class="bi bi-magic me-2"></i>Generate More Icons
                 </button>
             </div>
-            <div class="missing-icons-results mt-3" id="missing-results-${serviceId}" style="display: none;">
+            <div class="more-icons-form mt-3" id="more-form-${serviceId}" style="display: none;">
+                <h6 class="small text-muted mb-3">Describe 9 new icons (leave empty for creative variations):</h6>
+                <div class="icon-descriptions-grid mb-3">
+                    ${Array.from({length: 9}, (_, i) => `
+                        <div class="icon-description-field">
+                            <input type="text" 
+                                   class="form-control form-control-sm" 
+                                   placeholder="Icon ${i + 1}"
+                                   id="more-${serviceId}-desc-${i}">
+                        </div>
+                    `).join('')}
+                </div>
+                <div class="more-icons-actions">
+                    <button class="btn btn-primary btn-sm" 
+                            onclick="generateMoreIcons('${serviceId}', '${serviceName}')"
+                            id="generate-more-${serviceId}">
+                        <i class="bi bi-magic me-2"></i>Generate 9 More Icons
+                    </button>
+                    <button class="btn btn-outline-secondary btn-sm ms-2" 
+                            onclick="hideMoreIconsForm('${serviceId}')">
+                        Cancel
+                    </button>
+                </div>
+            </div>
+            <div class="more-icons-results mt-3" id="more-results-${serviceId}" style="display: none;">
                 <!-- New icons will appear here -->
+                <p class="text-muted small">Results will appear here...</p>
             </div>
         `;
         
-        return missingSection;
+        return moreSection;
     }
 
     function showError(message) {
@@ -796,16 +796,41 @@ document.addEventListener('DOMContentLoaded', function() {
         }, 5000);
     }
 
-    // Missing Icons Generation Functions
-    window.generateMissingIcons = function(serviceId, serviceName) {
-        const selectedDescriptions = getSelectedMissingDescriptions(serviceId);
+    // Generate More Icons Functions
+    window.showMoreIconsForm = function(serviceId) {
+        const form = document.getElementById(`more-form-${serviceId}`);
+        const showBtn = document.getElementById(`show-more-form-${serviceId}`);
         
-        if (selectedDescriptions.length === 0) {
-            showErrorToast('Please select at least one icon to generate');
-            return;
+        form.style.display = 'block';
+        showBtn.style.display = 'none';
+        
+        // Focus on the first input field
+        const firstInput = document.getElementById(`more-${serviceId}-desc-0`);
+        if (firstInput) {
+            firstInput.focus();
         }
+    };
+
+    window.hideMoreIconsForm = function(serviceId) {
+        const form = document.getElementById(`more-form-${serviceId}`);
+        const showBtn = document.getElementById(`show-more-form-${serviceId}`);
         
-        const generateBtn = document.getElementById(`generate-missing-${serviceId}`);
+        form.style.display = 'none';
+        showBtn.style.display = 'block';
+        
+        // Clear all input fields
+        for (let i = 0; i < 9; i++) {
+            const input = document.getElementById(`more-${serviceId}-desc-${i}`);
+            if (input) {
+                input.value = '';
+            }
+        }
+    };
+
+    window.generateMoreIcons = function(serviceId, serviceName) {
+        const descriptions = getMoreIconDescriptions(serviceId);
+        
+        const generateBtn = document.getElementById(`generate-more-${serviceId}`);
         const originalText = generateBtn.innerHTML;
         
         // Show loading state
@@ -823,25 +848,25 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         
         // Prepare request
-        const missingRequest = {
+        const moreIconsRequest = {
             originalRequestId: currentResponse.requestId,
             serviceName: serviceId,
             originalImageBase64: originalImageBase64,
             generalDescription: currentRequest.generalDescription,
-            missingIconDescriptions: selectedDescriptions,
+            iconDescriptions: descriptions,
             iconCount: 9,
             seed: currentResponse.seed // Use the same seed for consistency
         };
         
-        console.log(`Generating missing icons for ${serviceName} with seed: ${currentResponse.seed}`);
+        console.log(`Generating more icons for ${serviceName} with seed: ${currentResponse.seed}`);
         
         // Make API call
-        fetch('/generate-missing', {
+        fetch('/generate-more', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify(missingRequest)
+            body: JSON.stringify(moreIconsRequest)
         })
         .then(response => {
             if (!response.ok) {
@@ -850,16 +875,20 @@ document.addEventListener('DOMContentLoaded', function() {
             return response.json();
         })
         .then(data => {
+            console.log('Generate more response:', data);
             if (data.status === 'success') {
-                displayMissingIconsResults(serviceId, data);
+                console.log('Success - calling displayMoreIconsResults with serviceId:', serviceId, 'data:', data);
+                displayMoreIconsResults(serviceId, data);
                 showSuccessToast(`Generated new 3x3 grid (${data.newIcons.length} icons) with ${serviceName}!`);
+                hideMoreIconsForm(serviceId);
             } else {
-                showErrorToast(data.message || 'Failed to generate missing icons');
+                console.error('Generate more failed:', data.message);
+                showErrorToast(data.message || 'Failed to generate more icons');
             }
         })
         .catch(error => {
-            console.error('Error generating missing icons:', error);
-            showErrorToast('Failed to generate missing icons. Please try again.');
+            console.error('Error generating more icons:', error);
+            showErrorToast('Failed to generate more icons. Please try again.');
         })
         .finally(() => {
             generateBtn.disabled = false;
@@ -867,23 +896,15 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     };
 
-    window.selectAllMissing = function(serviceId) {
-        const checkboxes = document.querySelectorAll(`#missing-${serviceId} input[type="checkbox"]`);
-        const selectAllBtn = document.querySelector(`#missing-${serviceId} .btn-outline-secondary`);
-        
-        // Check if all are currently selected
-        const allSelected = Array.from(checkboxes).every(cb => cb.checked);
-        
-        // Toggle all checkboxes
-        checkboxes.forEach(cb => cb.checked = !allSelected);
-        
-        // Update button text
-        selectAllBtn.textContent = allSelected ? 'Select All' : 'Deselect All';
-    };
-
-    function getSelectedMissingDescriptions(serviceId) {
-        const selectedCheckboxes = document.querySelectorAll(`#missing-${serviceId} input[type="checkbox"]:checked`);
-        return Array.from(selectedCheckboxes).map(cb => cb.value);
+    function getMoreIconDescriptions(serviceId) {
+        const descriptions = [];
+        for (let i = 0; i < 9; i++) {
+            const input = document.getElementById(`more-${serviceId}-desc-${i}`);
+            if (input) {
+                descriptions.push(input.value.trim());
+            }
+        }
+        return descriptions;
     }
 
     function getOriginalImageForService(serviceId) {
@@ -914,10 +935,18 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    function displayMissingIconsResults(serviceId, data) {
-        const resultsContainer = document.getElementById(`missing-results-${serviceId}`);
+    function displayMoreIconsResults(serviceId, data) {
+        console.log('displayMoreIconsResults called with serviceId:', serviceId, 'data:', data);
+        const resultsContainer = document.getElementById(`more-results-${serviceId}`);
+        console.log('Results container found:', resultsContainer);
+        
+        if (!resultsContainer) {
+            console.error('Results container not found for serviceId:', serviceId);
+            return;
+        }
         
         if (data.newIcons && data.newIcons.length > 0) {
+            console.log('Data has newIcons:', data.newIcons.length);
             const iconsGrid = document.createElement('div');
             iconsGrid.className = 'row g-3 mt-2';
             
@@ -938,9 +967,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 iconDiv.innerHTML = `
                     <div class="icon-item fade-in">
                         <img src="data:image/png;base64,${icon.base64Data}" 
-                             alt="Generated Missing Icon ${index + 1}" 
+                             alt="Generated More Icon ${index + 1}" 
                              class="img-fluid">
-                        <div class="icon-description">${icon.description || `Missing Icon ${index + 1}`}</div>
+                        <div class="icon-description">${icon.description || `More Icon ${index + 1}`}</div>
                         <div class="service-badge bg-success">New</div>
                     </div>
                 `;
@@ -950,9 +979,12 @@ document.addEventListener('DOMContentLoaded', function() {
             resultsContainer.innerHTML = '';
             resultsContainer.appendChild(iconsGrid);
             resultsContainer.style.display = 'block';
+            console.log('Results displayed successfully. Container now has children:', resultsContainer.children.length);
             
             // Add new icons to current icons for export
             currentIcons = currentIcons.concat(data.newIcons);
+        } else {
+            console.log('No newIcons in data or empty array. Data structure:', Object.keys(data));
         }
     }
 

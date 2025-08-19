@@ -23,6 +23,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
+import org.springframework.web.context.request.async.DeferredResult;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
@@ -270,14 +271,17 @@ public class IconPackController {
                 }
     }
     
-    @PostMapping("/generate-missing")
+    @PostMapping("/generate-more")
     @ResponseBody
-    public CompletableFuture<MissingIconsResponse> generateMissingIcons(@RequestBody MissingIconsRequest request) {
-        log.info("Received missing icons generation request for service: {} with {} missing descriptions", 
+    public DeferredResult<MissingIconsResponse> generateMoreIcons(@RequestBody MissingIconsRequest request) {
+        log.info("Received generate more icons request for service: {} with {} icon descriptions", 
                 request.getServiceName(), 
-                request.getMissingIconDescriptions() != null ? request.getMissingIconDescriptions().size() : 0);
+                request.getIconDescriptions() != null ? request.getIconDescriptions().size() : 0);
         
-        return CompletableFuture.supplyAsync(() -> {
+        // Create DeferredResult with 5 minute timeout
+        DeferredResult<MissingIconsResponse> deferredResult = new DeferredResult<>(300000L);
+        
+        CompletableFuture.supplyAsync(() -> {
             long startTime = System.currentTimeMillis();
             
             try {
@@ -290,17 +294,15 @@ public class IconPackController {
                     return createErrorResponse(request, "Original image is required", startTime);
                 }
                 
-                if (request.getMissingIconDescriptions() == null || request.getMissingIconDescriptions().isEmpty()) {
-                    return createErrorResponse(request, "Missing icon descriptions are required", startTime);
-                }
+                // Icon descriptions are optional - if empty, generate creative variations
                 
                 // Convert base64 to byte array
                 byte[] originalImageData = Base64.getDecoder().decode(request.getOriginalImageBase64());
                 
-                // Generate prompt specifically for missing icons (image-to-image)
-                String prompt = promptGenerationService.generatePromptForMissingIcons(
+                // Generate prompt for second grid (image-to-image)
+                String prompt = promptGenerationService.generatePromptFor3x3Grid(
                     request.getGeneralDescription(), 
-                    request.getMissingIconDescriptions()
+                    request.getIconDescriptions()
                 );
                 
                 // Get the appropriate service and generate icons
@@ -317,26 +319,41 @@ public class IconPackController {
                 // Create successful response
                 MissingIconsResponse response = new MissingIconsResponse();
                 response.setStatus("success");
-                response.setMessage("Missing icons generated successfully");
+                response.setMessage("More icons generated successfully with same style");
                 response.setServiceName(request.getServiceName());
                 response.setNewIcons(newIcons);
                 response.setOriginalRequestId(request.getOriginalRequestId());
                 response.setGenerationTimeMs(System.currentTimeMillis() - startTime);
                 
-                log.info("Successfully generated {} missing icons for service: {} in {}ms", 
+                log.info("Successfully generated {} more icons for service: {} in {}ms", 
                         newIcons.size(), request.getServiceName(), response.getGenerationTimeMs());
                 
                 return response;
                 
             } catch (Exception e) {
-                log.error("Error generating missing icons for service: {}", request.getServiceName(), e);
-                return createErrorResponse(request, "Failed to generate missing icons: " + e.getMessage(), startTime);
+                log.error("Error generating more icons for service: {}", request.getServiceName(), e);
+                return createErrorResponse(request, "Failed to generate more icons: " + e.getMessage(), startTime);
+            }
+        }).whenComplete((result, throwable) -> {
+            if (throwable != null) {
+                log.error("Async error in generate more icons", throwable);
+                deferredResult.setErrorResult(createErrorResponse(request, "Internal server error: " + throwable.getMessage(), System.currentTimeMillis()));
+            } else {
+                deferredResult.setResult(result);
             }
         });
+        
+        // Set timeout callback
+        deferredResult.onTimeout(() -> {
+            log.warn("Generate more icons request timed out for service: {}", request.getServiceName());
+            deferredResult.setResult(createErrorResponse(request, "Request timed out - generation may still be in progress", System.currentTimeMillis()));
+        });
+        
+        return deferredResult;
     }
     
     private CompletableFuture<byte[]> getServiceAndGenerate(String serviceName, String prompt, byte[] originalImageData, Long seed) {
-        log.info("Generating missing icons with service: {} using seed: {}", serviceName, seed);
+        log.info("Generating more icons with service: {} using seed: {}", serviceName, seed);
         
         switch (serviceName.toLowerCase()) {
             case "flux":
@@ -384,8 +401,8 @@ public class IconPackController {
             icon.setBase64Data(base64Icons.get(i));
             
             // Set description if available, otherwise use generic description
-            if (i < request.getMissingIconDescriptions().size()) {
-                icon.setDescription(request.getMissingIconDescriptions().get(i));
+            if (request.getIconDescriptions() != null && i < request.getIconDescriptions().size()) {
+                icon.setDescription(request.getIconDescriptions().get(i));
             } else {
                 icon.setDescription("Generated Icon " + (i + 1));
             }

@@ -237,6 +237,36 @@ body, html {
 
 .processing-info-card {
     background: rgba(255, 255, 255, 0.95);
+}
+
+/* Generate More Icons Styles */
+.generate-more-section {
+    border-top: 1px solid #e9ecef;
+    padding-top: 1rem;
+}
+
+.icon-descriptions-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.5rem;
+    max-width: 400px;
+}
+
+.icon-description-field {
+    display: flex;
+    flex-direction: column;
+}
+
+.icon-description-field input {
+    min-height: 38px;
+}
+
+@media (max-width: 576px) {
+    .icon-descriptions-grid {
+        grid-template-columns: repeat(2, 1fr);
+        max-width: 300px;
+    }
+}
     backdrop-filter: blur(10px);
     border: 1px solid rgba(255, 255, 255, 0.2);
 }

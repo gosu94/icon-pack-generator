@@ -13,7 +13,7 @@ public class MissingIconsRequest {
     private String originalRequestId;
     
     /**
-     * The service to use for generation (flux, recraft, photon)
+     * The service to use for generation (flux, recraft, photon, gpt, imagen)
      */
     private String serviceName;
     
@@ -28,9 +28,9 @@ public class MissingIconsRequest {
     private String generalDescription;
     
     /**
-     * List of specific icon descriptions that the user wants to generate
+     * List of specific icon descriptions for the new grid (can be empty for variations)
      */
-    private List<String> missingIconDescriptions;
+    private List<String> iconDescriptions;
     
     /**
      * Total icon count for the new grid (typically 9)

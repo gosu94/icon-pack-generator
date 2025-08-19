@@ -462,9 +462,10 @@ public class IconGenerationService {
     
     private boolean supportsImageToImage(AIModelService aiService) {
         // Check if the service supports image-to-image generation
-        // PhotonModelService delegates to FluxModelService for image-to-image
+        // PhotonModelService and ImagenModelService delegate to other services for image-to-image
         return aiService instanceof FluxModelService || aiService instanceof RecraftModelService || 
-               aiService instanceof PhotonModelService || aiService instanceof GptModelService;
+               aiService instanceof PhotonModelService || aiService instanceof GptModelService ||
+               aiService instanceof ImagenModelService;
     }
     
     private CompletableFuture<byte[]> generateImageToImageWithService(AIModelService aiService, String prompt, byte[] sourceImageData, Long seed) {
@@ -526,6 +527,21 @@ public class IconGenerationService {
                             }
                             return result;
                         });
+            } else if (aiService instanceof ImagenModelService) {
+                log.info("Using ImagenModelService generateImageToImage (delegates to GPT) for image-to-image");
+                return ((ImagenModelService) aiService).generateImageToImage(prompt, sourceImageData, seed)
+                        .handle((result, throwable) -> {
+                            if (throwable != null) {
+                                log.error("ImagenModelService image-to-image failed, falling back to regular generation", throwable);
+                                try {
+                                    return generateImageWithSeed(aiService, prompt, seed).join();
+                                } catch (Exception fallbackError) {
+                                    log.error("Fallback generation also failed for Imagen", fallbackError);
+                                    throw new RuntimeException("Both image-to-image and fallback generation failed for Imagen", fallbackError);
+                                }
+                            }
+                            return result;
+                        });
             } else {
                 log.info("Service doesn't support image-to-image, using regular generation");
                 // Fallback to regular generation
@@ -550,6 +566,8 @@ public class IconGenerationService {
             return ((PhotonModelService) aiService).generateImage(prompt, seed);
         } else if (aiService instanceof GptModelService) {
             return ((GptModelService) aiService).generateImage(prompt, seed);
+        } else if (aiService instanceof ImagenModelService) {
+            return ((ImagenModelService) aiService).generateImage(prompt, seed);
         } else {
             // Fallback to basic generateImage method for unknown service types
             return aiService.generateImage(prompt);
