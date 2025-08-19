@@ -272,7 +272,8 @@ document.addEventListener('DOMContentLoaded', function() {
             { id: 'flux', name: 'Flux-Pro' },
             { id: 'recraft', name: 'Recraft V3' },
             { id: 'photon', name: 'Luma Photon' },
-            { id: 'gpt', name: 'GPT Image' }
+            { id: 'gpt', name: 'GPT Image' },
+            { id: 'imagen', name: 'Imagen 4' }
         ];
         
         // Filter to only enabled services
@@ -426,7 +427,8 @@ document.addEventListener('DOMContentLoaded', function() {
             falAiResults: streamingResults.flux,
             recraftResults: streamingResults.recraft,
             photonResults: streamingResults.photon,
-            gptResults: streamingResults.gpt
+            gptResults: streamingResults.gpt,
+            imagenResults: streamingResults.imagen
         };
         
         // Show export button and enable generate button
@@ -453,7 +455,8 @@ document.addEventListener('DOMContentLoaded', function() {
             'flux': 'Flux-Pro',
             'recraft': 'Recraft V3',
             'photon': 'Luma Photon',
-            'gpt': 'GPT Image'
+            'gpt': 'GPT Image',
+            'imagen': 'Imagen 4'
         };
         return serviceNames[serviceId] || serviceId;
     }
@@ -512,6 +515,19 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             const gptSection = createServiceSection('GPT Image', data.gptResults, 'gpt');
             servicesContainer.appendChild(gptSection);
+            hasMultipleSections = true;
+        }
+        
+        // Display Imagen results (only if enabled and has results)
+        if (data.imagenResults && data.imagenResults.status !== 'disabled' && data.imagenResults.icons && data.imagenResults.icons.length > 0) {
+            if (hasMultipleSections) {
+                const separator = document.createElement('div');
+                separator.className = 'service-separator';
+                separator.innerHTML = '<div class="separator-line"></div>';
+                servicesContainer.appendChild(separator);
+            }
+            const imagenSection = createServiceSection('Imagen 4', data.imagenResults, 'imagen');
+            servicesContainer.appendChild(imagenSection);
             hasMultipleSections = true;
         }
         
@@ -889,6 +905,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 return currentResponse.recraftResults;
             case 'photon':
                 return currentResponse.photonResults;
+            case 'gpt':
+                return currentResponse.gptResults;
+            case 'imagen':
+                return currentResponse.imagenResults;
             default:
                 return null;
         }

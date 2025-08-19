@@ -24,6 +24,7 @@ public class IconGenerationService {
     private final RecraftModelService recraftModelService;
     private final PhotonModelService photonModelService;
     private final GptModelService gptModelService;
+    private final ImagenModelService imagenModelService;
     private final ImageProcessingService imageProcessingService;
     private final PromptGenerationService promptGenerationService;
     private final AIServicesConfig aiServicesConfig;
@@ -41,6 +42,7 @@ public class IconGenerationService {
         if (aiServicesConfig.isRecraftEnabled()) enabledServices.add("Recraft");
         if (aiServicesConfig.isPhotonEnabled()) enabledServices.add("Photon");
         if (aiServicesConfig.isGptEnabled()) enabledServices.add("GPT");
+        if (aiServicesConfig.isImagenEnabled()) enabledServices.add("Imagen");
         
         // Generate or use provided seed for consistent results across services
         Long seed = request.getSeed() != null ? request.getSeed() : generateRandomSeed();
@@ -67,6 +69,10 @@ public class IconGenerationService {
             if (aiServicesConfig.isGptEnabled()) {
                 progressCallback.onUpdate(ServiceProgressUpdate.serviceStarted(requestId, "gpt"));
             }
+            
+            if (aiServicesConfig.isImagenEnabled()) {
+                progressCallback.onUpdate(ServiceProgressUpdate.serviceStarted(requestId, "imagen"));
+            }
         }
         
         // Generate icons only with enabled services
@@ -90,14 +96,20 @@ public class IconGenerationService {
                 generateIconsWithServiceAndCallback(request, requestId, gptModelService, "gpt", seed, progressCallback) :
                 CompletableFuture.completedFuture(createDisabledServiceResult("gpt"));
         
-        return CompletableFuture.allOf(falAiFuture, recraftFuture, photonFuture, gptFuture)
+        CompletableFuture<IconGenerationResponse.ServiceResults> imagenFuture = 
+                aiServicesConfig.isImagenEnabled() ? 
+                generateIconsWithServiceAndCallback(request, requestId, imagenModelService, "imagen", seed, progressCallback) :
+                CompletableFuture.completedFuture(createDisabledServiceResult("imagen"));
+        
+        return CompletableFuture.allOf(falAiFuture, recraftFuture, photonFuture, gptFuture, imagenFuture)
                 .thenApply(v -> {
                     IconGenerationResponse.ServiceResults falAiResults = falAiFuture.join();
                     IconGenerationResponse.ServiceResults recraftResults = recraftFuture.join();
                     IconGenerationResponse.ServiceResults photonResults = photonFuture.join();
                     IconGenerationResponse.ServiceResults gptResults = gptFuture.join();
+                    IconGenerationResponse.ServiceResults imagenResults = imagenFuture.join();
                     
-                    IconGenerationResponse finalResponse = createCombinedResponse(requestId, falAiResults, recraftResults, photonResults, gptResults, seed);
+                    IconGenerationResponse finalResponse = createCombinedResponse(requestId, falAiResults, recraftResults, photonResults, gptResults, imagenResults, seed);
                     
                     // Send final completion update
                     if (progressCallback != null) {
@@ -303,7 +315,8 @@ public class IconGenerationService {
             IconGenerationResponse.ServiceResults falAiResults, 
             IconGenerationResponse.ServiceResults recraftResults,
             IconGenerationResponse.ServiceResults photonResults,
-            IconGenerationResponse.ServiceResults gptResults, Long seed) {
+            IconGenerationResponse.ServiceResults gptResults,
+            IconGenerationResponse.ServiceResults imagenResults, Long seed) {
         
         IconGenerationResponse response = new IconGenerationResponse();
         response.setRequestId(requestId);
@@ -311,6 +324,7 @@ public class IconGenerationService {
         response.setRecraftResults(recraftResults);
         response.setPhotonResults(photonResults);
         response.setGptResults(gptResults);
+        response.setImagenResults(imagenResults);
         response.setSeed(seed);
         
         // Combine all icons for backward compatibility
@@ -326,6 +340,9 @@ public class IconGenerationService {
         }
         if (gptResults.getIcons() != null) {
             allIcons.addAll(gptResults.getIcons());
+        }
+        if (imagenResults.getIcons() != null) {
+            allIcons.addAll(imagenResults.getIcons());
         }
         response.setIcons(allIcons);
         
@@ -370,6 +387,15 @@ public class IconGenerationService {
             if ("success".equals(gptResults.getStatus())) {
                 successCount++;
                 successfulServices.add("GPT");
+            }
+        }
+        
+        if (!"disabled".equals(imagenResults.getStatus())) {
+            enabledCount++;
+            enabledServices.add("Imagen");
+            if ("success".equals(imagenResults.getStatus())) {
+                successCount++;
+                successfulServices.add("Imagen");
             }
         }
         

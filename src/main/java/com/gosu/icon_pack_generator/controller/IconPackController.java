@@ -11,6 +11,7 @@ import com.gosu.icon_pack_generator.service.FluxModelService;
 import com.gosu.icon_pack_generator.service.GptModelService;
 import com.gosu.icon_pack_generator.service.RecraftModelService;
 import com.gosu.icon_pack_generator.service.PhotonModelService;
+import com.gosu.icon_pack_generator.service.ImagenModelService;
 import com.gosu.icon_pack_generator.service.IconExportService;
 import com.gosu.icon_pack_generator.service.IconGenerationService;
 import com.gosu.icon_pack_generator.service.BackgroundRemovalService;
@@ -48,6 +49,7 @@ public class IconPackController {
     private final IconExportService iconExportService;
     private final FluxModelService fluxModelService;
     private final RecraftModelService recraftModelService;
+    private final ImagenModelService imagenModelService;
     private final PhotonModelService photonModelService;
     private final GptModelService gptModelService;
     private final PromptGenerationService promptGenerationService;
@@ -114,6 +116,7 @@ public class IconPackController {
         enabledServices.put("recraft", aiServicesConfig.isRecraftEnabled());
         enabledServices.put("photon", aiServicesConfig.isPhotonEnabled());
         enabledServices.put("gpt", aiServicesConfig.isGptEnabled());
+        enabledServices.put("imagen", aiServicesConfig.isImagenEnabled());
         response.put("enabledServices", enabledServices);
         
         return ResponseEntity.ok(response);
@@ -359,6 +362,12 @@ public class IconPackController {
                     throw new RuntimeException("GPT service is disabled");
                 }
                 return gptModelService.generateImageToImage(prompt, originalImageData, seed);
+                
+            case "imagen":
+                if (!aiServicesConfig.isImagenEnabled()) {
+                    throw new RuntimeException("Imagen service is disabled");
+                }
+                return imagenModelService.generateImageToImage(prompt, originalImageData, seed);
                 
             default:
                 throw new RuntimeException("Unknown service: " + serviceName);

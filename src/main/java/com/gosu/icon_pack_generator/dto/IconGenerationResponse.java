@@ -15,6 +15,7 @@ public class IconGenerationResponse {
     private ServiceResults recraftResults;
     private ServiceResults photonResults;
     private ServiceResults gptResults;
+    private ServiceResults imagenResults;
     
     /**
      * The seed used for generation. Can be reused for consistent results in related requests.
@@ -27,7 +28,7 @@ public class IconGenerationResponse {
         private String base64Data;
         private String description;
         private int gridPosition;
-        private String serviceSource; // "flux", "recraft", "photon", or "gpt"
+        private String serviceSource; // "flux", "recraft", "photon", "gpt", or "imagen"
     }
     
     @Data

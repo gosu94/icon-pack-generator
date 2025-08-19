@@ -131,6 +131,14 @@ body, html {
     color: #059669;
 }
 
+.gpt-section .service-title {
+    color: #2563eb;
+}
+
+.imagen-section .service-title {
+    color: #9333ea;
+}
+
 .service-separator {
     display: flex;
     align-items: stretch;
