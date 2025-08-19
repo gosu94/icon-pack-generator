@@ -33,9 +33,16 @@ public class FluxModelService implements AIModelService {
 
     @Override
     public CompletableFuture<byte[]> generateImage(String prompt) {
-        log.info("Generating image with Fal.ai model for prompt: {}", prompt);
+        return generateImage(prompt, null);
+    }
+    
+    /**
+     * Generate image with optional seed for reproducible results
+     */
+    public CompletableFuture<byte[]> generateImage(String prompt, Long seed) {
+        log.info("Generating image with Fal.ai model for prompt: {} (seed: {})", prompt, seed);
 
-        return generateImageAsync(prompt)
+        return generateImageAsync(prompt, seed)
                 .whenComplete((bytes, error) -> {
                     if (error != null) {
                         log.error("Error generating image", error);
@@ -45,15 +52,17 @@ public class FluxModelService implements AIModelService {
                 });
     }
 
-    private CompletableFuture<byte[]> generateImageAsync(String prompt) {
+
+    
+    private CompletableFuture<byte[]> generateImageAsync(String prompt, Long seed) {
         return CompletableFuture.supplyAsync(() -> {
             try {
                 // Validate configuration before making API call
                 validateConfiguration();
 
-                Map<String, Object> input = createInputMap(prompt);
-                log.info("Making fal.ai API call to endpoint: {} with input keys: {}",
-                        config.getModelEndpoint(), input.keySet());
+                Map<String, Object> input = createInputMap(prompt, seed);
+                log.info("Making fal.ai API call to endpoint: {} with input keys: {} (seed: {})",
+                        config.getModelEndpoint(), input.keySet(), seed);
 
                 // Using the fal.ai client API with SubscribeOptions as per documentation
                 Output<JsonObject> output = falClient.subscribe(config.getModelEndpoint(),
@@ -82,7 +91,9 @@ public class FluxModelService implements AIModelService {
     }
 
 
-    private Map<String, Object> createInputMap(String prompt) {
+
+    
+    private Map<String, Object> createInputMap(String prompt, Long seed) {
         Map<String, Object> input = new HashMap<>();
         input.put("prompt", prompt);
 //        input.put("aspect_ratio", config.getAspectRatio());
@@ -94,7 +105,7 @@ public class FluxModelService implements AIModelService {
 
         // Add some additional parameters for better icon generation
         input.put("guidance_scale", 3.5);
-        input.put("seed", generateRandomSeed());
+        input.put("seed", seed != null ? seed : generateRandomSeed());
 
         log.debug("Input parameters: {}", input);
         return input;
@@ -204,20 +215,30 @@ public class FluxModelService implements AIModelService {
      * Generate image using image-to-image functionality for consistency
      */
     public CompletableFuture<byte[]> generateImageToImage(String prompt, byte[] sourceImageData) {
-        log.info("Generating image-to-image with Fal.ai for prompt: {}",
-                prompt.substring(0, Math.min(100, prompt.length())));
+        return generateImageToImage(prompt, sourceImageData, null);
+    }
+    
+    /**
+     * Generate image using image-to-image functionality with optional seed.
+     * Uses the Flux-LoRA endpoint for better style consistency and LoRA support.
+     */
+    public CompletableFuture<byte[]> generateImageToImage(String prompt, byte[] sourceImageData, Long seed) {
+        log.info("Generating image-to-image with Flux-LoRA for prompt: {} (seed: {})",
+                prompt, seed);
 
-        return generateImageToImageAsync(prompt, sourceImageData)
+        return generateImageToImageAsync(prompt, sourceImageData, seed)
                 .whenComplete((bytes, error) -> {
                     if (error != null) {
-                        log.error("Error generating image-to-image", error);
+                        log.error("Error generating image-to-image with Flux-LoRA", error);
                     } else {
-                        log.info("Successfully generated image-to-image, size: {} bytes", bytes.length);
+                        log.info("Successfully generated image-to-image with Flux-LoRA, size: {} bytes", bytes.length);
                     }
                 });
     }
 
-    private CompletableFuture<byte[]> generateImageToImageAsync(String prompt, byte[] sourceImageData) {
+
+    
+    private CompletableFuture<byte[]> generateImageToImageAsync(String prompt, byte[] sourceImageData, Long seed) {
         return CompletableFuture.supplyAsync(() -> {
             try {
                 validateConfiguration();
@@ -225,11 +246,11 @@ public class FluxModelService implements AIModelService {
                 // Convert image data to data URL for image_url parameter
                 String imageDataUrl = convertToDataUrl(sourceImageData);
 
-                Map<String, Object> input = createImageToImageInputMap(prompt, imageDataUrl);
-                log.info("Making fal.ai image-to-image API call to endpoint: {} with input keys: {}",
-                        "fal-ai/flux-pro/v1.1/redux", input.keySet());
+                Map<String, Object> input = createImageToImageInputMap(prompt, imageDataUrl, seed);
+                log.info("Making fal.ai image-to-image API call to endpoint: {} with input keys: {} (seed: {})",
+                        "fal-ai/flux-lora/image-to-image", input.keySet(), seed);
 
-                Output<JsonObject> output = falClient.subscribe("fal-ai/flux-pro/v1.1/redux",
+                Output<JsonObject> output = falClient.subscribe("fal-ai/flux-lora/image-to-image",
                         SubscribeOptions.<JsonObject>builder()
                                 .input(input)
                                 .logs(true)
@@ -246,27 +267,42 @@ public class FluxModelService implements AIModelService {
                 return extractImageFromResult(jsonResult);
 
             } catch (Exception e) {
-                log.error("Error calling fal.ai image-to-image API", e);
-                throw new FalAiException("Failed to generate image-to-image with fal.ai: " + e.getMessage(), e);
+                log.error("Error calling Flux-LoRA image-to-image API", e);
+                throw new FalAiException("Failed to generate image-to-image with Flux-LoRA: " + e.getMessage(), e);
             }
         });
     }
 
-    private Map<String, Object> createImageToImageInputMap(String prompt, String imageDataUrl) {
+
+    
+    private Map<String, Object> createImageToImageInputMap(String prompt, String imageDataUrl, Long seed) {
         Map<String, Object> input = new HashMap<>();
+        
+        // Core parameters
         input.put("prompt", prompt);
-        input.put("image_url", imageDataUrl);  // This is the key parameter for image-to-image!
-        input.put("image_size", "square_hd"); // Recraft uses image_size instead of aspect_ratio
-        input.put("num_images", config.getNumImages());
+        input.put("image_url", imageDataUrl);  // Source image for image-to-image generation
+        
+        // Image generation settings
+        input.put("image_size", "square_hd"); // Size of the generated image
+        input.put("num_images", 1); // Always generate 1 image
         input.put("enable_safety_checker", config.isEnableSafetyChecker());
         input.put("output_format", config.getOutputFormat());
-        input.put("safety_tolerance", config.getSafetyTolerance());
+        
+        // Flux-LoRA specific parameters
+        input.put("num_inference_steps", 28); // Default inference steps for quality
+        input.put("guidance_scale", 3.5); // CFG scale for prompt adherence
+        input.put("strength", 0.85); // Image-to-image strength: 0.0 preserves original style, 1.0 completely remakes the image
+        input.put("seed", seed != null ? seed : generateRandomSeed());
+        
+        // LoRAs can be added here in the future if needed
+        // input.put("loras", new ArrayList<>()); // Empty LoRA list for now
 
-        // Image-to-image specific parameters
-        input.put("guidance_scale", 3.5);
-        input.put("seed", generateRandomSeed());
-
-        log.debug("Image-to-image input parameters: {}", input);
+        log.info("Flux-LoRA image-to-image input parameters: prompt={}, image_size={}, strength={}, seed={}", 
+                prompt.substring(0, Math.min(100, prompt.length())), 
+                input.get("image_size"), 
+                input.get("strength"), 
+                seed);
+        log.debug("Full Flux-LoRA input parameters: {}", input);
         return input;
     }
 

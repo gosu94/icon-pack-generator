@@ -531,8 +531,11 @@ document.addEventListener('DOMContentLoaded', function() {
             originalImageBase64: originalImageBase64,
             generalDescription: currentRequest.generalDescription,
             missingIconDescriptions: selectedDescriptions,
-            iconCount: 9
+            iconCount: 9,
+            seed: currentResponse.seed // Use the same seed for consistency
         };
+        
+        console.log(`Generating missing icons for ${serviceName} with seed: ${currentResponse.seed}`);
         
         // Make API call
         fetch('/generate-missing', {
@@ -551,7 +554,7 @@ document.addEventListener('DOMContentLoaded', function() {
         .then(data => {
             if (data.status === 'success') {
                 displayMissingIconsResults(serviceId, data);
-                showSuccessToast(`Generated ${data.newIcons.length} missing icons with ${serviceName}!`);
+                showSuccessToast(`Generated new 3x3 grid (${data.newIcons.length} icons) with ${serviceName}!`);
             } else {
                 showErrorToast(data.message || 'Failed to generate missing icons');
             }
@@ -586,10 +589,10 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function getOriginalImageForService(serviceId) {
-        // Try to get the first icon from this service as a reference
+        // Get the original grid image before cropping (not individual icons)
         const serviceResults = getServiceResults(serviceId);
-        if (serviceResults && serviceResults.icons && serviceResults.icons.length > 0) {
-            return serviceResults.icons[0].base64Data;
+        if (serviceResults && serviceResults.originalGridImageBase64) {
+            return serviceResults.originalGridImageBase64;
         }
         return null;
     }
@@ -622,7 +625,7 @@ document.addEventListener('DOMContentLoaded', function() {
             headerDiv.innerHTML = `
                 <div class="alert alert-success alert-sm py-2">
                     <i class="bi bi-check-circle me-2"></i>
-                    <strong>New icons generated:</strong> ${data.newIcons.length} icons in ${(data.generationTimeMs / 1000).toFixed(1)}s
+                    <strong>New 3x3 grid generated:</strong> ${data.newIcons.length} icons in ${(data.generationTimeMs / 1000).toFixed(1)}s
                 </div>
             `;
             iconsGrid.appendChild(headerDiv);

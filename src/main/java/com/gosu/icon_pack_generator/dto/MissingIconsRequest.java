@@ -36,4 +36,9 @@ public class MissingIconsRequest {
      * Total icon count for the new grid (typically 9)
      */
     private int iconCount = 9;
+    
+    /**
+     * The seed from the original generation to maintain visual consistency
+     */
+    private Long seed;
 }

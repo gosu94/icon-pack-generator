@@ -116,7 +116,7 @@ public class PromptGenerationService {
         prompt.append("Maintain the same visual consistency, line thickness, color palette, and overall aesthetic. ");
         
         // Add the general theme context
-        prompt.append("General theme: ").append(generalDescription).append(". ");
+//        prompt.append("General theme: ").append(generalDescription).append(". ");
         
         // Specify the missing icons to generate
         if (missingIconDescriptions != null && !missingIconDescriptions.isEmpty()) {
@@ -127,7 +127,7 @@ public class PromptGenerationService {
             
             if (!validDescriptions.isEmpty()) {
                 String iconsToGenerate = String.join(", ", validDescriptions);
-                prompt.append("But with these specific icons: ").append(iconsToGenerate).append(". ");
+                prompt.append("But use these specific icons instead: ").append(iconsToGenerate).append(". ");
                 
                 // If we don't have 9 icons, fill the rest
                 if (validDescriptions.size() < 9) {

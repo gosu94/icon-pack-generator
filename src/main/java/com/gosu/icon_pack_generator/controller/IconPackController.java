@@ -163,7 +163,7 @@ public class IconPackController {
                 );
                 
                 // Get the appropriate service and generate icons
-                CompletableFuture<byte[]> generationFuture = getServiceAndGenerate(request.getServiceName(), prompt, originalImageData);
+                CompletableFuture<byte[]> generationFuture = getServiceAndGenerate(request.getServiceName(), prompt, originalImageData, request.getSeed());
                 
                 byte[] newImageData = generationFuture.join();
                 
@@ -194,25 +194,27 @@ public class IconPackController {
         });
     }
     
-    private CompletableFuture<byte[]> getServiceAndGenerate(String serviceName, String prompt, byte[] originalImageData) {
+    private CompletableFuture<byte[]> getServiceAndGenerate(String serviceName, String prompt, byte[] originalImageData, Long seed) {
+        log.info("Generating missing icons with service: {} using seed: {}", serviceName, seed);
+        
         switch (serviceName.toLowerCase()) {
             case "flux":
                 if (!aiServicesConfig.isFluxAiEnabled()) {
                     throw new RuntimeException("Flux service is disabled");
                 }
-                return fluxModelService.generateImageToImage(prompt, originalImageData);
+                return fluxModelService.generateImageToImage(prompt, originalImageData, seed);
                 
             case "recraft":
                 if (!aiServicesConfig.isRecraftEnabled()) {
                     throw new RuntimeException("Recraft service is disabled");
                 }
-                return recraftModelService.generateImageToImage(prompt, originalImageData);
+                return recraftModelService.generateImageToImage(prompt, originalImageData, seed);
                 
             case "photon":
                 if (!aiServicesConfig.isPhotonEnabled()) {
                     throw new RuntimeException("Photon service is disabled");
                 }
-                return photonModelService.generateImageToImage(prompt, originalImageData);
+                return photonModelService.generateImageToImage(prompt, originalImageData, seed);
                 
             default:
                 throw new RuntimeException("Unknown service: " + serviceName);
@@ -222,11 +224,19 @@ public class IconPackController {
     private List<IconGenerationResponse.GeneratedIcon> createIconList(List<String> base64Icons, MissingIconsRequest request) {
         List<IconGenerationResponse.GeneratedIcon> icons = new ArrayList<>();
         
-        for (int i = 0; i < base64Icons.size() && i < request.getMissingIconDescriptions().size(); i++) {
+        // Process ALL generated icons (should be 9), not just the number of missing descriptions
+        for (int i = 0; i < base64Icons.size(); i++) {
             IconGenerationResponse.GeneratedIcon icon = new IconGenerationResponse.GeneratedIcon();
             icon.setId(UUID.randomUUID().toString());
             icon.setBase64Data(base64Icons.get(i));
-            icon.setDescription(request.getMissingIconDescriptions().get(i));
+            
+            // Set description if available, otherwise use generic description
+            if (i < request.getMissingIconDescriptions().size()) {
+                icon.setDescription(request.getMissingIconDescriptions().get(i));
+            } else {
+                icon.setDescription("Generated Icon " + (i + 1));
+            }
+            
             icon.setGridPosition(i);
             icon.setServiceSource(request.getServiceName());
             icons.add(icon);

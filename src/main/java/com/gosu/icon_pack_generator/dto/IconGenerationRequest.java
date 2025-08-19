@@ -18,4 +18,10 @@ public class IconGenerationRequest {
     private int iconCount;
     
     private List<String> individualDescriptions;
+    
+    /**
+     * Optional seed for reproducible results. If not provided, a random seed will be generated.
+     * The same seed should be used for related requests (second grid, missing icons) to maintain visual consistency.
+     */
+    private Long seed;
 }

@@ -20,9 +20,16 @@ public class RecraftModelService implements AIModelService {
     
     @Override
     public CompletableFuture<byte[]> generateImage(String prompt) {
-        log.info("Generating image with Recraft V3 for prompt: {}", prompt);
+        return generateImage(prompt, null);
+    }
+    
+    /**
+     * Generate image with optional seed for reproducible results
+     */
+    public CompletableFuture<byte[]> generateImage(String prompt, Long seed) {
+        log.info("Generating image with Recraft V3 for prompt: {} (seed: {})", prompt, seed);
         
-        return generateRecraftImageAsync(prompt)
+        return generateRecraftImageAsync(prompt, seed)
                 .whenComplete((bytes, error) -> {
                     if (error != null) {
                         log.error("Error generating image with Recraft", error);
@@ -32,18 +39,20 @@ public class RecraftModelService implements AIModelService {
                 });
     }
     
-    private CompletableFuture<byte[]> generateRecraftImageAsync(String prompt) {
+
+    
+    private CompletableFuture<byte[]> generateRecraftImageAsync(String prompt, Long seed) {
         return CompletableFuture.supplyAsync(() -> {
             Map<String, Object> input = null;
             try {
-                log.info("Generating Recraft image with endpoint: fal-ai/recraft/v3/text-to-image");
+                log.info("Generating Recraft image with endpoint: fal-ai/recraft/v3/text-to-image (seed: {})", seed);
                 
                         // Apply Recraft-specific styling to the prompt with explicit constraints
         String recraftPrompt = "digital illustration style: " + prompt + 
                 " No text, no labels, no grid lines, no borders. Clean icon design only.";
                 
-                input = createRecraftTextToImageInputMap(recraftPrompt);
-                log.info("Making Recraft text-to-image API call with input keys: {}", input.keySet());
+                input = createRecraftTextToImageInputMap(recraftPrompt, seed);
+                log.info("Making Recraft text-to-image API call with input keys: {} (seed: {})", input.keySet(), seed);
                 
                 // Use the same falClient from FalAiModelService since both use fal.ai infrastructure
                 return fluxModelService.generateImageWithCustomEndpoint("fal-ai/recraft/v3/text-to-image", input);
@@ -62,19 +71,26 @@ public class RecraftModelService implements AIModelService {
                 String recraftPrompt = "digital illustration style: " + prompt + 
                         " No text, no labels, no grid lines, no borders. Clean icon design only.";
                         
-                log.info("Falling back to standard FalAI generation with prompt: {}", 
-                        recraftPrompt.length() > 100 ? recraftPrompt.substring(0, 100) + "..." : recraftPrompt);
+                log.info("Falling back to standard FalAI generation with prompt: {} (seed: {})", 
+                        recraftPrompt.length() > 100 ? recraftPrompt.substring(0, 100) + "..." : recraftPrompt, seed);
                 
-                return fluxModelService.generateImage(recraftPrompt).join();
+                return fluxModelService.generateImage(recraftPrompt, seed).join();
             }
         });
     }
 
-    private Map<String, Object> createRecraftTextToImageInputMap(String prompt) {
+
+    
+    private Map<String, Object> createRecraftTextToImageInputMap(String prompt, Long seed) {
         Map<String, Object> input = new HashMap<>();
         input.put("prompt", prompt);
         input.put("image_size", "square_hd"); // Recraft uses image_size instead of aspect_ratio
         input.put("style", "digital_illustration"); // Recraft-specific style parameter
+        
+        // Add seed if provided, otherwise let the API use its default random seed
+        if (seed != null) {
+            input.put("seed", seed);
+        }
 
         log.info("Recraft text-to-image requesting PNG format explicitly");
         log.debug("Recraft text-to-image input parameters: {}", input);
@@ -96,9 +112,17 @@ public class RecraftModelService implements AIModelService {
      * Generate image using Recraft V3 image-to-image functionality
      */
     public CompletableFuture<byte[]> generateImageToImage(String prompt, byte[] sourceImageData) {
-        log.info("Generating image-to-image with Recraft V3 for prompt: {}", prompt.substring(0, Math.min(100, prompt.length())));
+        return generateImageToImage(prompt, sourceImageData, null);
+    }
+    
+    /**
+     * Generate image using Recraft V3 image-to-image functionality with optional seed
+     */
+    public CompletableFuture<byte[]> generateImageToImage(String prompt, byte[] sourceImageData, Long seed) {
+        log.info("Generating image-to-image with Recraft V3 for prompt: {} (seed: {})", 
+                prompt.substring(0, Math.min(100, prompt.length())), seed);
         
-        return generateRecraftImageToImageAsync(prompt, sourceImageData)
+        return generateRecraftImageToImageAsync(prompt, sourceImageData, seed)
                 .whenComplete((bytes, error) -> {
                     if (error != null) {
                         log.error("Error generating image-to-image with Recraft", error);
@@ -108,10 +132,12 @@ public class RecraftModelService implements AIModelService {
                 });
     }
     
-    private CompletableFuture<byte[]> generateRecraftImageToImageAsync(String prompt, byte[] sourceImageData) {
+
+    
+    private CompletableFuture<byte[]> generateRecraftImageToImageAsync(String prompt, byte[] sourceImageData, Long seed) {
         return CompletableFuture.supplyAsync(() -> {
             try {
-                log.info("Generating Recraft image-to-image with endpoint: fal-ai/recraft/v3/image-to-image");
+                log.info("Generating Recraft image-to-image with endpoint: fal-ai/recraft/v3/image-to-image (seed: {})", seed);
                 
                 // Convert image data to data URL for image_url parameter
                 String imageDataUrl = convertToDataUrl(sourceImageData);
@@ -120,8 +146,8 @@ public class RecraftModelService implements AIModelService {
                 String recraftPrompt = "digital illustration style, consistent with source image: " + prompt + 
                         " No text, no labels, no grid lines, no borders. Clean icon design only.";
                 
-                Map<String, Object> input = createRecraftImageToImageInputMap(recraftPrompt, imageDataUrl);
-                log.info("Making Recraft image-to-image API call with input keys: {}", input.keySet());
+                Map<String, Object> input = createRecraftImageToImageInputMap(recraftPrompt, imageDataUrl, seed);
+                log.info("Making Recraft image-to-image API call with input keys: {} (seed: {})", input.keySet(), seed);
                 
                 // Use the same falClient from FalAiModelService since both use fal.ai infrastructure
                 return fluxModelService.generateImageWithCustomEndpoint("fal-ai/recraft/v3/image-to-image", input);
@@ -131,19 +157,26 @@ public class RecraftModelService implements AIModelService {
                 // Fallback to regular generation with modified prompt
                 String recraftPrompt = "digital illustration style, consistent with source image: " + prompt + 
                         " No text, no labels, no grid lines, no borders. Clean icon design only.";
-                return fluxModelService.generateImage(recraftPrompt).join();
+                return fluxModelService.generateImage(recraftPrompt, seed).join();
             }
         });
     }
 
 
 
-    private Map<String, Object> createRecraftImageToImageInputMap(String prompt, String imageDataUrl) {
+
+    
+    private Map<String, Object> createRecraftImageToImageInputMap(String prompt, String imageDataUrl, Long seed) {
         Map<String, Object> input = new HashMap<>();
         input.put("prompt", prompt);
         input.put("image_url", imageDataUrl);  // This is the key parameter for image-to-image!
         input.put("image_size", "square_hd"); // Recraft uses image_size instead of aspect_ratio
         input.put("style", "digital_illustration"); // Recraft-specific style parameter
+        
+        // Add seed if provided, otherwise let the API use its default random seed
+        if (seed != null) {
+            input.put("seed", seed);
+        }
 
         log.info("Recraft image-to-image requesting PNG format explicitly");
         log.debug("Recraft image-to-image input parameters: {}", input);

@@ -35,9 +35,16 @@ public class PhotonModelService implements AIModelService {
     
     @Override
     public CompletableFuture<byte[]> generateImage(String prompt) {
-        log.info("Generating image with Luma Photon for prompt: {}", prompt);
+        return generateImage(prompt, null);
+    }
+    
+    /**
+     * Generate image with optional seed for reproducible results
+     */
+    public CompletableFuture<byte[]> generateImage(String prompt, Long seed) {
+        log.info("Generating image with Luma Photon for prompt: {} (seed: {})", prompt, seed);
         
-        return generatePhotonImageAsync(prompt)
+        return generatePhotonImageAsync(prompt, seed)
                 .whenComplete((bytes, error) -> {
                     if (error != null) {
                         log.error("Error generating image with Photon", error);
@@ -47,16 +54,18 @@ public class PhotonModelService implements AIModelService {
                 });
     }
     
-    private CompletableFuture<byte[]> generatePhotonImageAsync(String prompt) {
+
+    
+    private CompletableFuture<byte[]> generatePhotonImageAsync(String prompt, Long seed) {
         return CompletableFuture.supplyAsync(() -> {
             try {
-                log.info("Generating Photon image with endpoint: {}", PHOTON_ENDPOINT);
+                log.info("Generating Photon image with endpoint: {} (seed: {})", PHOTON_ENDPOINT, seed);
                 
                 // Apply Photon-specific styling to the prompt with explicit constraints
                 String photonPrompt = prompt + " - clean icon design, no text, no labels, no grid lines, no borders";
                 
-                Map<String, Object> input = createPhotonInputMap(photonPrompt);
-                log.info("Making Photon API call with input keys: {}", input.keySet());
+                Map<String, Object> input = createPhotonInputMap(photonPrompt, seed);
+                log.info("Making Photon API call with input keys: {} (seed: {})", input.keySet(), seed);
                 
                 // Use fal.ai client API with queue update handling
                 Output<JsonObject> output = falClient.subscribe(PHOTON_ENDPOINT,
@@ -90,9 +99,16 @@ public class PhotonModelService implements AIModelService {
         });
     }
     
-    private Map<String, Object> createPhotonInputMap(String prompt) {
+
+    
+    private Map<String, Object> createPhotonInputMap(String prompt, Long seed) {
         Map<String, Object> input = new HashMap<>();
         input.put("prompt", prompt);
+        
+        // Add seed if provided, otherwise let the API use its default random seed
+        if (seed != null) {
+            input.put("seed", seed);
+        }
         
         log.debug("Photon input parameters: {}", input);
         return input;
@@ -176,13 +192,21 @@ public class PhotonModelService implements AIModelService {
      * Since Photon doesn't support image-to-image, we delegate to FluxModelService.
      */
     public CompletableFuture<byte[]> generateImageToImage(String prompt, byte[] sourceImageData) {
-        log.info("Photon doesn't support image-to-image, delegating to Flux for prompt: {}", 
-                prompt.substring(0, Math.min(100, prompt.length())));
+        return generateImageToImage(prompt, sourceImageData, null);
+    }
+    
+    /**
+     * Generate image using image-to-image functionality with optional seed.
+     * Since Photon doesn't support image-to-image, we delegate to FluxModelService.
+     */
+    public CompletableFuture<byte[]> generateImageToImage(String prompt, byte[] sourceImageData, Long seed) {
+        log.info("Photon doesn't support image-to-image, delegating to Flux for prompt: {} (seed: {})", 
+                prompt.substring(0, Math.min(100, prompt.length())), seed);
         
         // Apply Photon-style prompt formatting but use Flux for image-to-image
         String photonStylePrompt = prompt + " - clean icon design, no text, no labels, no grid lines, no borders";
         
-        return fluxModelService.generateImageToImage(photonStylePrompt, sourceImageData)
+        return fluxModelService.generateImageToImage(photonStylePrompt, sourceImageData, seed)
                 .whenComplete((bytes, error) -> {
                     if (error != null) {
                         log.error("Error in Flux image-to-image fallback for Photon", error);
