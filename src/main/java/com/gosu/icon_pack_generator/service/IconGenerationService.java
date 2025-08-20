@@ -75,39 +75,39 @@ public class IconGenerationService {
             }
         }
         
-        // Generate icons only with enabled services
-        CompletableFuture<IconGenerationResponse.ServiceResults> falAiFuture = 
+        // Generate multiple generations for each enabled service
+        CompletableFuture<List<IconGenerationResponse.ServiceResults>> falAiFuture = 
                 aiServicesConfig.isFluxAiEnabled() ? 
-                generateIconsWithServiceAndCallback(request, requestId, fluxModelService, "flux", seed, progressCallback) :
-                CompletableFuture.completedFuture(createDisabledServiceResult("flux"));
+                generateMultipleGenerationsWithService(request, requestId, fluxModelService, "flux", seed, progressCallback) :
+                CompletableFuture.completedFuture(List.of(createDisabledServiceResult("flux")));
         
-        CompletableFuture<IconGenerationResponse.ServiceResults> recraftFuture = 
+        CompletableFuture<List<IconGenerationResponse.ServiceResults>> recraftFuture = 
                 aiServicesConfig.isRecraftEnabled() ? 
-                generateIconsWithServiceAndCallback(request, requestId, recraftModelService, "recraft", seed, progressCallback) :
-                CompletableFuture.completedFuture(createDisabledServiceResult("recraft"));
+                generateMultipleGenerationsWithService(request, requestId, recraftModelService, "recraft", seed, progressCallback) :
+                CompletableFuture.completedFuture(List.of(createDisabledServiceResult("recraft")));
         
-        CompletableFuture<IconGenerationResponse.ServiceResults> photonFuture = 
+        CompletableFuture<List<IconGenerationResponse.ServiceResults>> photonFuture = 
                 aiServicesConfig.isPhotonEnabled() ? 
-                generateIconsWithServiceAndCallback(request, requestId, photonModelService, "photon", seed, progressCallback) :
-                CompletableFuture.completedFuture(createDisabledServiceResult("photon"));
+                generateMultipleGenerationsWithService(request, requestId, photonModelService, "photon", seed, progressCallback) :
+                CompletableFuture.completedFuture(List.of(createDisabledServiceResult("photon")));
         
-        CompletableFuture<IconGenerationResponse.ServiceResults> gptFuture = 
+        CompletableFuture<List<IconGenerationResponse.ServiceResults>> gptFuture = 
                 aiServicesConfig.isGptEnabled() ? 
-                generateIconsWithServiceAndCallback(request, requestId, gptModelService, "gpt", seed, progressCallback) :
-                CompletableFuture.completedFuture(createDisabledServiceResult("gpt"));
+                generateMultipleGenerationsWithService(request, requestId, gptModelService, "gpt", seed, progressCallback) :
+                CompletableFuture.completedFuture(List.of(createDisabledServiceResult("gpt")));
         
-        CompletableFuture<IconGenerationResponse.ServiceResults> imagenFuture = 
+        CompletableFuture<List<IconGenerationResponse.ServiceResults>> imagenFuture = 
                 aiServicesConfig.isImagenEnabled() ? 
-                generateIconsWithServiceAndCallback(request, requestId, imagenModelService, "imagen", seed, progressCallback) :
-                CompletableFuture.completedFuture(createDisabledServiceResult("imagen"));
+                generateMultipleGenerationsWithService(request, requestId, imagenModelService, "imagen", seed, progressCallback) :
+                CompletableFuture.completedFuture(List.of(createDisabledServiceResult("imagen")));
         
         return CompletableFuture.allOf(falAiFuture, recraftFuture, photonFuture, gptFuture, imagenFuture)
                 .thenApply(v -> {
-                    IconGenerationResponse.ServiceResults falAiResults = falAiFuture.join();
-                    IconGenerationResponse.ServiceResults recraftResults = recraftFuture.join();
-                    IconGenerationResponse.ServiceResults photonResults = photonFuture.join();
-                    IconGenerationResponse.ServiceResults gptResults = gptFuture.join();
-                    IconGenerationResponse.ServiceResults imagenResults = imagenFuture.join();
+                    List<IconGenerationResponse.ServiceResults> falAiResults = falAiFuture.join();
+                    List<IconGenerationResponse.ServiceResults> recraftResults = recraftFuture.join();
+                    List<IconGenerationResponse.ServiceResults> photonResults = photonFuture.join();
+                    List<IconGenerationResponse.ServiceResults> gptResults = gptFuture.join();
+                    List<IconGenerationResponse.ServiceResults> imagenResults = imagenFuture.join();
                     
                     IconGenerationResponse finalResponse = createCombinedResponse(requestId, falAiResults, recraftResults, photonResults, gptResults, imagenResults, seed);
                     
@@ -124,6 +124,52 @@ public class IconGenerationService {
                 });
     }
     
+    /**
+     * Generate multiple independent generations for a single service
+     */
+    private CompletableFuture<List<IconGenerationResponse.ServiceResults>> generateMultipleGenerationsWithService(
+            IconGenerationRequest request, String requestId, AIModelService aiService, String serviceName, Long baseSeed, ProgressUpdateCallback progressCallback) {
+        
+        int generationsCount = request.getGenerationsPerService();
+        log.info("Generating {} independent generations for service: {}", generationsCount, serviceName);
+        
+        List<CompletableFuture<IconGenerationResponse.ServiceResults>> generationFutures = new ArrayList<>();
+        
+        for (int i = 0; i < generationsCount; i++) {
+            // Use different seed for each generation to ensure variety
+            Long generationSeed = baseSeed + i;
+            final int generationIndex = i + 1;
+            
+            CompletableFuture<IconGenerationResponse.ServiceResults> generationFuture = generateIconsWithService(request, requestId, aiService, serviceName, generationSeed)
+                    .thenApply(result -> {
+                        result.setGenerationIndex(generationIndex);
+                        return result;
+                    })
+                    .whenComplete((result, error) -> {
+                        if (progressCallback != null) {
+                            String serviceGenName = serviceName + "-gen" + generationIndex;
+                            if (error != null) {
+                                progressCallback.onUpdate(ServiceProgressUpdate.serviceFailed(
+                                        requestId, serviceGenName, getDetailedErrorMessage(error, serviceName), result != null ? result.getGenerationTimeMs() : 0L));
+                            } else if ("success".equals(result.getStatus())) {
+                                progressCallback.onUpdate(ServiceProgressUpdate.serviceCompleted(
+                                        requestId, serviceGenName, result.getIcons(), result.getOriginalGridImageBase64(), result.getGenerationTimeMs()));
+                            } else if ("error".equals(result.getStatus())) {
+                                progressCallback.onUpdate(ServiceProgressUpdate.serviceFailed(
+                                        requestId, serviceGenName, result.getMessage(), result.getGenerationTimeMs()));
+                            }
+                        }
+                    });
+            
+            generationFutures.add(generationFuture);
+        }
+        
+        return CompletableFuture.allOf(generationFutures.toArray(new CompletableFuture[0]))
+                .thenApply(v -> generationFutures.stream()
+                        .map(CompletableFuture::join)
+                        .toList());
+    }
+
     private CompletableFuture<IconGenerationResponse.ServiceResults> generateIconsWithServiceAndCallback(
             IconGenerationRequest request, String requestId, AIModelService aiService, String serviceName, Long seed, ProgressUpdateCallback progressCallback) {
         
@@ -312,11 +358,11 @@ public class IconGenerationService {
     }
     
     private IconGenerationResponse createCombinedResponse(String requestId, 
-            IconGenerationResponse.ServiceResults falAiResults, 
-            IconGenerationResponse.ServiceResults recraftResults,
-            IconGenerationResponse.ServiceResults photonResults,
-            IconGenerationResponse.ServiceResults gptResults,
-            IconGenerationResponse.ServiceResults imagenResults, Long seed) {
+            List<IconGenerationResponse.ServiceResults> falAiResults, 
+            List<IconGenerationResponse.ServiceResults> recraftResults,
+            List<IconGenerationResponse.ServiceResults> photonResults,
+            List<IconGenerationResponse.ServiceResults> gptResults,
+            List<IconGenerationResponse.ServiceResults> imagenResults, Long seed) {
         
         IconGenerationResponse response = new IconGenerationResponse();
         response.setRequestId(requestId);
@@ -327,89 +373,46 @@ public class IconGenerationService {
         response.setImagenResults(imagenResults);
         response.setSeed(seed);
         
-        // Combine all icons for backward compatibility
+        // Combine all icons from all generations for backward compatibility
         List<IconGenerationResponse.GeneratedIcon> allIcons = new ArrayList<>();
-        if (falAiResults.getIcons() != null) {
-            allIcons.addAll(falAiResults.getIcons());
-        }
-        if (recraftResults.getIcons() != null) {
-            allIcons.addAll(recraftResults.getIcons());
-        }
-        if (photonResults.getIcons() != null) {
-            allIcons.addAll(photonResults.getIcons());
-        }
-        if (gptResults.getIcons() != null) {
-            allIcons.addAll(gptResults.getIcons());
-        }
-        if (imagenResults.getIcons() != null) {
-            allIcons.addAll(imagenResults.getIcons());
-        }
+        
+        // Add icons from all generations of each service
+        addIconsFromServiceResults(allIcons, falAiResults);
+        addIconsFromServiceResults(allIcons, recraftResults);
+        addIconsFromServiceResults(allIcons, photonResults);
+        addIconsFromServiceResults(allIcons, gptResults);
+        addIconsFromServiceResults(allIcons, imagenResults);
+        
         response.setIcons(allIcons);
         
         // Set overall status
         int successCount = 0;
         int enabledCount = 0;
+        int totalGenerationsCount = 0;
         List<String> successfulServices = new ArrayList<>();
         List<String> enabledServices = new ArrayList<>();
         
-        if (!"disabled".equals(falAiResults.getStatus())) {
-            enabledCount++;
-            enabledServices.add("Flux-Pro");
-            if ("success".equals(falAiResults.getStatus())) {
-                successCount++;
-                successfulServices.add("Flux-Pro");
-            }
-        }
+        // Count successful generations for each service
+        successCount += countSuccessfulGenerations(falAiResults, "Flux-Pro", successfulServices, enabledServices);
+        successCount += countSuccessfulGenerations(recraftResults, "Recraft", successfulServices, enabledServices);
+        successCount += countSuccessfulGenerations(photonResults, "Photon", successfulServices, enabledServices);
+        successCount += countSuccessfulGenerations(gptResults, "GPT", successfulServices, enabledServices);
+        successCount += countSuccessfulGenerations(imagenResults, "Imagen", successfulServices, enabledServices);
         
-
-        
-        if (!"disabled".equals(recraftResults.getStatus())) {
-            enabledCount++;
-            enabledServices.add("Recraft");
-            if ("success".equals(recraftResults.getStatus())) {
-                successCount++;
-                successfulServices.add("Recraft");
-            }
-        }
-        
-        if (!"disabled".equals(photonResults.getStatus())) {
-            enabledCount++;
-            enabledServices.add("Photon");
-            if ("success".equals(photonResults.getStatus())) {
-                successCount++;
-                successfulServices.add("Photon");
-            }
-        }
-        
-        if (!"disabled".equals(gptResults.getStatus())) {
-            enabledCount++;
-            enabledServices.add("GPT");
-            if ("success".equals(gptResults.getStatus())) {
-                successCount++;
-                successfulServices.add("GPT");
-            }
-        }
-        
-        if (!"disabled".equals(imagenResults.getStatus())) {
-            enabledCount++;
-            enabledServices.add("Imagen");
-            if ("success".equals(imagenResults.getStatus())) {
-                successCount++;
-                successfulServices.add("Imagen");
-            }
-        }
+        // Count enabled services (those that have at least one non-disabled result)
+        enabledCount = enabledServices.size();
+        totalGenerationsCount = falAiResults.size() + recraftResults.size() + photonResults.size() + gptResults.size() + imagenResults.size();
         
         if (enabledCount == 0) {
             response.setStatus("error");
             response.setMessage("All AI services are disabled in configuration");
         } else if (successCount > 0) {
             response.setStatus("success");
-            if (successCount == enabledCount) {
-                response.setMessage("Icons generated successfully with all enabled services");
-            } else if (successCount == 1) {
-                response.setMessage("Icons generated successfully with " + successfulServices.get(0));
+            if (successCount == totalGenerationsCount) {
+                response.setMessage("All generations completed successfully across all enabled services");
             } else {
-                response.setMessage("Icons generated successfully with " + String.join(" and ", successfulServices));
+                response.setMessage(String.format("Generated %d successful generation(s) across services: %s", 
+                    successCount, String.join(", ", successfulServices)));
             }
         } else {
             response.setStatus("error");
@@ -419,6 +422,39 @@ public class IconGenerationService {
         return response;
     }
     
+    private void addIconsFromServiceResults(List<IconGenerationResponse.GeneratedIcon> allIcons, List<IconGenerationResponse.ServiceResults> serviceResults) {
+        for (IconGenerationResponse.ServiceResults result : serviceResults) {
+            if (result.getIcons() != null) {
+                allIcons.addAll(result.getIcons());
+            }
+        }
+    }
+    
+    private int countSuccessfulGenerations(List<IconGenerationResponse.ServiceResults> serviceResults, String serviceName, 
+                                          List<String> successfulServices, List<String> enabledServices) {
+        int successCount = 0;
+        boolean hasEnabledGeneration = false;
+        
+        for (IconGenerationResponse.ServiceResults result : serviceResults) {
+            if (!"disabled".equals(result.getStatus())) {
+                hasEnabledGeneration = true;
+                if ("success".equals(result.getStatus())) {
+                    successCount++;
+                }
+            }
+        }
+        
+        if (hasEnabledGeneration && !enabledServices.contains(serviceName)) {
+            enabledServices.add(serviceName);
+        }
+        
+        if (successCount > 0 && !successfulServices.contains(serviceName)) {
+            successfulServices.add(serviceName);
+        }
+        
+        return successCount;
+    }
+    
     private IconGenerationResponse createErrorResponse(String requestId, String message) {
         IconGenerationResponse response = new IconGenerationResponse();
         response.setRequestId(requestId);
@@ -426,16 +462,20 @@ public class IconGenerationService {
         response.setMessage(message);
         response.setIcons(new ArrayList<>());
         
-        // Create error results for all services
+        // Create error results for all services as single-item lists
         IconGenerationResponse.ServiceResults errorResult = new IconGenerationResponse.ServiceResults();
         errorResult.setStatus("error");
         errorResult.setMessage(message);
         errorResult.setIcons(new ArrayList<>());
+        errorResult.setGenerationIndex(1);
         
-        response.setFalAiResults(errorResult);
-        response.setRecraftResults(errorResult);
-        response.setPhotonResults(errorResult);
-        response.setGptResults(errorResult);
+        List<IconGenerationResponse.ServiceResults> errorList = List.of(errorResult);
+        
+        response.setFalAiResults(errorList);
+        response.setRecraftResults(errorList);
+        response.setPhotonResults(errorList);
+        response.setGptResults(errorList);
+        response.setImagenResults(errorList);
         
         return response;
     }
@@ -457,6 +497,7 @@ public class IconGenerationService {
         result.setMessage("Service is disabled in configuration");
         result.setIcons(new ArrayList<>());
         result.setGenerationTimeMs(0L);
+        result.setGenerationIndex(1); // Default generation index for disabled services
         return result;
     }
     

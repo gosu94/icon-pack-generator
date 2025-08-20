@@ -267,9 +267,9 @@ body, html {
         max-width: 300px;
     }
 }
-    backdrop-filter: blur(10px);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-}
+/*    backdrop-filter: blur(10px);*/
+/*    border: 1px solid rgba(255, 255, 255, 0.2);*/
+/*}*/
 
 .btn-download {
     background: linear-gradient(135deg, #28a745 0%, #20c997 100%);

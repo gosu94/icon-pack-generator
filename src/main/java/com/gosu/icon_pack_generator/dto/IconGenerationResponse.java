@@ -11,11 +11,11 @@ public class IconGenerationResponse {
     private String message;
     private List<GeneratedIcon> icons;
     private String requestId;
-    private ServiceResults falAiResults;
-    private ServiceResults recraftResults;
-    private ServiceResults photonResults;
-    private ServiceResults gptResults;
-    private ServiceResults imagenResults;
+    private List<ServiceResults> falAiResults;
+    private List<ServiceResults> recraftResults;
+    private List<ServiceResults> photonResults;
+    private List<ServiceResults> gptResults;
+    private List<ServiceResults> imagenResults;
     
     /**
      * The seed used for generation. Can be reused for consistent results in related requests.
@@ -38,6 +38,7 @@ public class IconGenerationResponse {
         private String message;
         private List<GeneratedIcon> icons;
         private long generationTimeMs;
+        private int generationIndex; // Which generation this is (1, 2, 3, etc.)
         
         /**
          * The original grid image (base64 encoded) before cropping into individual icons.

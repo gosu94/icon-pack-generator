@@ -114,6 +114,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const formData = {
             generalDescription: document.getElementById('generalDescription').value.trim(),
             iconCount: parseInt(document.getElementById('iconCount').value),
+            generationsPerService: parseInt(document.getElementById('generationsPerService').value),
             individualDescriptions: []
         };
 
@@ -279,54 +280,79 @@ document.addEventListener('DOMContentLoaded', function() {
         // Filter to only enabled services
         const enabledServicesList = allServices.filter(service => enabledServices[service.id]);
         
-        // Create sections only for enabled services
-        enabledServicesList.forEach((service, index) => {
-            if (index > 0) {
-                const separator = document.createElement('div');
-                separator.className = 'service-separator';
-                separator.innerHTML = '<div class="separator-line"></div>';
-                servicesContainer.appendChild(separator);
+        // Get the number of generations per service from the form
+        const generationsPerService = parseInt(document.getElementById('generationsPerService').value) || 1;
+        
+        let sectionIndex = 0;
+        
+        // Create sections for each enabled service and each generation
+        enabledServicesList.forEach(service => {
+            for (let genIndex = 1; genIndex <= generationsPerService; genIndex++) {
+                if (sectionIndex > 0) {
+                    const separator = document.createElement('div');
+                    separator.className = 'service-separator';
+                    separator.innerHTML = '<div class="separator-line"></div>';
+                    servicesContainer.appendChild(separator);
+                }
+                
+                // Create section name with generation index if multiple generations
+                const sectionName = generationsPerService > 1 
+                    ? `${service.name} (Generation ${genIndex})`
+                    : service.name;
+                
+                console.log(`Creating streaming section for: ${service.id}-gen${genIndex} with name: ${sectionName}`);
+                const section = createStreamingServiceSection(sectionName, service.id, genIndex);
+                servicesContainer.appendChild(section);
+                sectionIndex++;
             }
-            
-            const section = createStreamingServiceSection(service.name, service.id);
-            servicesContainer.appendChild(section);
         });
     }
 
-    function createStreamingServiceSection(serviceName, serviceId) {
+    function createStreamingServiceSection(serviceName, serviceId, generationIndex = 1) {
+        // Always include generation suffix for consistency with backend progress updates
+        const uniqueId = `${serviceId}-gen${generationIndex}`;
+        
+        console.log(`Creating streaming service section with uniqueId: ${uniqueId} for service: ${serviceName}`);
+        
         const section = document.createElement('div');
         section.className = `service-section ${serviceId}-section streaming`;
-        section.id = `section-${serviceId}`;
+        section.id = `section-${uniqueId}`;
         
         // Create header with progress indicator
         const header = document.createElement('div');
         header.className = 'service-header';
         header.innerHTML = `
             <h4 class="service-title">
-                <span class="service-status-icon" id="status-${serviceId}">⏳</span> 
+                <span class="service-status-icon" id="status-${uniqueId}">⏳</span> 
                 ${serviceName}
-                <span class="generation-time" id="time-${serviceId}"></span>
+                <span class="generation-time" id="time-${uniqueId}"></span>
             </h4>
-            <div class="progress mb-2" id="progress-${serviceId}" style="height: 4px;">
+            <div class="progress mb-2" id="progress-${uniqueId}" style="height: 4px;">
                 <div class="progress-bar progress-bar-striped progress-bar-animated" 
                      role="progressbar" style="width: 0%" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">
                 </div>
             </div>
-            <p class="service-status" id="message-${serviceId}">Initializing...</p>
+            <p class="service-status" id="message-${uniqueId}">Initializing...</p>
         `;
         section.appendChild(header);
         
         // Create placeholder for icons
         const iconsContainer = document.createElement('div');
         iconsContainer.className = 'service-icons-container';
-        iconsContainer.id = `icons-${serviceId}`;
+        iconsContainer.id = `icons-${uniqueId}`;
         section.appendChild(iconsContainer);
+        
+        console.log(`Created elements with IDs: status-${uniqueId}, progress-${uniqueId}, message-${uniqueId}, icons-${uniqueId}`);
         
         return section;
     }
 
     function handleServiceUpdate(update) {
         const serviceId = update.serviceName;
+        console.log('Handling service update for:', serviceId);
+        
+        // The serviceId from backend includes generation suffix (e.g., "flux-gen1", "flux-gen2")
+        // Our frontend elements use the same naming convention
         const statusIcon = document.getElementById(`status-${serviceId}`);
         const progressBar = document.querySelector(`#progress-${serviceId} .progress-bar`);
         const messageElement = document.getElementById(`message-${serviceId}`);
@@ -335,6 +361,13 @@ document.addEventListener('DOMContentLoaded', function() {
         
         if (!statusIcon || !progressBar || !messageElement) {
             console.warn('Service UI elements not found for:', serviceId);
+            console.log('Available elements:', {
+                statusIcon: !!statusIcon,
+                progressBar: !!progressBar,
+                messageElement: !!messageElement,
+                timeElement: !!timeElement,
+                iconsContainer: !!iconsContainer
+            });
             return;
         }
         
@@ -358,7 +391,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 
                 // Display icons
                 if (update.icons && update.icons.length > 0) {
-                    displayServiceIcons(serviceId, update.icons, getServiceDisplayName(serviceId));
+                    // Extract base service name for display (remove generation suffix if present)
+                    const baseServiceId = serviceId.replace(/-gen\d+$/, '');
+                    displayServiceIcons(serviceId, update.icons, getServiceDisplayName(baseServiceId));
                     
                     // Store results for final export
                     streamingResults[serviceId] = {
@@ -422,13 +457,41 @@ document.addEventListener('DOMContentLoaded', function() {
         });
         
         currentIcons = allIcons;
+        
+        // Group streaming results by service (handling multiple generations)
+        const groupedResults = {
+            falAiResults: [],
+            recraftResults: [],
+            photonResults: [],
+            gptResults: [],
+            imagenResults: []
+        };
+        
+        // Group results by base service name
+        Object.entries(streamingResults).forEach(([serviceKey, result]) => {
+            const baseServiceId = serviceKey.replace(/-gen\d+$/, '');
+            switch (baseServiceId) {
+                case 'flux':
+                    groupedResults.falAiResults.push(result);
+                    break;
+                case 'recraft':
+                    groupedResults.recraftResults.push(result);
+                    break;
+                case 'photon':
+                    groupedResults.photonResults.push(result);
+                    break;
+                case 'gpt':
+                    groupedResults.gptResults.push(result);
+                    break;
+                case 'imagen':
+                    groupedResults.imagenResults.push(result);
+                    break;
+            }
+        });
+        
         currentResponse = {
             icons: allIcons,
-            falAiResults: streamingResults.flux,
-            recraftResults: streamingResults.recraft,
-            photonResults: streamingResults.photon,
-            gptResults: streamingResults.gpt,
-            imagenResults: streamingResults.imagen
+            ...groupedResults
         };
         
         // Show export button and enable generate button
@@ -438,10 +501,11 @@ document.addEventListener('DOMContentLoaded', function() {
         Object.keys(streamingResults).forEach(serviceId => {
             const result = streamingResults[serviceId];
             if (result && result.status === 'success') {
-                const serviceName = getServiceDisplayName(serviceId);
+                const baseServiceId = serviceId.replace(/-gen\d+$/, '');
+                const serviceName = getServiceDisplayName(baseServiceId);
                 const section = document.getElementById(`section-${serviceId}`);
                 if (section) {
-                    const moreIconsSection = createGenerateMoreSection(serviceId, serviceName);
+                    const moreIconsSection = createGenerateMoreSection(baseServiceId, serviceName);
                     section.appendChild(moreIconsSection);
                 }
             }
@@ -464,70 +528,46 @@ document.addEventListener('DOMContentLoaded', function() {
         currentIcons = data.icons; // Store all icons for export
         currentResponse = data; // Store current response for missing icons feature
         
-        // Create container for both service results
+        // Create container for all service results (including multiple generations)
         const servicesContainer = document.createElement('div');
         servicesContainer.className = 'services-container';
         
         let hasMultipleSections = false;
         
-        // Display FalAI results (only if enabled and has results)
-        if (data.falAiResults && data.falAiResults.status !== 'disabled' && data.falAiResults.icons && data.falAiResults.icons.length > 0) {
-            const falAiSection = createServiceSection('Flux-Pro', data.falAiResults, 'flux');
-            servicesContainer.appendChild(falAiSection);
-            hasMultipleSections = true;
-        }
+        // Display all results, handling both single and multiple generations per service
+        const services = [
+            { results: data.falAiResults, name: 'Flux-Pro', id: 'flux' },
+            { results: data.recraftResults, name: 'Recraft V3', id: 'recraft' },
+            { results: data.photonResults, name: 'Luma Photon', id: 'photon' },
+            { results: data.gptResults, name: 'GPT Image', id: 'gpt' },
+            { results: data.imagenResults, name: 'Imagen 4', id: 'imagen' }
+        ];
         
-        // Display Recraft results (only if enabled and has results)
-        if (data.recraftResults && data.recraftResults.status !== 'disabled' && data.recraftResults.icons && data.recraftResults.icons.length > 0) {
-            if (hasMultipleSections) {
-                const separator = document.createElement('div');
-                separator.className = 'service-separator';
-                separator.innerHTML = '<div class="separator-line"></div>';
-                servicesContainer.appendChild(separator);
+        services.forEach(service => {
+            if (service.results && service.results.length > 0) {
+                service.results.forEach((serviceResult, index) => {
+                    // Only display if not disabled and has icons
+                    if (serviceResult.status !== 'disabled' && serviceResult.icons && serviceResult.icons.length > 0) {
+                        if (hasMultipleSections) {
+                            const separator = document.createElement('div');
+                            separator.className = 'service-separator';
+                            separator.innerHTML = '<div class="separator-line"></div>';
+                            servicesContainer.appendChild(separator);
+                        }
+                        
+                        // Create section name with generation index if multiple generations
+                        const sectionName = service.results.length > 1 
+                            ? `${service.name} (Generation ${serviceResult.generationIndex || index + 1})`
+                            : service.name;
+                        
+                        const section = createServiceSection(sectionName, serviceResult, service.id);
+                        section.id = `section-${service.id}-gen${serviceResult.generationIndex || index + 1}`;
+                        servicesContainer.appendChild(section);
+                        hasMultipleSections = true;
+                    }
+                });
             }
-            const recraftSection = createServiceSection('Recraft V3', data.recraftResults, 'recraft');
-            servicesContainer.appendChild(recraftSection);
-            hasMultipleSections = true;
-        }
-        
-        // Display Photon results (only if enabled and has results)
-        if (data.photonResults && data.photonResults.status !== 'disabled' && data.photonResults.icons && data.photonResults.icons.length > 0) {
-            if (hasMultipleSections) {
-                const separator = document.createElement('div');
-                separator.className = 'service-separator';
-                separator.innerHTML = '<div class="separator-line"></div>';
-                servicesContainer.appendChild(separator);
-            }
-            const photonSection = createServiceSection('Luma Photon', data.photonResults, 'photon');
-            servicesContainer.appendChild(photonSection);
-            hasMultipleSections = true;
-        }
-        
-        // Display GPT results (only if enabled and has results)
-        if (data.gptResults && data.gptResults.status !== 'disabled' && data.gptResults.icons && data.gptResults.icons.length > 0) {
-            if (hasMultipleSections) {
-                const separator = document.createElement('div');
-                separator.className = 'service-separator';
-                separator.innerHTML = '<div class="separator-line"></div>';
-                servicesContainer.appendChild(separator);
-            }
-            const gptSection = createServiceSection('GPT Image', data.gptResults, 'gpt');
-            servicesContainer.appendChild(gptSection);
-            hasMultipleSections = true;
-        }
-        
-        // Display Imagen results (only if enabled and has results)
-        if (data.imagenResults && data.imagenResults.status !== 'disabled' && data.imagenResults.icons && data.imagenResults.icons.length > 0) {
-            if (hasMultipleSections) {
-                const separator = document.createElement('div');
-                separator.className = 'service-separator';
-                separator.innerHTML = '<div class="separator-line"></div>';
-                servicesContainer.appendChild(separator);
-            }
-            const imagenSection = createServiceSection('Imagen 4', data.imagenResults, 'imagen');
-            servicesContainer.appendChild(imagenSection);
-            hasMultipleSections = true;
-        }
+        });
         
         resultsGrid.appendChild(servicesContainer);
         setUIState('results');
