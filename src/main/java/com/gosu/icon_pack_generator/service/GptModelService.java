@@ -153,7 +153,7 @@ public class GptModelService implements AIModelService {
                 String imageDataUrl = convertToDataUrl(sourceImageData);
                 
                 // Apply GPT-specific styling to the prompt with explicit constraints
-                String gptPrompt = "consistent with source image: " + prompt + 
+                String gptPrompt = "Using transparent background and consistent with source image: " + prompt +
                         " - clean icon design, no text, no labels, no grid lines, no borders, transparent background";
                 
                 Map<String, Object> input = createGptImageToImageInputMap(gptPrompt, imageDataUrl, seed);

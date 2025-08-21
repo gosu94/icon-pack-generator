@@ -24,9 +24,24 @@ body, html {
     padding: 0.375rem 0.75rem;
 }
 
+/* Icon descriptions grid layout */
+.icon-descriptions-container {
+    display: grid;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+}
+
+.icon-descriptions-container.grid-3x3 {
+    grid-template-columns: repeat(3, 1fr);
+}
+
+.icon-descriptions-container.grid-6x3 {
+    grid-template-columns: repeat(3, 1fr);
+}
+
 .icon-grid {
     display: grid;
-    grid-template-columns: repeat(6, 1fr);
+    grid-template-columns: repeat(5, 1fr);
     gap: 1rem;
     margin-top: 1rem;
 }
@@ -45,8 +60,8 @@ body, html {
 }
 
 .icon-item img {
-    max-width: 200px;
-    max-height: 200px;
+    max-width: 150px !important;
+    max-height: 150px !important;
     width: 100%;
     height: auto;
     object-fit: contain;
@@ -85,7 +100,7 @@ body, html {
 
 .grid-container {
     display: grid;
-    grid-template-columns: repeat(6, 1fr);
+    grid-template-columns: repeat(5, 1fr);
     gap: 1rem;
     max-width: 100%;
 }
@@ -210,6 +225,14 @@ body, html {
     .icon-descriptions-grid {
         grid-template-columns: repeat(2, 1fr);
     }
+    
+    /* Responsive icon descriptions grid */
+    .icon-descriptions-container.grid-3x3 {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    .icon-descriptions-container.grid-6x3 {
+        grid-template-columns: repeat(2, 1fr);
+    }
 }
 @media (max-width: 992px) {
     .grid-container {
@@ -227,29 +250,12 @@ body, html {
         grid-template-columns: repeat(4, 1fr);
     }
 }
-@media (max-width: 1400px) {
-    .grid-container {
-        grid-template-columns: repeat(5, 1fr);
-    }
-    .icon-grid {
-        grid-template-columns: repeat(5, 1fr);
-    }
+/* Default layout for larger screens - max 5 icons per row */
+.grid-container {
+    grid-template-columns: repeat(5, 1fr);
 }
-@media (max-width: 1600px) {
-    .grid-container {
-        grid-template-columns: repeat(6, 1fr);
-    }
-    .icon-grid {
-        grid-template-columns: repeat(6, 1fr);
-    }
-}
-@media (max-width: 1800px) {
-    .grid-container {
-        grid-template-columns: repeat(7, 1fr);
-    }
-    .icon-grid {
-        grid-template-columns: repeat(7, 1fr);
-    }
+.icon-grid {
+    grid-template-columns: repeat(5, 1fr);
 }
 
 /* Background Removal Page Styles */

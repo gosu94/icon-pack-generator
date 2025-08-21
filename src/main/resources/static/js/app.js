@@ -71,6 +71,14 @@ document.addEventListener('DOMContentLoaded', function() {
         iconDescriptionsContainer.innerHTML = '';
         
         if (count > 0) {
+            // Set appropriate grid class based on icon count
+            iconDescriptionsContainer.className = 'icon-descriptions-container';
+            if (count === 9) {
+                iconDescriptionsContainer.classList.add('grid-3x3');
+            } else if (count === 18) {
+                iconDescriptionsContainer.classList.add('grid-6x3');
+            }
+            
             for (let i = 1; i <= count; i++) {
                 const fieldDiv = document.createElement('div');
                 fieldDiv.className = 'icon-field';
@@ -81,6 +89,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 `;
                 iconDescriptionsContainer.appendChild(fieldDiv);
             }
+        } else {
+            // Remove grid classes when no icons
+            iconDescriptionsContainer.className = '';
         }
     }
 
@@ -246,11 +257,13 @@ document.addEventListener('DOMContentLoaded', function() {
     // Global variables for streaming
     let streamingServices = {};
     let streamingResults = {};
+    let progressTimers = {}; // Track progress bar timers
 
     function initializeStreamingUI() {
         resultsGrid.innerHTML = '';
         streamingServices = {};
         streamingResults = {};
+        progressTimers = {}; // Clear any existing timers
         
         // Create container for streaming results
         const servicesContainer = document.createElement('div');
@@ -259,6 +272,52 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Initially create container, services will be added based on enabled services
         resultsGrid.appendChild(servicesContainer);
+    }
+
+    function startProgressTimer(serviceId) {
+        // Clear any existing timer for this service
+        if (progressTimers[serviceId]) {
+            clearInterval(progressTimers[serviceId]);
+        }
+        
+        // Get icon count to determine timer duration
+        const iconCount = parseInt(document.getElementById('iconCount').value) || 9;
+        const duration = iconCount === 18 ? 90000 : 30000; // 90s for 18 icons, 30s for 9 icons
+        
+        const progressBar = document.querySelector(`#progress-${serviceId} .progress-bar`);
+        if (!progressBar) {
+            console.warn(`Progress bar not found for service: ${serviceId}`);
+            return;
+        }
+        
+        console.log(`Starting progress timer for ${serviceId}, duration: ${duration}ms`);
+        
+        let currentProgress = 0;
+        const increment = 100 / (duration / 100); // Update every 100ms
+        
+        progressTimers[serviceId] = setInterval(() => {
+            currentProgress += increment;
+            if (currentProgress >= 100) {
+                currentProgress = 100;
+                clearInterval(progressTimers[serviceId]);
+                delete progressTimers[serviceId];
+                console.log(`Progress timer completed for ${serviceId}`);
+            }
+            progressBar.style.width = `${Math.min(currentProgress, 100)}%`;
+            
+            // Log progress every 5 seconds for debugging
+            if (Math.floor(currentProgress) % (500 / increment) === 0) {
+                console.log(`Progress for ${serviceId}: ${Math.floor(currentProgress)}%`);
+            }
+        }, 100);
+    }
+
+    function clearProgressTimer(serviceId) {
+        if (progressTimers[serviceId]) {
+            console.log(`Clearing progress timer for ${serviceId}`);
+            clearInterval(progressTimers[serviceId]);
+            delete progressTimers[serviceId];
+        }
     }
 
     function updateStreamingUIForEnabledServices(enabledServices) {
@@ -344,12 +403,18 @@ document.addEventListener('DOMContentLoaded', function() {
         
         console.log(`Created elements with IDs: status-${uniqueId}, progress-${uniqueId}, message-${uniqueId}, icons-${uniqueId}`);
         
+        // Start the progress timer immediately when the section is created
+        setTimeout(() => {
+            console.log(`Starting progress timer for ${uniqueId}`);
+            startProgressTimer(uniqueId);
+        }, 100); // Small delay to ensure DOM is ready
+        
         return section;
     }
 
     function handleServiceUpdate(update) {
         const serviceId = update.serviceName;
-        console.log('Handling service update for:', serviceId);
+        console.log('Handling service update for:', serviceId, 'Status:', update.status, 'Message:', update.message);
         
         // The serviceId from backend includes generation suffix (e.g., "flux-gen1", "flux-gen2")
         // Our frontend elements use the same naming convention
@@ -374,12 +439,18 @@ document.addEventListener('DOMContentLoaded', function() {
         switch (update.status) {
             case 'started':
                 statusIcon.textContent = '🔄';
-                progressBar.style.width = '25%';
                 messageElement.textContent = 'Generation started...';
+                // Timer already started when section was created, just ensure it's running
+                if (!progressTimers[serviceId]) {
+                    console.log(`Timer not running for ${serviceId}, starting now`);
+                    startProgressTimer(serviceId);
+                }
                 break;
                 
             case 'success':
                 statusIcon.textContent = '✅';
+                // Clear the timer and set to 100%
+                clearProgressTimer(serviceId);
                 progressBar.style.width = '100%';
                 progressBar.classList.remove('progress-bar-animated');
                 messageElement.textContent = update.message || 'Generation completed successfully';
@@ -408,6 +479,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 
             case 'error':
                 statusIcon.textContent = '❌';
+                // Clear the timer and set to 100%
+                clearProgressTimer(serviceId);
                 progressBar.style.width = '100%';
                 progressBar.classList.remove('progress-bar-animated');
                 progressBar.classList.add('bg-danger');
@@ -447,6 +520,11 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function handleGenerationComplete(update) {
         console.log('Generation completed:', update);
+        
+        // Clear all remaining progress timers
+        Object.keys(progressTimers).forEach(serviceId => {
+            clearProgressTimer(serviceId);
+        });
         
         // Combine all successful results for export
         let allIcons = [];
@@ -688,6 +766,11 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function showError(message) {
+        // Clear all progress timers on error
+        Object.keys(progressTimers).forEach(serviceId => {
+            clearProgressTimer(serviceId);
+        });
+        
         document.getElementById('errorMessage').textContent = message;
         setUIState('error');
     }
