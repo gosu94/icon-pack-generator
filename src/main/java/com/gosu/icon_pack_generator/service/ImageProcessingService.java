@@ -453,28 +453,307 @@ public class ImageProcessingService {
         return canvas;
     }
     
+    /**
+     * Helper class to represent intelligent grid bounds for a 3x3 icon grid
+     */
+    private static class GridBounds {
+        private final int[][] xBounds; // [column][start/end] - x coordinates for each column
+        private final int[][] yBounds; // [row][start/end] - y coordinates for each row
+        
+        public GridBounds(int[][] xBounds, int[][] yBounds) {
+            this.xBounds = xBounds;
+            this.yBounds = yBounds;
+        }
+        
+        public Rectangle getIconRectangle(int row, int col) {
+            int x = xBounds[col][0];
+            int y = yBounds[row][0];
+            int width = xBounds[col][1] - xBounds[col][0];
+            int height = yBounds[row][1] - yBounds[row][0];
+            return new Rectangle(x, y, width, height);
+        }
+    }
+    
+    /**
+     * Intelligently detect grid bounds by analyzing content and redistributing edge pixels
+     * to prevent cutoff issues that occur with simple division
+     */
+    private GridBounds detectGridBounds(BufferedImage image) {
+        int width = image.getWidth();
+        int height = image.getHeight();
+        
+        log.debug("Detecting intelligent grid bounds for {}x{} image", width, height);
+        
+        // Step 1: Try to detect natural boundaries by analyzing content gaps
+        int[] xBoundaries = detectContentBoundaries(image, true); // vertical boundaries (columns)
+        int[] yBoundaries = detectContentBoundaries(image, false); // horizontal boundaries (rows)
+        
+        // Step 2: If natural boundaries aren't found, use improved division with edge redistribution
+        if (xBoundaries == null) {
+            xBoundaries = calculateImprovedDivision(width, 3);
+            log.debug("Using improved division for x-axis: {}", java.util.Arrays.toString(xBoundaries));
+        } else {
+            log.debug("Using content-detected x boundaries: {}", java.util.Arrays.toString(xBoundaries));
+        }
+        
+        if (yBoundaries == null) {
+            yBoundaries = calculateImprovedDivision(height, 3);
+            log.debug("Using improved division for y-axis: {}", java.util.Arrays.toString(yBoundaries));
+        } else {
+            log.debug("Using content-detected y boundaries: {}", java.util.Arrays.toString(yBoundaries));
+        }
+        
+        // Step 3: Apply smart buffering to prevent pixel cutoff
+        int[] bufferedXBoundaries = applySmartBuffer(xBoundaries, width, true);
+        int[] bufferedYBoundaries = applySmartBuffer(yBoundaries, height, false);
+        
+        // Step 4: Convert boundaries to GridBounds format
+        int[][] xBounds = new int[3][2]; // [column][start/end]
+        int[][] yBounds = new int[3][2]; // [row][start/end]
+        
+        for (int i = 0; i < 3; i++) {
+            xBounds[i][0] = bufferedXBoundaries[i];
+            xBounds[i][1] = bufferedXBoundaries[i + 1];
+            yBounds[i][0] = bufferedYBoundaries[i];
+            yBounds[i][1] = bufferedYBoundaries[i + 1];
+        }
+        
+        // Log final bounds for debugging
+        for (int i = 0; i < 3; i++) {
+            log.debug("Column {}: x={} to {} (width={}) [buffered]", i, xBounds[i][0], xBounds[i][1], xBounds[i][1] - xBounds[i][0]);
+            log.debug("Row {}: y={} to {} (height={}) [buffered]", i, yBounds[i][0], yBounds[i][1], yBounds[i][1] - yBounds[i][0]);
+        }
+        
+        return new GridBounds(xBounds, yBounds);
+    }
+    
+    /**
+     * Apply smart buffering to grid boundaries to prevent pixel cutoff while avoiding overlaps
+     * @param boundaries Original boundary positions [0, boundary1, boundary2, dimension]
+     * @param totalDimension Total width or height of the image
+     * @param isVertical True for vertical boundaries (columns), false for horizontal (rows)
+     * @return Buffered boundary positions
+     */
+    private int[] applySmartBuffer(int[] boundaries, int totalDimension, boolean isVertical) {
+        // Calculate adaptive buffer size based on image dimension
+        // Larger images get slightly larger buffers, but cap it to prevent excessive overlap
+        int baseBuffer = Math.max(2, Math.min(8, totalDimension / 150));
+        
+        // Give extra buffer to the problematic third row (bottom row) to prevent top cutoff
+        int[] bufferSizes = new int[4]; // Buffer for each boundary position
+        bufferSizes[0] = 0; // First boundary (0) never gets negative buffer
+        bufferSizes[1] = baseBuffer; // First internal boundary gets standard buffer
+        bufferSizes[2] = isVertical ? baseBuffer : baseBuffer + 6; // Second internal boundary gets much larger buffer for horizontal (rows)
+        bufferSizes[3] = 0; // Last boundary (dimension) never exceeds image bounds
+        
+        log.debug("Buffer sizes for {}: base={}, buffers=[{}, {}, {}, {}]", 
+                 isVertical ? "vertical" : "horizontal", baseBuffer, 
+                 bufferSizes[0], bufferSizes[1], bufferSizes[2], bufferSizes[3]);
+        
+        int[] bufferedBoundaries = new int[4];
+        bufferedBoundaries[0] = boundaries[0]; // Always 0
+        bufferedBoundaries[3] = boundaries[3]; // Always totalDimension
+        
+        // Apply buffers to internal boundaries with overlap prevention
+        for (int i = 1; i <= 2; i++) {
+            int originalPos = boundaries[i];
+            int buffer = bufferSizes[i];
+            
+            // For first internal boundary: extend backward (subtract buffer)
+            // For second internal boundary: extend backward for horizontal (to help third row)
+            int bufferedPos;
+            if (i == 1) {
+                // Extend first boundary backward to include more content from first section
+                bufferedPos = Math.max(bufferedBoundaries[0] + 1, originalPos - buffer);
+            } else {
+                // For horizontal boundaries (rows), extend second boundary backward to help third row
+                // For vertical boundaries (columns), extend forward as usual
+                if (!isVertical) {
+                    // Extend second boundary backward to include more content in third row
+                    bufferedPos = Math.max(bufferedBoundaries[1] + 1, originalPos - buffer);
+                } else {
+                    // For vertical, extend forward as usual
+                    bufferedPos = Math.min(bufferedBoundaries[3] - 1, originalPos + buffer);
+                }
+            }
+            
+            // Ensure boundaries don't cross each other or create sections that are reasonable
+            // Use smaller minimum distance to allow more aggressive buffering
+            int minDistance = Math.max(15, totalDimension / 30); // Smaller minimum section size for more buffering
+            
+            if (i == 1) {
+                // First boundary: ensure it's not too close to second boundary
+                bufferedPos = Math.min(bufferedPos, boundaries[2] - minDistance);
+            } else {
+                // Second boundary: ensure it's not too close to first boundary
+                bufferedPos = Math.max(bufferedPos, bufferedBoundaries[1] + minDistance);
+            }
+            
+            bufferedBoundaries[i] = bufferedPos;
+            
+            log.debug("Boundary {}: original={}, buffer={}, buffered={}", 
+                     i, originalPos, buffer, bufferedPos);
+        }
+        
+        log.debug("Applied smart buffer to {} boundaries: {} -> {} (buffers: {})", 
+                 isVertical ? "vertical" : "horizontal",
+                 java.util.Arrays.toString(boundaries),
+                 java.util.Arrays.toString(bufferedBoundaries),
+                 java.util.Arrays.toString(bufferSizes));
+        
+        // Log the effect of buffering on each section
+        for (int i = 0; i < 3; i++) {
+            int originalSize = boundaries[i + 1] - boundaries[i];
+            int bufferedSize = bufferedBoundaries[i + 1] - bufferedBoundaries[i];
+            int sizeDiff = bufferedSize - originalSize;
+            log.debug("Section {} ({}): {}px -> {}px ({}{}px)", 
+                     i, isVertical ? "col" : "row", originalSize, bufferedSize, 
+                     sizeDiff >= 0 ? "+" : "", sizeDiff);
+        }
+        
+        return bufferedBoundaries;
+    }
+    
+    /**
+     * Detect natural content boundaries in the image by analyzing pixel patterns
+     * @param image The image to analyze
+     * @param vertical If true, detect vertical boundaries (columns), else horizontal (rows)
+     * @return Array of 4 boundary positions [0, boundary1, boundary2, dimension] or null if not detected
+     */
+    private int[] detectContentBoundaries(BufferedImage image, boolean vertical) {
+        int dimension = vertical ? image.getWidth() : image.getHeight();
+        int perpDimension = vertical ? image.getHeight() : image.getWidth();
+        
+        // Analyze pixel variation along the dimension to find low-content areas (gaps)
+        double[] contentDensity = new double[dimension];
+        
+        for (int pos = 0; pos < dimension; pos++) {
+            int contentPixels = 0;
+            
+            // Sample along the perpendicular dimension
+            for (int perpPos = 0; perpPos < perpDimension; perpPos++) {
+                int rgb = vertical ? image.getRGB(pos, perpPos) : image.getRGB(perpPos, pos);
+                
+                int alpha = (rgb >> 24) & 0xFF;
+                int red = (rgb >> 16) & 0xFF;
+                int green = (rgb >> 8) & 0xFF;
+                int blue = rgb & 0xFF;
+                
+                // Count non-background pixels
+                boolean isTransparent = alpha < 50;
+                boolean isWhite = red > 240 && green > 240 && blue > 240;
+                boolean isBackground = isTransparent || isWhite;
+                
+                if (!isBackground) {
+                    contentPixels++;
+                }
+            }
+            
+            contentDensity[pos] = (double) contentPixels / perpDimension;
+        }
+        
+        // Find the two lowest density regions that could serve as boundaries
+        List<Integer> gapCandidates = new ArrayList<>();
+        double threshold = 0.1; // Consider positions with <10% content as potential gaps
+        
+        for (int pos = 1; pos < dimension - 1; pos++) {
+            if (contentDensity[pos] < threshold) {
+                gapCandidates.add(pos);
+            }
+        }
+        
+        if (gapCandidates.size() < 2) {
+            log.debug("Could not detect natural {} boundaries - insufficient gap candidates ({})", 
+                     vertical ? "vertical" : "horizontal", gapCandidates.size());
+            return null;
+        }
+        
+        // Find two boundaries that divide the image into roughly three equal parts
+        int targetBoundary1 = dimension / 3;
+        int targetBoundary2 = dimension * 2 / 3;
+        
+        int bestBoundary1 = gapCandidates.get(0);
+        int bestBoundary2 = gapCandidates.get(gapCandidates.size() - 1);
+        
+        for (int candidate : gapCandidates) {
+            if (Math.abs(candidate - targetBoundary1) < Math.abs(bestBoundary1 - targetBoundary1)) {
+                bestBoundary1 = candidate;
+            }
+            if (Math.abs(candidate - targetBoundary2) < Math.abs(bestBoundary2 - targetBoundary2)) {
+                bestBoundary2 = candidate;
+            }
+        }
+        
+        // Ensure boundaries are in order and reasonable
+        if (bestBoundary1 >= bestBoundary2 || bestBoundary1 < dimension * 0.2 || bestBoundary2 > dimension * 0.8) {
+            log.debug("Detected {} boundaries are not reasonable: {} and {} for dimension {}", 
+                     vertical ? "vertical" : "horizontal", bestBoundary1, bestBoundary2, dimension);
+            return null;
+        }
+        
+        log.debug("Detected natural {} boundaries at {} and {} for dimension {}", 
+                 vertical ? "vertical" : "horizontal", bestBoundary1, bestBoundary2, dimension);
+        
+        return new int[]{0, bestBoundary1, bestBoundary2, dimension};
+    }
+    
+    /**
+     * Calculate improved division that redistributes remainder pixels to prevent cutoff
+     * @param totalSize The total dimension to divide
+     * @param divisions Number of divisions (3 for 3x3 grid)
+     * @return Array of boundary positions [0, boundary1, boundary2, totalSize]
+     */
+    private int[] calculateImprovedDivision(int totalSize, int divisions) {
+        int baseSize = totalSize / divisions;
+        int remainder = totalSize % divisions;
+        
+        log.debug("Calculating improved division: {} pixels / {} divisions = {} base + {} remainder", 
+                 totalSize, divisions, baseSize, remainder);
+        
+        int[] boundaries = new int[divisions + 1];
+        boundaries[0] = 0;
+        
+        for (int i = 1; i <= divisions; i++) {
+            // Distribute remainder pixels across the first 'remainder' sections
+            int extraPixel = (i <= remainder) ? 1 : 0;
+            boundaries[i] = boundaries[i - 1] + baseSize + extraPixel;
+        }
+        
+        // Ensure the last boundary matches total size exactly
+        boundaries[divisions] = totalSize;
+        
+        return boundaries;
+    }
+    
     private List<String> cropGrid3x3(BufferedImage originalImage, boolean centerIcons, int targetSize) throws IOException {
         List<String> icons = new ArrayList<>();
         
         int width = originalImage.getWidth();
         int height = originalImage.getHeight();
-        int iconWidth = width / 3;
-        int iconHeight = height / 3;
+        
+        log.info("Starting intelligent 3x3 grid cropping for image {}x{}", width, height);
+        
+        // Use intelligent grid detection instead of simple division
+        GridBounds gridBounds = detectGridBounds(originalImage);
         
         for (int row = 0; row < 3; row++) {
             for (int col = 0; col < 3; col++) {
-                int x = col * iconWidth;
-                int y = row * iconHeight;
+                Rectangle iconRect = gridBounds.getIconRectangle(row, col);
                 
-                BufferedImage croppedIcon = originalImage.getSubimage(x, y, iconWidth, iconHeight);
+                log.debug("Cropping icon at position [{},{}] with bounds: x={}, y={}, width={}, height={}", 
+                         row, col, iconRect.x, iconRect.y, iconRect.width, iconRect.height);
+                
+                BufferedImage croppedIcon = originalImage.getSubimage(
+                    iconRect.x, iconRect.y, iconRect.width, iconRect.height);
                 
                 // Optionally center the icon
                 if (centerIcons) {
-                    int size = targetSize > 0 ? targetSize : Math.max(iconWidth, iconHeight);
+                    int size = targetSize > 0 ? targetSize : Math.max(iconRect.width, iconRect.height);
                     croppedIcon = centerIcon(croppedIcon, size);
                     log.debug("Centered icon at position [{},{}] to size {}x{}", row, col, size, size);
                 } else {
-                    log.debug("Cropped icon at position [{},{}] with size {}x{}", row, col, iconWidth, iconHeight);
+                    log.debug("Cropped icon at position [{},{}] with size {}x{}", 
+                             row, col, iconRect.width, iconRect.height);
                 }
                 
                 String base64Icon = bufferedImageToBase64(croppedIcon);

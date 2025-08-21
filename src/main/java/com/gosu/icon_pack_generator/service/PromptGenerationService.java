@@ -37,9 +37,13 @@ public class PromptGenerationService {
 
     private static final String STYLE_GUIDELINES =
             "Style guidelines: " + //and a professional color palette.
+                    "Icons should use high detailed modern style with professional color palette. " +
                     "Ensure each icon is clearly distinguishable " +
                     "and fits well within its area with appropriate padding. " +
                     "NO grid lines, NO text labels, NO captions - just clean icons arranged in a 3x3 layout.";
+
+    public static final String SECOND_GENERATION_VARIATION =
+            ". Icons should have subtle shading, depth, and highlights to give a slightly dimensional look. ";
 
     public String generatePromptFor3x3Grid(String generalDescription, List<String> iconDescriptions) {
         return generatePromptFor3x3Grid(generalDescription, iconDescriptions, null);

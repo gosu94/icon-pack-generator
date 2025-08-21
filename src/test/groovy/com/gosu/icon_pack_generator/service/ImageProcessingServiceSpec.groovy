@@ -288,6 +288,87 @@ class ImageProcessingServiceSpec extends Specification {
         println "Successfully cropped ${icons1.size() + icons2.size()} icons from real test images"
     }
 
+    def "should handle intelligent grid cropping with non-divisible dimensions"() {
+        given: "A synthetic grid with dimensions not perfectly divisible by 3"
+        BufferedImage irregularGrid = createIrregularSizeGrid()
+        saveImage(irregularGrid, "irregular_grid_${irregularGrid.width}x${irregularGrid.height}.png")
+        
+        and: "Convert to byte array"
+        byte[] gridImageData = bufferedImageToByteArray(irregularGrid)
+
+        when: "Cropping icons using intelligent grid detection"
+        List<String> croppedIcons = imageProcessingService.cropIconsFromGrid(gridImageData, 9, false, 0)
+
+        then: "9 icons are extracted without cutoff issues"
+        croppedIcons != null
+        croppedIcons.size() == 9
+
+        and: "Each icon contains complete content without edge cutoff"
+        croppedIcons.eachWithIndex { iconBase64, index ->
+            byte[] iconBytes = Base64.decoder.decode(iconBase64)
+            BufferedImage iconImage = ImageIO.read(new ByteArrayInputStream(iconBytes))
+            
+            assert iconImage != null
+            assert iconImage.width > 0
+            assert iconImage.height > 0
+            
+            // Verify that the icon contains expected content (not just edge pixels)
+            assert hasSignificantContent(iconImage)
+            
+            saveImage(iconImage, "irregular_grid_icon_${index + 1}.png")
+        }
+
+        and: "Test with centering as well"
+        List<String> centeredIcons = imageProcessingService.cropIconsFromGrid(gridImageData, 9, true, 200)
+        centeredIcons.eachWithIndex { iconBase64, index ->
+            byte[] iconBytes = Base64.decoder.decode(iconBase64)
+            BufferedImage iconImage = ImageIO.read(new ByteArrayInputStream(iconBytes))
+            saveImage(iconImage, "irregular_grid_centered_icon_${index + 1}.png")
+        }
+
+        println "Successfully tested intelligent grid cropping with irregular dimensions: ${irregularGrid.width}x${irregularGrid.height}"
+    }
+
+    def "should handle third row cutoff prevention with smart buffering"() {
+        given: "A grid specifically designed to trigger third row cutoff issues"
+        BufferedImage problematicGrid = createProblematicGridForThirdRow()
+        saveImage(problematicGrid, "problematic_grid_${problematicGrid.width}x${problematicGrid.height}.png")
+        
+        and: "Convert to byte array"
+        byte[] gridImageData = bufferedImageToByteArray(problematicGrid)
+
+        when: "Cropping icons using intelligent grid detection with smart buffering"
+        List<String> croppedIcons = imageProcessingService.cropIconsFromGrid(gridImageData, 9, false, 0)
+
+        then: "9 icons are extracted without cutoff issues"
+        croppedIcons != null
+        croppedIcons.size() == 9
+
+        and: "Third row icons (indexes 6, 7, 8) have complete content without top cutoff"
+        [6, 7, 8].each { iconIndex ->
+            byte[] iconBytes = Base64.decoder.decode(croppedIcons[iconIndex])
+            BufferedImage iconImage = ImageIO.read(new ByteArrayInputStream(iconBytes))
+            
+            assert iconImage != null
+            assert iconImage.width > 0
+            assert iconImage.height > 0
+            
+            // Verify that the top portion of third row icons contains expected content
+            assert hasContentInTopPortion(iconImage), "Third row icon ${iconIndex + 1} appears to have top pixels cut off"
+            
+            saveImage(iconImage, "third_row_buffered_icon_${iconIndex + 1}.png")
+        }
+
+        and: "All icons contain significant content"
+        croppedIcons.eachWithIndex { iconBase64, index ->
+            byte[] iconBytes = Base64.decoder.decode(iconBase64)
+            BufferedImage iconImage = ImageIO.read(new ByteArrayInputStream(iconBytes))
+            assert hasSignificantContent(iconImage), "Icon ${index + 1} lacks significant content"
+        }
+
+        println "Successfully tested third row cutoff prevention with smart buffering"
+    }
+
     // Helper methods
 
     private BufferedImage loadTestImage(String filename) {
@@ -387,6 +468,116 @@ class ImageProcessingServiceSpec extends Specification {
         return grid
     }
 
+    private BufferedImage createIrregularSizeGrid() {
+        // Create a grid with dimensions that are NOT perfectly divisible by 3
+        // This will test the intelligent grid detection's ability to handle edge pixel redistribution
+        int width = 901   // 901 / 3 = 300.33... (remainder 1)
+        int height = 1002 // 1002 / 3 = 334 (remainder 0)
+        
+        BufferedImage grid = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB)
+        Graphics2D g2d = grid.createGraphics()
+        g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON)
+
+        // Calculate approximate cell sizes for visual layout
+        int cellWidth = width / 3
+        int cellHeight = height / 3
+
+        // Colors for each cell - similar to regular grid but with different shapes
+        Color[] colors = [
+            Color.RED, Color.GREEN, Color.BLUE,
+            Color.YELLOW, Color.MAGENTA, Color.CYAN,
+            Color.ORANGE, Color.PINK, Color.LIGHT_GRAY
+        ]
+
+        // Draw 3x3 grid with padding/gaps to make boundary detection more challenging
+        for (int row = 0; row < 3; row++) {
+            for (int col = 0; col < 3; col++) {
+                int x = col * cellWidth
+                int y = row * cellHeight
+                int cellIndex = row * 3 + col
+
+                // Fill background with white
+                g2d.setColor(Color.WHITE)
+                g2d.fillRect(x, y, cellWidth, cellHeight)
+
+                // Add small border/padding around content to test boundary detection
+                int padding = 20
+                int contentX = x + padding
+                int contentY = y + padding
+                int contentWidth = cellWidth - (2 * padding)
+                int contentHeight = cellHeight - (2 * padding)
+
+                // Draw colored content
+                g2d.setColor(colors[cellIndex])
+                
+                // Create distinctive shapes for better visual testing
+                switch (cellIndex) {
+                    case 0: // Large circle
+                        g2d.fillOval(contentX, contentY, contentWidth, contentHeight)
+                        break
+                    case 1: // Rectangle with rounded corners (approximated)
+                        g2d.fillRoundRect(contentX, contentY, contentWidth, contentHeight, 20, 20)
+                        break
+                    case 2: // Triangle pointing up
+                        int[] xPoints = [contentX + (int)(contentWidth/2), contentX, contentX + contentWidth] as int[]
+                        int[] yPoints = [contentY, contentY + contentHeight, contentY + contentHeight] as int[]
+                        g2d.fillPolygon(xPoints, yPoints, 3)
+                        break
+                    case 3: // Cross shape
+                        int crossThickness = (int)(contentWidth / 4)
+                        g2d.fillRect(contentX + (int)(contentWidth/2) - (int)(crossThickness/2), contentY, crossThickness, contentHeight)
+                        g2d.fillRect(contentX, contentY + (int)(contentHeight/2) - (int)(crossThickness/2), contentWidth, crossThickness)
+                        break
+                    case 4: // Diamond
+                        int[] xPoints2 = [contentX + (int)(contentWidth/2), contentX, contentX + (int)(contentWidth/2), contentX + contentWidth] as int[]
+                        int[] yPoints2 = [contentY, contentY + (int)(contentHeight/2), contentY + contentHeight, contentY + (int)(contentHeight/2)] as int[]
+                        g2d.fillPolygon(xPoints2, yPoints2, 4)
+                        break
+                    case 5: // Oval with border
+                        g2d.fillOval(contentX, contentY, contentWidth, contentHeight)
+                        g2d.setColor(Color.BLACK)
+                        g2d.drawOval(contentX, contentY, contentWidth, contentHeight)
+                        g2d.setColor(colors[cellIndex])
+                        break
+                    case 6: // Multiple rectangles
+                        int rectSize = (int)(contentWidth / 3)
+                        for (int i = 0; i < 3; i++) {
+                            for (int j = 0; j < 2; j++) {
+                                g2d.fillRect(contentX + i * rectSize, contentY + j * (int)(contentHeight/2), rectSize - 5, (int)(contentHeight/2) - 5)
+                            }
+                        }
+                        break
+                    case 7: // Concentric shapes
+                        g2d.fillOval(contentX, contentY, contentWidth, contentHeight)
+                        g2d.setColor(Color.WHITE)
+                        g2d.fillOval(contentX + (int)(contentWidth/4), contentY + (int)(contentHeight/4), (int)(contentWidth/2), (int)(contentHeight/2))
+                        g2d.setColor(colors[cellIndex])
+                        g2d.fillOval(contentX + (int)(contentWidth/3), contentY + (int)(contentHeight/3), (int)(contentWidth/3), (int)(contentHeight/3))
+                        break
+                    case 8: // Complex pattern
+                        g2d.fillRect(contentX, contentY, contentWidth, contentHeight)
+                        g2d.setColor(Color.WHITE)
+                        for (int i = 0; i < contentWidth; i += 20) {
+                            g2d.drawLine(contentX + i, contentY, contentX + i, contentY + contentHeight)
+                        }
+                        for (int i = 0; i < contentHeight; i += 20) {
+                            g2d.drawLine(contentX, contentY + i, contentX + contentWidth, contentY + i)
+                        }
+                        break
+                }
+
+                // Add cell identifier
+                g2d.setColor(Color.BLACK)
+                g2d.setFont(new Font("Arial", Font.BOLD, 18))
+                g2d.drawString("${cellIndex + 1}", contentX + 5, contentY + 25)
+            }
+        }
+
+        g2d.dispose()
+        println "Created irregular grid: ${width}x${height} (${width % 3} width remainder, ${height % 3} height remainder)"
+        return grid
+    }
+
     private BufferedImage createOffCenterTestImage() {
         BufferedImage image = new BufferedImage(400, 300, BufferedImage.TYPE_INT_RGB)
         Graphics2D g2d = image.createGraphics()
@@ -452,6 +643,154 @@ class ImageProcessingServiceSpec extends Specification {
 
         // Should have at least 5 different colors (some cells might have similar centers)
         return centerPixelColors.size() >= 5
+    }
+
+    private boolean hasSignificantContent(BufferedImage image) {
+        int width = image.width
+        int height = image.height
+        int totalPixels = width * height
+        int contentPixels = 0
+        
+        // Sample pixels to check for significant non-background content
+        for (int y = 0; y < height; y++) {
+            for (int x = 0; x < width; x++) {
+                int rgb = image.getRGB(x, y)
+                
+                int alpha = (rgb >> 24) & 0xFF
+                int red = (rgb >> 16) & 0xFF
+                int green = (rgb >> 8) & 0xFF
+                int blue = rgb & 0xFF
+                
+                // Count non-background pixels (not transparent, not white)
+                boolean isTransparent = alpha < 50
+                boolean isWhite = red > 240 && green > 240 && blue > 240
+                boolean isBackground = isTransparent || isWhite
+                
+                if (!isBackground) {
+                    contentPixels++
+                }
+            }
+        }
+        
+        // Consider significant if more than 5% of pixels are content
+        double contentRatio = (double) contentPixels / totalPixels
+        boolean hasContent = contentRatio > 0.05
+        
+        if (!hasContent) {
+            println "Warning: Icon has insufficient content. Content ratio: ${contentRatio * 100}% (${contentPixels}/${totalPixels} pixels)"
+        }
+        
+        return hasContent
+    }
+
+    private boolean hasContentInTopPortion(BufferedImage image) {
+        int width = image.width
+        int height = image.height
+        int topPortionHeight = Math.max(5, (int)(height / 5)) // Check top 20% or at least 5 pixels
+        int contentPixels = 0
+        int totalPixels = width * topPortionHeight
+        
+        // Check the top portion for content
+        for (int y = 0; y < topPortionHeight; y++) {
+            for (int x = 0; x < width; x++) {
+                int rgb = image.getRGB(x, y)
+                
+                int alpha = (rgb >> 24) & 0xFF
+                int red = (rgb >> 16) & 0xFF
+                int green = (rgb >> 8) & 0xFF
+                int blue = rgb & 0xFF
+                
+                // Count non-background pixels (not transparent, not white)
+                boolean isTransparent = alpha < 50
+                boolean isWhite = red > 240 && green > 240 && blue > 240
+                boolean isBackground = isTransparent || isWhite
+                
+                if (!isBackground) {
+                    contentPixels++
+                }
+            }
+        }
+        
+        // Consider top portion has content if more than 2% of top pixels are content
+        double contentRatio = (double) contentPixels / totalPixels
+        boolean hasTopContent = contentRatio > 0.02
+        
+        if (!hasTopContent) {
+            println "Warning: Icon top portion has insufficient content. Top content ratio: ${contentRatio * 100}% (${contentPixels}/${totalPixels} pixels)"
+        }
+        
+        return hasTopContent
+    }
+
+    private BufferedImage createProblematicGridForThirdRow() {
+        // Create a grid with dimensions that commonly cause third row cutoff
+        // Use dimensions that when divided by 3 leave challenging remainders
+        int width = 1001   // 1001 / 3 = 333.67 (remainder 2)
+        int height = 997   // 997 / 3 = 332.33 (remainder 1)
+        
+        BufferedImage grid = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB)
+        Graphics2D g2d = grid.createGraphics()
+        g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON)
+
+        // Calculate approximate cell sizes
+        int cellWidth = width / 3
+        int cellHeight = height / 3
+
+        // Use bright, distinct colors for better visual testing
+        Color[] colors = [
+            Color.RED, Color.GREEN, Color.BLUE,
+            Color.YELLOW, Color.MAGENTA, Color.CYAN,
+            Color.ORANGE, new Color(128, 0, 128), Color.DARK_GRAY
+        ]
+
+        // Create a grid where content extends to the very edges to test buffer effectiveness
+        for (int row = 0; row < 3; row++) {
+            for (int col = 0; col < 3; col++) {
+                int x = col * cellWidth
+                int y = row * cellHeight
+                int cellIndex = row * 3 + col
+
+                // Fill entire cell area with white background first
+                g2d.setColor(Color.WHITE)
+                g2d.fillRect(x, y, cellWidth, cellHeight)
+
+                // For third row (bottom row), add content that extends to the very top edge
+                // This tests whether the buffer system prevents top cutoff
+                g2d.setColor(colors[cellIndex])
+                
+                if (row == 2) { // Third row - make content extend to top edge
+                    // Fill entire cell to test edge buffering
+                    g2d.fillRect(x + 2, y, cellWidth - 4, cellHeight - 2)
+                    
+                    // Add a distinctive top stripe to detect cutoff
+                    g2d.setColor(Color.BLACK)
+                    g2d.fillRect(x + 5, y, cellWidth - 10, 8) // Top stripe
+                    g2d.setColor(colors[cellIndex])
+                    
+                    // Add cell number in center
+                    g2d.setColor(Color.WHITE)
+                    g2d.setFont(new Font("Arial", Font.BOLD, 20))
+                    g2d.drawString("${cellIndex + 1}", x + (int)(cellWidth/2) - 8, y + (int)(cellHeight/2) + 8)
+                } else {
+                    // Other rows: normal content with some padding
+                    int padding = 15
+                    g2d.fillRect(x + padding, y + padding, cellWidth - (2 * padding), cellHeight - (2 * padding))
+                    
+                    // Add cell number
+                    g2d.setColor(Color.WHITE)
+                    g2d.setFont(new Font("Arial", Font.BOLD, 18))
+                    g2d.drawString("${cellIndex + 1}", x + (int)(cellWidth/2) - 8, y + (int)(cellHeight/2) + 8)
+                }
+
+                // Add thin border around each cell for visual separation
+                g2d.setColor(Color.LIGHT_GRAY)
+                g2d.drawRect(x, y, cellWidth - 1, cellHeight - 1)
+            }
+        }
+
+        g2d.dispose()
+        println "Created problematic grid for third row testing: ${width}x${height} (width % 3 = ${width % 3}, height % 3 = ${height % 3})"
+        return grid
     }
 
     private byte[] bufferedImageToByteArray(BufferedImage image) {

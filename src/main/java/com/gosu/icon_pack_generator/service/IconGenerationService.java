@@ -15,6 +15,8 @@ import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
+import static com.gosu.icon_pack_generator.service.PromptGenerationService.SECOND_GENERATION_VARIATION;
+
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -508,7 +510,7 @@ public class IconGenerationService {
         
         // Add style variation to the general description for second generation
         String originalDescription = originalRequest.getGeneralDescription();
-        String styledDescription = originalDescription + ". Icons should use high detailed modern style with professional color palette";
+        String styledDescription = originalDescription + SECOND_GENERATION_VARIATION;
         modifiedRequest.setGeneralDescription(styledDescription);
         
         return modifiedRequest;
