@@ -177,26 +177,6 @@ public class IconGenerationService {
                         .map(CompletableFuture::join)
                         .toList());
     }
-
-    private CompletableFuture<IconGenerationResponse.ServiceResults> generateIconsWithServiceAndCallback(
-            IconGenerationRequest request, String requestId, AIModelService aiService, String serviceName, Long seed, ProgressUpdateCallback progressCallback) {
-        
-        return generateIconsWithService(request, requestId, aiService, serviceName, seed)
-                .whenComplete((result, error) -> {
-                    if (progressCallback != null) {
-                        if (error != null) {
-                            progressCallback.onUpdate(ServiceProgressUpdate.serviceFailed(
-                                    requestId, serviceName, getDetailedErrorMessage(error, serviceName), result != null ? result.getGenerationTimeMs() : 0L));
-                        } else if ("success".equals(result.getStatus())) {
-                            progressCallback.onUpdate(ServiceProgressUpdate.serviceCompleted(
-                                    requestId, serviceName, result.getIcons(), result.getOriginalGridImageBase64(), result.getGenerationTimeMs()));
-                        } else if ("error".equals(result.getStatus())) {
-                            progressCallback.onUpdate(ServiceProgressUpdate.serviceFailed(
-                                    requestId, serviceName, result.getMessage(), result.getGenerationTimeMs()));
-                        }
-                    }
-                });
-    }
     
     private CompletableFuture<IconGenerationResponse.ServiceResults> generateIconsWithService(
             IconGenerationRequest request, String requestId, AIModelService aiService, String serviceName, Long seed) {
@@ -239,6 +219,17 @@ public class IconGenerationService {
     
     private CompletableFuture<IconGenerationResult> generateSingleGridWithService(
             IconGenerationRequest request, AIModelService aiService, String serviceName, Long seed) {
+        
+        // Check if this is a reference image-based request
+        if (request.hasReferenceImage()) {
+            return generateSingleGridWithReferenceImage(request, aiService, serviceName, seed);
+        } else {
+            return generateSingleGridWithTextPrompt(request, aiService, serviceName, seed);
+        }
+    }
+    
+    private CompletableFuture<IconGenerationResult> generateSingleGridWithTextPrompt(
+            IconGenerationRequest request, AIModelService aiService, String serviceName, Long seed) {
         String prompt = promptGenerationService.generatePromptFor3x3Grid(
                 request.getGeneralDescription(), 
                 request.getIndividualDescriptions()
@@ -251,7 +242,35 @@ public class IconGenerationService {
                 });
     }
     
+    private CompletableFuture<IconGenerationResult> generateSingleGridWithReferenceImage(
+            IconGenerationRequest request, AIModelService aiService, String serviceName, Long seed) {
+        String prompt = promptGenerationService.generatePromptForReferenceImage(
+                request.getIndividualDescriptions()
+        );
+        
+        // Convert base64 reference image to byte array
+        byte[] referenceImageData = Base64.getDecoder().decode(request.getReferenceImageBase64());
+        
+        // Use image-to-image generation with the reference image
+        return generateImageToImageWithService(aiService, prompt, referenceImageData, seed)
+                .thenApply(imageData -> {
+                    List<String> base64Icons = imageProcessingService.cropIconsFromGrid(imageData, 9);
+                    return createIconListWithOriginalImage(base64Icons, imageData, request, serviceName);
+                });
+    }
+    
     private CompletableFuture<IconGenerationResult> generateDoubleGridWithService(
+            IconGenerationRequest request, AIModelService aiService, String serviceName, Long seed) {
+        
+        // Check if this is a reference image-based request
+        if (request.hasReferenceImage()) {
+            return generateDoubleGridWithReferenceImage(request, aiService, serviceName, seed);
+        } else {
+            return generateDoubleGridWithTextPrompt(request, aiService, serviceName, seed);
+        }
+    }
+    
+    private CompletableFuture<IconGenerationResult> generateDoubleGridWithTextPrompt(
             IconGenerationRequest request, AIModelService aiService, String serviceName, Long seed) {
         // For 18 icons, generate first grid normally, then use image-to-image for second grid
         List<String> firstNineDescriptions = request.getIndividualDescriptions() != null ? 
@@ -302,6 +321,46 @@ public class IconGenerationService {
                                     return createIconListWithOriginalImage(allIcons, firstImageData, request, serviceName);
                                 });
                     }
+                });
+    }
+    
+    private CompletableFuture<IconGenerationResult> generateDoubleGridWithReferenceImage(
+            IconGenerationRequest request, AIModelService aiService, String serviceName, Long seed) {
+        // For 18 icons with reference image, generate first grid using image-to-image, then second grid
+        List<String> firstNineDescriptions = request.getIndividualDescriptions() != null ? 
+                request.getIndividualDescriptions().subList(0, Math.min(9, request.getIndividualDescriptions().size())) : 
+                new ArrayList<>();
+        
+        List<String> secondNineDescriptions = request.getIndividualDescriptions() != null && 
+                request.getIndividualDescriptions().size() > 9 ? 
+                request.getIndividualDescriptions().subList(9, Math.min(18, request.getIndividualDescriptions().size())) : 
+                new ArrayList<>();
+        
+        String firstPrompt = promptGenerationService.generatePromptForReferenceImage(firstNineDescriptions);
+        byte[] referenceImageData = Base64.getDecoder().decode(request.getReferenceImageBase64());
+        
+        // Generate first grid using reference image
+        return generateImageToImageWithService(aiService, firstPrompt, referenceImageData, seed)
+                .thenCompose(firstImageData -> {
+                    List<String> firstGrid = imageProcessingService.cropIconsFromGrid(firstImageData, 9);
+                    
+                    // Create a list of icons to avoid for the second grid (consistent with text-based approach)
+                    List<String> iconsToAvoid = createAvoidanceList(firstNineDescriptions, null);
+                    
+                    // For second grid, ALWAYS use the first generated grid as reference for consistency
+                    String secondPrompt = promptGenerationService.generatePromptForReferenceImage(secondNineDescriptions, iconsToAvoid);
+                    
+                    // Always use the first grid as reference for the second grid (consistent with text-based approach)
+                    return generateImageToImageWithService(aiService, secondPrompt, firstImageData, seed + 1)
+                            .thenApply(secondImageData -> {
+                                List<String> secondGrid = imageProcessingService.cropIconsFromGrid(secondImageData, 9);
+                                
+                                List<String> allIcons = new ArrayList<>(firstGrid);
+                                allIcons.addAll(secondGrid);
+                                
+                                // For 18 icons, use the first grid image as the original reference
+                                return createIconListWithOriginalImage(allIcons, firstImageData, request, serviceName);
+                            });
                 });
     }
     

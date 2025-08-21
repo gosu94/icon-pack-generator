@@ -9,6 +9,17 @@ document.addEventListener('DOMContentLoaded', function() {
     const resultsGrid = document.getElementById('resultsGrid');
     const initialState = document.getElementById('initialState');
     
+    // Input type toggle elements
+    const textInputRadio = document.getElementById('textInput');
+    const imageInputRadio = document.getElementById('imageInput');
+    const textInputSection = document.getElementById('textInputSection');
+    const imageInputSection = document.getElementById('imageInputSection');
+    const referenceImageInput = document.getElementById('referenceImage');
+    const imagePreview = document.getElementById('imagePreview');
+    const previewImg = document.getElementById('previewImg');
+    const removeImageBtn = document.getElementById('removeImage');
+    const generalDescriptionTextarea = document.getElementById('generalDescription');
+    
     // Export modal elements
     const exportModal = document.getElementById('exportModal');
     const exportProgressModal = document.getElementById('exportProgressModal');
@@ -32,6 +43,40 @@ document.addEventListener('DOMContentLoaded', function() {
     iconCountSelect.addEventListener('change', function() {
         const count = parseInt(this.value);
         updateIconDescriptionFields(count);
+    });
+
+    // Handle input type toggle
+    textInputRadio.addEventListener('change', function() {
+        if (this.checked) {
+            textInputSection.classList.remove('d-none');
+            imageInputSection.classList.add('d-none');
+            generalDescriptionTextarea.required = true;
+            referenceImageInput.required = false;
+            clearImagePreview();
+        }
+    });
+
+    imageInputRadio.addEventListener('change', function() {
+        if (this.checked) {
+            textInputSection.classList.add('d-none');
+            imageInputSection.classList.remove('d-none');
+            generalDescriptionTextarea.required = false;
+            referenceImageInput.required = true;
+        }
+    });
+
+    // Handle reference image upload
+    referenceImageInput.addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (file) {
+            handleImageUpload(file);
+        }
+    });
+
+    // Handle remove image button
+    removeImageBtn.addEventListener('click', function() {
+        clearImagePreview();
+        referenceImageInput.value = '';
     });
 
     // Handle form submission
@@ -98,14 +143,22 @@ document.addEventListener('DOMContentLoaded', function() {
     function validateForm() {
         const generalDescription = document.getElementById('generalDescription').value.trim();
         const iconCount = document.getElementById('iconCount').value;
+        const isTextInput = textInputRadio.checked;
+        const isImageInput = imageInputRadio.checked;
         
         let isValid = true;
 
         // Reset validation states
         document.querySelectorAll('.is-invalid').forEach(el => el.classList.remove('is-invalid'));
 
-        if (!generalDescription) {
+        // Validate input type specific requirements
+        if (isTextInput && !generalDescription) {
             document.getElementById('generalDescription').classList.add('is-invalid');
+            isValid = false;
+        }
+
+        if (isImageInput && (!referenceImageInput.files || !referenceImageInput.files[0])) {
+            referenceImageInput.classList.add('is-invalid');
             isValid = false;
         }
 
@@ -117,17 +170,36 @@ document.addEventListener('DOMContentLoaded', function() {
         return isValid;
     }
 
-    function generateIcons() {
+    async function generateIcons() {
         // Show streaming loading state
         setUIState('streaming');
         
         // Collect form data
         const formData = {
-            generalDescription: document.getElementById('generalDescription').value.trim(),
             iconCount: parseInt(document.getElementById('iconCount').value),
             generationsPerService: parseInt(document.getElementById('generationsPerService').value),
             individualDescriptions: []
         };
+
+        // Handle input type
+        const isTextInput = textInputRadio.checked;
+        const isImageInput = imageInputRadio.checked;
+
+        if (isTextInput) {
+            formData.generalDescription = document.getElementById('generalDescription').value.trim();
+        } else if (isImageInput) {
+            // Convert reference image to base64
+            const file = referenceImageInput.files[0];
+            if (file) {
+                try {
+                    formData.referenceImageBase64 = await fileToBase64(file);
+                } catch (error) {
+                    console.error('Error converting image to base64:', error);
+                    setUIState('error', 'Failed to process reference image');
+                    return;
+                }
+            }
+        }
 
         // Collect individual descriptions
         const descriptionInputs = document.querySelectorAll('input[name="individualDescriptions"]');
@@ -1109,6 +1181,49 @@ document.addEventListener('DOMContentLoaded', function() {
         } else {
             console.log('No newIcons in data or empty array. Data structure:', Object.keys(data));
         }
+    }
+
+    // Helper functions for reference image handling
+    function handleImageUpload(file) {
+        // Validate file type
+        if (!file.type.startsWith('image/')) {
+            alert('Please select a valid image file.');
+            referenceImageInput.value = '';
+            return;
+        }
+
+        // Validate file size (limit to 10MB)
+        if (file.size > 10 * 1024 * 1024) {
+            alert('File size must be less than 10MB.');
+            referenceImageInput.value = '';
+            return;
+        }
+
+        // Show preview
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            previewImg.src = e.target.result;
+            imagePreview.classList.remove('d-none');
+        };
+        reader.readAsDataURL(file);
+    }
+
+    function clearImagePreview() {
+        previewImg.src = '';
+        imagePreview.classList.add('d-none');
+    }
+
+    function fileToBase64(file) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = () => {
+                // Remove the data URL prefix (e.g., "data:image/png;base64,")
+                const base64 = reader.result.split(',')[1];
+                resolve(base64);
+            };
+            reader.onerror = error => reject(error);
+        });
     }
 
     // Initialize with no fields showing

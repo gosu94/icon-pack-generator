@@ -30,6 +30,14 @@ public class WebConfig implements WebMvcConfigurer {
         registry.addResourceHandler("/" + urlPath + "/**")
                 .addResourceLocations(resourceLocation);
 
+        // Ensure static resources are properly served (compatibility with Swagger UI)
+        registry.addResourceHandler("/static/**")
+                .addResourceLocations("classpath:/static/");
+
+        // Ensure Swagger UI resources are properly served
+        registry.addResourceHandler("/swagger-ui/**")
+                .addResourceLocations("classpath:/META-INF/resources/webjars/swagger-ui/");
+
         log.info("Serving generated images from URL path '/{}/**' mapped to directory '{}'", urlPath, absolutePath);
     }
 }

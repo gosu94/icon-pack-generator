@@ -28,10 +28,19 @@ import java.util.concurrent.CompletableFuture;
 @Tag(name = "Icon Pack Generator API", description = "Endpoints for generating and managing icon packs")
 public interface IconPackControllerAPI {
 
-    @Operation(summary = "Display the main page")
+    // Thymeleaf view endpoints (excluded from Swagger documentation)
     @GetMapping("/")
     String index(Model model);
 
+    @PostMapping("/generate-form")
+    String generateIconsForm(@Valid @ModelAttribute IconGenerationRequest request,
+                             BindingResult bindingResult,
+                             Model model);
+
+    @GetMapping("/background-removal")
+    String backgroundRemovalPage(Model model);
+
+    // REST API endpoints (included in Swagger documentation)
     @Operation(summary = "Generate icons asynchronously", description = "Kicks off the icon generation process and returns immediately with a request ID.")
     @PostMapping("/generate")
     @ResponseBody
@@ -47,12 +56,6 @@ public interface IconPackControllerAPI {
     @ResponseBody
     SseEmitter connectToStream(@PathVariable String requestId);
 
-    @Operation(summary = "Generate icons from a form submission", description = "Handles form-based submission for icon generation, redirecting to a processing page.")
-    @PostMapping("/generate-form")
-    String generateIconsForm(@Valid @ModelAttribute IconGenerationRequest request,
-                             BindingResult bindingResult,
-                             Model model);
-
     @Operation(summary = "Export icons as a ZIP file", description = "Creates and returns a ZIP file containing the generated icons.")
     @PostMapping("/export")
     @ResponseBody
@@ -62,10 +65,6 @@ public interface IconPackControllerAPI {
     @PostMapping("/generate-more")
     @ResponseBody
     DeferredResult<MissingIconsResponse> generateMoreIcons(@RequestBody MissingIconsRequest request);
-
-    @Operation(summary = "Display the background removal page")
-    @GetMapping("/background-removal")
-    String backgroundRemovalPage(Model model);
 
     @Operation(summary = "Remove background from an image", description = "Upload an image to have its background removed.")
     @PostMapping("/background-removal/process")

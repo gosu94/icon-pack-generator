@@ -42,13 +42,52 @@
                 <h2 class="mb-4">Icon Pack Generator</h2>
                 
                 <form id="iconForm">
-                    <!-- General Description -->
-                    <div class="mb-3">
+                    <!-- Input Type Toggle -->
+                    <div class="mb-4">
+                        <label class="form-label">Choose Input Type</label>
+                        <div class="btn-group w-100" role="group" aria-label="Input type selection">
+                            <input type="radio" class="btn-check" name="inputType" id="textInput" value="text" checked>
+                            <label class="btn btn-outline-primary" for="textInput">
+                                <i class="bi bi-type me-2"></i>Text Description
+                            </label>
+                            
+                            <input type="radio" class="btn-check" name="inputType" id="imageInput" value="image">
+                            <label class="btn btn-outline-primary" for="imageInput">
+                                <i class="bi bi-image me-2"></i>Reference Image
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <!-- Text Description Section -->
+                    <div class="mb-3" id="textInputSection">
                         <label for="generalDescription" class="form-label">General Theme Description</label>
                         <textarea class="form-control" id="generalDescription" name="generalDescription" 
-                                rows="3" placeholder="Describe the overall theme for your icon pack..." required></textarea>
+                                rows="3" placeholder="Describe the overall theme for your icon pack..."></textarea>
                         <div class="invalid-feedback">
                             Please provide a general description.
+                        </div>
+                    </div>
+                    
+                    <!-- Reference Image Section -->
+                    <div class="mb-3 d-none" id="imageInputSection">
+                        <label for="referenceImage" class="form-label">Reference Image</label>
+                        <input class="form-control" type="file" id="referenceImage" name="referenceImage" accept="image/*">
+                        <div class="form-text">
+                            Upload an image to use as style reference. The AI will create icons matching the style of your reference image.
+                        </div>
+                        <div class="invalid-feedback">
+                            Please select a reference image.
+                        </div>
+                        
+                        <!-- Image Preview -->
+                        <div id="imagePreview" class="mt-3 d-none">
+                            <label class="form-label">Preview:</label>
+                            <div class="border rounded p-2 bg-light">
+                                <img id="previewImg" src="" alt="Reference preview" class="img-fluid" style="max-height: 200px;">
+                                <button type="button" class="btn btn-sm btn-outline-danger ms-2" id="removeImage">
+                                    <i class="bi bi-x-circle"></i> Remove
+                                </button>
+                            </div>
                         </div>
                     </div>
                     

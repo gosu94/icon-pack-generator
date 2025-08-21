@@ -2,7 +2,6 @@ package com.gosu.icon_pack_generator.dto;
 
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
-import jakarta.validation.constraints.NotBlank;
 import lombok.Data;
 
 import java.util.List;
@@ -10,8 +9,13 @@ import java.util.List;
 @Data
 public class IconGenerationRequest {
     
-    @NotBlank(message = "General description is required")
     private String generalDescription;
+    
+    /**
+     * Base64 encoded reference image for style-based generation.
+     * When provided, the AI will use this image as a style reference instead of the general description.
+     */
+    private String referenceImageBase64;
     
     @Min(value = 9, message = "Minimum 9 icons")
     @Max(value = 18, message = "Maximum 18 icons")
@@ -32,4 +36,19 @@ public class IconGenerationRequest {
     @Min(value = 1, message = "Minimum 1 generation per service")
     @Max(value = 2, message = "Maximum 2 generations per service") 
     private int generationsPerService = 1;
+    
+    /**
+     * Custom validation to ensure either generalDescription or referenceImageBase64 is provided
+     */
+    public boolean isValid() {
+        return (generalDescription != null && !generalDescription.trim().isEmpty()) || 
+               (referenceImageBase64 != null && !referenceImageBase64.trim().isEmpty());
+    }
+    
+    /**
+     * Check if this request uses a reference image instead of text description
+     */
+    public boolean hasReferenceImage() {
+        return referenceImageBase64 != null && !referenceImageBase64.trim().isEmpty();
+    }
 }

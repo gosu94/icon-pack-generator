@@ -23,7 +23,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.stereotype.Controller;
+import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import org.springframework.web.context.request.async.DeferredResult;
 import org.springframework.ui.Model;
@@ -44,7 +45,7 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
-@RestController
+@Controller
 @RequiredArgsConstructor
 @Slf4j
 public class IconPackController implements IconPackControllerAPI {
@@ -69,8 +70,19 @@ public class IconPackController implements IconPackControllerAPI {
     }
 
     @Override
+    @ResponseBody
     public CompletableFuture<IconGenerationResponse> generateIcons(@Valid @RequestBody IconGenerationRequest request) {
-        log.info("Received icon generation request for {} icons", request.getIconCount());
+        // Custom validation: ensure either generalDescription or referenceImageBase64 is provided
+        if (!request.isValid()) {
+            throw new IllegalArgumentException("Either general description or reference image must be provided");
+        }
+        
+        if (request.hasReferenceImage()) {
+            log.info("Received reference image-based icon generation request for {} icons", request.getIconCount());
+        } else {
+            log.info("Received text-based icon generation request for {} icons with theme: {}", 
+                    request.getIconCount(), request.getGeneralDescription());
+        }
 
         // Ensure individual descriptions list is properly sized
         if (request.getIndividualDescriptions() == null) {
@@ -93,8 +105,19 @@ public class IconPackController implements IconPackControllerAPI {
     }
 
     @Override
+    @ResponseBody
     public ResponseEntity<Map<String, Object>> startStreamingGeneration(@Valid @RequestBody IconGenerationRequest request) {
-        log.info("Starting streaming icon generation for {} icons", request.getIconCount());
+        // Custom validation: ensure either generalDescription or referenceImageBase64 is provided
+        if (!request.isValid()) {
+            throw new IllegalArgumentException("Either general description or reference image must be provided");
+        }
+        
+        if (request.hasReferenceImage()) {
+            log.info("Starting streaming reference image-based icon generation for {} icons", request.getIconCount());
+        } else {
+            log.info("Starting streaming text-based icon generation for {} icons with theme: {}", 
+                    request.getIconCount(), request.getGeneralDescription());
+        }
 
         // Generate a unique request ID for this generation
         String requestId = UUID.randomUUID().toString();
@@ -129,6 +152,7 @@ public class IconPackController implements IconPackControllerAPI {
     private final Map<String, SseEmitter> activeEmitters = new HashMap<>();
 
     @Override
+    @ResponseBody
     public SseEmitter connectToStream(@PathVariable String requestId) {
         log.info("Client connecting to stream for request: {}", requestId);
 
@@ -162,6 +186,11 @@ public class IconPackController implements IconPackControllerAPI {
 
     private void processStreamingGeneration(String requestId, IconGenerationRequest request) {
         try {
+            // Custom validation: ensure either generalDescription or referenceImageBase64 is provided
+            if (!request.isValid()) {
+                throw new IllegalArgumentException("Either general description or reference image must be provided");
+            }
+            
             // Ensure individual descriptions list is properly sized
             if (request.getIndividualDescriptions() == null) {
                 request.setIndividualDescriptions(new ArrayList<>());
@@ -243,6 +272,7 @@ public class IconPackController implements IconPackControllerAPI {
     }
 
     @Override
+    @ResponseBody
     public ResponseEntity<byte[]> exportIcons(@RequestBody IconExportRequest exportRequest) {
         log.info("Received export request for {} icons (background removal: {})",
                 exportRequest.getIcons() != null ? exportRequest.getIcons().size() : 0,
@@ -271,6 +301,7 @@ public class IconPackController implements IconPackControllerAPI {
     }
 
     @Override
+    @ResponseBody
     public DeferredResult<MissingIconsResponse> generateMoreIcons(@RequestBody MissingIconsRequest request) {
         log.info("Received generate more icons request for service: {} with {} icon descriptions",
                 request.getServiceName(),
@@ -439,6 +470,7 @@ public class IconPackController implements IconPackControllerAPI {
      * Upload and process image with background removal
      */
     @Override
+    @ResponseBody
     public ResponseEntity<Map<String, Object>> processBackgroundRemoval(@RequestParam("image") MultipartFile imageFile) {
         Map<String, Object> response = new HashMap<>();
 
@@ -525,6 +557,7 @@ public class IconPackController implements IconPackControllerAPI {
      * Download processed image
      */
     @Override
+    @ResponseBody
     public ResponseEntity<byte[]> downloadProcessedImage(@RequestParam("imageData") String base64ImageData,
                                                         @RequestParam("filename") String originalFilename) {
         try {

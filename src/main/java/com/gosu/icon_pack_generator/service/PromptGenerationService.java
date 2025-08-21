@@ -156,4 +156,77 @@ public class PromptGenerationService {
 
         return finalPrompt;
     }
+
+    /**
+     * Generate a prompt for creating icons based on a reference image style
+     * This will be used for image-to-image generation where the reference image provides the style
+     */
+    public String generatePromptForReferenceImage(List<String> iconDescriptions) {
+        return generatePromptForReferenceImage(iconDescriptions, null);
+    }
+
+    /**
+     * Generate a prompt for creating icons based on a reference image style with avoidance list
+     * This will be used for image-to-image generation where the reference image provides the style
+     */
+    public String generatePromptForReferenceImage(List<String> iconDescriptions, List<String> iconsToAvoid) {
+        StringBuilder prompt = new StringBuilder();
+
+        // Start with the instruction to use the reference image as style guide
+        prompt.append("Create a 3x3 arrangement of clean icons using the exact same style, design approach, and color scheme as shown in this reference image. ");
+        prompt.append("Maintain the same visual consistency, line thickness, color palette, and overall aesthetic. ");
+        prompt.append("Each icon should be contained within its own square area of equal size. ");
+        prompt.append("The background should be transparent or white.");
+
+        // Handle icon descriptions
+        if (iconDescriptions != null && !iconDescriptions.isEmpty()) {
+            // Filter out empty/null descriptions
+            List<String> validDescriptions = iconDescriptions.stream()
+                    .filter(desc -> desc != null && !desc.trim().isEmpty())
+                    .toList();
+
+            if (validDescriptions.size() == 9) {
+                // All 9 icons specified
+                String specificIcons = String.join(", ", validDescriptions);
+                prompt.append("Create these specific icons in the reference style (arranged left to right, top to bottom): ").append(specificIcons).append(". ");
+            } else if (!validDescriptions.isEmpty()) {
+                // Partial specification
+                String specifiedIcons = String.join(", ", validDescriptions);
+                int missingCount = 9 - validDescriptions.size();
+                prompt.append("Include these specific icons: ").append(specifiedIcons).append(". ");
+                prompt.append("For the remaining ").append(missingCount).append(" positions, ");
+                prompt.append("create complementary icons that match the style and would logically fit together. ");
+            } else {
+                // No valid descriptions - create icons that match the reference style
+                prompt.append("Create 9 different icons that match the style and theme suggested by the reference image. ");
+                prompt.append("Each icon should be distinct and clearly separated from others. ");
+            }
+        } else {
+            prompt.append("Create 9 different icons that match the style and theme suggested by the reference image. ");
+            prompt.append("Each icon should be distinct and clearly separated from others. ");
+        }
+
+        // Add duplicate avoidance instruction if this is for a second grid (consistency with text-based approach)
+        if (iconsToAvoid != null && !iconsToAvoid.isEmpty()) {
+            List<String> validIconsToAvoid = iconsToAvoid.stream()
+                    .filter(desc -> desc != null && !desc.trim().isEmpty())
+                    .toList();
+            if (!validIconsToAvoid.isEmpty()) {
+                String avoidList = String.join(", ", validIconsToAvoid);
+                prompt.append(String.format(AVOID_DUPLICATES_TEMPLATE, avoidList));
+            }
+        }
+
+        // Add style matching requirements
+        prompt.append("CRITICAL: Match the exact style, color scheme, and design approach from the reference image. ");
+        prompt.append("Arrange the icons in a clean 3x3 grid layout with consistent spacing. ");
+        prompt.append("IMPORTANT: Do NOT add visible grid lines, borders, or separators between icons. ");
+        prompt.append("Do NOT add any text, labels, numbers, or captions. ");
+        prompt.append("Ensure all new icons blend seamlessly with the style shown in the reference image.");
+
+        String finalPrompt = prompt.toString();
+        log.info("Generated reference image-based prompt: {}", finalPrompt.substring(0, Math.min(150, finalPrompt.length())));
+
+        return finalPrompt;
+    }
 }
