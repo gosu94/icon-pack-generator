@@ -32,13 +32,13 @@ public class IconGenerationService {
     private final AIServicesConfig aiServicesConfig;
     
     public CompletableFuture<IconGenerationResponse> generateIcons(IconGenerationRequest request) {
-        return generateIcons(request, null);
+        return generateIcons(request, UUID.randomUUID().toString(), null);
     }
-    
+
     /**
      * Generate icons with optional progress callback for real-time updates
      */
-    public CompletableFuture<IconGenerationResponse> generateIcons(IconGenerationRequest request, ProgressUpdateCallback progressCallback) {
+    public CompletableFuture<IconGenerationResponse> generateIcons(IconGenerationRequest request, String requestId, ProgressUpdateCallback progressCallback) {
         List<String> enabledServices = new ArrayList<>();
         if (aiServicesConfig.isFluxAiEnabled()) enabledServices.add("FalAI");
         if (aiServicesConfig.isRecraftEnabled()) enabledServices.add("Recraft");
@@ -49,31 +49,33 @@ public class IconGenerationService {
         // Generate or use provided seed for consistent results across services
         Long seed = request.getSeed() != null ? request.getSeed() : generateRandomSeed();
         
-        log.info("Starting icon generation for {} icons with theme: {} using enabled services: {} (seed: {})", 
-                request.getIconCount(), request.getGeneralDescription(), enabledServices, seed);
-        
-        String requestId = UUID.randomUUID().toString();
+        log.info("Starting icon generation for {} icons with theme: {} using enabled services: {} (seed: {})");
         
         // Send initial progress updates only for enabled services
         if (progressCallback != null) {
             if (aiServicesConfig.isFluxAiEnabled()) {
-                progressCallback.onUpdate(ServiceProgressUpdate.serviceStarted(requestId, "flux"));
+                progressCallback.onUpdate(ServiceProgressUpdate.serviceStarted(requestId, "flux", 1));
+                if (request.getGenerationsPerService() > 1) progressCallback.onUpdate(ServiceProgressUpdate.serviceStarted(requestId, "flux", 2));
             }
             
             if (aiServicesConfig.isRecraftEnabled()) {
-                progressCallback.onUpdate(ServiceProgressUpdate.serviceStarted(requestId, "recraft"));
+                progressCallback.onUpdate(ServiceProgressUpdate.serviceStarted(requestId, "recraft", 1));
+                if (request.getGenerationsPerService() > 1) progressCallback.onUpdate(ServiceProgressUpdate.serviceStarted(requestId, "recraft", 2));
             }
             
             if (aiServicesConfig.isPhotonEnabled()) {
-                progressCallback.onUpdate(ServiceProgressUpdate.serviceStarted(requestId, "photon"));
+                progressCallback.onUpdate(ServiceProgressUpdate.serviceStarted(requestId, "photon", 1));
+                if (request.getGenerationsPerService() > 1) progressCallback.onUpdate(ServiceProgressUpdate.serviceStarted(requestId, "photon", 2));
             }
             
             if (aiServicesConfig.isGptEnabled()) {
-                progressCallback.onUpdate(ServiceProgressUpdate.serviceStarted(requestId, "gpt"));
+                progressCallback.onUpdate(ServiceProgressUpdate.serviceStarted(requestId, "gpt", 1));
+                if (request.getGenerationsPerService() > 1) progressCallback.onUpdate(ServiceProgressUpdate.serviceStarted(requestId, "gpt", 2));
             }
             
             if (aiServicesConfig.isImagenEnabled()) {
-                progressCallback.onUpdate(ServiceProgressUpdate.serviceStarted(requestId, "imagen"));
+                progressCallback.onUpdate(ServiceProgressUpdate.serviceStarted(requestId, "imagen", 1));
+                if (request.getGenerationsPerService() > 1) progressCallback.onUpdate(ServiceProgressUpdate.serviceStarted(requestId, "imagen", 2));
             }
         }
         
@@ -158,13 +160,13 @@ public class IconGenerationService {
                             String serviceGenName = serviceName + "-gen" + generationIndex;
                             if (error != null) {
                                 progressCallback.onUpdate(ServiceProgressUpdate.serviceFailed(
-                                        requestId, serviceGenName, getDetailedErrorMessage(error, serviceName), result != null ? result.getGenerationTimeMs() : 0L));
+                                        requestId, serviceGenName, getDetailedErrorMessage(error, serviceName), result != null ? result.getGenerationTimeMs() : 0L, generationIndex));
                             } else if ("success".equals(result.getStatus())) {
                                 progressCallback.onUpdate(ServiceProgressUpdate.serviceCompleted(
-                                        requestId, serviceGenName, result.getIcons(), result.getOriginalGridImageBase64(), result.getGenerationTimeMs()));
+                                        requestId, serviceGenName, result.getIcons(), result.getOriginalGridImageBase64(), result.getGenerationTimeMs(), generationIndex));
                             } else if ("error".equals(result.getStatus())) {
                                 progressCallback.onUpdate(ServiceProgressUpdate.serviceFailed(
-                                        requestId, serviceGenName, result.getMessage(), result.getGenerationTimeMs()));
+                                        requestId, serviceGenName, result.getMessage(), result.getGenerationTimeMs(), generationIndex));
                             }
                         }
                     });

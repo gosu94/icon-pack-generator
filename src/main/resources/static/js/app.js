@@ -3,7 +3,6 @@ document.addEventListener('DOMContentLoaded', function() {
     const iconDescriptionsContainer = document.getElementById('iconDescriptions');
     const iconForm = document.getElementById('iconForm');
     const generateBtn = document.getElementById('generateBtn');
-    const exportBtn = document.getElementById('exportBtn');
     const loadingState = document.getElementById('loadingState');
     const errorState = document.getElementById('errorState');
     const resultsGrid = document.getElementById('resultsGrid');
@@ -36,6 +35,7 @@ document.addEventListener('DOMContentLoaded', function() {
     let currentIcons = []; // Store current icons for export
     let currentRequest = null; // Store current request for missing icons feature
     let currentResponse = null; // Store current response for accessing original images
+    let exportContext = null; // Store context for the export modal
     let exportModalInstance = null;
     let progressModalInstance = null;
 
@@ -96,20 +96,32 @@ document.addEventListener('DOMContentLoaded', function() {
         progressModalInstance = new bootstrap.Modal(exportProgressModal);
     }
 
-    // Handle export button click - show options modal
-    exportBtn.addEventListener('click', function() {
-        if (currentIcons.length > 0) {
-            showExportModal();
-        }
-    });
+    
 
     // Handle export confirmation
     if (confirmExportBtn) {
         confirmExportBtn.addEventListener('click', function() {
-            const removeBackground = removeBackgroundToggle.checked;
-            exportModalInstance.hide();
-            exportIcons(currentIcons, removeBackground);
+            if (exportContext) {
+                const removeBackground = removeBackgroundToggle.checked;
+                const { requestId, serviceName, generationIndex } = exportContext;
+                const fileName = `icon-pack-${requestId}-${serviceName}-gen${generationIndex}.zip`;
+
+                const exportData = {
+                    requestId: requestId,
+                    serviceName: serviceName,
+                    generationIndex: generationIndex,
+                    removeBackground: removeBackground
+                };
+
+                exportModalInstance.hide();
+                downloadZip(exportData, fileName);
+            }
         });
+    }
+
+    function exportGeneration(requestId, serviceName, generationIndex) {
+        exportContext = { requestId, serviceName, generationIndex };
+        showExportModal();
     }
 
     function updateIconDescriptionFields(count) {
@@ -293,7 +305,6 @@ document.addEventListener('DOMContentLoaded', function() {
         errorState.classList.add('d-none');
         resultsGrid.classList.add('d-none');
         initialState.classList.add('d-none');
-        exportBtn.classList.add('d-none');
 
         const spinner = generateBtn.querySelector('.spinner-border');
         
@@ -315,7 +326,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 break;
             case 'results':
                 resultsGrid.classList.remove('d-none');
-                exportBtn.classList.remove('d-none');
                 generateBtn.disabled = false;
                 spinner.classList.add('d-none');
                 break;
@@ -537,14 +547,25 @@ document.addEventListener('DOMContentLoaded', function() {
                     // Extract base service name for display (remove generation suffix if present)
                     const baseServiceId = serviceId.replace(/-gen\d+$/, '');
                     displayServiceIcons(serviceId, update.icons, getServiceDisplayName(baseServiceId));
-                    
+
+                    // Add export button for this generation
+                    const header = document.getElementById(`section-${serviceId}`).querySelector('.service-header');
+                    if (header) {
+                        const exportButton = document.createElement('button');
+                        exportButton.className = 'btn btn-outline-secondary btn-sm ms-auto';
+                        exportButton.innerHTML = '<i class="bi bi-download me-2"></i>Export Icons';
+                        exportButton.onclick = () => exportGeneration(update.requestId, baseServiceId, update.generationIndex);
+                        header.querySelector('.service-title').appendChild(exportButton);
+                    }
+
                     // Store results for final export
                     streamingResults[serviceId] = {
                         icons: update.icons,
                         originalGridImageBase64: update.originalGridImageBase64,
                         generationTimeMs: update.generationTimeMs,
                         status: 'success',
-                        message: update.message
+                        message: update.message,
+                        generationIndex: update.generationIndex
                     };
                 }
                 break;
@@ -848,9 +869,15 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function showExportModal() {
-        // Update icon count in modal
-        if (exportIconCount) {
-            exportIconCount.textContent = currentIcons.length;
+        if (exportIconCount && exportContext) {
+            const { serviceName, generationIndex } = exportContext;
+            const serviceGenName = `${serviceName}-gen${generationIndex}`;
+            const results = streamingResults[serviceGenName];
+            if (results && results.icons) {
+                exportIconCount.textContent = results.icons.length;
+            } else {
+                exportIconCount.textContent = '0';
+            }
         }
         
         // Show the modal
@@ -887,23 +914,15 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    function exportIcons(icons, removeBackground = false) {
-        const requestId = Date.now(); // Simple request ID for this export
-        
+    function downloadZip(exportData, fileName) {
         // Show progress - Step 1
         showExportProgress(1, 'Preparing export request...', 25);
-        
-        const exportData = {
-            requestId: requestId,
-            icons: icons,
-            removeBackground: removeBackground
-        };
-        
+
         // Show progress - Step 2
         setTimeout(() => {
-            showExportProgress(2, removeBackground ? 'Processing icons and removing backgrounds...' : 'Processing icons...', 50);
+            showExportProgress(2, exportData.removeBackground ? 'Processing icons and removing backgrounds...' : 'Processing icons...', 50);
         }, 500);
-        
+
         // Create a blob URL for the export endpoint
         fetch('/export', {
             method: 'POST',
@@ -915,7 +934,7 @@ document.addEventListener('DOMContentLoaded', function() {
         .then(response => {
             // Show progress - Step 3
             showExportProgress(3, 'Creating ZIP file...', 75);
-            
+
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
@@ -924,22 +943,22 @@ document.addEventListener('DOMContentLoaded', function() {
         .then(blob => {
             // Show progress - Step 4
             showExportProgress(4, 'Finalizing download...', 100);
-            
+
             // Small delay to show completion
             setTimeout(() => {
                 hideExportProgress();
-                
+
                 // Create download link
                 const url = window.URL.createObjectURL(blob);
                 const a = document.createElement('a');
                 a.style.display = 'none';
                 a.href = url;
-                a.download = `icon-pack-${requestId}.zip`;
+                a.download = fileName;
                 document.body.appendChild(a);
                 a.click();
                 window.URL.revokeObjectURL(url);
                 document.body.removeChild(a);
-                
+
                 // Show success message
                 showSuccessToast('Icon pack downloaded successfully!');
             }, 1000);

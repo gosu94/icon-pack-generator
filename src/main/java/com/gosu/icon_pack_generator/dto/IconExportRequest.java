@@ -6,9 +6,11 @@ import java.util.List;
 
 @Data
 public class IconExportRequest {
-    
-    private String requestId;
-    private List<IconGenerationResponse.GeneratedIcon> icons;
 
+    private String requestId;
+    private String serviceName;
+    private int generationIndex;
+    private List<IconGenerationResponse.GeneratedIcon> icons;
     private boolean removeBackground = true;
+
 }

@@ -150,6 +150,7 @@ public class IconPackController implements IconPackControllerAPI {
     // Temporary storage for streaming requests - in production use Redis or similar
     private final Map<String, IconGenerationRequest> streamingRequests = new HashMap<>();
     private final Map<String, SseEmitter> activeEmitters = new HashMap<>();
+    private final Map<String, IconGenerationResponse> generationResults = new HashMap<>();
 
     @Override
     @ResponseBody
@@ -202,7 +203,7 @@ public class IconPackController implements IconPackControllerAPI {
             }
 
             // Start generation with progress callback
-            iconGenerationService.generateIcons(request, update -> {
+            iconGenerationService.generateIcons(request, requestId, update -> {
                 SseEmitter emitter = activeEmitters.get(requestId);
                 if (emitter != null) {
                     try {
@@ -241,6 +242,8 @@ public class IconPackController implements IconPackControllerAPI {
                         log.error("Error sending error update for request: {}", requestId, e);
                     }
                     emitter.completeWithError(error);
+                } else if (response != null) {
+                    generationResults.put(requestId, response);
                 }
             });
 
@@ -274,14 +277,45 @@ public class IconPackController implements IconPackControllerAPI {
     @Override
     @ResponseBody
     public ResponseEntity<byte[]> exportIcons(@RequestBody IconExportRequest exportRequest) {
-        log.info("Received export request for {} icons (background removal: {})",
-                exportRequest.getIcons() != null ? exportRequest.getIcons().size() : 0,
-                exportRequest.isRemoveBackground());
+        log.info("Received export request for service: {}, generation: {} (background removal: {})",
+                exportRequest.getServiceName(), exportRequest.getGenerationIndex(), exportRequest.isRemoveBackground());
+
+        IconGenerationResponse generationResponse = generationResults.get(exportRequest.getRequestId());
+        if (generationResponse == null) {
+            log.error("No generation results found for request ID: {}", exportRequest.getRequestId());
+            return ResponseEntity.notFound().build();
+        }
+
+        List<IconGenerationResponse.GeneratedIcon> iconsToExport = new ArrayList<>();
+        List<IconGenerationResponse.ServiceResults> serviceResults = switch (exportRequest.getServiceName().toLowerCase()) {
+            case "flux" -> generationResponse.getFalAiResults();
+            case "recraft" -> generationResponse.getRecraftResults();
+            case "photon" -> generationResponse.getPhotonResults();
+            case "gpt" -> generationResponse.getGptResults();
+            case "imagen" -> generationResponse.getImagenResults();
+            default -> null;
+        };
+
+        if (serviceResults != null) {
+            for (IconGenerationResponse.ServiceResults result : serviceResults) {
+                if (result.getGenerationIndex() == exportRequest.getGenerationIndex()) {
+                    iconsToExport.addAll(result.getIcons());
+                    break;
+                }
+            }
+        }
+
+        if (iconsToExport.isEmpty()) {
+            log.error("No icons found for service: {} and generation index: {}", exportRequest.getServiceName(), exportRequest.getGenerationIndex());
+            return ResponseEntity.notFound().build();
+        }
+
+        exportRequest.setIcons(iconsToExport);
 
         try {
             byte[] zipData = iconExportService.createIconPackZip(exportRequest, exportRequest.isRemoveBackground());
 
-            String fileName = "icon-pack-" + exportRequest.getRequestId() + ".zip";
+            String fileName = "icon-pack-" + exportRequest.getRequestId() + "-" + exportRequest.getServiceName() + "-gen" + exportRequest.getGenerationIndex() + ".zip";
 
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_OCTET_STREAM);
@@ -297,7 +331,7 @@ public class IconPackController implements IconPackControllerAPI {
             log.error("Error creating icon pack export", e);
             return ResponseEntity.internalServerError()
                     .body("Error creating icon pack".getBytes());
-                }
+        }
     }
 
     @Override
