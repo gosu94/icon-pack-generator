@@ -27,9 +27,9 @@ public class IconGenerationRequest {
     
     /**
      * Number of independent generations to run per enabled service. Each generation will create
-     * a separate 3x3 grid with different seeds. Minimum 1, maximum 5.
+     * a separate 3x3 grid with different seeds. Minimum 1, maximum 2.
      */
     @Min(value = 1, message = "Minimum 1 generation per service")
-    @Max(value = 5, message = "Maximum 5 generations per service") 
+    @Max(value = 2, message = "Maximum 2 generations per service") 
     private int generationsPerService = 1;
 }

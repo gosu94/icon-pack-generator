@@ -26,7 +26,7 @@ body, html {
 
 .icon-grid {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(6, 1fr);
     gap: 1rem;
     margin-top: 1rem;
 }
@@ -45,8 +45,11 @@ body, html {
 }
 
 .icon-item img {
-    max-width: 100%;
+    max-width: 200px;
+    max-height: 200px;
+    width: 100%;
     height: auto;
+    object-fit: contain;
     border-radius: 0.25rem;
 }
 
@@ -82,9 +85,9 @@ body, html {
 
 .grid-container {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(6, 1fr);
     gap: 1rem;
-    max-width: 600px;
+    max-width: 100%;
 }
 
 /* Service sections and separator styles */
@@ -186,7 +189,7 @@ body, html {
     }
     
     .grid-container {
-        grid-template-columns: repeat(2, 1fr);
+        grid-template-columns: repeat(3, 1fr);
     }
     
     .services-container {
@@ -200,6 +203,52 @@ body, html {
     
     .separator-line {
         display: none;
+    }
+    .icon-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    .icon-descriptions-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+@media (max-width: 992px) {
+    .grid-container {
+        grid-template-columns: repeat(3, 1fr);
+    }
+    .icon-grid {
+        grid-template-columns: repeat(3, 1fr);
+    }
+}
+@media (max-width: 1200px) {
+    .grid-container {
+        grid-template-columns: repeat(4, 1fr);
+    }
+    .icon-grid {
+        grid-template-columns: repeat(4, 1fr);
+    }
+}
+@media (max-width: 1400px) {
+    .grid-container {
+        grid-template-columns: repeat(5, 1fr);
+    }
+    .icon-grid {
+        grid-template-columns: repeat(5, 1fr);
+    }
+}
+@media (max-width: 1600px) {
+    .grid-container {
+        grid-template-columns: repeat(6, 1fr);
+    }
+    .icon-grid {
+        grid-template-columns: repeat(6, 1fr);
+    }
+}
+@media (max-width: 1800px) {
+    .grid-container {
+        grid-template-columns: repeat(7, 1fr);
+    }
+    .icon-grid {
+        grid-template-columns: repeat(7, 1fr);
     }
 }
 
@@ -247,9 +296,9 @@ body, html {
 
 .icon-descriptions-grid {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(2, 1fr);
     gap: 0.5rem;
-    max-width: 400px;
+    max-width: 100%;
 }
 
 .icon-description-field {
@@ -263,13 +312,17 @@ body, html {
 
 @media (max-width: 576px) {
     .icon-descriptions-grid {
-        grid-template-columns: repeat(2, 1fr);
-        max-width: 300px;
+        grid-template-columns: repeat(1, 1fr);
+        max-width: 100%;
+    }
+    .icon-grid {
+        grid-template-columns: repeat(1, 1fr);
+    }
+    .grid-container {
+        grid-template-columns: repeat(1, 1fr);
     }
 }
-/*    backdrop-filter: blur(10px);*/
-/*    border: 1px solid rgba(255, 255, 255, 0.2);*/
-/*}*/
+
 
 .btn-download {
     background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
@@ -496,15 +549,9 @@ body, html {
     color: white;
 }
 
-.missing-icons-results .icon-item {
-    border: 2px solid #28a745;
-    background: linear-gradient(135deg, #d4edda 0%, #ffffff 100%);
-}
 
-.missing-icons-results .icon-item:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(40, 167, 69, 0.3);
-}
+
+
 
 /* Responsive toast notifications */
 @media (max-width: 576px) {

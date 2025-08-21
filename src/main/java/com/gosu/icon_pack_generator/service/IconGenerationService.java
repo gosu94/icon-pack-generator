@@ -140,7 +140,13 @@ public class IconGenerationService {
             Long generationSeed = baseSeed + i;
             final int generationIndex = i + 1;
             
-            CompletableFuture<IconGenerationResponse.ServiceResults> generationFuture = generateIconsWithService(request, requestId, aiService, serviceName, generationSeed)
+            // Create modified request for second generation with style variation
+            IconGenerationRequest modifiedRequest = request;
+            if (generationIndex == 2) {
+                modifiedRequest = createStyledVariationRequest(request);
+            }
+            
+            CompletableFuture<IconGenerationResponse.ServiceResults> generationFuture = generateIconsWithService(modifiedRequest, requestId, aiService, serviceName, generationSeed)
                     .thenApply(result -> {
                         result.setGenerationIndex(generationIndex);
                         return result;
@@ -488,6 +494,24 @@ public class IconGenerationService {
             return error.getMessage();
         }
         return serviceName + " service failed: " + (message != null ? message : "Unknown error");
+    }
+    
+    /**
+     * Create a modified request with style variation for the second generation
+     */
+    private IconGenerationRequest createStyledVariationRequest(IconGenerationRequest originalRequest) {
+        IconGenerationRequest modifiedRequest = new IconGenerationRequest();
+        modifiedRequest.setIconCount(originalRequest.getIconCount());
+        modifiedRequest.setIndividualDescriptions(originalRequest.getIndividualDescriptions());
+        modifiedRequest.setSeed(originalRequest.getSeed());
+        modifiedRequest.setGenerationsPerService(originalRequest.getGenerationsPerService());
+        
+        // Add style variation to the general description for second generation
+        String originalDescription = originalRequest.getGeneralDescription();
+        String styledDescription = originalDescription + ". Icons should use high detailed modern style with professional color palette";
+        modifiedRequest.setGeneralDescription(styledDescription);
+        
+        return modifiedRequest;
     }
     
     private IconGenerationResponse.ServiceResults createDisabledServiceResult(String serviceName) {
