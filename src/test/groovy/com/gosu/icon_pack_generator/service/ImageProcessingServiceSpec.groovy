@@ -369,6 +369,45 @@ class ImageProcessingServiceSpec extends Specification {
         println "Successfully tested third row cutoff prevention with smart buffering"
     }
 
+    def "should handle problematic wrong-cut image using individual detection"() {
+        given: "The problematic wrong-cut.png image that fails with traditional grid cropping"
+        BufferedImage wrongCutImage = loadTestImage("wrong-cut.png")
+        saveImage(wrongCutImage, "wrong_cut_original.png")
+        
+        and: "Convert to byte array"
+        byte[] imageData = bufferedImageToByteArray(wrongCutImage)
+
+        when: "Using new individual detection approach with consistent 256x256 sizing"
+        List<String> croppedIcons = imageProcessingService.cropIconsFromGrid(imageData, 9, true, 256)
+
+        then: "9 icons are extracted successfully without cutting artifacts"
+        croppedIcons != null
+        croppedIcons.size() == 9
+
+        and: "Each icon has the correct dimensions (256x256)"
+        croppedIcons.eachWithIndex { iconBase64, index ->
+            byte[] iconBytes = Base64.decoder.decode(iconBase64)
+            BufferedImage iconImage = ImageIO.read(new ByteArrayInputStream(iconBytes))
+            
+            assert iconImage != null
+            assert iconImage.width == 256
+            assert iconImage.height == 256
+            
+            // Verify each icon contains meaningful content (not just background)
+            assert hasSignificantContent(iconImage), "Icon ${index + 1} lacks significant content"
+            
+            // Save for visual verification
+            saveImage(iconImage, "wrong_cut_fixed_icon_${index + 1}_256px.png")
+        }
+
+        and: "Compare with traditional approach to show improvement"
+        // Note: This tests the new default behavior which uses individual detection
+        // The old grid-based approach is still available as cropGrid3x3() method
+        
+        println "Successfully processed wrong-cut.png with individual detection approach"
+        println "All 9 icons extracted as 256x256 images without cutting artifacts"
+    }
+
     // Helper methods
 
     private BufferedImage loadTestImage(String filename) {

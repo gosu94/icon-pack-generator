@@ -55,6 +55,20 @@ public class ImageProcessingService {
      * @return List of cropped icon images as base64 strings
      */
     public List<String> cropIconsFromGrid(byte[] imageData, int iconCount, boolean centerIcons, int targetSize, boolean removeBackground) {
+        return cropIconsFromGridWithIndividualDetection(imageData, iconCount, centerIcons, targetSize, removeBackground);
+    }
+
+    /**
+     * NEW APPROACH: Crop icons using individual icon content detection instead of grid boundary detection.
+     * This approach is more robust against misaligned grids and cutting artifacts.
+     * @param imageData The original image as byte array
+     * @param iconCount The number of icons to extract (9 or 18)
+     * @param centerIcons Whether to center the icons on their canvas
+     * @param targetSize Target size for centered icons (0 = auto-size based on original, recommended: 256)
+     * @param removeBackground Whether to remove background from the entire grid before cropping
+     * @return List of cropped icon images as base64 strings
+     */
+    public List<String> cropIconsFromGridWithIndividualDetection(byte[] imageData, int iconCount, boolean centerIcons, int targetSize, boolean removeBackground) {
         try {
             // Add validation and logging
             if (imageData == null) {
@@ -67,11 +81,9 @@ public class ImageProcessingService {
                 throw new RuntimeException("Image data is empty");
             }
             
-            log.info("Processing image data of size: {} bytes", imageData.length);
+            log.info("Processing image data of size: {} bytes using individual icon detection", imageData.length);
             
             // Optionally remove background from the entire grid image before processing
-            // During generation, background removal is typically disabled to preserve content bounds
-            // During export, background removal may be enabled per user preference
             byte[] processedImageData = imageData;
             if (removeBackground) {
                 log.info("Removing background from grid image before cropping icons");
@@ -114,15 +126,15 @@ public class ImageProcessingService {
             List<String> croppedIcons = new ArrayList<>();
             
             if (iconCount == 9) {
-                croppedIcons.addAll(cropGrid3x3(originalImage, centerIcons, targetSize));
+                croppedIcons.addAll(cropGrid3x3WithIndividualDetection(originalImage, centerIcons, targetSize));
             } else if (iconCount == 18) {
                 // For 18 icons, we'll need to generate two 3x3 grids
                 // For now, we'll crop first 9 from one grid
-                croppedIcons.addAll(cropGrid3x3(originalImage, centerIcons, targetSize));
+                croppedIcons.addAll(cropGrid3x3WithIndividualDetection(originalImage, centerIcons, targetSize));
                 // TODO: Handle second grid generation for 18 icons
             }
             
-            log.info("Successfully cropped {} icons from grid", croppedIcons.size());
+            log.info("Successfully cropped {} icons from grid using individual detection", croppedIcons.size());
             return croppedIcons;
             
         } catch (IOException e) {
@@ -205,6 +217,155 @@ public class ImageProcessingService {
         }
     }
     
+    /**
+     * Detect the main icon bounds within a search region, filtering out fragments from neighboring icons.
+     * This method focuses on finding the largest connected component that represents the main icon.
+     * @param searchRegion The search region to analyze
+     * @param row The expected row position (for debugging)
+     * @param col The expected column position (for debugging)  
+     * @return Rectangle representing the main icon bounds, or null if no main icon found
+     */
+    private Rectangle detectMainIconBounds(BufferedImage searchRegion, int row, int col) {
+        int width = searchRegion.getWidth();
+        int height = searchRegion.getHeight();
+        
+        // Create a mask of content pixels
+        boolean[][] contentMask = new boolean[height][width];
+        int totalContentPixels = 0;
+        
+        for (int y = 0; y < height; y++) {
+            for (int x = 0; x < width; x++) {
+                int rgb = searchRegion.getRGB(x, y);
+                
+                int alpha = (rgb >> 24) & 0xFF;
+                int red = (rgb >> 16) & 0xFF;
+                int green = (rgb >> 8) & 0xFF;
+                int blue = rgb & 0xFF;
+                
+                // Consider as content if it's not transparent, not pure white, and not pure black
+                boolean isTransparent = alpha < 10;
+                boolean isWhite = red > 245 && green > 245 && blue > 245;
+                boolean isBlack = red < 10 && green < 10 && blue < 10;
+                boolean isContent = !isTransparent && !isWhite && !isBlack;
+                
+                contentMask[y][x] = isContent;
+                if (isContent) {
+                    totalContentPixels++;
+                }
+            }
+        }
+        
+        if (totalContentPixels < 50) { // Minimum content threshold
+            log.debug("Insufficient content pixels ({}) for icon [{},{}]", totalContentPixels, row, col);
+            return null;
+        }
+        
+        // Find the largest connected component
+        Rectangle largestComponent = findLargestConnectedComponent(contentMask, width, height);
+        
+        if (largestComponent != null) {
+            // Ensure the largest component is reasonably sized and positioned
+            double componentArea = largestComponent.width * largestComponent.height;
+            double searchArea = width * height;
+            double areaRatio = componentArea / searchArea;
+            
+            // Check if the component is too small (likely a fragment) or too large (likely includes neighbors)
+            if (areaRatio < 0.05) { // Less than 5% of search area
+                log.debug("Largest component too small for icon [{},{}]: area ratio = {}", row, col, areaRatio);
+                return null;
+            }
+            
+            if (areaRatio > 0.8) { // More than 80% of search area - likely includes neighbors
+                log.debug("Largest component too large for icon [{},{}]: area ratio = {}, using central portion", row, col, areaRatio);
+                // Return a more conservative central region
+                int centerSize = Math.min(width, height) * 2 / 3;
+                int centerX = (width - centerSize) / 2;
+                int centerY = (height - centerSize) / 2;
+                return new Rectangle(centerX, centerY, centerSize, centerSize);
+            }
+            
+            log.debug("Found good main component for icon [{},{}]: bounds={}x{} at ({},{}), area ratio={}", 
+                     row, col, largestComponent.width, largestComponent.height, 
+                     largestComponent.x, largestComponent.y, areaRatio);
+        }
+        
+        return largestComponent;
+    }
+    
+    /**
+     * Find the largest connected component in a boolean mask using flood fill.
+     * @param mask The content mask
+     * @param width Image width
+     * @param height Image height
+     * @return Rectangle bounds of the largest connected component, or null if none found
+     */
+    private Rectangle findLargestConnectedComponent(boolean[][] mask, int width, int height) {
+        boolean[][] visited = new boolean[height][width];
+        Rectangle largestBounds = null;
+        int largestSize = 0;
+        
+        for (int y = 0; y < height; y++) {
+            for (int x = 0; x < width; x++) {
+                if (mask[y][x] && !visited[y][x]) {
+                    // Found an unvisited content pixel, start flood fill
+                    Rectangle componentBounds = floodFillComponent(mask, visited, x, y, width, height);
+                    int componentSize = componentBounds.width * componentBounds.height;
+                    
+                    if (componentSize > largestSize) {
+                        largestSize = componentSize;
+                        largestBounds = componentBounds;
+                    }
+                }
+            }
+        }
+        
+        return largestBounds;
+    }
+    
+    /**
+     * Perform flood fill to find the bounds of a connected component.
+     * @param mask The content mask
+     * @param visited The visited pixels mask
+     * @param startX Starting x coordinate
+     * @param startY Starting y coordinate  
+     * @param width Image width
+     * @param height Image height
+     * @return Rectangle bounds of the connected component
+     */
+    private Rectangle floodFillComponent(boolean[][] mask, boolean[][] visited, int startX, int startY, int width, int height) {
+        java.util.Stack<Point> stack = new java.util.Stack<>();
+        stack.push(new Point(startX, startY));
+        
+        int minX = startX, maxX = startX;
+        int minY = startY, maxY = startY;
+        
+        while (!stack.isEmpty()) {
+            Point p = stack.pop();
+            int x = p.x;
+            int y = p.y;
+            
+            if (x < 0 || x >= width || y < 0 || y >= height || visited[y][x] || !mask[y][x]) {
+                continue;
+            }
+            
+            visited[y][x] = true;
+            
+            // Update bounds
+            minX = Math.min(minX, x);
+            maxX = Math.max(maxX, x);
+            minY = Math.min(minY, y);
+            maxY = Math.max(maxY, y);
+            
+            // Add neighbors to stack
+            stack.push(new Point(x + 1, y));
+            stack.push(new Point(x - 1, y));
+            stack.push(new Point(x, y + 1));
+            stack.push(new Point(x, y - 1));
+        }
+        
+        return new Rectangle(minX, minY, maxX - minX + 1, maxY - minY + 1);
+    }
+
     /**
      * Detect the bounding box of all non-background pixels (excludes transparent, white, and very dark pixels)
      * @param image The image to analyze
@@ -725,6 +886,100 @@ public class ImageProcessingService {
         return boundaries;
     }
     
+    /**
+     * NEW APPROACH: Crop 3x3 grid using individual icon content detection.
+     * Instead of detecting grid boundaries, this method examines each of the 9 expected positions
+     * and uses content detection to find the actual icon within that region.
+     * This is more robust against misaligned grids and cutting artifacts.
+     */
+    private List<String> cropGrid3x3WithIndividualDetection(BufferedImage originalImage, boolean centerIcons, int targetSize) throws IOException {
+        List<String> icons = new ArrayList<>();
+        
+        int width = originalImage.getWidth();
+        int height = originalImage.getHeight();
+        
+        log.info("Starting individual icon detection for 3x3 grid from image {}x{}", width, height);
+        
+        // Calculate approximate grid positions as starting points
+        int approxCellWidth = width / 3;
+        int approxCellHeight = height / 3;
+        
+        // Use smaller search regions to avoid overlapping with neighboring icons
+        double searchPadding = 0.08; // 8% padding around expected position (reduced from 20%)
+        int searchPaddingX = (int)(approxCellWidth * searchPadding);
+        int searchPaddingY = (int)(approxCellHeight * searchPadding);
+        
+        // Set consistent target size if not specified (default to 256x256 as requested)
+        int finalTargetSize = targetSize > 0 ? targetSize : 256;
+        
+        for (int row = 0; row < 3; row++) {
+            for (int col = 0; col < 3; col++) {
+                log.debug("Processing icon position [{},{}]", row, col);
+                
+                // Calculate expected position
+                int expectedX = col * approxCellWidth;
+                int expectedY = row * approxCellHeight;
+                
+                // Define search region around expected position
+                int searchX = Math.max(0, expectedX - searchPaddingX);
+                int searchY = Math.max(0, expectedY - searchPaddingY);
+                int searchWidth = Math.min(width - searchX, approxCellWidth + 2 * searchPaddingX);
+                int searchHeight = Math.min(height - searchY, approxCellHeight + 2 * searchPaddingY);
+                
+                log.debug("Search region for [{},{}]: x={}, y={}, width={}, height={}", 
+                         row, col, searchX, searchY, searchWidth, searchHeight);
+                
+                // Extract search region
+                BufferedImage searchRegion = originalImage.getSubimage(searchX, searchY, searchWidth, searchHeight);
+                
+                // Find content bounds within the search region using improved isolation
+                Rectangle contentBounds = detectMainIconBounds(searchRegion, row, col);
+                
+                BufferedImage iconImage;
+                if (contentBounds != null && contentBounds.width > 10 && contentBounds.height > 10) {
+                    // Extract the content from the search region
+                    BufferedImage extractedContent = searchRegion.getSubimage(
+                        contentBounds.x, contentBounds.y, contentBounds.width, contentBounds.height);
+                    
+                    log.debug("Found isolated content for [{},{}]: bounds={}x{} at ({},{})", 
+                             row, col, contentBounds.width, contentBounds.height, 
+                             contentBounds.x, contentBounds.y);
+                    
+                    iconImage = extractedContent;
+                } else {
+                    // Fallback: use the center portion of the search region
+                    log.warn("No specific content bounds found for icon [{},{}], using center portion of search region", row, col);
+                    int centerSize = Math.min(searchWidth, searchHeight) * 3 / 4; // Use 75% of the smaller dimension
+                    int centerX = (searchWidth - centerSize) / 2;
+                    int centerY = (searchHeight - centerSize) / 2;
+                    iconImage = searchRegion.getSubimage(centerX, centerY, centerSize, centerSize);
+                }
+                
+                // Apply centering and consistent sizing
+                if (centerIcons || finalTargetSize > 0) {
+                    iconImage = centerIcon(iconImage, finalTargetSize);
+                    log.debug("Centered icon at position [{},{}] to size {}x{}", 
+                             row, col, finalTargetSize, finalTargetSize);
+                } else {
+                    log.debug("Extracted icon at position [{},{}] with size {}x{}", 
+                             row, col, iconImage.getWidth(), iconImage.getHeight());
+                }
+                
+                String base64Icon = bufferedImageToBase64(iconImage);
+                icons.add(base64Icon);
+            }
+        }
+        
+        log.info("Successfully extracted {} icons using individual detection approach", icons.size());
+        return icons;
+    }
+
+    /**
+     * LEGACY APPROACH: Traditional grid-based cropping (kept for backward compatibility and comparison)
+     * This method uses the original grid boundary detection approach.
+     * The new default approach is cropGrid3x3WithIndividualDetection() which is more robust.
+     */
+    @SuppressWarnings("unused") // Kept for backward compatibility and potential fallback
     private List<String> cropGrid3x3(BufferedImage originalImage, boolean centerIcons, int targetSize) throws IOException {
         List<String> icons = new ArrayList<>();
         
