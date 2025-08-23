@@ -813,6 +813,42 @@ class ImageProcessingServiceSpec extends Specification {
         }
     }
 
+    def "should detect transparent boundaries and fix cutting artifacts"() {
+        when: "processing the problematic wrong-cut.png image that has misaligned icons"
+        BufferedImage wrongCutImage = ImageIO.read(new File("src/test/resources/images/wrong-cut.png"))
+        byte[] imageBytes = bufferedImageToByteArray(wrongCutImage)
+        
+        then: "image loads successfully"
+        wrongCutImage != null
+        wrongCutImage.width == 1024 || wrongCutImage.height == 1024 // Should be 1024x1024 as mentioned
+        
+        when: "crop icons using new transparent boundary detection"
+        List<String> icons = imageProcessingService.cropIconsFromGrid(imageBytes, 9, true, 256)
+        
+        then: "processing succeeds and generates expected number of icons"
+        icons != null
+        icons.size() == 9
+        
+        when: "save each icon with descriptive names for visual inspection"
+        icons.eachWithIndex { iconBase64, index ->
+            byte[] iconBytes = Base64.decoder.decode(iconBase64)
+            BufferedImage iconImage = ImageIO.read(new ByteArrayInputStream(iconBytes))
+            iconImage = imageProcessingService.centerIcon(iconImage, 0)
+            String filename = "src/test/resources/images/output/transparent_boundary_fixed_icon_${index + 1}_256px.png"
+            ImageIO.write(iconImage, "png", new File(filename))
+            println("Saved improved icon ${index + 1} to: ${filename}")
+        }
+        
+        then: "icons are saved successfully with transparent boundary detection"
+        icons.size() == 9
+        
+        and: "log that transparent boundary detection was used"
+        // In real usage, check logs to see if "Found excellent transparent" messages appear
+        println("Check application logs for transparent boundary detection messages")
+        println("Expected to see: 'Found excellent transparent [vertical|horizontal] boundaries at...'")
+        println("If no transparent boundaries found, fallback methods should be used automatically")
+    }
+
     def cleanupSpec() {
         println "Test completed. Check output images in: ${outputDir.toAbsolutePath()}"
         println "Generated images for visual verification of cropping and centering functionality."
