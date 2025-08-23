@@ -5,7 +5,7 @@ import lombok.Data;
 import java.util.List;
 
 @Data
-public class MissingIconsRequest {
+public class MoreIconsRequest {
     
     /**
      * The original request ID for tracking
@@ -41,4 +41,9 @@ public class MissingIconsRequest {
      * The seed from the original generation to maintain visual consistency
      */
     private Long seed;
+
+    /**
+     * The generation index from the original request
+     */
+    private int generationIndex;
 }

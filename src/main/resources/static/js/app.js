@@ -662,7 +662,8 @@ document.addEventListener('DOMContentLoaded', function() {
         
         currentResponse = {
             icons: allIcons,
-            ...groupedResults
+            ...groupedResults,
+            requestId: update.requestId
         };
         
         // Show export button and enable generate button
@@ -676,7 +677,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 const serviceName = getServiceDisplayName(baseServiceId);
                 const section = document.getElementById(`section-${serviceId}`);
                 if (section) {
-                    const moreIconsSection = createGenerateMoreSection(baseServiceId, serviceName);
+                    const moreIconsSection = createGenerateMoreSection(baseServiceId, serviceName, result.generationIndex);
                     section.appendChild(moreIconsSection);
                 }
             }
@@ -804,10 +805,11 @@ document.addEventListener('DOMContentLoaded', function() {
         return section;
     }
 
-    function createGenerateMoreSection(serviceId, serviceName) {
+    function createGenerateMoreSection(serviceId, serviceName, generationIndex) {
+        const uniqueId = `${serviceId}-gen${generationIndex}`;
         const moreSection = document.createElement('div');
         moreSection.className = 'generate-more-section mt-4';
-        moreSection.id = `more-${serviceId}`;
+        moreSection.id = `more-${uniqueId}`;
         
         moreSection.innerHTML = `
             <div class="generate-more-header">
@@ -820,12 +822,12 @@ document.addEventListener('DOMContentLoaded', function() {
             </div>
             <div class="generate-more-actions mb-3">
                 <button class="btn btn-outline-primary btn-sm" 
-                        onclick="showMoreIconsForm('${serviceId}')"
-                        id="show-more-form-${serviceId}">
+                        onclick="showMoreIconsForm('${uniqueId}')"
+                        id="show-more-form-${uniqueId}">
                     <i class="bi bi-magic me-2"></i>Generate More Icons
                 </button>
             </div>
-            <div class="more-icons-form mt-3" id="more-form-${serviceId}" style="display: none;">
+            <div class="more-icons-form mt-3" id="more-form-${uniqueId}" style="display: none;">
                 <h6 class="small text-muted mb-3">Describe 9 new icons (leave empty for creative variations):</h6>
                 <div class="icon-descriptions-grid mb-3">
                     ${Array.from({length: 9}, (_, i) => `
@@ -833,23 +835,23 @@ document.addEventListener('DOMContentLoaded', function() {
                             <input type="text" 
                                    class="form-control form-control-sm" 
                                    placeholder="Icon ${i + 1}"
-                                   id="more-${serviceId}-desc-${i}">
+                                   id="more-${uniqueId}-desc-${i}">
                         </div>
                     `).join('')}
                 </div>
                 <div class="more-icons-actions">
                     <button class="btn btn-primary btn-sm" 
-                            onclick="generateMoreIcons('${serviceId}', '${serviceName}')"
-                            id="generate-more-${serviceId}">
+                            onclick="generateMoreIcons('${serviceId}', '${serviceName}', ${generationIndex})"
+                            id="generate-more-${uniqueId}">
                         <i class="bi bi-magic me-2"></i>Generate 9 More Icons
                     </button>
                     <button class="btn btn-outline-secondary btn-sm ms-2" 
-                            onclick="hideMoreIconsForm('${serviceId}')">
+                            onclick="hideMoreIconsForm('${uniqueId}')">
                         Cancel
                     </button>
                 </div>
             </div>
-            <div class="more-icons-results mt-3" id="more-results-${serviceId}" style="display: none;">
+            <div class="more-icons-results mt-3" id="more-results-${uniqueId}" style="display: none;">
                 <!-- New icons will appear here -->
                 <p class="text-muted small">Results will appear here...</p>
             </div>
@@ -1011,40 +1013,41 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // Generate More Icons Functions
-    window.showMoreIconsForm = function(serviceId) {
-        const form = document.getElementById(`more-form-${serviceId}`);
-        const showBtn = document.getElementById(`show-more-form-${serviceId}`);
+    window.showMoreIconsForm = function(uniqueId) {
+        const form = document.getElementById(`more-form-${uniqueId}`);
+        const showBtn = document.getElementById(`show-more-form-${uniqueId}`);
         
         form.style.display = 'block';
         showBtn.style.display = 'none';
         
         // Focus on the first input field
-        const firstInput = document.getElementById(`more-${serviceId}-desc-0`);
+        const firstInput = document.getElementById(`more-${uniqueId}-desc-0`);
         if (firstInput) {
             firstInput.focus();
         }
     };
 
-    window.hideMoreIconsForm = function(serviceId) {
-        const form = document.getElementById(`more-form-${serviceId}`);
-        const showBtn = document.getElementById(`show-more-form-${serviceId}`);
+    window.hideMoreIconsForm = function(uniqueId) {
+        const form = document.getElementById(`more-form-${uniqueId}`);
+        const showBtn = document.getElementById(`show-more-form-${uniqueId}`);
         
         form.style.display = 'none';
         showBtn.style.display = 'block';
         
         // Clear all input fields
         for (let i = 0; i < 9; i++) {
-            const input = document.getElementById(`more-${serviceId}-desc-${i}`);
+            const input = document.getElementById(`more-${uniqueId}-desc-${i}`);
             if (input) {
                 input.value = '';
             }
         }
     };
 
-    window.generateMoreIcons = function(serviceId, serviceName) {
-        const descriptions = getMoreIconDescriptions(serviceId);
+    window.generateMoreIcons = function(serviceId, serviceName, generationIndex) {
+        const uniqueId = `${serviceId}-gen${generationIndex}`;
+        const descriptions = getMoreIconDescriptions(uniqueId);
         
-        const generateBtn = document.getElementById(`generate-more-${serviceId}`);
+        const generateBtn = document.getElementById(`generate-more-${uniqueId}`);
         const originalText = generateBtn.innerHTML;
         
         // Show loading state
@@ -1052,7 +1055,7 @@ document.addEventListener('DOMContentLoaded', function() {
         generateBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Generating...';
         
         // Get the original image for this service
-        const originalImageBase64 = getOriginalImageForService(serviceId);
+        const originalImageBase64 = getOriginalImageForService(serviceId, generationIndex);
         
         if (!originalImageBase64) {
             showErrorToast('Original image not found for this service');
@@ -1069,10 +1072,10 @@ document.addEventListener('DOMContentLoaded', function() {
             generalDescription: currentRequest.generalDescription,
             iconDescriptions: descriptions,
             iconCount: 9,
-            seed: currentResponse.seed // Use the same seed for consistency
+            seed: getServiceResults(serviceId, generationIndex).seed // Use the same seed for consistency
         };
         
-        console.log(`Generating more icons for ${serviceName} with seed: ${currentResponse.seed}`);
+        console.log(`Generating more icons for ${serviceName} (gen ${generationIndex}) with seed: ${moreIconsRequest.seed}`);
         
         // Make API call
         fetch('/generate-more', {
@@ -1091,10 +1094,9 @@ document.addEventListener('DOMContentLoaded', function() {
         .then(data => {
             console.log('Generate more response:', data);
             if (data.status === 'success') {
-                console.log('Success - calling displayMoreIconsResults with serviceId:', serviceId, 'data:', data);
-                displayMoreIconsResults(serviceId, data);
+                displayMoreIconsResults(uniqueId, data);
                 showSuccessToast(`Generated new 3x3 grid (${data.newIcons.length} icons) with ${serviceName}!`);
-                hideMoreIconsForm(serviceId);
+                hideMoreIconsForm(uniqueId);
             } else {
                 console.error('Generate more failed:', data.message);
                 showErrorToast(data.message || 'Failed to generate more icons');
@@ -1110,10 +1112,10 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     };
 
-    function getMoreIconDescriptions(serviceId) {
+    function getMoreIconDescriptions(uniqueId) {
         const descriptions = [];
         for (let i = 0; i < 9; i++) {
-            const input = document.getElementById(`more-${serviceId}-desc-${i}`);
+            const input = document.getElementById(`more-${uniqueId}-desc-${i}`);
             if (input) {
                 descriptions.push(input.value.trim());
             }
@@ -1121,46 +1123,55 @@ document.addEventListener('DOMContentLoaded', function() {
         return descriptions;
     }
 
-    function getOriginalImageForService(serviceId) {
+    function getOriginalImageForService(serviceId, generationIndex) {
         // Get the original grid image before cropping (not individual icons)
-        const serviceResults = getServiceResults(serviceId);
+        const serviceResults = getServiceResults(serviceId, generationIndex);
         if (serviceResults && serviceResults.originalGridImageBase64) {
             return serviceResults.originalGridImageBase64;
         }
         return null;
     }
 
-    function getServiceResults(serviceId) {
+    function getServiceResults(serviceId, generationIndex) {
         if (!currentResponse) return null;
         
+        let resultsArray;
         switch (serviceId) {
             case 'flux':
-                return currentResponse.falAiResults;
+                resultsArray = currentResponse.falAiResults;
+                break;
             case 'recraft':
-                return currentResponse.recraftResults;
+                resultsArray = currentResponse.recraftResults;
+                break;
             case 'photon':
-                return currentResponse.photonResults;
+                resultsArray = currentResponse.photonResults;
+                break;
             case 'gpt':
-                return currentResponse.gptResults;
+                resultsArray = currentResponse.gptResults;
+                break;
             case 'imagen':
-                return currentResponse.imagenResults;
+                resultsArray = currentResponse.imagenResults;
+                break;
             default:
                 return null;
         }
+        
+        if (resultsArray && resultsArray.length > 0) {
+            return resultsArray.find(r => r.generationIndex === generationIndex);
+        }
+        
+        return null;
     }
 
-    function displayMoreIconsResults(serviceId, data) {
-        console.log('displayMoreIconsResults called with serviceId:', serviceId, 'data:', data);
-        const resultsContainer = document.getElementById(`more-results-${serviceId}`);
-        console.log('Results container found:', resultsContainer);
+    function displayMoreIconsResults(uniqueId, data) {
+        const resultsContainer = document.getElementById(`more-results-${uniqueId}`);
         
         if (!resultsContainer) {
-            console.error('Results container not found for serviceId:', serviceId);
+            console.error('Results container not found for uniqueId:', uniqueId);
             return;
         }
         
         if (data.newIcons && data.newIcons.length > 0) {
-            console.log('Data has newIcons:', data.newIcons.length);
             const iconsGrid = document.createElement('div');
             iconsGrid.className = 'row g-3 mt-2';
             
@@ -1193,12 +1204,11 @@ document.addEventListener('DOMContentLoaded', function() {
             resultsContainer.innerHTML = '';
             resultsContainer.appendChild(iconsGrid);
             resultsContainer.style.display = 'block';
-            console.log('Results displayed successfully. Container now has children:', resultsContainer.children.length);
             
             // Add new icons to current icons for export
             currentIcons = currentIcons.concat(data.newIcons);
         } else {
-            console.log('No newIcons in data or empty array. Data structure:', Object.keys(data));
+            console.log('No newIcons in data or empty array.');
         }
     }
 

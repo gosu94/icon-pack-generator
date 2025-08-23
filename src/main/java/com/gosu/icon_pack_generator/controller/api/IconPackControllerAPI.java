@@ -3,8 +3,8 @@ package com.gosu.icon_pack_generator.controller.api;
 import com.gosu.icon_pack_generator.dto.IconExportRequest;
 import com.gosu.icon_pack_generator.dto.IconGenerationRequest;
 import com.gosu.icon_pack_generator.dto.IconGenerationResponse;
-import com.gosu.icon_pack_generator.dto.MissingIconsRequest;
-import com.gosu.icon_pack_generator.dto.MissingIconsResponse;
+import com.gosu.icon_pack_generator.dto.MoreIconsRequest;
+import com.gosu.icon_pack_generator.dto.MoreIconsResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.ResponseEntity;
@@ -64,7 +64,7 @@ public interface IconPackControllerAPI {
     @Operation(summary = "Generate additional icons", description = "Generates more icons based on an existing generation request, maintaining the style.")
     @PostMapping("/generate-more")
     @ResponseBody
-    DeferredResult<MissingIconsResponse> generateMoreIcons(@RequestBody MissingIconsRequest request);
+    DeferredResult<MoreIconsResponse> generateMoreIcons(@RequestBody MoreIconsRequest request);
 
     @Operation(summary = "Remove background from an image", description = "Upload an image to have its background removed.")
     @PostMapping("/background-removal/process")

@@ -5,8 +5,8 @@ import com.gosu.icon_pack_generator.controller.api.IconPackControllerAPI;
 import com.gosu.icon_pack_generator.dto.IconExportRequest;
 import com.gosu.icon_pack_generator.dto.IconGenerationRequest;
 import com.gosu.icon_pack_generator.dto.IconGenerationResponse;
-import com.gosu.icon_pack_generator.dto.MissingIconsRequest;
-import com.gosu.icon_pack_generator.dto.MissingIconsResponse;
+import com.gosu.icon_pack_generator.dto.MoreIconsRequest;
+import com.gosu.icon_pack_generator.dto.MoreIconsResponse;
 import com.gosu.icon_pack_generator.dto.ServiceProgressUpdate;
 import com.gosu.icon_pack_generator.service.BackgroundRemovalService;
 import com.gosu.icon_pack_generator.service.FluxModelService;
@@ -336,13 +336,14 @@ public class IconPackController implements IconPackControllerAPI {
 
     @Override
     @ResponseBody
-    public DeferredResult<MissingIconsResponse> generateMoreIcons(@RequestBody MissingIconsRequest request) {
-        log.info("Received generate more icons request for service: {} with {} icon descriptions",
+    public DeferredResult<MoreIconsResponse> generateMoreIcons(@RequestBody MoreIconsRequest request) {
+        log.info("Received generate more icons request for service: {} with {} icon descriptions for generation index: {}",
                 request.getServiceName(),
-                request.getIconDescriptions() != null ? request.getIconDescriptions().size() : 0);
+                request.getIconDescriptions() != null ? request.getIconDescriptions().size() : 0,
+                request.getGenerationIndex());
 
         // Create DeferredResult with 5 minute timeout
-        DeferredResult<MissingIconsResponse> deferredResult = new DeferredResult<>(300000L);
+        DeferredResult<MoreIconsResponse> deferredResult = new DeferredResult<>(300000L);
 
         CompletableFuture.supplyAsync(() -> {
             long startTime = System.currentTimeMillis();
@@ -362,11 +363,7 @@ public class IconPackController implements IconPackControllerAPI {
                 // Convert base64 to byte array
                 byte[] originalImageData = Base64.getDecoder().decode(request.getOriginalImageBase64());
 
-                // Generate prompt for second grid (image-to-image)
-                String prompt = promptGenerationService.generatePromptFor3x3Grid(
-                    request.getGeneralDescription(),
-                    request.getIconDescriptions()
-                );
+                String prompt = promptGenerationService.generatePromptForReferenceImage(request.getIconDescriptions());
 
                 // Get the appropriate service and generate icons
                 CompletableFuture<byte[]> generationFuture = getServiceAndGenerate(request.getServiceName(), prompt, originalImageData, request.getSeed());
@@ -380,7 +377,7 @@ public class IconPackController implements IconPackControllerAPI {
                 List<IconGenerationResponse.GeneratedIcon> newIcons = createIconList(base64Icons, request);
 
                 // Create successful response
-                MissingIconsResponse response = new MissingIconsResponse();
+                MoreIconsResponse response = new MoreIconsResponse();
                 response.setStatus("success");
                 response.setMessage("More icons generated successfully with same style");
                 response.setServiceName(request.getServiceName());
@@ -454,7 +451,7 @@ public class IconPackController implements IconPackControllerAPI {
         }
     }
 
-    private List<IconGenerationResponse.GeneratedIcon> createIconList(List<String> base64Icons, MissingIconsRequest request) {
+    private List<IconGenerationResponse.GeneratedIcon> createIconList(List<String> base64Icons, MoreIconsRequest request) {
         List<IconGenerationResponse.GeneratedIcon> icons = new ArrayList<>();
 
         // Process ALL generated icons (should be 9), not just the number of missing descriptions
@@ -478,8 +475,8 @@ public class IconPackController implements IconPackControllerAPI {
         return icons;
     }
 
-    private MissingIconsResponse createErrorResponse(MissingIconsRequest request, String errorMessage, long startTime) {
-        MissingIconsResponse response = new MissingIconsResponse();
+    private MoreIconsResponse createErrorResponse(MoreIconsRequest request, String errorMessage, long startTime) {
+        MoreIconsResponse response = new MoreIconsResponse();
         response.setStatus("error");
         response.setMessage(errorMessage);
         response.setServiceName(request.getServiceName());

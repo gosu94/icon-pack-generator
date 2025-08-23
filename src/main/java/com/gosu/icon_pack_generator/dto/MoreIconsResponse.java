@@ -5,7 +5,7 @@ import lombok.Data;
 import java.util.List;
 
 @Data
-public class MissingIconsResponse {
+public class MoreIconsResponse {
     
     /**
      * Status of the generation (success, error)
