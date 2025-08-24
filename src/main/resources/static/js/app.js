@@ -103,6 +103,7 @@ document.addEventListener('DOMContentLoaded', function() {
         confirmExportBtn.addEventListener('click', function() {
             if (exportContext) {
                 const removeBackground = removeBackgroundToggle.checked;
+                const outputFormat = document.getElementById('outputFormatSelect').value;
                 const { requestId, serviceName, generationIndex } = exportContext;
                 const fileName = `icon-pack-${requestId}-${serviceName}-gen${generationIndex}.zip`;
 
@@ -110,7 +111,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     requestId: requestId,
                     serviceName: serviceName,
                     generationIndex: generationIndex,
-                    removeBackground: removeBackground
+                    removeBackground: removeBackground,
+                    outputFormat: outputFormat
                 };
 
                 exportModalInstance.hide();

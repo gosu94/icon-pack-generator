@@ -6,6 +6,9 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+import javax.imageio.ImageIO;
+import java.awt.image.BufferedImage;
+import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.Base64;
@@ -16,82 +19,89 @@ import java.util.zip.ZipOutputStream;
 @RequiredArgsConstructor
 @Slf4j
 public class IconExportService {
-    
+
     private final ImageProcessingService imageProcessingService;
-    
-    /**
-     * Create a ZIP file containing all the generated icons as PNG files
-     * @param exportRequest The export request containing icons data
-     * @return byte array representing the ZIP file
-     */
+
     public byte[] createIconPackZip(IconExportRequest exportRequest) {
-        return createIconPackZip(exportRequest, false);
-    }
-    
-    /**
-     * Create a ZIP file containing all the generated icons as PNG files with optional background removal
-     * @param exportRequest The export request containing icons data
-     * @param removeBackground Whether to remove background from icons during export
-     * @return byte array representing the ZIP file
-     */
-    public byte[] createIconPackZip(IconExportRequest exportRequest, boolean removeBackground) {
-        log.info("Creating icon pack ZIP for request: {} (background removal: {})", 
-                exportRequest.getRequestId(), removeBackground);
-        
+        boolean removeBackground = exportRequest.isRemoveBackground();
+        String outputFormat = exportRequest.getOutputFormat() != null ? exportRequest.getOutputFormat() : "png";
+        log.info("Creating icon pack ZIP for request: {} (background removal: {}, format: {})",
+                exportRequest.getRequestId(), removeBackground, outputFormat);
+
         try (ByteArrayOutputStream baos = new ByteArrayOutputStream();
              ZipOutputStream zos = new ZipOutputStream(baos)) {
-            
+
             int iconIndex = 1;
             for (IconGenerationResponse.GeneratedIcon icon : exportRequest.getIcons()) {
-                String fileName = createFileName(icon, iconIndex);
-                
-                // Get icon data, applying background removal if requested
                 String iconBase64Data = icon.getBase64Data();
                 if (removeBackground) {
                     log.debug("Removing background from icon {} before adding to ZIP", iconIndex);
                     iconBase64Data = imageProcessingService.removeBackgroundFromIcon(iconBase64Data);
                 }
-                
+
                 byte[] iconData = Base64.getDecoder().decode(iconBase64Data);
-                
+                String fileName = createFileName(icon, iconIndex, outputFormat);
+
+                if ("svg".equalsIgnoreCase(outputFormat)) {
+                    // Embed PNG in SVG
+                    try {
+                        ByteArrayInputStream bais = new ByteArrayInputStream(iconData);
+                        BufferedImage image = ImageIO.read(bais);
+                        int width = image.getWidth();
+                        int height = image.getHeight();
+
+                        String svgContent = """
+                            <svg width="%d" height="%d" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+                                <image xlink:href="data:image/png;base64,%s" width="%d" height="%d"/>
+                            </svg>
+                            """.formatted(width, height, iconBase64Data, width, height);
+                        iconData = svgContent.getBytes();
+                    } catch (IOException e) {
+                        log.error("Failed to read image dimensions for SVG conversion, skipping icon {}", icon.getId(), e);
+                        continue;
+                    }
+                }
+
                 ZipEntry zipEntry = new ZipEntry(fileName);
                 zos.putNextEntry(zipEntry);
                 zos.write(iconData);
                 zos.closeEntry();
-                
-                log.debug("Added icon {} to ZIP: {} (processed: {})", iconIndex, fileName, removeBackground);
+
+                log.debug("Added icon {} to ZIP: {} (format: {})", iconIndex, fileName, outputFormat);
                 iconIndex++;
             }
-            
+
             zos.finish();
             log.info("Successfully created ZIP file with {} icons", exportRequest.getIcons().size());
             return baos.toByteArray();
-            
+
         } catch (IOException e) {
             log.error("Error creating ZIP file for request: {}", exportRequest.getRequestId(), e);
             throw new RuntimeException("Failed to create icon pack ZIP", e);
         }
     }
-    
-    private String createFileName(IconGenerationResponse.GeneratedIcon icon, int index) {
+
+    private String createFileName(IconGenerationResponse.GeneratedIcon icon, int index, String format) {
         String description = icon.getDescription();
-        
-        if (description != null && !description.trim().isEmpty() && 
+        String extension = "png";
+        if ("svg".equalsIgnoreCase(format)) {
+            extension = "svg";
+        }
+
+        if (description != null && !description.trim().isEmpty() &&
             !description.startsWith("Generated icon") && !description.startsWith("Icon ")) {
-            // Use description as filename, sanitized
             String sanitized = description.trim()
-                    .replaceAll("[^a-zA-Z0-9\\s-_]", "") // Remove special characters
-                    .replaceAll("\\s+", "_") // Replace spaces with underscores
+                    .replaceAll("[^a-zA-Z0-9\s-_]", "")
+                    .replaceAll("\s+", "_")
                     .toLowerCase();
-            
+
             if (sanitized.length() > 30) {
                 sanitized = sanitized.substring(0, 30);
             }
-            
-            return String.format("%02d_%s.png", index, sanitized);
+
+            return String.format("%02d_%s.%s", index, sanitized, extension);
         } else {
-            // Fallback to generic naming
-            return String.format("%02d_icon.png", index);
+            return String.format("%02d_icon.%s", index, extension);
         }
     }
 }

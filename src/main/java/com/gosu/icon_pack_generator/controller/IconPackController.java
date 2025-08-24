@@ -277,8 +277,8 @@ public class IconPackController implements IconPackControllerAPI {
     @Override
     @ResponseBody
     public ResponseEntity<byte[]> exportIcons(@RequestBody IconExportRequest exportRequest) {
-        log.info("Received export request for service: {}, generation: {} (background removal: {})",
-                exportRequest.getServiceName(), exportRequest.getGenerationIndex(), exportRequest.isRemoveBackground());
+        log.info("Received export request for service: {}, generation: {} (background removal: {}, format: {})",
+                exportRequest.getServiceName(), exportRequest.getGenerationIndex(), exportRequest.isRemoveBackground(), exportRequest.getOutputFormat());
 
         IconGenerationResponse generationResponse = generationResults.get(exportRequest.getRequestId());
         if (generationResponse == null) {
@@ -313,7 +313,7 @@ public class IconPackController implements IconPackControllerAPI {
         exportRequest.setIcons(iconsToExport);
 
         try {
-            byte[] zipData = iconExportService.createIconPackZip(exportRequest, exportRequest.isRemoveBackground());
+            byte[] zipData = iconExportService.createIconPackZip(exportRequest);
 
             String fileName = "icon-pack-" + exportRequest.getRequestId() + "-" + exportRequest.getServiceName() + "-gen" + exportRequest.getGenerationIndex() + ".zip";
 

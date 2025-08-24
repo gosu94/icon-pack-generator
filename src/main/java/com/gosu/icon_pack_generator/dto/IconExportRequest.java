@@ -12,5 +12,6 @@ public class IconExportRequest {
     private int generationIndex;
     private List<IconGenerationResponse.GeneratedIcon> icons;
     private boolean removeBackground = true;
+    private String outputFormat = "png";
 
 }
