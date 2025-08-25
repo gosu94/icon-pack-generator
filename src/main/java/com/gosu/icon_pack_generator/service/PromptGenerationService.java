@@ -161,20 +161,23 @@ public class PromptGenerationService {
      * Generate a prompt for creating icons based on a reference image style
      * This will be used for image-to-image generation where the reference image provides the style
      */
-    public String generatePromptForReferenceImage(List<String> iconDescriptions) {
-        return generatePromptForReferenceImage(iconDescriptions, null);
+    public String generatePromptForReferenceImage(List<String> iconDescriptions, String originalPrompt) {
+        return generatePromptForReferenceImage(iconDescriptions, originalPrompt, null);
     }
 
     /**
      * Generate a prompt for creating icons based on a reference image style with avoidance list
      * This will be used for image-to-image generation where the reference image provides the style
      */
-    public String generatePromptForReferenceImage(List<String> iconDescriptions, List<String> iconsToAvoid) {
+    public String generatePromptForReferenceImage(List<String> iconDescriptions, String originalPrompt, List<String> iconsToAvoid) {
         StringBuilder prompt = new StringBuilder();
 
         // Start with the instruction to use the reference image as style guide
         prompt.append("Create a 3x3 arrangement of clean icons using the exact same style, design approach, and color scheme as shown in this reference image. ");
         prompt.append("Maintain the same visual consistency, line thickness, color palette, and overall aesthetic. ");
+        if (originalPrompt != null && !originalPrompt.trim().isEmpty()) {
+            prompt.append("General theme: ").append(originalPrompt).append(".");
+        }
         prompt.append("Each icon should be contained within its own square area of equal size. ");
         prompt.append("The background should be transparent or white.");
 

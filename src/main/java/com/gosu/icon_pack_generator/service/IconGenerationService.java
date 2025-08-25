@@ -247,7 +247,8 @@ public class IconGenerationService {
     private CompletableFuture<IconGenerationResult> generateSingleGridWithReferenceImage(
             IconGenerationRequest request, AIModelService aiService, String serviceName, Long seed) {
         String prompt = promptGenerationService.generatePromptForReferenceImage(
-                request.getIndividualDescriptions()
+                request.getIndividualDescriptions(),
+                request.getGeneralDescription()
         );
         
         // Convert base64 reference image to byte array
@@ -338,7 +339,7 @@ public class IconGenerationService {
                 request.getIndividualDescriptions().subList(9, Math.min(18, request.getIndividualDescriptions().size())) : 
                 new ArrayList<>();
         
-        String firstPrompt = promptGenerationService.generatePromptForReferenceImage(firstNineDescriptions);
+        String firstPrompt = promptGenerationService.generatePromptForReferenceImage(firstNineDescriptions, request.getGeneralDescription());
         byte[] referenceImageData = Base64.getDecoder().decode(request.getReferenceImageBase64());
         
         // Generate first grid using reference image
@@ -350,7 +351,7 @@ public class IconGenerationService {
                     List<String> iconsToAvoid = createAvoidanceList(firstNineDescriptions, null);
                     
                     // For second grid, ALWAYS use the first generated grid as reference for consistency
-                    String secondPrompt = promptGenerationService.generatePromptForReferenceImage(secondNineDescriptions, iconsToAvoid);
+                    String secondPrompt = promptGenerationService.generatePromptForReferenceImage(secondNineDescriptions, request.getGeneralDescription(), iconsToAvoid);
                     
                     // Always use the first grid as reference for the second grid (consistent with text-based approach)
                     return generateImageToImageWithService(aiService, secondPrompt, firstImageData, seed + 1)

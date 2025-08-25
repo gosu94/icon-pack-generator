@@ -280,27 +280,34 @@ public class IconPackController implements IconPackControllerAPI {
         log.info("Received export request for service: {}, generation: {} (background removal: {}, format: {})",
                 exportRequest.getServiceName(), exportRequest.getGenerationIndex(), exportRequest.isRemoveBackground(), exportRequest.getOutputFormat());
 
-        IconGenerationResponse generationResponse = generationResults.get(exportRequest.getRequestId());
-        if (generationResponse == null) {
-            log.error("No generation results found for request ID: {}", exportRequest.getRequestId());
-            return ResponseEntity.notFound().build();
-        }
+        List<IconGenerationResponse.GeneratedIcon> iconsToExport = exportRequest.getIcons();
+        log.info("Received export request with {} icons in the request body.", (iconsToExport != null ? iconsToExport.size() : 0));
 
-        List<IconGenerationResponse.GeneratedIcon> iconsToExport = new ArrayList<>();
-        List<IconGenerationResponse.ServiceResults> serviceResults = switch (exportRequest.getServiceName().toLowerCase()) {
-            case "flux" -> generationResponse.getFalAiResults();
-            case "recraft" -> generationResponse.getRecraftResults();
-            case "photon" -> generationResponse.getPhotonResults();
-            case "gpt" -> generationResponse.getGptResults();
-            case "imagen" -> generationResponse.getImagenResults();
-            default -> null;
-        };
+        // If icons are not provided in the request, fall back to fetching from storage
+        if (iconsToExport == null || iconsToExport.isEmpty()) {
+            log.info("No icons in request body, fetching from stored results for request ID: {}", exportRequest.getRequestId());
+            IconGenerationResponse generationResponse = generationResults.get(exportRequest.getRequestId());
+            if (generationResponse == null) {
+                log.error("No generation results found for request ID: {}", exportRequest.getRequestId());
+                return ResponseEntity.notFound().build();
+            }
 
-        if (serviceResults != null) {
-            for (IconGenerationResponse.ServiceResults result : serviceResults) {
-                if (result.getGenerationIndex() == exportRequest.getGenerationIndex()) {
-                    iconsToExport.addAll(result.getIcons());
-                    break;
+            iconsToExport = new ArrayList<>();
+            List<IconGenerationResponse.ServiceResults> serviceResults = switch (exportRequest.getServiceName().toLowerCase()) {
+                case "flux" -> generationResponse.getFalAiResults();
+                case "recraft" -> generationResponse.getRecraftResults();
+                case "photon" -> generationResponse.getPhotonResults();
+                case "gpt" -> generationResponse.getGptResults();
+                case "imagen" -> generationResponse.getImagenResults();
+                default -> null;
+            };
+
+            if (serviceResults != null) {
+                for (IconGenerationResponse.ServiceResults result : serviceResults) {
+                    if (result.getGenerationIndex() == exportRequest.getGenerationIndex()) {
+                        iconsToExport.addAll(result.getIcons());
+                        break;
+                    }
                 }
             }
         }
@@ -358,12 +365,10 @@ public class IconPackController implements IconPackControllerAPI {
                     return createErrorResponse(request, "Original image is required", startTime);
                 }
 
-                // Icon descriptions are optional - if empty, generate creative variations
-
                 // Convert base64 to byte array
                 byte[] originalImageData = Base64.getDecoder().decode(request.getOriginalImageBase64());
 
-                String prompt = promptGenerationService.generatePromptForReferenceImage(request.getIconDescriptions());
+                String prompt = promptGenerationService.generatePromptForReferenceImage(request.getIconDescriptions(), request.getGeneralDescription());
 
                 // Get the appropriate service and generate icons
                 CompletableFuture<byte[]> generationFuture = getServiceAndGenerate(request.getServiceName(), prompt, originalImageData, request.getSeed());

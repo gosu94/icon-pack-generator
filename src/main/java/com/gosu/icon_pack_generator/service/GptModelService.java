@@ -152,11 +152,8 @@ public class GptModelService implements AIModelService {
                 // Convert image data to data URL for image_urls parameter
                 String imageDataUrl = convertToDataUrl(sourceImageData);
                 
-                // Apply GPT-specific styling to the prompt with explicit constraints
-                String gptPrompt = "Using transparent background and consistent with source image: " + prompt +
-                        " - clean icon design, no text, no labels, no grid lines, no borders, transparent background";
-                
-                Map<String, Object> input = createGptImageToImageInputMap(gptPrompt, imageDataUrl, seed);
+
+                Map<String, Object> input = createGptImageToImageInputMap(prompt, imageDataUrl, seed);
                 log.info("Making GPT image-to-image API call with input keys: {} (seed: {})", input.keySet(), seed);
                 
                 // Use fal.ai client API with queue update handling

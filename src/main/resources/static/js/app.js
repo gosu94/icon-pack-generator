@@ -1209,6 +1209,11 @@ document.addEventListener('DOMContentLoaded', function() {
             
             // Add new icons to current icons for export
             currentIcons = currentIcons.concat(data.newIcons);
+
+            // Also add to streamingResults for correct export
+            if (streamingResults[uniqueId] && streamingResults[uniqueId].icons) {
+                streamingResults[uniqueId].icons.push(...data.newIcons);
+            }
         } else {
             console.log('No newIcons in data or empty array.');
         }
