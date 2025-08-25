@@ -150,7 +150,7 @@ class ImageProcessingServiceSpec extends Specification {
         byte[] gridImageData = bufferedImageToByteArray(synthetic3x3Grid)
 
         when: "Cropping 9 icons from grid"
-        List<String> croppedIcons = imageProcessingService.cropIconsFromGrid(gridImageData, 9)
+        List<String> croppedIcons = imageProcessingService.cropIconsFromGrid(gridImageData, 9, false    )
 
         then: "9 icons are extracted"
         croppedIcons != null
@@ -251,7 +251,7 @@ class ImageProcessingServiceSpec extends Specification {
 
     def "should handle edge case: empty image data"() {
         when: "Attempting to crop from empty data"
-        imageProcessingService.cropIconsFromGrid(new byte[0], 9)
+        imageProcessingService.cropIconsFromGrid(new byte[0], 9, false  )
 
         then: "RuntimeException is thrown"
         thrown(RuntimeException)
@@ -815,7 +815,7 @@ class ImageProcessingServiceSpec extends Specification {
 
     def "should detect transparent boundaries and fix cutting artifacts"() {
         when: "processing the problematic wrong-cut.png image that has misaligned icons"
-        BufferedImage wrongCutImage = ImageIO.read(new File("src/test/resources/images/wrong-cut.png"))
+        BufferedImage wrongCutImage = ImageIO.read(new File("src/test/resources/images/testsub3.png"))
         byte[] imageBytes = bufferedImageToByteArray(wrongCutImage)
         
         then: "image loads successfully"

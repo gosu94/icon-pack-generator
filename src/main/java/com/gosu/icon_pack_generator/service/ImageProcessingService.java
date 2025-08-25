@@ -29,8 +29,8 @@ public class ImageProcessingService {
      * @param iconCount The number of icons to extract (9 or 18)
      * @return List of cropped icon images as base64 strings
      */
-    public List<String> cropIconsFromGrid(byte[] imageData, int iconCount) {
-        return cropIconsFromGrid(imageData, iconCount, true, 0, false);
+    public List<String> cropIconsFromGrid(byte[] imageData, int iconCount, boolean removeBackground) {
+        return cropIconsFromGrid(imageData, iconCount, true, 0, removeBackground);
     }
     
     /**
@@ -61,32 +61,44 @@ public class ImageProcessingService {
                 log.error("Image data is null");
                 throw new RuntimeException("Image data is null");
             }
-            
+
             if (imageData.length == 0) {
                 log.error("Image data is empty");
                 throw new RuntimeException("Image data is empty");
             }
-            
+
             log.info("Processing image data of size: {} bytes", imageData.length);
-            
+
             // Optionally remove background from the entire grid image before processing
-            // During generation, background removal is typically disabled to preserve content bounds
-            // During export, background removal may be enabled per user preference
             byte[] processedImageData = imageData;
             if (removeBackground) {
-                log.info("Removing background from grid image before cropping icons");
-                processedImageData = backgroundRemovalService.removeBackground(imageData);
-                
-                if (processedImageData.length != imageData.length) {
-                    log.info("Background removal changed image size from {} to {} bytes", 
-                            imageData.length, processedImageData.length);
+                try {
+                    // Heuristic check to see if background is already transparent
+                    BufferedImage imageToCheck = ImageIO.read(new ByteArrayInputStream(imageData));
+                    if (imageToCheck != null && hasTransparentBackground(imageToCheck)) {
+                        log.info("Image background appears to be already transparent. Skipping background removal.");
+                    } else {
+                        if (imageToCheck == null) {
+                            log.warn("Could not read image to check for transparency, proceeding with background removal.");
+                        }
+                        log.info("Removing background from grid image before cropping icons");
+                        processedImageData = backgroundRemovalService.removeBackground(imageData);
+
+                        if (processedImageData.length != imageData.length) {
+                            log.info("Background removal changed image size from {} to {} bytes",
+                                    imageData.length, processedImageData.length);
+                        }
+                    }
+                } catch (IOException e) {
+                    log.error("Error during transparency check, proceeding with background removal.", e);
+                    processedImageData = backgroundRemovalService.removeBackground(imageData);
                 }
             } else {
                 log.debug("Background removal disabled - preserving original image for better content bounds detection");
             }
-            
+
             BufferedImage originalImage = null;
-            
+
             // Check if it's WebP format for better logging
             if (isWebPFormat(processedImageData)) {
                 log.info("WebP format detected. Attempting to decode using TwelveMonkeys ImageIO WebP support...");
@@ -95,7 +107,7 @@ public class ImageProcessingService {
                 log.debug("Standard image format detected, using regular ImageIO...");
                 originalImage = ImageIO.read(new ByteArrayInputStream(processedImageData));
             }
-            
+
             if (originalImage == null) {
                 log.error("Failed to parse image data - ImageIO.read() returned null. Data size: {} bytes", processedImageData.length);
                 // Log first few bytes to help debug
@@ -105,14 +117,14 @@ public class ImageProcessingService {
                 }
                 throw new RuntimeException("Failed to parse image data - ImageIO returned null");
             }
-            
+
             log.debug("Successfully parsed image: {}x{} pixels", originalImage.getWidth(), originalImage.getHeight());
-            
+
             // Add image diagnostics
             performImageDiagnostics(originalImage, processedImageData.length);
-            
+
             List<String> croppedIcons = new ArrayList<>();
-            
+
             if (iconCount == 9) {
                 croppedIcons.addAll(cropGrid3x3(originalImage, centerIcons, targetSize));
             } else if (iconCount == 18) {
@@ -121,14 +133,55 @@ public class ImageProcessingService {
                 croppedIcons.addAll(cropGrid3x3(originalImage, centerIcons, targetSize));
                 // TODO: Handle second grid generation for 18 icons
             }
-            
+
             log.debug("Successfully cropped {} icons from grid", croppedIcons.size());
             return croppedIcons;
-            
+
         } catch (IOException e) {
             log.error("Error processing image", e);
             throw new RuntimeException("Failed to process image", e);
         }
+    }
+
+    /**
+     * Heuristic check to see if an image's background is already transparent.
+     * It samples pixels along the border of the image.
+     * @param image The image to check.
+     * @return true if the background is likely transparent, false otherwise.
+     */
+    private boolean hasTransparentBackground(BufferedImage image) {
+        int width = image.getWidth();
+        int height = image.getHeight();
+
+        // Don't check tiny images
+        if (width < 50 || height < 50) {
+            return false;
+        }
+
+        int sampleStep = Math.max(1, Math.min(width, height) / 20); // Sample ~20 pixels per edge
+        int transparentThreshold = 10; // Alpha value below this is considered transparent
+        int nonTransparentCount = 0;
+        int samples = 0;
+
+        // Sample top and bottom edges
+        for (int x = 0; x < width; x += sampleStep) {
+            if (((image.getRGB(x, 0) >> 24) & 0xff) > transparentThreshold) nonTransparentCount++;
+            if (((image.getRGB(x, height - 1) >> 24) & 0xff) > transparentThreshold) nonTransparentCount++;
+            samples += 2;
+        }
+
+        // Sample left and right edges
+        for (int y = 1; y < height - 1; y += sampleStep) {
+            if (((image.getRGB(0, y) >> 24) & 0xff) > transparentThreshold) nonTransparentCount++;
+            if (((image.getRGB(width - 1, y) >> 24) & 0xff) > transparentThreshold) nonTransparentCount++;
+            samples += 2;
+        }
+
+        // If more than 10% of sampled border pixels are not transparent, assume there's a background.
+        double nonTransparentRatio = (double) nonTransparentCount / samples;
+        log.info("Transparency check: {} non-transparent pixels out of {} samples on the border (ratio: {}).", nonTransparentCount, samples, String.format("%.2f", nonTransparentRatio));
+        
+        return nonTransparentRatio < 0.10;
     }
     
     /**

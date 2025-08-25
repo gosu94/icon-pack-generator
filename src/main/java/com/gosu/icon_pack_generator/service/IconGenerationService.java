@@ -239,7 +239,7 @@ public class IconGenerationService {
         
         return generateImageWithSeed(aiService, prompt, seed)
                 .thenApply(imageData -> {
-                    List<String> base64Icons = imageProcessingService.cropIconsFromGrid(imageData, 9);
+                    List<String> base64Icons = imageProcessingService.cropIconsFromGrid(imageData, 9, false );
                     return createIconListWithOriginalImage(base64Icons, imageData, request, serviceName);
                 });
     }
@@ -257,7 +257,7 @@ public class IconGenerationService {
         // Use image-to-image generation with the reference image
         return generateImageToImageWithService(aiService, prompt, referenceImageData, seed)
                 .thenApply(imageData -> {
-                    List<String> base64Icons = imageProcessingService.cropIconsFromGrid(imageData, 9);
+                    List<String> base64Icons = imageProcessingService.cropIconsFromGrid(imageData, 9, true);
                     return createIconListWithOriginalImage(base64Icons, imageData, request, serviceName);
                 });
     }
@@ -291,7 +291,7 @@ public class IconGenerationService {
         // Generate first grid
         return generateImageWithSeed(aiService, firstPrompt, seed)
                 .thenCompose(firstImageData -> {
-                    List<String> firstGrid = imageProcessingService.cropIconsFromGrid(firstImageData, 9);
+                    List<String> firstGrid = imageProcessingService.cropIconsFromGrid(firstImageData, 9, false);
                     
                     // Create a list of icons to avoid for the second grid
                     List<String> iconsToAvoid = createAvoidanceList(firstNineDescriptions, request.getGeneralDescription());
@@ -303,7 +303,7 @@ public class IconGenerationService {
                     if (supportsImageToImage(aiService)) {
                         return generateImageToImageWithService(aiService, secondPrompt, firstImageData, seed)
                                 .thenApply(secondImageData -> {
-                                    List<String> secondGrid = imageProcessingService.cropIconsFromGrid(secondImageData, 9);
+                                    List<String> secondGrid = imageProcessingService.cropIconsFromGrid(secondImageData, 9, true );
                                     
                                     List<String> allIcons = new ArrayList<>(firstGrid);
                                     allIcons.addAll(secondGrid);
@@ -315,7 +315,7 @@ public class IconGenerationService {
                         // Fallback to regular generation for services that don't support image-to-image
                         return generateImageWithSeed(aiService, secondPrompt, seed)
                                 .thenApply(secondImageData -> {
-                                    List<String> secondGrid = imageProcessingService.cropIconsFromGrid(secondImageData, 9);
+                                    List<String> secondGrid = imageProcessingService.cropIconsFromGrid(secondImageData, 9, true );
                                     
                                     List<String> allIcons = new ArrayList<>(firstGrid);
                                     allIcons.addAll(secondGrid);
@@ -345,7 +345,7 @@ public class IconGenerationService {
         // Generate first grid using reference image
         return generateImageToImageWithService(aiService, firstPrompt, referenceImageData, seed)
                 .thenCompose(firstImageData -> {
-                    List<String> firstGrid = imageProcessingService.cropIconsFromGrid(firstImageData, 9);
+                    List<String> firstGrid = imageProcessingService.cropIconsFromGrid(firstImageData, 9, false);
                     
                     // Create a list of icons to avoid for the second grid (consistent with text-based approach)
                     List<String> iconsToAvoid = createAvoidanceList(firstNineDescriptions, null);
@@ -356,7 +356,7 @@ public class IconGenerationService {
                     // Always use the first grid as reference for the second grid (consistent with text-based approach)
                     return generateImageToImageWithService(aiService, secondPrompt, firstImageData, seed + 1)
                             .thenApply(secondImageData -> {
-                                List<String> secondGrid = imageProcessingService.cropIconsFromGrid(secondImageData, 9);
+                                List<String> secondGrid = imageProcessingService.cropIconsFromGrid(secondImageData, 9, true );
                                 
                                 List<String> allIcons = new ArrayList<>(firstGrid);
                                 allIcons.addAll(secondGrid);
