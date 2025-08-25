@@ -106,7 +106,7 @@ public class ImageProcessingService {
                 throw new RuntimeException("Failed to parse image data - ImageIO returned null");
             }
             
-            log.info("Successfully parsed image: {}x{} pixels", originalImage.getWidth(), originalImage.getHeight());
+            log.debug("Successfully parsed image: {}x{} pixels", originalImage.getWidth(), originalImage.getHeight());
             
             // Add image diagnostics
             performImageDiagnostics(originalImage, processedImageData.length);
@@ -122,7 +122,7 @@ public class ImageProcessingService {
                 // TODO: Handle second grid generation for 18 icons
             }
             
-            log.info("Successfully cropped {} icons from grid", croppedIcons.size());
+            log.debug("Successfully cropped {} icons from grid", croppedIcons.size());
             return croppedIcons;
             
         } catch (IOException e) {
@@ -279,7 +279,7 @@ public class ImageProcessingService {
             
             // If the image is mostly black, treat the black pixels as content
             if (blackPixels > totalPixels * 0.1) { // More than 10% black pixels
-                log.info("Image appears to be mostly black. Treating black pixels as content for centering.");
+                log.debug("Image appears to be mostly black. Treating black pixels as content for centering.");
                 return detectContentBoundsIncludingBlack(image);
             }
             
@@ -378,8 +378,8 @@ public class ImageProcessingService {
         }
         
         // Log diagnostic information
-        log.info("Image diagnostics: {}x{} pixels, {} bytes original file size", width, height, originalFileSize);
-        log.info("Pixel sample analysis ({}): {}% transparent, {}% white, {}% black, {}% colored", 
+        log.debug("Image diagnostics: {}x{} pixels, {} bytes original file size", width, height, originalFileSize);
+        log.debug("Pixel sample analysis ({}): {}% transparent, {}% white, {}% black, {}% colored",
                 sampleSize,
                 Math.round(100.0 * transparentCount / sampleSize),
                 Math.round(100.0 * whiteCount / sampleSize),
@@ -491,27 +491,27 @@ public class ImageProcessingService {
         // Step 2: Fall back to content gap detection if transparent boundaries aren't found
         if (xBoundaries == null) {
             xBoundaries = detectContentBoundaries(image, true);
-            log.info("No transparent x-boundaries found, falling back to content detection");
+            log.debug("No transparent x-boundaries found, falling back to content detection");
         } else {
-            log.info("Using transparent x boundaries: {}", java.util.Arrays.toString(xBoundaries));
+            log.debug("Using transparent x boundaries: {}", java.util.Arrays.toString(xBoundaries));
         }
         
         if (yBoundaries == null) {
             yBoundaries = detectContentBoundaries(image, false);
-            log.info("No transparent y-boundaries found, falling back to content detection");
+            log.debug("No transparent y-boundaries found, falling back to content detection");
         } else {
-            log.info("Using transparent y boundaries: {}", java.util.Arrays.toString(yBoundaries));
+            log.debug("Using transparent y boundaries: {}", java.util.Arrays.toString(yBoundaries));
         }
         
         // Step 3: If still no boundaries found, use improved division with edge redistribution
         if (xBoundaries == null) {
             xBoundaries = calculateImprovedDivision(width, 3);
-            log.info("Using improved division for x-axis: {}", java.util.Arrays.toString(xBoundaries));
+            log.debug("Using improved division for x-axis: {}", java.util.Arrays.toString(xBoundaries));
         }
         
         if (yBoundaries == null) {
             yBoundaries = calculateImprovedDivision(height, 3);
-            log.info("Using improved division for y-axis: {}", java.util.Arrays.toString(yBoundaries));
+            log.debug("Using improved division for y-axis: {}", java.util.Arrays.toString(yBoundaries));
         }
         
         // Step 4: Apply smart buffering to prevent pixel cutoff
@@ -553,7 +553,7 @@ public class ImageProcessingService {
         int[] bufferedXBoundaries = applySmartBuffer(xBoundaries, width, true, hasHighQualityX);
         int[] bufferedYBoundaries = applySmartBuffer(yBoundaries, height, false, hasHighQualityY);
         
-        log.info("Applying buffering: hasHighQualityX={}, hasHighQualityY={}", hasHighQualityX, hasHighQualityY);
+        log.debug("Applying buffering: hasHighQualityX={}, hasHighQualityY={}", hasHighQualityX, hasHighQualityY);
         
         // Step 5: Convert boundaries to GridBounds format
         int[][] xBounds = new int[3][2]; // [column][start/end]
@@ -568,8 +568,8 @@ public class ImageProcessingService {
         
         // Log final bounds for debugging
         for (int i = 0; i < 3; i++) {
-            log.info("Column {}: x={} to {} (width={}) [buffered]", i, xBounds[i][0], xBounds[i][1], xBounds[i][1] - xBounds[i][0]);
-            log.info("Row {}: y={} to {} (height={}) [buffered]", i, yBounds[i][0], yBounds[i][1], yBounds[i][1] - yBounds[i][0]);
+            log.debug("Column {}: x={} to {} (width={}) [buffered]", i, xBounds[i][0], xBounds[i][1], xBounds[i][1] - xBounds[i][0]);
+            log.debug("Row {}: y={} to {} (height={}) [buffered]", i, yBounds[i][0], yBounds[i][1], yBounds[i][1] - yBounds[i][0]);
         }
         
         return new GridBounds(xBounds, yBounds);
@@ -590,11 +590,11 @@ public class ImageProcessingService {
         if (hasHighQualityBoundaries) {
             // High-quality boundaries are already precise, so NO buffering needed to prevent overlap
             baseBuffer = 0;
-            log.info("Using NO buffering (high-quality boundaries detected): base buffer = {}", baseBuffer);
+            log.debug("Using NO buffering (high-quality boundaries detected): base buffer = {}", baseBuffer);
         } else {
             // Standard aggressive buffering for imprecise boundaries
             baseBuffer = Math.max(2, Math.min(8, totalDimension / 150));
-            log.info("Using standard buffering (fallback boundaries): base buffer = {}", baseBuffer);
+            log.debug("Using standard buffering (fallback boundaries): base buffer = {}", baseBuffer);
         }
         
         // Give extra buffer to the problematic third row (bottom row) to prevent top cutoff
@@ -611,7 +611,7 @@ public class ImageProcessingService {
         }
         bufferSizes[3] = 0; // Last boundary (dimension) never exceeds image bounds
         
-        log.info("Buffer sizes for {}: base={}, buffers=[{}, {}, {}, {}]", 
+        log.debug("Buffer sizes for {}: base={}, buffers=[{}, {}, {}, {}]",
                  isVertical ? "vertical" : "horizontal", baseBuffer, 
                  bufferSizes[0], bufferSizes[1], bufferSizes[2], bufferSizes[3]);
         
@@ -656,11 +656,11 @@ public class ImageProcessingService {
             
             bufferedBoundaries[i] = bufferedPos;
             
-            log.info("Boundary {}: original={}, buffer={}, buffered={}", 
+            log.debug("Boundary {}: original={}, buffer={}, buffered={}",
                      i, originalPos, buffer, bufferedPos);
         }
         
-        log.info("Applied smart buffer to {} boundaries: {} -> {} (buffers: {})", 
+        log.debug("Applied smart buffer to {} boundaries: {} -> {} (buffers: {})",
                  isVertical ? "vertical" : "horizontal",
                  java.util.Arrays.toString(boundaries),
                  java.util.Arrays.toString(bufferedBoundaries),
@@ -688,7 +688,7 @@ public class ImageProcessingService {
     private int[] detectTransparentBoundaries(BufferedImage image, boolean vertical) {
         int dimension = vertical ? image.getWidth() : image.getHeight();
         
-        log.info("Detecting transparent {} boundaries for dimension {}",
+        log.debug("Detecting transparent {} boundaries for dimension {}",
                  vertical ? "vertical" : "horizontal", dimension);
         
         // Calculate ideal boundary positions (1/3 and 2/3)
@@ -713,7 +713,7 @@ public class ImageProcessingService {
         
         // Check if we found good boundaries
         if (bestBoundary1 == -1 || bestBoundary2 == -1 || bestBoundary1 >= bestBoundary2) {
-            log.info("Could not find suitable transparent {} boundaries", vertical ? "vertical" : "horizontal");
+            log.debug("Could not find suitable transparent {} boundaries", vertical ? "vertical" : "horizontal");
             return null;
         }
         
@@ -739,7 +739,7 @@ public class ImageProcessingService {
                                section3Deviation <= maxDeviationRatio;
         
         if (boundary1Transparency < transparencyThreshold || boundary2Transparency < transparencyThreshold) {
-            log.info("Transparent {} boundaries don't meet quality threshold: {}%, {}% (need {}%)", 
+            log.debug("Transparent {} boundaries don't meet quality threshold: {}%, {}% (need {}%)",
                      vertical ? "vertical" : "horizontal", 
                      String.format("%.1f", boundary1Transparency * 100), 
                      String.format("%.1f", boundary2Transparency * 100), 
@@ -748,7 +748,7 @@ public class ImageProcessingService {
         }
         
         if (!spacingIsGood) {
-            log.info("Transparent {} boundaries have poor spacing: sections=[{}, {}, {}] (ideal={}), deviations=[{}%, {}%, {}%] (max={}%)", 
+            log.debug("Transparent {} boundaries have poor spacing: sections=[{}, {}, {}] (ideal={}), deviations=[{}%, {}%, {}%] (max={}%)",
                      vertical ? "vertical" : "horizontal", 
                      section1Size, section2Size, section3Size, idealSectionSize,
                      String.format("%.1f", section1Deviation * 100), 
@@ -758,7 +758,7 @@ public class ImageProcessingService {
             return null;
         }
         
-        log.info("Found excellent transparent {} boundaries at {} ({}% transparent) and {} ({}% transparent) with good spacing: sections=[{}, {}, {}]", 
+        log.debug("Found excellent transparent {} boundaries at {} ({}% transparent) and {} ({}% transparent) with good spacing: sections=[{}, {}, {}]",
                  vertical ? "vertical" : "horizontal", 
                  bestBoundary1, String.format("%.1f", boundary1Transparency * 100),
                  bestBoundary2, String.format("%.1f", boundary2Transparency * 100),
@@ -790,7 +790,7 @@ public class ImageProcessingService {
         }
         
         if (bestPosition != -1) {
-            log.info("Best transparent line at position {} with {}% transparency",
+            log.debug("Best transparent line at position {} with {}% transparency",
                      bestPosition, String.format("%.1f", bestTransparency * 100));
         }
         
@@ -840,7 +840,7 @@ public class ImageProcessingService {
         int dimension = vertical ? image.getWidth() : image.getHeight();
         int perpDimension = vertical ? image.getHeight() : image.getWidth();
         
-        log.info("Analyzing {} boundaries: dimension={}, perpDimension={}", 
+        log.debug("Analyzing {} boundaries: dimension={}, perpDimension={}",
                  vertical ? "vertical" : "horizontal", dimension, perpDimension);
         
         // Analyze pixel variation along the dimension to find low-content areas (gaps)
@@ -885,7 +885,7 @@ public class ImageProcessingService {
         
         // If no gaps found with strict threshold, try relaxed threshold but only in specific ranges
         if (gapCandidates.size() < 2) {
-            log.info("No strict gaps found for {}, trying relaxed threshold in target ranges", 
+            log.debug("No strict gaps found for {}, trying relaxed threshold in target ranges",
                      vertical ? "vertical" : "horizontal");
             
             double relaxedThreshold = 0.15; // 15% content threshold for relaxed search
@@ -911,7 +911,7 @@ public class ImageProcessingService {
         }
         
         if (gapCandidates.size() < 2) {
-            log.info("Could not detect natural {} boundaries - insufficient gap candidates ({})", 
+            log.debug("Could not detect natural {} boundaries - insufficient gap candidates ({})",
                      vertical ? "vertical" : "horizontal", gapCandidates.size());
             return null;
         }
@@ -966,7 +966,7 @@ public class ImageProcessingService {
         
         // Ensure boundaries are reasonable
         if (bestBoundary1 == -1 || bestBoundary2 == -1 || bestBoundary1 >= bestBoundary2) {
-            log.info("Could not find good {} boundaries with acceptable spacing from {} candidates", 
+            log.debug("Could not find good {} boundaries with acceptable spacing from {} candidates",
                      vertical ? "vertical" : "horizontal", gapCandidates.size());
             return null;
         }
@@ -976,7 +976,7 @@ public class ImageProcessingService {
         int section2Size = bestBoundary2 - bestBoundary1;
         int section3Size = dimension - bestBoundary2;
         
-        log.info("Detected natural {} boundaries at {} (content: {}%) and {} (content: {}%) for dimension {} with sections=[{}, {}, {}]", 
+        log.debug("Detected natural {} boundaries at {} (content: {}%) and {} (content: {}%) for dimension {} with sections=[{}, {}, {}]",
                  vertical ? "vertical" : "horizontal", 
                  bestBoundary1, String.format("%.1f", contentDensity[bestBoundary1] * 100),
                  bestBoundary2, String.format("%.1f", contentDensity[bestBoundary2] * 100),
@@ -1019,7 +1019,7 @@ public class ImageProcessingService {
         int width = originalImage.getWidth();
         int height = originalImage.getHeight();
         
-        log.info("Starting intelligent 3x3 grid cropping for image {}x{}", width, height);
+        log.debug("Starting intelligent 3x3 grid cropping for image {}x{}", width, height);
         
         // Use intelligent grid detection instead of simple division
         GridBounds gridBounds = detectGridBounds(originalImage);
@@ -1097,7 +1097,7 @@ public class ImageProcessingService {
             BufferedImage image = ImageIO.read(inputStream);
             
             if (image != null) {
-                log.info("Successfully read WebP image: {}x{} pixels", image.getWidth(), image.getHeight());
+                log.debug("Successfully read WebP image: {}x{} pixels", image.getWidth(), image.getHeight());
                 return image;
             }
             
