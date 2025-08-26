@@ -451,11 +451,7 @@ public class ImageProcessingService {
         if (originalFileSize < 5000) {
             log.warn("Image file size is very small ({} bytes) - this might indicate a failed generation", originalFileSize);
         }
-        
-        // Check if dimensions are suitable for 3x3 grid
-        if (width % 3 != 0 || height % 3 != 0) {
-            log.warn("Image dimensions ({}x{}) are not perfectly divisible by 3 - icon cropping may have edge artifacts", width, height);
-        }
+
     }
     
     /**

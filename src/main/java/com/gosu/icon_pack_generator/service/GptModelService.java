@@ -103,6 +103,8 @@ public class GptModelService implements AIModelService {
     private Map<String, Object> createGptTextToImageInputMap(String prompt, Long seed) {
         validateOpenAIConfiguration();
         
+
+        
         Map<String, Object> input = new HashMap<>();
         input.put("prompt", prompt);
         input.put("image_size", "1024x1024"); // Use 1024x1024 as specified
