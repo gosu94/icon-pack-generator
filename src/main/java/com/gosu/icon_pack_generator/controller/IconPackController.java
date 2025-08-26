@@ -27,8 +27,6 @@ import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import org.springframework.web.context.request.async.DeferredResult;
-import org.springframework.ui.Model;
-import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -63,11 +61,7 @@ public class IconPackController implements IconPackControllerAPI {
     private final BackgroundRemovalService backgroundRemovalService;
     private final ObjectMapper objectMapper;
 
-    @Override
-    public String index(Model model) {
-        model.addAttribute("iconRequest", new IconGenerationRequest());
-        return "index";
-    }
+    // Removed index method - now serving static content from Next.js
 
     @Override
     @ResponseBody
@@ -256,23 +250,7 @@ public class IconPackController implements IconPackControllerAPI {
         }
     }
 
-    @Override
-    public String generateIconsForm(@Valid IconGenerationRequest request,
-                                   BindingResult bindingResult,
-                                   Model model) {
-        if (bindingResult.hasErrors()) {
-            log.warn("Form validation errors: {}", bindingResult.getAllErrors());
-            model.addAttribute("iconRequest", request);
-            return "index";
-        }
-
-        log.info("Received form-based icon generation request for {} icons", request.getIconCount());
-
-        // For form submission, we'll redirect to a processing page
-        // and use JavaScript to make the actual API call
-        model.addAttribute("iconRequest", request);
-        return "generating";
-    }
+    // Removed generateIconsForm method - now using React frontend
 
     @Override
     @ResponseBody
@@ -494,13 +472,7 @@ public class IconPackController implements IconPackControllerAPI {
     /**
      * Background Removal Page
      */
-    @Override
-    public String backgroundRemovalPage(Model model) {
-        // Add service info to the model for display
-        model.addAttribute("serviceInfo", backgroundRemovalService.getServiceInfo());
-        model.addAttribute("isRembgAvailable", backgroundRemovalService.isRembgAvailable());
-        return "background-removal";
-    }
+    // Removed backgroundRemovalPage method - now using React frontend
 
     /**
      * Upload and process image with background removal

@@ -5,6 +5,9 @@
     "scripts": {
         "dev": "next dev",
         "build": "next build",
+        "build:export": "npm run clean && next build && npm run copy-static",
+        "clean": "rm -rf ../src/main/resources/static/* || true",
+        "copy-static": "cp -r out/* ../src/main/resources/static/",
         "start": "next start",
         "lint": "next lint",
         "format": "prettier --write ."

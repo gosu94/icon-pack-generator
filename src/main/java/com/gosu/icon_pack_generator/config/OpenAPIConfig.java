@@ -23,7 +23,6 @@ public class OpenAPIConfig {
         return GroupedOpenApi.builder()
                 .group("api")
                 .pathsToMatch("/generate/**", "/export/**", "/stream/**", "/background-removal/**")
-                .pathsToExclude("/", "/background-removal") // Exclude Thymeleaf view endpoints
                 .build();
     }
 }

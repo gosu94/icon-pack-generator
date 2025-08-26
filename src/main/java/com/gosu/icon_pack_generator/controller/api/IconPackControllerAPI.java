@@ -8,10 +8,8 @@ import com.gosu.icon_pack_generator.dto.MoreIconsResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.ResponseEntity;
-import org.springframework.ui.Model;
-import org.springframework.validation.BindingResult;
+// Removed Thymeleaf imports
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -28,17 +26,7 @@ import java.util.concurrent.CompletableFuture;
 @Tag(name = "Icon Pack Generator API", description = "Endpoints for generating and managing icon packs")
 public interface IconPackControllerAPI {
 
-    // Thymeleaf view endpoints (excluded from Swagger documentation)
-    @GetMapping("/")
-    String index(Model model);
-
-    @PostMapping("/generate-form")
-    String generateIconsForm(@Valid @ModelAttribute IconGenerationRequest request,
-                             BindingResult bindingResult,
-                             Model model);
-
-    @GetMapping("/background-removal")
-    String backgroundRemovalPage(Model model);
+    // Removed Thymeleaf view endpoints - now serving static content from Next.js
 
     // REST API endpoints (included in Swagger documentation)
     @Operation(summary = "Generate icons asynchronously", description = "Kicks off the icon generation process and returns immediately with a request ID.")
