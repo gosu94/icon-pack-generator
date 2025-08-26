@@ -166,7 +166,7 @@ export default function Page() {
             'flux': 'Flux-Pro',
             'recraft': 'Recraft V3',
             'photon': 'Luma Photon',
-            'gpt': 'GPT Image',
+            'gpt': '',
             'imagen': 'Imagen 4'
         };
         return serviceNames[serviceId] || serviceId;
@@ -407,7 +407,7 @@ export default function Page() {
             { id: 'flux', name: 'Flux-Pro' },
             { id: 'recraft', name: 'Recraft V3' },
             { id: 'photon', name: 'Luma Photon' },
-            { id: 'gpt', name: 'GPT Image' },
+            { id: 'gpt', name: '' },
             { id: 'imagen', name: 'Imagen 4' }
         ];
         
@@ -423,7 +423,7 @@ export default function Page() {
                     icons: [],
                     generationTimeMs: 0,
                     status: 'started',
-                    message: 'Initializing...',
+                    message: 'Progressing..',
                     generationIndex: genIndex,
                     progress: 0
                 };
@@ -1206,18 +1206,18 @@ export default function Page() {
                                 </select>
                             </div>
 
-                            {/* Note about generations */}
-                            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                                <div className="flex items-center">
-                                    <svg className="w-4 h-4 text-blue-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                    </svg>
-                                    <div>
-                                        <p className="text-sm font-medium text-blue-800">Two Generation Styles</p>
-                                        <p className="text-sm text-blue-700">Generation 1: Original style. Generation 2: Minimalist modern style with professional color palette.</p>
-                                    </div>
-                                </div>
-                            </div>
+                            {/*/!* Note about generations *!/*/}
+                            {/*<div className="bg-blue-50 border border-blue-200 rounded-lg p-3">*/}
+                            {/*    <div className="flex items-center">*/}
+                            {/*        <svg className="w-4 h-4 text-blue-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">*/}
+                            {/*            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />*/}
+                            {/*        </svg>*/}
+                            {/*        <div>*/}
+                            {/*            <p className="text-sm font-medium text-blue-800">Two Generation Styles</p>*/}
+                            {/*            <p className="text-sm text-blue-700">Generation 1: Original style. Generation 2: Minimalist modern style with professional color palette.</p>*/}
+                            {/*        </div>*/}
+                            {/*    </div>*/}
+                            {/*</div>*/}
 
                             {/* Individual Icon Descriptions */}
                             {iconCount && (
@@ -1312,7 +1312,7 @@ export default function Page() {
                         <div className="p-6 h-full flex flex-col">
                             <div className="flex items-center justify-between mb-4">
                                 <h2 className="text-lg font-medium text-gray-900">
-                                    Variations
+                                    Variation
                                 </h2>
                                 {getGeneration2Results().length > 0 && (
                                     <button

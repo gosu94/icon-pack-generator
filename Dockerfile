@@ -1,3 +1,30 @@
+# Stage 1: Build the Next.js frontend
+FROM node:18-alpine AS frontend-builder
+WORKDIR /app/frontend
+COPY frontend/package.json frontend/yarn.lock ./
+RUN yarn install
+COPY frontend/. .
+RUN yarn build
+
+# Stage 2: Build the Java Spring Boot application with Gradle and Java 21
+FROM openjdk:21-jdk-slim AS backend-builder
+WORKDIR /app/backend
+
+# Copy Gradle files first to leverage Docker cache for dependencies
+COPY build.gradle settings.gradle ./
+COPY gradlew gradlew.bat ./
+COPY gradle ./gradle
+RUN ./gradlew dependencies --no-daemon
+
+# Copy frontend build artifacts into the backend's static resources
+COPY --from=frontend-builder /app/frontend/out ./src/main/resources/static
+
+# Copy backend source code
+COPY src ./src
+
+# Build the JAR (which will now include the frontend static files)
+RUN ./gradlew bootJar --no-daemon
+
 # Use OpenJDK 21 as base image with Python support
 FROM openjdk:21-jdk-slim
 
@@ -39,23 +66,7 @@ RUN mkdir -p /app
 # Set working directory
 WORKDIR /app
 
-# Copy Gradle wrapper and build files
-COPY gradlew gradlew.bat ./
-COPY gradle/ gradle/
-COPY build.gradle settings.gradle ./
-
-# Make gradlew executable
-RUN chmod +x gradlew
-
-# Download dependencies (for faster builds when source changes)
-COPY src/main/resources/application.properties src/main/resources/
-RUN ./gradlew dependencies --no-daemon
-
-# Copy source code
-COPY src/ src/
-
-# Build the application
-RUN ./gradlew bootJar --no-daemon
+COPY --from=backend-builder /app/backend/build/libs/*.jar icon-pack-generator.jar
 
 # Create runtime user for security
 RUN useradd --create-home --shell /bin/bash app
@@ -83,4 +94,4 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
     CMD curl -f http://localhost:8080/actuator/health 2>/dev/null || exit 1
 
 # Run the application
-CMD ["java", "-jar", "build/libs/icon-pack-generator-0.0.1-SNAPSHOT.jar"]
+CMD ["java", "-jar", "icon-pack-generator.jar"]
