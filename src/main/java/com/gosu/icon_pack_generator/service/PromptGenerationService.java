@@ -179,7 +179,7 @@ public class PromptGenerationService {
             prompt.append("General theme: ").append(originalPrompt).append(".");
         }
         prompt.append("Each icon should be contained within its own square area of equal size. ");
-        prompt.append("The background should be transparent or white.");
+        prompt.append("Image background should be transparent");
 
         // Handle icon descriptions
         if (iconDescriptions != null && !iconDescriptions.isEmpty()) {
