@@ -90,7 +90,7 @@ public class WebConfig implements WebMvcConfigurer {
                 });
 
         log.info("Serving generated images from URL path '/{}/**' mapped to directory '{}'", urlPath, absolutePath);
-        log.info("Serving user icons from URL path '/user-icons/**' mapped to directory '{}'", userIconsPath.toFile().getAbsolutePath());
+//        log.info("Serving user icons from URL path '/user-icons/**' mapped to directory '{}'", userIconsPath.toFile().getAbsolutePath());
         log.info("Configured static content serving for Next.js SPA");
     }
 

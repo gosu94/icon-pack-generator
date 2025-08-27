@@ -618,7 +618,7 @@ export default function Page() {
                 onConfirm={confirmExport}
                 removeBackground={removeBackground} setRemoveBackground={setRemoveBackground}
                 outputFormat={outputFormat} setOutputFormat={setOutputFormat}
-                context={exportContext} streamingResults={streamingResults}
+                iconCount={exportContext ? streamingResults[`${exportContext.serviceName}-gen${exportContext.generationIndex}`]?.icons?.length || 0 : 0}
             />
             <ProgressModal show={showProgressModal} progress={exportProgress} />
         </div>

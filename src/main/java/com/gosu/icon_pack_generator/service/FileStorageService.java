@@ -113,4 +113,14 @@ public class FileStorageService {
         }
         return 0L;
     }
+
+    public byte[] readIcon(String relativeWebPath) throws IOException {
+        // Construct the full path by resolving the relative path against the base storage path.
+        // The relative path starts with "/", so we need to remove it before resolving.
+        Path filePath = Paths.get(baseStoragePath).resolve(relativeWebPath.substring(1));
+        if (Files.exists(filePath)) {
+            return Files.readAllBytes(filePath);
+        }
+        throw new IOException("File not found: " + relativeWebPath);
+    }
 }

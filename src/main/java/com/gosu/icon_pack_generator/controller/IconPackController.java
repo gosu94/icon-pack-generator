@@ -1,7 +1,9 @@
 package com.gosu.icon_pack_generator.controller;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.gosu.icon_pack_generator.config.AIServicesConfig;
 import com.gosu.icon_pack_generator.controller.api.IconPackControllerAPI;
+import com.gosu.icon_pack_generator.dto.GalleryExportRequest;
 import com.gosu.icon_pack_generator.dto.IconExportRequest;
 import com.gosu.icon_pack_generator.dto.IconGenerationRequest;
 import com.gosu.icon_pack_generator.dto.IconGenerationResponse;
@@ -22,6 +24,7 @@ import com.gosu.icon_pack_generator.service.ImagenModelService;
 import com.gosu.icon_pack_generator.service.PhotonModelService;
 import com.gosu.icon_pack_generator.service.PromptGenerationService;
 import com.gosu.icon_pack_generator.service.RecraftModelService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpHeaders;
@@ -30,18 +33,16 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.ResponseBody;
-import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
-import org.springframework.web.context.request.async.DeferredResult;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseBody;
+import org.springframework.web.context.request.async.DeferredResult;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
-import jakarta.validation.Valid;
 import java.io.IOException;
 import java.util.ArrayList;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.Base64;
 import java.util.HashMap;
 import java.util.List;
@@ -79,11 +80,11 @@ public class IconPackController implements IconPackControllerAPI {
         if (!request.isValid()) {
             throw new IllegalArgumentException("Either general description or reference image must be provided");
         }
-        
+
         if (request.hasReferenceImage()) {
             log.info("Received reference image-based icon generation request for {} icons", request.getIconCount());
         } else {
-            log.info("Received text-based icon generation request for {} icons with theme: {}", 
+            log.info("Received text-based icon generation request for {} icons with theme: {}",
                     request.getIconCount(), request.getGeneralDescription());
         }
 
@@ -114,11 +115,11 @@ public class IconPackController implements IconPackControllerAPI {
         if (!request.isValid()) {
             throw new IllegalArgumentException("Either general description or reference image must be provided");
         }
-        
+
         if (request.hasReferenceImage()) {
             log.info("Starting streaming reference image-based icon generation for {} icons", request.getIconCount());
         } else {
-            log.info("Starting streaming text-based icon generation for {} icons with theme: {}", 
+            log.info("Starting streaming text-based icon generation for {} icons with theme: {}",
                     request.getIconCount(), request.getGeneralDescription());
         }
 
@@ -194,7 +195,7 @@ public class IconPackController implements IconPackControllerAPI {
             if (!request.isValid()) {
                 throw new IllegalArgumentException("Either general description or reference image must be provided");
             }
-            
+
             // Ensure individual descriptions list is properly sized
             if (request.getIndividualDescriptions() == null) {
                 request.setIndividualDescriptions(new ArrayList<>());
@@ -493,19 +494,19 @@ public class IconPackController implements IconPackControllerAPI {
     private void persistMoreIcons(MoreIconsRequest request, List<IconGenerationResponse.GeneratedIcon> newIcons) {
         try {
             var defaultUser = dataInitializationService.getDefaultUser();
-            
+
             // Determine icon type based on generation index
             String iconType = (request.getGenerationIndex() == 1) ? "original" : "variation";
-            
+
             // Save individual icons
             for (IconGenerationResponse.GeneratedIcon icon : newIcons) {
                 if (icon.getBase64Data() != null && !icon.getBase64Data().isEmpty()) {
                     // Generate file name using the file storage service
-                    String fileName = String.format("%s_%s_%d.png", 
-                            icon.getServiceSource(), 
-                            icon.getId().substring(0, 8), 
+                    String fileName = String.format("%s_%s_%d.png",
+                            icon.getServiceSource(),
+                            icon.getId().substring(0, 8),
                             icon.getGridPosition());
-                    
+
                     // Save icon to file system using the original request ID
                     String filePath = fileStorageService.saveIcon(
                             defaultUser.getDirectoryPath(),
@@ -514,7 +515,7 @@ public class IconPackController implements IconPackControllerAPI {
                             fileName,
                             icon.getBase64Data()
                     );
-                    
+
                     // Create database record
                     GeneratedIcon generatedIcon = new GeneratedIcon();
                     generatedIcon.setRequestId(request.getOriginalRequestId()); // Use original request ID
@@ -529,15 +530,15 @@ public class IconPackController implements IconPackControllerAPI {
                     generatedIcon.setIconCount(9); // More icons are always 9 in a 3x3 grid
                     generatedIcon.setGenerationIndex(request.getGenerationIndex());
                     generatedIcon.setIconType(iconType);
-                    
+
                     // Calculate file size
                     long fileSize = fileStorageService.getFileSize(defaultUser.getDirectoryPath(), request.getOriginalRequestId(), iconType, fileName);
                     generatedIcon.setFileSize(fileSize);
-                    
+
                     generatedIconRepository.save(generatedIcon);
                 }
             }
-            
+
         } catch (Exception e) {
             log.error("Error persisting more icons for request {}", request.getOriginalRequestId(), e);
             throw e;
@@ -642,7 +643,7 @@ public class IconPackController implements IconPackControllerAPI {
     @Override
     @ResponseBody
     public ResponseEntity<byte[]> downloadProcessedImage(@RequestParam("imageData") String base64ImageData,
-                                                        @RequestParam("filename") String originalFilename) {
+                                                         @RequestParam("filename") String originalFilename) {
         try {
             // Remove data URL prefix if present
             String base64Data = base64ImageData;
@@ -680,7 +681,7 @@ public class IconPackController implements IconPackControllerAPI {
             return ResponseEntity.status(500).build();
         }
     }
-    
+
     /**
      * Get all generated icons for the default user
      */
@@ -696,7 +697,7 @@ public class IconPackController implements IconPackControllerAPI {
             return ResponseEntity.status(500).build();
         }
     }
-    
+
     /**
      * Get all generated icons for a specific request
      */
@@ -714,7 +715,7 @@ public class IconPackController implements IconPackControllerAPI {
             return ResponseEntity.status(500).build();
         }
     }
-    
+
     /**
      * Get distinct request IDs for the default user (for gallery navigation)
      */
@@ -730,7 +731,7 @@ public class IconPackController implements IconPackControllerAPI {
             return ResponseEntity.status(500).build();
         }
     }
-    
+
     /**
      * Get icons by type (original or variation)
      */
@@ -741,7 +742,7 @@ public class IconPackController implements IconPackControllerAPI {
             if (!"original".equals(iconType) && !"variation".equals(iconType)) {
                 return ResponseEntity.badRequest().build();
             }
-            
+
             var defaultUser = dataInitializationService.getDefaultUser();
             List<GeneratedIcon> icons = generatedIconRepository.findByUserAndIconTypeOrderByCreatedAtDesc(defaultUser, iconType);
             return ResponseEntity.ok(icons);
@@ -750,7 +751,7 @@ public class IconPackController implements IconPackControllerAPI {
             return ResponseEntity.status(500).build();
         }
     }
-    
+
     /**
      * Get icons for a specific request and type
      */
@@ -761,7 +762,7 @@ public class IconPackController implements IconPackControllerAPI {
             if (!"original".equals(iconType) && !"variation".equals(iconType)) {
                 return ResponseEntity.badRequest().build();
             }
-            
+
             List<GeneratedIcon> icons = generatedIconRepository.findByRequestIdAndIconType(requestId, iconType);
             if (icons.isEmpty()) {
                 return ResponseEntity.notFound().build();
@@ -772,7 +773,7 @@ public class IconPackController implements IconPackControllerAPI {
             return ResponseEntity.status(500).build();
         }
     }
-    
+
     /**
      * Delete icons for a specific request
      */
@@ -784,13 +785,74 @@ public class IconPackController implements IconPackControllerAPI {
             if (icons.isEmpty()) {
                 return ResponseEntity.notFound().build();
             }
-            
+
             generatedIconRepository.deleteByRequestId(requestId);
             log.info("Deleted {} icons for request: {}", icons.size(), requestId);
             return ResponseEntity.noContent().build();
         } catch (Exception e) {
             log.error("Error deleting icons for request: {}", requestId, e);
             return ResponseEntity.status(500).build();
+        }
+    }
+
+    @org.springframework.web.bind.annotation.PostMapping("/api/export-gallery")
+    @ResponseBody
+    public ResponseEntity<byte[]> exportFromGallery(@RequestBody GalleryExportRequest galleryExportRequest) {
+        log.info("Received gallery export request for {} icons.", galleryExportRequest.getIconFilePaths().size());
+
+        try {
+            List<IconGenerationResponse.GeneratedIcon> iconsToExport = new ArrayList<>();
+            List<GeneratedIcon> foundIcons = generatedIconRepository.findByFilePathIn(galleryExportRequest.getIconFilePaths());
+
+            for (GeneratedIcon generatedIcon : foundIcons) {
+                IconGenerationResponse.GeneratedIcon iconDto = new IconGenerationResponse.GeneratedIcon();
+                iconDto.setId(generatedIcon.getIconId());
+
+                try {
+                    byte[] iconData = fileStorageService.readIcon(generatedIcon.getFilePath());
+                    iconDto.setBase64Data(Base64.getEncoder().encodeToString(iconData));
+                } catch (IOException e) {
+                    log.error("Error reading icon file: {}", generatedIcon.getFilePath(), e);
+                    continue; // Skip this icon if file can't be read
+                }
+
+                iconDto.setDescription(generatedIcon.getDescription());
+                iconDto.setGridPosition(generatedIcon.getGridPosition());
+                iconDto.setServiceSource(generatedIcon.getServiceSource());
+                iconsToExport.add(iconDto);
+            }
+
+            if (iconsToExport.isEmpty()) {
+                log.error("No icons found for the given file paths.");
+                return ResponseEntity.notFound().build();
+            }
+
+            IconExportRequest exportRequest = new IconExportRequest();
+            exportRequest.setIcons(iconsToExport);
+            exportRequest.setRemoveBackground(galleryExportRequest.isRemoveBackground());
+            exportRequest.setOutputFormat(galleryExportRequest.getOutputFormat());
+            exportRequest.setRequestId("gallery-export-" + UUID.randomUUID().toString().substring(0, 8));
+            exportRequest.setServiceName("gallery");
+            exportRequest.setGenerationIndex(1);
+
+            byte[] zipData = iconExportService.createIconPackZip(exportRequest);
+
+            String fileName = "icon-pack-gallery.zip";
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_OCTET_STREAM);
+            headers.setContentDispositionFormData("attachment", fileName);
+            headers.setContentLength(zipData.length);
+
+            log.info("Successfully created ZIP file from gallery export: {} ({} bytes)", fileName, zipData.length);
+            return ResponseEntity.ok()
+                    .headers(headers)
+                    .body(zipData);
+
+        } catch (Exception e) {
+            log.error("Error creating icon pack export from gallery", e);
+            return ResponseEntity.internalServerError()
+                    .body("Error creating icon pack".getBytes());
         }
     }
 }

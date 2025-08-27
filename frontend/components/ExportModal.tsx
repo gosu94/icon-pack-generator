@@ -1,5 +1,4 @@
 import React from 'react';
-import { StreamingResults } from '../lib/types';
 
 interface ExportModalProps {
     show: boolean;
@@ -9,16 +8,13 @@ interface ExportModalProps {
     setRemoveBackground: (value: boolean) => void;
     outputFormat: string;
     setOutputFormat: (value: string) => void;
-    context: any;
-    streamingResults: StreamingResults;
+    iconCount: number;
 }
 
 const ExportModal: React.FC<ExportModalProps> = ({
-    show, onClose, onConfirm, removeBackground, setRemoveBackground, outputFormat, setOutputFormat, context, streamingResults
+    show, onClose, onConfirm, removeBackground, setRemoveBackground, outputFormat, setOutputFormat, iconCount
 }) => {
     if (!show) return null;
-
-    const iconCount = context ? streamingResults[`${context.serviceName}-gen${context.generationIndex}`]?.icons?.length || 0 : 0;
 
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
