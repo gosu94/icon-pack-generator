@@ -115,12 +115,21 @@ public class FileStorageService {
     }
 
     public byte[] readIcon(String relativeWebPath) throws IOException {
-        // Construct the full path by resolving the relative path against the base storage path.
-        // The relative path starts with "/", so we need to remove it before resolving.
-        Path filePath = Paths.get(baseStoragePath).resolve(relativeWebPath.substring(1));
+        // The relativeWebPath is like /user-icons/default-user/...
+        // The baseStoragePath is like .../static/user-icons
+        // We need to get the path relative to user-icons and join it with baseStoragePath.
+
+        String pathInsideUserIcons;
+        if (relativeWebPath.startsWith("/user-icons/")) {
+            pathInsideUserIcons = relativeWebPath.substring("/user-icons/".length());
+        } else {
+            pathInsideUserIcons = relativeWebPath;
+        }
+
+        Path filePath = Paths.get(baseStoragePath).resolve(pathInsideUserIcons);
         if (Files.exists(filePath)) {
             return Files.readAllBytes(filePath);
         }
-        throw new IOException("File not found: " + relativeWebPath);
+        throw new IOException("File not found: " + filePath.toString());
     }
 }
