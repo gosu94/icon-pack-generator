@@ -453,17 +453,17 @@ export default function Page() {
                 a.click();
                 window.URL.revokeObjectURL(url);
                 document.body.removeChild(a);
-                showSuccessToast('Icon pack downloaded successfully!');
+                // Icon pack downloaded successfully
             }, 1000);
         } catch (error) {
             console.error('Error exporting icons:', error);
             setShowProgressModal(false);
-            showErrorToast('Failed to export icons. Please try again.');
+            setErrorMessage('Failed to export icons. Please try again.');
+            setUiState('error');
         }
     };
 
-    const showSuccessToast = (message: string) => { alert(message); };
-    const showErrorToast = (message: string) => { alert(message); };
+    // Removed toast functions - now using progress UI instead of alerts
 
     const showMoreIconsForm = (uniqueId: string) => {
         setMoreIconsVisible(prev => ({ ...prev, [uniqueId]: true }));
@@ -480,9 +480,21 @@ export default function Page() {
         const descriptions = moreIconsDescriptions[uniqueId] || [];
         const serviceResults = getServiceResults(serviceId, generationIndex);
         if (!serviceResults?.originalGridImageBase64) {
-            showErrorToast('Original image not found for this service');
+            setErrorMessage('Original image not found for this service');
+            setUiState('error');
             return;
         }
+
+        // Show progress for the specific generation
+        setStreamingResults(prev => ({
+            ...prev,
+            [uniqueId]: {
+                ...prev[uniqueId],
+                status: 'started',
+                message: 'Generating more icons...'
+            }
+        }));
+
         const moreIconsRequest = {
             originalRequestId: currentResponse?.requestId,
             serviceName: serviceId,
@@ -490,8 +502,10 @@ export default function Page() {
             generalDescription: currentRequest?.generalDescription,
             iconDescriptions: descriptions,
             iconCount: 9,
-            seed: serviceResults.seed
+            seed: serviceResults.seed,
+            generationIndex: generationIndex // Include generation index
         };
+
         try {
             const response = await fetch('/generate-more', {
                 method: 'POST',
@@ -500,16 +514,24 @@ export default function Page() {
             });
             if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
             const data = await response.json();
+            
             if (data.status === 'success') {
+                // Update current icons list
                 setCurrentIcons(prev => prev.concat(data.newIcons));
+                
+                // Update streaming results
                 const previousIconCount = streamingResults[uniqueId]?.icons?.length || 0;
                 setStreamingResults(prev => ({
                     ...prev,
                     [uniqueId]: {
                         ...prev[uniqueId],
+                        status: 'success',
+                        message: 'More icons generated successfully',
                         icons: [...(prev[uniqueId]?.icons || []), ...data.newIcons]
                     }
                 }));
+
+                // Animate new icons
                 setTimeout(() => {
                     setAnimatingIcons(prev => ({ ...prev, [uniqueId]: previousIconCount }));
                     for (let i = 0; i < data.newIcons.length; i++) {
@@ -521,14 +543,29 @@ export default function Page() {
                         }, i * 150);
                     }
                 }, 200);
-                showSuccessToast(`Generated new 3x3 grid (${data.newIcons.length} icons) with ${serviceName}!`);
+
                 hideMoreIconsForm(uniqueId);
             } else {
-                showErrorToast(data.message || 'Failed to generate more icons');
+                // Show error in streaming results
+                setStreamingResults(prev => ({
+                    ...prev,
+                    [uniqueId]: {
+                        ...prev[uniqueId],
+                        status: 'error',
+                        message: data.message || 'Failed to generate more icons'
+                    }
+                }));
             }
         } catch (error) {
             console.error('Error generating more icons:', error);
-            showErrorToast('Failed to generate more icons. Please try again.');
+            setStreamingResults(prev => ({
+                ...prev,
+                [uniqueId]: {
+                    ...prev[uniqueId],
+                    status: 'error',
+                    message: 'Failed to generate more icons. Please try again.'
+                }
+            }));
         }
     };
 

@@ -12,6 +12,7 @@ import com.gosu.icon_pack_generator.entity.GeneratedIcon;
 import com.gosu.icon_pack_generator.repository.GeneratedIconRepository;
 import com.gosu.icon_pack_generator.service.BackgroundRemovalService;
 import com.gosu.icon_pack_generator.service.DataInitializationService;
+import com.gosu.icon_pack_generator.service.FileStorageService;
 import com.gosu.icon_pack_generator.service.FluxModelService;
 import com.gosu.icon_pack_generator.service.GptModelService;
 import com.gosu.icon_pack_generator.service.IconExportService;
@@ -67,6 +68,7 @@ public class IconPackController implements IconPackControllerAPI {
     private final ObjectMapper objectMapper;
     private final GeneratedIconRepository generatedIconRepository;
     private final DataInitializationService dataInitializationService;
+    private final FileStorageService fileStorageService;
 
     // Removed index method - now serving static content from Next.js
 
@@ -366,6 +368,15 @@ public class IconPackController implements IconPackControllerAPI {
                 // Create icon objects
                 List<IconGenerationResponse.GeneratedIcon> newIcons = createIconList(base64Icons, request);
 
+                // Persist the new icons to database and file storage
+                try {
+                    persistMoreIcons(request, newIcons);
+                    log.info("Successfully persisted {} more icons for request {}", newIcons.size(), request.getOriginalRequestId());
+                } catch (Exception e) {
+                    log.error("Error persisting more icons for request {}", request.getOriginalRequestId(), e);
+                    // Don't fail the entire request if persistence fails, but log it
+                }
+
                 // Create successful response
                 MoreIconsResponse response = new MoreIconsResponse();
                 response.setStatus("success");
@@ -474,6 +485,63 @@ public class IconPackController implements IconPackControllerAPI {
         response.setOriginalRequestId(request.getOriginalRequestId());
         response.setGenerationTimeMs(System.currentTimeMillis() - startTime);
         return response;
+    }
+
+    /**
+     * Persist more icons to database and file system
+     */
+    private void persistMoreIcons(MoreIconsRequest request, List<IconGenerationResponse.GeneratedIcon> newIcons) {
+        try {
+            var defaultUser = dataInitializationService.getDefaultUser();
+            
+            // Determine icon type based on generation index
+            String iconType = (request.getGenerationIndex() == 1) ? "original" : "variation";
+            
+            // Save individual icons
+            for (IconGenerationResponse.GeneratedIcon icon : newIcons) {
+                if (icon.getBase64Data() != null && !icon.getBase64Data().isEmpty()) {
+                    // Generate file name using the file storage service
+                    String fileName = String.format("%s_%s_%d.png", 
+                            icon.getServiceSource(), 
+                            icon.getId().substring(0, 8), 
+                            icon.getGridPosition());
+                    
+                    // Save icon to file system using the original request ID
+                    String filePath = fileStorageService.saveIcon(
+                            defaultUser.getDirectoryPath(),
+                            request.getOriginalRequestId(), // Use original request ID
+                            iconType,
+                            fileName,
+                            icon.getBase64Data()
+                    );
+                    
+                    // Create database record
+                    GeneratedIcon generatedIcon = new GeneratedIcon();
+                    generatedIcon.setRequestId(request.getOriginalRequestId()); // Use original request ID
+                    generatedIcon.setIconId(icon.getId());
+                    generatedIcon.setUser(defaultUser);
+                    generatedIcon.setFileName(fileName);
+                    generatedIcon.setFilePath(filePath);
+                    generatedIcon.setServiceSource(icon.getServiceSource());
+                    generatedIcon.setGridPosition(icon.getGridPosition());
+                    generatedIcon.setDescription(icon.getDescription());
+                    generatedIcon.setTheme(request.getGeneralDescription());
+                    generatedIcon.setIconCount(9); // More icons are always 9 in a 3x3 grid
+                    generatedIcon.setGenerationIndex(request.getGenerationIndex());
+                    generatedIcon.setIconType(iconType);
+                    
+                    // Calculate file size
+                    long fileSize = fileStorageService.getFileSize(defaultUser.getDirectoryPath(), request.getOriginalRequestId(), iconType, fileName);
+                    generatedIcon.setFileSize(fileSize);
+                    
+                    generatedIconRepository.save(generatedIcon);
+                }
+            }
+            
+        } catch (Exception e) {
+            log.error("Error persisting more icons for request {}", request.getOriginalRequestId(), e);
+            throw e;
+        }
     }
 
     /**
