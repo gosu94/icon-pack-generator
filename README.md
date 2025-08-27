@@ -223,7 +223,7 @@ Example health check response:
 
 Enable debug logging to troubleshoot issues:
 ```properties
-logging.level.com.gosu.icon_pack_generator=DEBUG
+logging.level.com.gosu.iconpackgenerator=DEBUG
 logging.level.org.springframework.web.reactive.function.client=DEBUG
 ```
 
