@@ -8,7 +8,10 @@ import com.gosu.icon_pack_generator.dto.IconGenerationResponse;
 import com.gosu.icon_pack_generator.dto.MoreIconsRequest;
 import com.gosu.icon_pack_generator.dto.MoreIconsResponse;
 import com.gosu.icon_pack_generator.dto.ServiceProgressUpdate;
+import com.gosu.icon_pack_generator.entity.GeneratedIcon;
+import com.gosu.icon_pack_generator.repository.GeneratedIconRepository;
 import com.gosu.icon_pack_generator.service.BackgroundRemovalService;
+import com.gosu.icon_pack_generator.service.DataInitializationService;
 import com.gosu.icon_pack_generator.service.FluxModelService;
 import com.gosu.icon_pack_generator.service.GptModelService;
 import com.gosu.icon_pack_generator.service.IconExportService;
@@ -24,6 +27,8 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import org.springframework.web.context.request.async.DeferredResult;
@@ -60,6 +65,8 @@ public class IconPackController implements IconPackControllerAPI {
     private final AIServicesConfig aiServicesConfig;
     private final BackgroundRemovalService backgroundRemovalService;
     private final ObjectMapper objectMapper;
+    private final GeneratedIconRepository generatedIconRepository;
+    private final DataInitializationService dataInitializationService;
 
     // Removed index method - now serving static content from Next.js
 
@@ -602,6 +609,119 @@ public class IconPackController implements IconPackControllerAPI {
 
         } catch (Exception e) {
             log.error("Error preparing image download", e);
+            return ResponseEntity.status(500).build();
+        }
+    }
+    
+    /**
+     * Get all generated icons for the default user
+     */
+    @GetMapping("/api/gallery/icons")
+    @ResponseBody
+    public ResponseEntity<List<GeneratedIcon>> getUserIcons() {
+        try {
+            var defaultUser = dataInitializationService.getDefaultUser();
+            List<GeneratedIcon> icons = generatedIconRepository.findByUserOrderByCreatedAtDesc(defaultUser);
+            return ResponseEntity.ok(icons);
+        } catch (Exception e) {
+            log.error("Error retrieving user icons", e);
+            return ResponseEntity.status(500).build();
+        }
+    }
+    
+    /**
+     * Get all generated icons for a specific request
+     */
+    @GetMapping("/api/gallery/request/{requestId}")
+    @ResponseBody
+    public ResponseEntity<List<GeneratedIcon>> getRequestIcons(@PathVariable String requestId) {
+        try {
+            List<GeneratedIcon> icons = generatedIconRepository.findByRequestId(requestId);
+            if (icons.isEmpty()) {
+                return ResponseEntity.notFound().build();
+            }
+            return ResponseEntity.ok(icons);
+        } catch (Exception e) {
+            log.error("Error retrieving icons for request: {}", requestId, e);
+            return ResponseEntity.status(500).build();
+        }
+    }
+    
+    /**
+     * Get distinct request IDs for the default user (for gallery navigation)
+     */
+    @GetMapping("/api/gallery/requests")
+    @ResponseBody
+    public ResponseEntity<List<String>> getUserRequestIds() {
+        try {
+            var defaultUser = dataInitializationService.getDefaultUser();
+            List<String> requestIds = generatedIconRepository.findDistinctRequestIdsByUserOrderByCreatedAtDesc(defaultUser);
+            return ResponseEntity.ok(requestIds);
+        } catch (Exception e) {
+            log.error("Error retrieving user request IDs", e);
+            return ResponseEntity.status(500).build();
+        }
+    }
+    
+    /**
+     * Get icons by type (original or variation)
+     */
+    @GetMapping("/api/gallery/icons/{iconType}")
+    @ResponseBody
+    public ResponseEntity<List<GeneratedIcon>> getUserIconsByType(@PathVariable String iconType) {
+        try {
+            if (!"original".equals(iconType) && !"variation".equals(iconType)) {
+                return ResponseEntity.badRequest().build();
+            }
+            
+            var defaultUser = dataInitializationService.getDefaultUser();
+            List<GeneratedIcon> icons = generatedIconRepository.findByUserAndIconTypeOrderByCreatedAtDesc(defaultUser, iconType);
+            return ResponseEntity.ok(icons);
+        } catch (Exception e) {
+            log.error("Error retrieving {} icons", iconType, e);
+            return ResponseEntity.status(500).build();
+        }
+    }
+    
+    /**
+     * Get icons for a specific request and type
+     */
+    @GetMapping("/api/gallery/request/{requestId}/{iconType}")
+    @ResponseBody
+    public ResponseEntity<List<GeneratedIcon>> getRequestIconsByType(@PathVariable String requestId, @PathVariable String iconType) {
+        try {
+            if (!"original".equals(iconType) && !"variation".equals(iconType)) {
+                return ResponseEntity.badRequest().build();
+            }
+            
+            List<GeneratedIcon> icons = generatedIconRepository.findByRequestIdAndIconType(requestId, iconType);
+            if (icons.isEmpty()) {
+                return ResponseEntity.notFound().build();
+            }
+            return ResponseEntity.ok(icons);
+        } catch (Exception e) {
+            log.error("Error retrieving {} icons for request: {}", iconType, requestId, e);
+            return ResponseEntity.status(500).build();
+        }
+    }
+    
+    /**
+     * Delete icons for a specific request
+     */
+    @DeleteMapping("/api/gallery/request/{requestId}")
+    @ResponseBody
+    public ResponseEntity<Void> deleteRequestIcons(@PathVariable String requestId) {
+        try {
+            List<GeneratedIcon> icons = generatedIconRepository.findByRequestId(requestId);
+            if (icons.isEmpty()) {
+                return ResponseEntity.notFound().build();
+            }
+            
+            generatedIconRepository.deleteByRequestId(requestId);
+            log.info("Deleted {} icons for request: {}", icons.size(), requestId);
+            return ResponseEntity.noContent().build();
+        } catch (Exception e) {
+            log.error("Error deleting icons for request: {}", requestId, e);
             return ResponseEntity.status(500).build();
         }
     }

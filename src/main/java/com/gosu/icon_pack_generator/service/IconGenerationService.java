@@ -4,10 +4,14 @@ import com.gosu.icon_pack_generator.config.AIServicesConfig;
 import com.gosu.icon_pack_generator.dto.IconGenerationRequest;
 import com.gosu.icon_pack_generator.dto.IconGenerationResponse;
 import com.gosu.icon_pack_generator.dto.ServiceProgressUpdate;
+import com.gosu.icon_pack_generator.entity.GeneratedIcon;
+import com.gosu.icon_pack_generator.entity.User;
 import com.gosu.icon_pack_generator.exception.FalAiException;
+import com.gosu.icon_pack_generator.repository.GeneratedIconRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.Base64;
@@ -30,6 +34,9 @@ public class IconGenerationService {
     private final ImageProcessingService imageProcessingService;
     private final PromptGenerationService promptGenerationService;
     private final AIServicesConfig aiServicesConfig;
+    private final GeneratedIconRepository generatedIconRepository;
+    private final DataInitializationService dataInitializationService;
+    private final FileStorageService fileStorageService;
     
     public CompletableFuture<IconGenerationResponse> generateIcons(IconGenerationRequest request) {
         return generateIcons(request, UUID.randomUUID().toString(), null);
@@ -114,6 +121,17 @@ public class IconGenerationService {
                     List<IconGenerationResponse.ServiceResults> imagenResults = imagenFuture.join();
                     
                     IconGenerationResponse finalResponse = createCombinedResponse(requestId, falAiResults, recraftResults, photonResults, gptResults, imagenResults, seed);
+                    
+                    // Persist generated icons to database and file system
+                    if ("success".equals(finalResponse.getStatus())) {
+                        try {
+                            persistGeneratedIcons(requestId, request, finalResponse);
+                            log.info("Successfully persisted {} icons for request {}", finalResponse.getIcons().size(), requestId);
+                        } catch (Exception e) {
+                            log.error("Error persisting icons for request {}", requestId, e);
+                            // Don't fail the entire request if persistence fails
+                        }
+                    }
                     
                     // Send final completion update
                     if (progressCallback != null) {
@@ -708,5 +726,87 @@ public class IconGenerationService {
      */
     private long generateRandomSeed() {
         return System.currentTimeMillis() + (long) (Math.random() * 1000);
+    }
+    
+    /**
+     * Persist generated icons to database and file system
+     */
+    @Transactional
+    private void persistGeneratedIcons(String requestId, IconGenerationRequest request, IconGenerationResponse response) {
+        try {
+            User defaultUser = dataInitializationService.getDefaultUser();
+            
+            // Get all service results for metadata
+            List<IconGenerationResponse.ServiceResults> allServiceResults = new ArrayList<>();
+            allServiceResults.addAll(response.getFalAiResults());
+            allServiceResults.addAll(response.getRecraftResults());
+            allServiceResults.addAll(response.getPhotonResults());
+            allServiceResults.addAll(response.getGptResults());
+            allServiceResults.addAll(response.getImagenResults());
+            
+            // Save individual icons
+            for (IconGenerationResponse.GeneratedIcon icon : response.getIcons()) {
+                if (icon.getBase64Data() != null && !icon.getBase64Data().isEmpty()) {
+                    // Find generation index from service results
+                    Integer generationIndex = findGenerationIndex(icon, allServiceResults);
+                    
+                    // Determine icon type based on generation index
+                    String iconType = (generationIndex != null && generationIndex == 1) ? "original" : "variation";
+                    
+                    // Generate file name without "pos" prefix
+                    String fileName = fileStorageService.generateIconFileName(
+                            icon.getServiceSource(), 
+                            icon.getId(), 
+                            icon.getGridPosition()
+                    );
+                    
+                    // Save icon to file system
+                    String filePath = fileStorageService.saveIcon(
+                            defaultUser.getDirectoryPath(),
+                            requestId,
+                            iconType,
+                            fileName,
+                            icon.getBase64Data()
+                    );
+                    
+                    // Create database record
+                    GeneratedIcon generatedIcon = new GeneratedIcon();
+                    generatedIcon.setRequestId(requestId);
+                    generatedIcon.setIconId(icon.getId());
+                    generatedIcon.setUser(defaultUser);
+                    generatedIcon.setFileName(fileName);
+                    generatedIcon.setFilePath(filePath);
+                    generatedIcon.setServiceSource(icon.getServiceSource());
+                    generatedIcon.setGridPosition(icon.getGridPosition());
+                    generatedIcon.setDescription(icon.getDescription());
+                    generatedIcon.setTheme(request.getGeneralDescription());
+                    generatedIcon.setIconCount(request.getIconCount());
+                    generatedIcon.setGenerationIndex(generationIndex);
+                    generatedIcon.setIconType(iconType);
+                    
+                    // Calculate file size
+                    long fileSize = fileStorageService.getFileSize(defaultUser.getDirectoryPath(), requestId, iconType, fileName);
+                    generatedIcon.setFileSize(fileSize);
+                    
+                    generatedIconRepository.save(generatedIcon);
+                }
+            }
+            
+        } catch (Exception e) {
+            log.error("Error persisting icons for request {}", requestId, e);
+            throw e;
+        }
+    }
+    
+    /**
+     * Find the generation index for an icon based on service results
+     */
+    private Integer findGenerationIndex(IconGenerationResponse.GeneratedIcon icon, List<IconGenerationResponse.ServiceResults> allServiceResults) {
+        return allServiceResults.stream()
+                .filter(result -> icon.getServiceSource().equals(result.getServiceName()))
+                .filter(result -> result.getIcons() != null && result.getIcons().contains(icon))
+                .map(IconGenerationResponse.ServiceResults::getGenerationIndex)
+                .findFirst()
+                .orElse(1);
     }
 }

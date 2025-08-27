@@ -22,6 +22,9 @@ public class WebConfig implements WebMvcConfigurer {
 
     @Value("${background-removal.output-dir}")
     private String outputDir;
+    
+    @Value("${app.file-storage.base-path}")
+    private String fileStorageBasePath;
 
     @Override
     public void addResourceHandlers(ResourceHandlerRegistry registry) {
@@ -48,6 +51,13 @@ public class WebConfig implements WebMvcConfigurer {
         registry.addResourceHandler("/swagger-ui/**")
                 .addResourceLocations("classpath:/META-INF/resources/webjars/swagger-ui/");
 
+        // Serve user-generated icons from the file storage directory
+        Path userIconsPath = Paths.get(fileStorageBasePath);
+        String userIconsResourceLocation = userIconsPath.toUri().toString();
+        registry.addResourceHandler("/user-icons/**")
+                .addResourceLocations(userIconsResourceLocation)
+                .setCachePeriod(3600); // Cache for 1 hour
+
         // Handle SPA routing - serve index.html for all routes that don't match API endpoints
         registry.addResourceHandler("/**")
                 .addResourceLocations("classpath:/static/")
@@ -62,7 +72,7 @@ public class WebConfig implements WebMvcConfigurer {
                             return requestedResource;
                         }
                         
-                        // For routes that don't match files and don't start with /api, /stream, /export, /generate, /background-removal
+                        // For routes that don't match files and don't start with /api, /stream, /export, /generate, /background-removal, /user-icons
                         // serve index.html to support SPA routing
                         if (!resourcePath.startsWith("api/") && 
                             !resourcePath.startsWith("stream/") && 
@@ -70,6 +80,7 @@ public class WebConfig implements WebMvcConfigurer {
                             !resourcePath.startsWith("generate") && 
                             !resourcePath.startsWith("background-removal/") &&
                             !resourcePath.startsWith("swagger-ui/") &&
+                            !resourcePath.startsWith("user-icons/") &&
                             !resourcePath.contains(".")) {
                             return new ClassPathResource("/static/index.html");
                         }
@@ -79,6 +90,7 @@ public class WebConfig implements WebMvcConfigurer {
                 });
 
         log.info("Serving generated images from URL path '/{}/**' mapped to directory '{}'", urlPath, absolutePath);
+        log.info("Serving user icons from URL path '/user-icons/**' mapped to directory '{}'", userIconsPath.toFile().getAbsolutePath());
         log.info("Configured static content serving for Next.js SPA");
     }
 

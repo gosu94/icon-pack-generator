@@ -75,6 +75,8 @@ RUN useradd --create-home --shell /bin/bash app
 RUN mkdir -p /tmp/rembg && chown app:app /tmp/rembg
 RUN mkdir -p /app/generated-images && chown app:app /app/generated-images
 
+# Create user icons directory with proper permissions
+RUN mkdir -p /app/data/user-icons && chown app:app /app/data/user-icons
 
 # Switch to app user
 USER app

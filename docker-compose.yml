@@ -1,10 +1,30 @@
-version: '3.8'
-
 services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: icon-pack-postgres
+    environment:
+      - POSTGRES_DB=icon_pack_generator
+      - POSTGRES_USER=${POSTGRES_USER:-iconpack}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-iconpack123}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init-db:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-iconpack} -d icon_pack_generator"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
   icon-pack-generator:
     build: .
     ports:
       - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
     # The `env_file` directive is the standard way to load all variables from your .env file.
     env_file:
       - .env
@@ -15,9 +35,18 @@ services:
     environment:
      - FAL_KEY=${FAL_KEY}
      - OPENAI_API_KEY=${OPENAI_API_KEY}
+     - POSTGRES_USER=${POSTGRES_USER:-iconpack}
+     - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-iconpack123}
+     - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/icon_pack_generator
+     - FILE_STORAGE_PATH=/app/data/user-icons
+    volumes:
+      - ./static/user-icons:/app/data/user-icons
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 40s
+
+volumes:
+  postgres_data:
