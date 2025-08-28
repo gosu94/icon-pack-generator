@@ -817,7 +817,7 @@ class ImageProcessingServiceSpec extends Specification {
 
     def "should detect transparent boundaries and fix cutting artifacts"() {
         when: "processing the problematic wrong-cut.png image that has misaligned icons"
-        BufferedImage wrongCutImage = ImageIO.read(new File("src/test/resources/images/wrong-cut-2.png"))
+        BufferedImage wrongCutImage = ImageIO.read(new File("src/test/resources/images/removed.png"))
         byte[] imageBytes = bufferedImageToByteArray(wrongCutImage)
 
         then: "image loads successfully"

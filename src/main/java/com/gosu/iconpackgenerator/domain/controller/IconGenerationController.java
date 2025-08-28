@@ -11,6 +11,7 @@ import com.gosu.iconpackgenerator.domain.dto.MoreIconsResponse;
 import com.gosu.iconpackgenerator.domain.dto.ServiceProgressUpdate;
 import com.gosu.iconpackgenerator.domain.entity.GeneratedIcon;
 import com.gosu.iconpackgenerator.domain.repository.GeneratedIconRepository;
+import com.gosu.iconpackgenerator.domain.service.BananaModelService;
 import com.gosu.iconpackgenerator.domain.service.DataInitializationService;
 import com.gosu.iconpackgenerator.domain.service.FileStorageService;
 import com.gosu.iconpackgenerator.domain.service.FluxModelService;
@@ -51,6 +52,7 @@ public class IconGenerationController implements IconGenerationControllerAPI {
     private final ImagenModelService imagenModelService;
     private final PhotonModelService photonModelService;
     private final GptModelService gptModelService;
+    private final BananaModelService bananaModelService;
     private final PromptGenerationService promptGenerationService;
     private final ImageProcessingService imageProcessingService;
     private final AIServicesConfig aiServicesConfig;
@@ -122,6 +124,7 @@ public class IconGenerationController implements IconGenerationControllerAPI {
         enabledServices.put("photon", aiServicesConfig.isPhotonEnabled());
         enabledServices.put("gpt", aiServicesConfig.isGptEnabled());
         enabledServices.put("imagen", aiServicesConfig.isImagenEnabled());
+        enabledServices.put("banana", aiServicesConfig.isBananaEnabled());
         response.put("enabledServices", enabledServices);
 
         return ResponseEntity.ok(response);
@@ -323,6 +326,12 @@ public class IconGenerationController implements IconGenerationControllerAPI {
                     throw new RuntimeException("Imagen service is disabled");
                 }
                 return imagenModelService.generateImageToImage(prompt, originalImageData, seed);
+
+            case "banana":
+                if (!aiServicesConfig.isBananaEnabled()) {
+                    throw new RuntimeException("Banana service is disabled");
+                }
+                return bananaModelService.generateImageToImage(prompt, originalImageData, seed);
 
             default:
                 throw new RuntimeException("Unknown service: " + serviceName);

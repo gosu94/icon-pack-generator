@@ -14,6 +14,7 @@ public class AIServicesConfig {
     private ServiceEnabled photon = new ServiceEnabled();
     private ServiceEnabled gpt = new ServiceEnabled();
     private ServiceEnabled imagen = new ServiceEnabled();
+    private ServiceEnabled banana = new ServiceEnabled();
     
     @Data
     public static class ServiceEnabled {
@@ -38,5 +39,9 @@ public class AIServicesConfig {
     
     public boolean isImagenEnabled() {
         return imagen.isEnabled();
+    }
+    
+    public boolean isBananaEnabled() {
+        return banana.isEnabled();
     }
 }

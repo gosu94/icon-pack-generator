@@ -53,6 +53,8 @@ ai:
       enabled: true
     imagen:
       enabled: false
+    banana:
+      enabled: true
 
 fal:
   ai:

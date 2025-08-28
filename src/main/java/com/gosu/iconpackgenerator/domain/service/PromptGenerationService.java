@@ -12,7 +12,7 @@ public class PromptGenerationService {
     private static final String BASE_PROMPT_TEMPLATE =
             "Create a 3x3 arrangement of clean icons in a consistent style with no labels. " +
                     "Each icon should be contained within its own square area of equal size." +
-                    "If icons have backgrounds corners should be rounded, " +
+                    "Picture background should be transparent. If icons have backgrounds corners should be rounded, " +
                     "otherwise background should be white or transparent. " +
                     "Icons should use a consistent color scheme. " +
                     "IMPORTANT: Do NOT add visible grid lines, borders, or separators between icons. " +
