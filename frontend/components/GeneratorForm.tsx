@@ -255,14 +255,11 @@ const GeneratorForm: React.FC<GeneratorFormProps> = ({
                                 className="w-full px-3 py-2 border border-gray-200 rounded-md focus:outline-none focus:ring-1 focus:ring-gray-300"
                                 data-oid="vi6tc0j"
                             >
-                                <option value="" data-oid="9u2vi7n">
-                                    Choose...
-                                </option>
                                 <option value="9" data-oid="mq2-eoi">
-                                    9 Icons (3x3 grid)
+                                    9 Icons
                                 </option>
                                 <option value="18" data-oid=".g6z2.p">
-                                    18 Icons (2x 3x3 grids)
+                                    18 Icons
                                 </option>
                             </select>
                         </div>

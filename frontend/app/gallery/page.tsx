@@ -22,7 +22,7 @@ export default function GalleryPage() {
     const [groupedIcons, setGroupedIcons] = useState<GroupedIcons>({});
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
-    const [expanded, setExpanded] = useState<string[]>([]);
+    const [selectedRequest, setSelectedRequest] = useState<string | null>(null);
 
     // Export state
     const [showExportModal, setShowExportModal] = useState(false);
@@ -64,10 +64,12 @@ export default function GalleryPage() {
         fetchIcons();
     }, []);
 
-    const toggleExpand = (id: string) => {
-        setExpanded((current) =>
-            current.includes(id) ? current.filter((item) => item !== id) : [...current, id],
-        );
+    const handleSelectRequest = (requestId: string) => {
+        setSelectedRequest(requestId);
+    };
+
+    const handleBackToGallery = () => {
+        setSelectedRequest(null);
     };
 
     const openExportModal = (icons: Icon[]) => {
@@ -134,166 +136,175 @@ export default function GalleryPage() {
         }
     };
 
+    const selectedIconGroup = selectedRequest ? groupedIcons[selectedRequest] : null;
+
     return (
-        <div className="min-h-screen bg-white">
+        <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50/30">
             <Navigation />
             <div className="container mx-auto px-4 py-8">
-                <h1 className="text-3xl font-bold mb-8">Icon Gallery</h1>
                 {loading && <p>Loading...</p>}
                 {error && <p className="text-red-500">{error}</p>}
                 {!loading && !error && (
-                    <div>
-                        {Object.entries(groupedIcons).map(([requestId, iconTypes]) => {
-                            const isRequestExpanded = expanded.includes(requestId);
-
-                            const getRequestPreview = () => {
-                                if (iconTypes.original.length > 0)
-                                    return iconTypes.original[0].imageUrl;
-                                if (iconTypes.variation.length > 0)
-                                    return iconTypes.variation[0].imageUrl;
-                                return '';
-                            };
-
-                            const theme =
-                                iconTypes.original[0]?.theme || iconTypes.variation[0]?.theme;
-
-                            return (
-                                <div key={requestId} className="mb-8 border rounded-lg p-4">
-                                    <div
-                                        onClick={() => toggleExpand(requestId)}
-                                        className="cursor-pointer flex items-center gap-4"
+                    <>
+                        {selectedIconGroup && selectedRequest ? (
+                            <div>
+                                <button
+                                    onClick={handleBackToGallery}
+                                    className="mb-8 inline-flex items-center gap-2 rounded-md bg-purple-50 px-4 py-2 text-sm font-medium text-purple-600 hover:bg-purple-100 transition-colors"
+                                >
+                                    <svg
+                                        xmlns="http://www.w3.org/2000/svg"
+                                        width="16"
+                                        height="16"
+                                        viewBox="0 0 24 24"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        strokeWidth="2"
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
                                     >
-                                        <img
-                                            src={getRequestPreview()}
-                                            alt="Request Preview"
-                                            className="w-20 h-20 object-cover rounded-md"
-                                        />
+                                        <path d="M19 12H5m7 7l-7-7 7-7" />
+                                    </svg>
+                                    Back to Gallery
+                                </button>
 
-                                        <h2 className="text-2xl font-bold">
-                                            {theme || `Request: ${requestId}`}
-                                        </h2>
-                                    </div>
+                                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6">
+                                    <h1 className="text-3xl font-bold text-slate-800 mb-4 sm:mb-0">
+                                        {selectedIconGroup.original[0]?.theme ||
+                                            selectedIconGroup.variation[0]?.theme ||
+                                            `Request: ${selectedRequest}`}
+                                    </h1>
+                                    <button
+                                        onClick={() =>
+                                            openExportModal([
+                                                ...selectedIconGroup.original,
+                                                ...selectedIconGroup.variation,
+                                            ])
+                                        }
+                                        className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+                                    >
+                                        Export All ({selectedIconGroup.original.length + selectedIconGroup.variation.length} icons)
+                                    </button>
+                                </div>
 
-                                    {isRequestExpanded && (
-                                        <div className="mt-4 pl-8">
-                                            {iconTypes.original.length > 0 && (
-                                                <div className="mb-4">
-                                                    <div
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            toggleExpand(`${requestId}-original`);
-                                                        }}
-                                                        className="cursor-pointer flex items-center justify-between"
-                                                    >
-                                                        <div className="flex items-center gap-4">
-                                                            <img
-                                                                src={iconTypes.original[0].imageUrl}
-                                                                alt="Original Icon Preview"
-                                                                className="w-16 h-16 object-cover rounded-md"
-                                                            />
-
-                                                            <h3 className="text-xl font-semibold">
-                                                                Original
-                                                            </h3>
-                                                        </div>
-                                                        <button
-                                                            onClick={(e) => {
-                                                                e.stopPropagation();
-                                                                openExportModal(iconTypes.original);
-                                                            }}
-                                                            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-                                                        >
-                                                            Export
-                                                        </button>
-                                                    </div>
-                                                    {expanded.includes(`${requestId}-original`) && (
-                                                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4 mt-4 pl-8">
-                                                            {iconTypes.original.map(
-                                                                (icon, index) => (
-                                                                    <div
-                                                                        key={index}
-                                                                        className="border rounded-lg p-2"
-                                                                    >
-                                                                        <img
-                                                                            src={icon.imageUrl}
-                                                                            alt={
-                                                                                icon.description ||
-                                                                                'Generated Icon'
-                                                                            }
-                                                                            className="w-full h-auto object-cover rounded-md"
-                                                                        />
-                                                                    </div>
-                                                                ),
-                                                            )}
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            )}
-                                            {iconTypes.variation.length > 0 && (
-                                                <div>
-                                                    <div
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            toggleExpand(`${requestId}-variation`);
-                                                        }}
-                                                        className="cursor-pointer flex items-center justify-between"
-                                                    >
-                                                        <div className="flex items-center gap-4">
-                                                            <img
-                                                                src={
-                                                                    iconTypes.variation[0].imageUrl
-                                                                }
-                                                                alt="Variation Icon Preview"
-                                                                className="w-16 h-16 object-cover rounded-md"
-                                                            />
-
-                                                            <h3 className="text-xl font-semibold">
-                                                                Variations
-                                                            </h3>
-                                                        </div>
-                                                        <button
-                                                            onClick={(e) => {
-                                                                e.stopPropagation();
-                                                                openExportModal(
-                                                                    iconTypes.variation,
-                                                                );
-                                                            }}
-                                                            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-                                                        >
-                                                            Export
-                                                        </button>
-                                                    </div>
-                                                    {expanded.includes(
-                                                        `${requestId}-variation`,
-                                                    ) && (
-                                                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4 mt-4 pl-8">
-                                                            {iconTypes.variation.map(
-                                                                (icon, index) => (
-                                                                    <div
-                                                                        key={index}
-                                                                        className="border rounded-lg p-2"
-                                                                    >
-                                                                        <img
-                                                                            src={icon.imageUrl}
-                                                                            alt={
-                                                                                icon.description ||
-                                                                                'Generated Icon'
-                                                                            }
-                                                                            className="w-full h-auto object-cover rounded-md"
-                                                                        />
-                                                                    </div>
-                                                                ),
-                                                            )}
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            )}
+                                {selectedIconGroup.original.length > 0 && (
+                                    <div className="mb-8 p-4 rounded-lg border border-slate-200/80 bg-white/50 shadow-lg shadow-slate-200/50">
+                                        <div className="flex items-center justify-between mb-4">
+                                            <h3 className="text-xl font-semibold text-slate-700">
+                                                Original Icons
+                                            </h3>
+                                            <button
+                                                onClick={() =>
+                                                    openExportModal(selectedIconGroup.original)
+                                                }
+                                                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                                            >
+                                                Export Originals ({selectedIconGroup.original.length})
+                                            </button>
                                         </div>
+                                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                                            {selectedIconGroup.original.map((icon, index) => (
+                                                <div
+                                                    key={index}
+                                                    className="border rounded-lg p-2 bg-white shadow-sm"
+                                                >
+                                                    <img
+                                                        src={icon.imageUrl}
+                                                        alt={
+                                                            icon.description || 'Generated Icon'
+                                                        }
+                                                        className="w-full h-auto object-cover rounded-md"
+                                                    />
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {selectedIconGroup.variation.length > 0 && (
+                                    <div className="p-4 rounded-lg border border-slate-200/80 bg-white/50 shadow-lg shadow-slate-200/50">
+                                        <div className="flex items-center justify-between mb-4">
+                                            <h3 className="text-xl font-semibold text-slate-700">
+                                                Variations
+                                            </h3>
+                                            <button
+                                                onClick={() =>
+                                                    openExportModal(selectedIconGroup.variation)
+                                                }
+                                                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                                            >
+                                                Export Variations ({selectedIconGroup.variation.length})
+                                            </button>
+                                        </div>
+                                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                                            {selectedIconGroup.variation.map((icon, index) => (
+                                                <div
+                                                    key={index}
+                                                    className="border rounded-lg p-2 bg-white shadow-sm"
+                                                >
+                                                    <img
+                                                        src={icon.imageUrl}
+                                                        alt={
+                                                            icon.description || 'Generated Icon'
+                                                        }
+                                                        className="w-full h-auto object-cover rounded-md"
+                                                    />
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        ) : (
+                            <div>
+                                <h1 className="text-3xl font-bold mb-8 text-slate-800">
+                                    Icon Pack Gallery
+                                </h1>
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                    {Object.entries(groupedIcons).map(
+                                        ([requestId, iconTypes]) => {
+                                            const getRequestPreview = () => {
+                                                if (iconTypes.original.length > 0)
+                                                    return iconTypes.original[0].imageUrl;
+                                                if (iconTypes.variation.length > 0)
+                                                    return iconTypes.variation[0].imageUrl;
+                                                return '';
+                                            };
+                                            const theme =
+                                                iconTypes.original[0]?.theme ||
+                                                iconTypes.variation[0]?.theme;
+
+                                            return (
+                                                <div
+                                                    key={requestId}
+                                                    onClick={() => handleSelectRequest(requestId)}
+                                                    className="group cursor-pointer rounded-lg border border-purple-200 bg-white/50 shadow-lg shadow-slate-200/50 p-3 transition-all duration-300 hover:border-purple-400 hover:shadow-purple-200/50 flex items-center"
+                                                >
+                                                    <div className="w-1/3 aspect-square overflow-hidden rounded-md bg-slate-100 flex-shrink-0">
+                                                        <img
+                                                            src={getRequestPreview()}
+                                                            alt="Request Preview"
+                                                            className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                                                        />
+                                                    </div>
+                                                    <div className="w-2/3 pl-4">
+                                                        <h2 className="text-base font-bold text-slate-800 truncate">
+                                                            {theme || `Request: ${requestId}`}
+                                                        </h2>
+                                                        <p className="text-sm text-slate-500 mt-1">
+                                                            {iconTypes.original.length +
+                                                                iconTypes.variation.length}{' '}
+                                                            icons
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            );
+                                        },
                                     )}
                                 </div>
-                            );
-                        })}
-                    </div>
+                            </div>
+                        )}
+                    </>
                 )}
             </div>
             <ExportModal
