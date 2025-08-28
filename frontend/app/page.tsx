@@ -17,12 +17,12 @@ export default function Page() {
     const [individualDescriptions, setIndividualDescriptions] = useState<string[]>([]);
     const [referenceImage, setReferenceImage] = useState<File | null>(null);
     const [imagePreview, setImagePreview] = useState<string>('');
-    
+
     // UI state
     const [uiState, setUiState] = useState<UIState>('initial');
     const [errorMessage, setErrorMessage] = useState('');
     const [isGenerating, setIsGenerating] = useState(false);
-    
+
     // Generation data
     const [currentIcons, setCurrentIcons] = useState<Icon[]>([]);
     const [currentRequest, setCurrentRequest] = useState<any>(null);
@@ -37,15 +37,17 @@ export default function Page() {
     const [removeBackground, setRemoveBackground] = useState(true);
     const [outputFormat, setOutputFormat] = useState('png');
     const [exportProgress, setExportProgress] = useState({ step: 1, message: '', percent: 25 });
-    
+
     // Generate more state
-    const [moreIconsVisible, setMoreIconsVisible] = useState<{[key: string]: boolean}>({});
-    const [moreIconsDescriptions, setMoreIconsDescriptions] = useState<{[key: string]: string[]}>({});
-    
+    const [moreIconsVisible, setMoreIconsVisible] = useState<{ [key: string]: boolean }>({});
+    const [moreIconsDescriptions, setMoreIconsDescriptions] = useState<{ [key: string]: string[] }>(
+        {},
+    );
+
     // Animation state
-    const [animatingIcons, setAnimatingIcons] = useState<{[key: string]: number}>({});
-    const [animationTimers, setAnimationTimers] = useState<{[key: string]: NodeJS.Timeout[]}>({});
-    
+    const [animatingIcons, setAnimatingIcons] = useState<{ [key: string]: number }>({});
+    const [animationTimers, setAnimationTimers] = useState<{ [key: string]: NodeJS.Timeout[] }>({});
+
     // Unified progress timer
     const [overallProgress, setOverallProgress] = useState(0);
     const [totalDuration, setTotalDuration] = useState(0);
@@ -62,37 +64,37 @@ export default function Page() {
             if (overallProgressTimerRef.current) {
                 clearInterval(overallProgressTimerRef.current);
             }
-            Object.values(animationTimers).forEach(timers => {
-                timers.forEach(timer => clearTimeout(timer));
+            Object.values(animationTimers).forEach((timers) => {
+                timers.forEach((timer) => clearTimeout(timer));
             });
         };
     }, [animationTimers]);
 
     const startIconAnimation = (serviceId: string, iconCount: number) => {
         if (animationTimers[serviceId]) {
-            animationTimers[serviceId].forEach(timer => clearTimeout(timer));
+            animationTimers[serviceId].forEach((timer) => clearTimeout(timer));
         }
-        setAnimatingIcons(prev => ({ ...prev, [serviceId]: 0 }));
+        setAnimatingIcons((prev) => ({ ...prev, [serviceId]: 0 }));
         const timers: NodeJS.Timeout[] = [];
         for (let i = 0; i < iconCount; i++) {
             const timer = setTimeout(() => {
-                setAnimatingIcons(prev => ({ ...prev, [serviceId]: i + 1 }));
+                setAnimatingIcons((prev) => ({ ...prev, [serviceId]: i + 1 }));
             }, i * 150);
             timers.push(timer);
         }
-        setAnimationTimers(prev => ({ ...prev, [serviceId]: timers }));
+        setAnimationTimers((prev) => ({ ...prev, [serviceId]: timers }));
     };
 
     const clearIconAnimation = (serviceId: string) => {
         if (animationTimers[serviceId]) {
-            animationTimers[serviceId].forEach(timer => clearTimeout(timer));
-            setAnimationTimers(prev => {
+            animationTimers[serviceId].forEach((timer) => clearTimeout(timer));
+            setAnimationTimers((prev) => {
                 const newTimers = { ...prev };
                 delete newTimers[serviceId];
                 return newTimers;
             });
         }
-        setAnimatingIcons(prev => {
+        setAnimatingIcons((prev) => {
             const newAnimating = { ...prev };
             delete newAnimating[serviceId];
             return newAnimating;
@@ -102,7 +104,9 @@ export default function Page() {
     const getIconAnimationClass = (serviceId: string, iconIndex: number) => {
         const visibleCount = animatingIcons[serviceId] || 0;
         const isVisible = iconIndex < visibleCount;
-        return isVisible ? "opacity-100 scale-100 transition-all duration-500 ease-out" : "opacity-0 scale-75 transition-all duration-500 ease-out";
+        return isVisible
+            ? 'opacity-100 scale-100 transition-all duration-500 ease-out'
+            : 'opacity-0 scale-75 transition-all duration-500 ease-out';
     };
 
     const fileToBase64 = (file: File): Promise<string> => {
@@ -113,7 +117,7 @@ export default function Page() {
                 const base64 = (reader.result as string).split(',')[1];
                 resolve(base64);
             };
-            reader.onerror = error => reject(error);
+            reader.onerror = (error) => reject(error);
         });
     };
 
@@ -126,19 +130,19 @@ export default function Page() {
     };
 
     const getServiceDisplayName = (serviceId: string): string => {
-        const serviceNames: {[key: string]: string} = {
-            'flux': 'Flux-Pro',
-            'recraft': 'Recraft V3',
-            'photon': 'Luma Photon',
-            'gpt': 'GPT Image',
-            'imagen': 'Imagen 4'
+        const serviceNames: { [key: string]: string } = {
+            flux: 'Flux-Pro',
+            recraft: 'Recraft V3',
+            photon: 'Luma Photon',
+            gpt: 'GPT Image',
+            imagen: 'Imagen 4',
         };
         return serviceNames[serviceId] || serviceId;
     };
 
     const calculateTimeRemaining = () => {
         if (overallProgress >= 100) return '0s';
-        const remainingMs = totalDuration * (1 - (overallProgress / 100));
+        const remainingMs = totalDuration * (1 - overallProgress / 100);
         const remainingSeconds = Math.round(remainingMs / 1000);
         return `${remainingSeconds}s`;
     };
@@ -203,7 +207,7 @@ export default function Page() {
         if (overallProgressTimerRef.current) {
             clearInterval(overallProgressTimerRef.current);
         }
-        Object.keys(animationTimers).forEach(serviceId => {
+        Object.keys(animationTimers).forEach((serviceId) => {
             clearIconAnimation(serviceId);
         });
         let duration = 35000;
@@ -215,7 +219,7 @@ export default function Page() {
         setTotalDuration(duration);
         const increment = 100 / (duration / 100);
         overallProgressTimerRef.current = setInterval(() => {
-            setOverallProgress(prev => {
+            setOverallProgress((prev) => {
                 const newProgress = prev + increment;
                 if (newProgress >= 100) {
                     if (overallProgressTimerRef.current) {
@@ -229,7 +233,7 @@ export default function Page() {
         const formData: any = {
             iconCount: parseInt(iconCount),
             generationsPerService: parseInt(generationsPerService),
-            individualDescriptions: individualDescriptions.filter(desc => desc.trim())
+            individualDescriptions: individualDescriptions.filter((desc) => desc.trim()),
         };
         if (inputType === 'text') {
             formData.generalDescription = generalDescription.trim();
@@ -250,7 +254,7 @@ export default function Page() {
             const response = await fetch('/generate-stream', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(formData)
+                body: JSON.stringify(formData),
             });
             if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
             const data = await response.json();
@@ -279,14 +283,16 @@ export default function Page() {
                     setErrorMessage(update.message || 'Generation failed');
                     setUiState('error');
                     setIsGenerating(false);
-                    if (overallProgressTimerRef.current) clearInterval(overallProgressTimerRef.current);
+                    if (overallProgressTimerRef.current)
+                        clearInterval(overallProgressTimerRef.current);
                     eventSource.close();
                 } catch (error) {
                     console.error('Error parsing error update:', error);
                     setErrorMessage('Generation failed with unknown error');
                     setUiState('error');
                     setIsGenerating(false);
-                    if (overallProgressTimerRef.current) clearInterval(overallProgressTimerRef.current);
+                    if (overallProgressTimerRef.current)
+                        clearInterval(overallProgressTimerRef.current);
                     eventSource.close();
                 }
             });
@@ -307,18 +313,19 @@ export default function Page() {
         }
     };
 
-    const initializeStreamingResults = (enabledServices: {[key: string]: boolean}) => {
+    const initializeStreamingResults = (enabledServices: { [key: string]: boolean }) => {
         const newResults: StreamingResults = {};
         const allServices = [
             { id: 'flux', name: 'Flux-Pro' },
             { id: 'recraft', name: 'Recraft V3' },
             { id: 'photon', name: 'Luma Photon' },
             { id: 'gpt', name: '' },
-            { id: 'imagen', name: 'Imagen 4' }
+            { id: 'imagen', name: 'Imagen 4' },
         ];
-        const enabledServicesList = allServices.filter(service => enabledServices[service.id]);
+
+        const enabledServicesList = allServices.filter((service) => enabledServices[service.id]);
         const generationsNum = parseInt(generationsPerService) || 1;
-        enabledServicesList.forEach(service => {
+        enabledServicesList.forEach((service) => {
             for (let genIndex = 1; genIndex <= generationsNum; genIndex++) {
                 const uniqueId = `${service.id}-gen${genIndex}`;
                 newResults[uniqueId] = {
@@ -335,13 +342,13 @@ export default function Page() {
 
     const handleServiceUpdate = (update: any) => {
         const serviceId = update.serviceName;
-        setStreamingResults(prev => {
+        setStreamingResults((prev) => {
             const current = prev[serviceId] || {};
             const updated = {
                 ...current,
                 status: update.status,
                 message: update.message || current.message,
-                generationTimeMs: update.generationTimeMs || current.generationTimeMs
+                generationTimeMs: update.generationTimeMs || current.generationTimeMs,
             };
             if (update.status === 'success') {
                 updated.icons = update.icons || [];
@@ -358,7 +365,7 @@ export default function Page() {
         }
         setOverallProgress(100);
         setShowResultsPanes(true);
-        setStreamingResults(latestStreamingResults => {
+        setStreamingResults((latestStreamingResults) => {
             setTimeout(() => {
                 Object.entries(latestStreamingResults).forEach(([serviceId, result]) => {
                     if (result.status === 'success' && result.icons.length > 0) {
@@ -367,7 +374,7 @@ export default function Page() {
                 });
             }, 300);
             let allIcons: Icon[] = [];
-            Object.values(latestStreamingResults).forEach(result => {
+            Object.values(latestStreamingResults).forEach((result) => {
                 if (result.icons) {
                     allIcons = allIcons.concat(result.icons);
                 }
@@ -378,22 +385,32 @@ export default function Page() {
                 recraftResults: [] as ServiceResult[],
                 photonResults: [] as ServiceResult[],
                 gptResults: [] as ServiceResult[],
-                imagenResults: [] as ServiceResult[]
+                imagenResults: [] as ServiceResult[],
             };
             Object.entries(latestStreamingResults).forEach(([serviceKey, result]) => {
                 const baseServiceId = serviceKey.replace(/-gen\d+$/, '');
                 switch (baseServiceId) {
-                    case 'flux': groupedResults.falAiResults.push(result); break;
-                    case 'recraft': groupedResults.recraftResults.push(result); break;
-                    case 'photon': groupedResults.photonResults.push(result); break;
-                    case 'gpt': groupedResults.gptResults.push(result); break;
-                    case 'imagen': groupedResults.imagenResults.push(result); break;
+                    case 'flux':
+                        groupedResults.falAiResults.push(result);
+                        break;
+                    case 'recraft':
+                        groupedResults.recraftResults.push(result);
+                        break;
+                    case 'photon':
+                        groupedResults.photonResults.push(result);
+                        break;
+                    case 'gpt':
+                        groupedResults.gptResults.push(result);
+                        break;
+                    case 'imagen':
+                        groupedResults.imagenResults.push(result);
+                        break;
                 }
             });
             setCurrentResponse({
                 icons: allIcons,
                 ...groupedResults,
-                requestId: update.requestId
+                requestId: update.requestId,
             });
             setUiState('results');
             setIsGenerating(false);
@@ -415,7 +432,7 @@ export default function Page() {
                 serviceName: serviceName,
                 generationIndex: generationIndex,
                 removeBackground: removeBackground,
-                outputFormat: outputFormat
+                outputFormat: outputFormat,
             };
             setShowExportModal(false);
             downloadZip(exportData, fileName);
@@ -427,16 +444,18 @@ export default function Page() {
         setExportProgress({ step: 1, message: 'Preparing export request...', percent: 25 });
         try {
             setTimeout(() => {
-                setExportProgress({ 
-                    step: 2, 
-                    message: exportData.removeBackground ? 'Processing icons and removing backgrounds...' : 'Processing icons...', 
-                    percent: 50 
+                setExportProgress({
+                    step: 2,
+                    message: exportData.removeBackground
+                        ? 'Processing icons and removing backgrounds...'
+                        : 'Processing icons...',
+                    percent: 50,
                 });
             }, 500);
             const response = await fetch('/export', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(exportData)
+                body: JSON.stringify(exportData),
             });
             setExportProgress({ step: 3, message: 'Creating ZIP file...', percent: 75 });
             if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
@@ -466,16 +485,20 @@ export default function Page() {
     // Removed toast functions - now using progress UI instead of alerts
 
     const showMoreIconsForm = (uniqueId: string) => {
-        setMoreIconsVisible(prev => ({ ...prev, [uniqueId]: true }));
-        setMoreIconsDescriptions(prev => ({ ...prev, [uniqueId]: new Array(9).fill('') }));
+        setMoreIconsVisible((prev) => ({ ...prev, [uniqueId]: true }));
+        setMoreIconsDescriptions((prev) => ({ ...prev, [uniqueId]: new Array(9).fill('') }));
     };
 
     const hideMoreIconsForm = (uniqueId: string) => {
-        setMoreIconsVisible(prev => ({ ...prev, [uniqueId]: false }));
-        setMoreIconsDescriptions(prev => ({ ...prev, [uniqueId]: new Array(9).fill('') }));
+        setMoreIconsVisible((prev) => ({ ...prev, [uniqueId]: false }));
+        setMoreIconsDescriptions((prev) => ({ ...prev, [uniqueId]: new Array(9).fill('') }));
     };
 
-    const generateMoreIcons = async (serviceId: string, serviceName: string, generationIndex: number) => {
+    const generateMoreIcons = async (
+        serviceId: string,
+        serviceName: string,
+        generationIndex: number,
+    ) => {
         const uniqueId = `${serviceId}-gen${generationIndex}`;
         const descriptions = moreIconsDescriptions[uniqueId] || [];
         const serviceResults = getServiceResults(serviceId, generationIndex);
@@ -486,13 +509,13 @@ export default function Page() {
         }
 
         // Show progress for the specific generation
-        setStreamingResults(prev => ({
+        setStreamingResults((prev) => ({
             ...prev,
             [uniqueId]: {
                 ...prev[uniqueId],
                 status: 'started',
-                message: 'Generating more icons...'
-            }
+                message: 'Generating more icons...',
+            },
         }));
 
         const moreIconsRequest = {
@@ -503,42 +526,42 @@ export default function Page() {
             iconDescriptions: descriptions,
             iconCount: 9,
             seed: serviceResults.seed,
-            generationIndex: generationIndex // Include generation index
+            generationIndex: generationIndex, // Include generation index
         };
 
         try {
             const response = await fetch('/generate-more', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(moreIconsRequest)
+                body: JSON.stringify(moreIconsRequest),
             });
             if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
             const data = await response.json();
-            
+
             if (data.status === 'success') {
                 // Update current icons list
-                setCurrentIcons(prev => prev.concat(data.newIcons));
-                
+                setCurrentIcons((prev) => prev.concat(data.newIcons));
+
                 // Update streaming results
                 const previousIconCount = streamingResults[uniqueId]?.icons?.length || 0;
-                setStreamingResults(prev => ({
+                setStreamingResults((prev) => ({
                     ...prev,
                     [uniqueId]: {
                         ...prev[uniqueId],
                         status: 'success',
                         message: 'More icons generated successfully',
-                        icons: [...(prev[uniqueId]?.icons || []), ...data.newIcons]
-                    }
+                        icons: [...(prev[uniqueId]?.icons || []), ...data.newIcons],
+                    },
                 }));
 
                 // Animate new icons
                 setTimeout(() => {
-                    setAnimatingIcons(prev => ({ ...prev, [uniqueId]: previousIconCount }));
+                    setAnimatingIcons((prev) => ({ ...prev, [uniqueId]: previousIconCount }));
                     for (let i = 0; i < data.newIcons.length; i++) {
                         setTimeout(() => {
-                            setAnimatingIcons(prev => ({ 
-                                ...prev, 
-                                [uniqueId]: previousIconCount + i + 1 
+                            setAnimatingIcons((prev) => ({
+                                ...prev,
+                                [uniqueId]: previousIconCount + i + 1,
                             }));
                         }, i * 150);
                     }
@@ -547,68 +570,100 @@ export default function Page() {
                 hideMoreIconsForm(uniqueId);
             } else {
                 // Show error in streaming results
-                setStreamingResults(prev => ({
+                setStreamingResults((prev) => ({
                     ...prev,
                     [uniqueId]: {
                         ...prev[uniqueId],
                         status: 'error',
-                        message: data.message || 'Failed to generate more icons'
-                    }
+                        message: data.message || 'Failed to generate more icons',
+                    },
                 }));
             }
         } catch (error) {
             console.error('Error generating more icons:', error);
-            setStreamingResults(prev => ({
+            setStreamingResults((prev) => ({
                 ...prev,
                 [uniqueId]: {
                     ...prev[uniqueId],
                     status: 'error',
-                    message: 'Failed to generate more icons. Please try again.'
-                }
+                    message: 'Failed to generate more icons. Please try again.',
+                },
             }));
         }
     };
 
-    const getServiceResults = (serviceId: string, generationIndex: number): ServiceResult | null => {
+    const getServiceResults = (
+        serviceId: string,
+        generationIndex: number,
+    ): ServiceResult | null => {
         if (!currentResponse) return null;
         let resultsArray: ServiceResult[] | undefined;
         switch (serviceId) {
-            case 'flux': resultsArray = currentResponse.falAiResults; break;
-            case 'recraft': resultsArray = currentResponse.recraftResults; break;
-            case 'photon': resultsArray = currentResponse.photonResults; break;
-            case 'gpt': resultsArray = currentResponse.gptResults; break;
-            case 'imagen': resultsArray = currentResponse.imagenResults; break;
-            default: return null;
+            case 'flux':
+                resultsArray = currentResponse.falAiResults;
+                break;
+            case 'recraft':
+                resultsArray = currentResponse.recraftResults;
+                break;
+            case 'photon':
+                resultsArray = currentResponse.photonResults;
+                break;
+            case 'gpt':
+                resultsArray = currentResponse.gptResults;
+                break;
+            case 'imagen':
+                resultsArray = currentResponse.imagenResults;
+                break;
+            default:
+                return null;
         }
         if (resultsArray && resultsArray.length > 0) {
-            return resultsArray.find(r => r.generationIndex === generationIndex) || null;
+            return resultsArray.find((r) => r.generationIndex === generationIndex) || null;
         }
         return null;
     };
 
     return (
-        <div className="min-h-screen bg-white">
+        <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50/30">
             <Navigation />
-            <div className="flex h-screen bg-gray-100">
+            <div className="flex h-screen">
                 <GeneratorForm
-                    inputType={inputType} setInputType={setInputType}
-                    iconCount={iconCount} setIconCount={setIconCount}
-                    generalDescription={generalDescription} setGeneralDescription={setGeneralDescription}
-                    individualDescriptions={individualDescriptions} setIndividualDescriptions={setIndividualDescriptions}
-                    referenceImage={referenceImage} imagePreview={imagePreview}
-                    isGenerating={isGenerating} generateIcons={generateIcons}
-                    handleImageSelect={handleImageSelect} removeImage={removeImage}
-                    fileInputRef={fileInputRef} formatFileSize={formatFileSize}
+                    inputType={inputType}
+                    setInputType={setInputType}
+                    iconCount={iconCount}
+                    setIconCount={setIconCount}
+                    generalDescription={generalDescription}
+                    setGeneralDescription={setGeneralDescription}
+                    individualDescriptions={individualDescriptions}
+                    setIndividualDescriptions={setIndividualDescriptions}
+                    referenceImage={referenceImage}
+                    imagePreview={imagePreview}
+                    isGenerating={isGenerating}
+                    generateIcons={generateIcons}
+                    handleImageSelect={handleImageSelect}
+                    removeImage={removeImage}
+                    fileInputRef={fileInputRef}
+                    formatFileSize={formatFileSize}
                 />
+
                 <ResultsDisplay
-                    uiState={uiState} isGenerating={isGenerating} overallProgress={overallProgress}
-                    calculateTimeRemaining={calculateTimeRemaining} errorMessage={errorMessage}
-                    streamingResults={streamingResults} showResultsPanes={showResultsPanes}
-                    getIconAnimationClass={getIconAnimationClass} animatingIcons={animatingIcons}
-                    exportGeneration={exportGeneration} currentResponse={currentResponse}
-                    moreIconsVisible={moreIconsVisible} showMoreIconsForm={showMoreIconsForm}
-                    hideMoreIconsForm={hideMoreIconsForm} generateMoreIcons={generateMoreIcons}
-                    moreIconsDescriptions={moreIconsDescriptions} setMoreIconsDescriptions={setMoreIconsDescriptions}
+                    uiState={uiState}
+                    isGenerating={isGenerating}
+                    overallProgress={overallProgress}
+                    calculateTimeRemaining={calculateTimeRemaining}
+                    errorMessage={errorMessage}
+                    streamingResults={streamingResults}
+                    showResultsPanes={showResultsPanes}
+                    getIconAnimationClass={getIconAnimationClass}
+                    animatingIcons={animatingIcons}
+                    exportGeneration={exportGeneration}
+                    currentResponse={currentResponse}
+                    moreIconsVisible={moreIconsVisible}
+                    showMoreIconsForm={showMoreIconsForm}
+                    hideMoreIconsForm={hideMoreIconsForm}
+                    generateMoreIcons={generateMoreIcons}
+                    moreIconsDescriptions={moreIconsDescriptions}
+                    setMoreIconsDescriptions={setMoreIconsDescriptions}
                     getServiceDisplayName={getServiceDisplayName}
                 />
             </div>
@@ -616,10 +671,19 @@ export default function Page() {
                 show={showExportModal}
                 onClose={() => setShowExportModal(false)}
                 onConfirm={confirmExport}
-                removeBackground={removeBackground} setRemoveBackground={setRemoveBackground}
-                outputFormat={outputFormat} setOutputFormat={setOutputFormat}
-                iconCount={exportContext ? streamingResults[`${exportContext.serviceName}-gen${exportContext.generationIndex}`]?.icons?.length || 0 : 0}
+                removeBackground={removeBackground}
+                setRemoveBackground={setRemoveBackground}
+                outputFormat={outputFormat}
+                setOutputFormat={setOutputFormat}
+                iconCount={
+                    exportContext
+                        ? streamingResults[
+                              `${exportContext.serviceName}-gen${exportContext.generationIndex}`
+                          ]?.icons?.length || 0
+                        : 0
+                }
             />
+
             <ProgressModal show={showProgressModal} progress={exportProgress} />
         </div>
     );
