@@ -64,6 +64,11 @@ export default function Page() {
             if (overallProgressTimerRef.current) {
                 clearInterval(overallProgressTimerRef.current);
             }
+        };
+    }, []);
+
+    useEffect(() => {
+        return () => {
             Object.values(animationTimers).forEach((timers) => {
                 timers.forEach((timer) => clearTimeout(timer));
             });
@@ -508,6 +513,28 @@ export default function Page() {
             return;
         }
 
+        setIsGenerating(true);
+        setOverallProgress(0);
+        if (overallProgressTimerRef.current) {
+            clearInterval(overallProgressTimerRef.current);
+        }
+
+        let duration = 35000; // Default duration
+        setTotalDuration(duration);
+        const increment = 100 / (duration / 100);
+        overallProgressTimerRef.current = setInterval(() => {
+            setOverallProgress((prev) => {
+                const newProgress = prev + increment;
+                if (newProgress >= 100) {
+                    if (overallProgressTimerRef.current) {
+                        clearInterval(overallProgressTimerRef.current);
+                    }
+                    return 100;
+                }
+                return newProgress;
+            });
+        }, 100);
+
         // Show progress for the specific generation
         setStreamingResults((prev) => ({
             ...prev,
@@ -589,6 +616,12 @@ export default function Page() {
                     message: 'Failed to generate more icons. Please try again.',
                 },
             }));
+        } finally {
+            setIsGenerating(false);
+            if (overallProgressTimerRef.current) {
+                clearInterval(overallProgressTimerRef.current);
+            }
+            setOverallProgress(100); // Ensure progress is complete
         }
     };
 
@@ -665,6 +698,7 @@ export default function Page() {
                     moreIconsDescriptions={moreIconsDescriptions}
                     setMoreIconsDescriptions={setMoreIconsDescriptions}
                     getServiceDisplayName={getServiceDisplayName}
+                    setIsGenerating={setIsGenerating}
                 />
             </div>
             <ExportModal

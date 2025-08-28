@@ -20,6 +20,7 @@ interface ResultsDisplayProps {
     moreIconsDescriptions: { [key: string]: string[] };
     setMoreIconsDescriptions: React.Dispatch<React.SetStateAction<{ [key: string]: string[] }>>;
     getServiceDisplayName: (serviceId: string) => string;
+    setIsGenerating: (isGenerating: boolean) => void;
 }
 
 const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
@@ -41,6 +42,7 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
     moreIconsDescriptions,
     setMoreIconsDescriptions,
     getServiceDisplayName,
+    setIsGenerating,
 }) => {
     const getGenerationResults = (generationNumber: number) => {
         return Object.entries(streamingResults)
@@ -105,7 +107,7 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
                             {result.icons.map((icon, iconIndex) => (
                                 <div
                                     key={iconIndex}
-                                    className={`relative group transform ${getIconAnimationClass(result.serviceId, iconIndex)}`}
+                                    className={`relative group transform ${getIconAnimationClass(result.serviceId, iconIndex)} hover:scale-105 hover:z-20`}
                                     data-oid="m76b0.p"
                                 >
                                     <img
@@ -124,13 +126,16 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
                     )}
 
                     {result.status === 'success' && uiState === 'results' && (
-                        <div className="mt-6 p-4 bg-gray-50 rounded-lg" data-oid="ovhlhfz">
+                        <div
+                            className="mt-6 p-6 bg-white/60 backdrop-blur-lg rounded-2xl shadow-lg border border-purple-200/30"
+                            data-oid="ovhlhfz"
+                        >
                             <div
-                                className="flex items-center justify-between mb-3"
+                                className="flex items-center justify-between mb-4"
                                 data-oid="uso00lt"
                             >
                                 <h4
-                                    className="text-sm font-medium text-gray-900"
+                                    className="text-base font-semibold text-slate-800"
                                     data-oid="d1sbto:"
                                 >
                                     Generate More With Same Style
@@ -138,19 +143,20 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
                                 {!moreIconsVisible[result.serviceId] && (
                                     <button
                                         onClick={() => showMoreIconsForm(result.serviceId)}
-                                        className="px-3 py-1 bg-blue-600 text-white rounded text-sm hover:bg-blue-700"
+                                        className="px-4 py-2 rounded-xl text-sm font-semibold text-white bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 transform hover:scale-105 shadow-md hover:shadow-lg transition-all duration-200"
                                         data-oid="or9y-ww"
                                     >
-                                        Generate More Icons
+                                        Generate More
                                     </button>
                                 )}
                             </div>
                             {moreIconsVisible[result.serviceId] && (
-                                <div className="space-y-3" data-oid="vyc4_1h">
-                                    <p className="text-xs text-gray-600" data-oid="83178c6">
-                                        Describe 9 new icons (leave empty for creative variations):
+                                <div className="space-y-4" data-oid="vyc4_1h">
+                                    <p className="text-xs text-slate-500" data-oid="83178c6">
+                                        Describe up to 9 new icons (leave empty for creative
+                                        variations):
                                     </p>
-                                    <div className="grid grid-cols-3 gap-2" data-oid="05:gpsz">
+                                    <div className="grid grid-cols-3 gap-3" data-oid="05:gpsz">
                                         {Array.from({ length: 9 }, (_, i) => (
                                             <input
                                                 key={i}
@@ -172,12 +178,12 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
                                                         [result.serviceId]: newDescriptions,
                                                     }));
                                                 }}
-                                                className="w-full px-2 py-1 border border-gray-200 rounded text-xs"
+                                                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent focus:bg-white transition-all duration-200"
                                                 data-oid="dkp-80."
                                             />
                                         ))}
                                     </div>
-                                    <div className="flex space-x-2" data-oid="5:ovvgt">
+                                    <div className="flex space-x-3 pt-2" data-oid="5:ovvgt">
                                         <button
                                             onClick={() =>
                                                 generateMoreIcons(
@@ -186,14 +192,28 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
                                                     result.generationIndex,
                                                 )
                                             }
-                                            className="px-3 py-1 bg-blue-600 text-white rounded text-sm hover:bg-blue-700"
+                                            disabled={isGenerating}
+                                            className={`w-full py-3 px-5 rounded-xl text-white font-semibold ${isGenerating ? 'bg-slate-400 cursor-not-allowed' : 'bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 transform hover:scale-105 shadow-lg hover:shadow-xl'} transition-all duration-200`}
                                             data-oid="xku30oy"
                                         >
-                                            Generate 9 More Icons
+                                            {isGenerating ? (
+                                                <div
+                                                    className="flex items-center justify-center space-x-2"
+                                                    data-oid="wr:qqx5"
+                                                >
+                                                    <div
+                                                        className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"
+                                                        data-oid="klkpq:y"
+                                                    ></div>
+                                                    <span data-oid="-o8k1u8">Generating...</span>
+                                                </div>
+                                            ) : (
+                                                'Generate 9 More Icons'
+                                            )}
                                         </button>
                                         <button
                                             onClick={() => hideMoreIconsForm(result.serviceId)}
-                                            className="px-3 py-1 bg-gray-200 text-gray-700 rounded text-sm hover:bg-gray-300"
+                                            className="px-4 py-2 bg-slate-200 text-slate-700 rounded-xl text-sm font-semibold hover:bg-slate-300 transition-colors duration-200"
                                             data-oid="rw.qmye"
                                         >
                                             Cancel
@@ -212,18 +232,18 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
         <div className="flex-1 p-8 flex flex-col" data-oid="zbnho:w">
             {isGenerating && (
                 <div className="mb-6" data-oid="dy:7hpm">
-                    <div className="w-full bg-gray-200 rounded-full h-2.5" data-oid="q9qnu-0">
+                    <div className="w-full bg-gray-200 rounded-full h-0.5" data-oid="q9qnu-0">
                         <div
-                            className="bg-blue-600 h-2.5 rounded-full transition-all duration-300"
+                            className="bg-purple-600 h-0.5 rounded-full transition-all duration-300"
                             style={{ width: `${overallProgress}%` }}
                             data-oid="d-c5u0v"
                         />
                     </div>
-                    <p className="text-center text-sm text-gray-600 mt-2" data-oid="2x02tua">
-                        {overallProgress < 100
-                            ? `Generating icons... Estimated time remaining: ${calculateTimeRemaining()}`
-                            : 'Finalizing results...'}
-                    </p>
+                    {/*<p className="text-center text-sm text-gray-600 mt-2" data-oid="2x02tua">*/}
+                    {/*    {overallProgress < 100*/}
+                    {/*        ? `Generating icons... Estimated time remaining: ${calculateTimeRemaining()}`*/}
+                    {/*        : 'Finalizing results...'}*/}
+                    {/*</p>*/}
                 </div>
             )}
             <div className="flex-1 flex space-x-8" data-oid=".0me_fy">
