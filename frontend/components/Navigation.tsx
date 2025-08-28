@@ -51,6 +51,22 @@ const Navigation = () => {
                             />
                         </svg>
                     </Link>
+                    <Link
+                        href="/background-remover"
+                        className="p-2 hover:bg-gray-100 rounded-lg"
+                    >
+                        <svg
+                            className="w-5 h-5 text-gray-700"
+                            fill="currentColor"
+                            viewBox="0 0 20 20"
+                        >
+                            <path
+                                fillRule="evenodd"
+                                d="M14.402 6.902a1 1 0 011.414 0l4.288 4.288a1 1 0 010 1.414l-4.288 4.288a1 1 0 01-1.414-1.414L17.586 13H3a1 1 0 110-2h14.586l-3.184-3.184a1 1 0 010-1.414zM3.5 6a1.5 1.5 0 110 3 1.5 1.5 0 010-3zM6 13.5a1.5 1.5 0 103 0 1.5 1.5 0 00-3 0z"
+                                clipRule="evenodd"
+                            />
+                        </svg>
+                    </Link>
                     <button className="p-2 hover:bg-gray-100 rounded-lg">
                         <svg
                             className="w-5 h-5 text-gray-700"

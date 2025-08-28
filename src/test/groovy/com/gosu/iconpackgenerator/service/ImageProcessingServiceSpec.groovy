@@ -817,20 +817,20 @@ class ImageProcessingServiceSpec extends Specification {
 
     def "should detect transparent boundaries and fix cutting artifacts"() {
         when: "processing the problematic wrong-cut.png image that has misaligned icons"
-        BufferedImage wrongCutImage = ImageIO.read(new File("src/test/resources/images/testsub3.png"))
+        BufferedImage wrongCutImage = ImageIO.read(new File("src/test/resources/images/wrong-cut-2.png"))
         byte[] imageBytes = bufferedImageToByteArray(wrongCutImage)
-        
+
         then: "image loads successfully"
         wrongCutImage != null
         wrongCutImage.width == 1024 || wrongCutImage.height == 1024 // Should be 1024x1024 as mentioned
-        
+
         when: "crop icons using new transparent boundary detection"
         List<String> icons = imageProcessingService.cropIconsFromGrid(imageBytes, 9, true, 256)
-        
+
         then: "processing succeeds and generates expected number of icons"
         icons != null
         icons.size() == 9
-        
+
         when: "save each icon with descriptive names for visual inspection"
         icons.eachWithIndex { iconBase64, index ->
             byte[] iconBytes = Base64.decoder.decode(iconBase64)
@@ -840,15 +840,56 @@ class ImageProcessingServiceSpec extends Specification {
             ImageIO.write(iconImage, "png", new File(filename))
             println("Saved improved icon ${index + 1} to: ${filename}")
         }
-        
+
         then: "icons are saved successfully with transparent boundary detection"
         icons.size() == 9
-        
+
         and: "log that transparent boundary detection was used"
         // In real usage, check logs to see if "Found excellent transparent" messages appear
         println("Check application logs for transparent boundary detection messages")
         println("Expected to see: 'Found excellent transparent [vertical|horizontal] boundaries at...'")
         println("If no transparent boundaries found, fallback methods should be used automatically")
+    }
+
+    def "should correctly detect transparent background and avoid unnecessary background removal"() {
+        given: "The false-positive-transparency.png test image that was incorrectly processed"
+        BufferedImage falsePositiveImage = loadTestImage("false-positive-transparency.png")
+
+        expect: "Test image is loaded correctly"
+        falsePositiveImage != null
+        falsePositiveImage.width > 0
+        falsePositiveImage.height > 0
+
+        when: "Check if image has transparent background using improved algorithm"
+        // Use reflection to access private method for testing
+        java.lang.reflect.Method hasTransparentBackgroundMethod = ImageProcessingService.class.getDeclaredMethod("hasTransparentBackground", BufferedImage.class)
+        hasTransparentBackgroundMethod.setAccessible(true)
+        boolean hasTransparentBg = hasTransparentBackgroundMethod.invoke(imageProcessingService, falsePositiveImage)
+
+        then: "Image should be correctly identified as having transparent background"
+        hasTransparentBg == true
+
+        and: "Save the test image for visual verification"
+        saveImage(falsePositiveImage, "false_positive_transparency_test.png")
+        println "False positive transparency image dimensions: ${falsePositiveImage.width}x${falsePositiveImage.height}"
+        println "Has alpha channel: ${falsePositiveImage.colorModel.hasAlpha()}"
+
+        when: "Process the image with background removal flag set to true"
+        byte[] imageData = bufferedImageToByteArray(falsePositiveImage)
+        List<String> icons = imageProcessingService.cropIconsFromGrid(imageData, 9, false, 0, true)
+
+        then: "Processing should succeed without triggering unnecessary background removal"
+        icons != null
+        icons.size() == 9
+
+        and: "Save cropped icons for verification"
+        icons.eachWithIndex { iconBase64, index ->
+            byte[] iconBytes = Base64.decoder.decode(iconBase64)
+            BufferedImage iconImage = ImageIO.read(new ByteArrayInputStream(iconBytes))
+            saveImage(iconImage, "false_positive_icon_${index + 1}.png")
+        }
+
+        println "Successfully processed false-positive-transparency.png without unnecessary background removal"
     }
 
     def cleanupSpec() {
