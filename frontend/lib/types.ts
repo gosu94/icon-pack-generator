@@ -25,7 +25,6 @@ export interface GenerationResponse {
     photonResults?: ServiceResult[];
     gptResults?: ServiceResult[];
     imagenResults?: ServiceResult[];
-    bananaResults?: ServiceResult[];
 }
 
 export type UIState = 'initial' | 'streaming' | 'error' | 'results';

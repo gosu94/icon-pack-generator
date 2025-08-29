@@ -141,7 +141,6 @@ export default function Page() {
             photon: 'Luma Photon',
             gpt: 'GPT Image',
             imagen: 'Imagen 4',
-            banana: 'Banana Model',
         };
         return serviceNames[serviceId] || serviceId;
     };
@@ -321,28 +320,28 @@ export default function Page() {
 
     const initializeStreamingResults = (enabledServices: { [key: string]: boolean }) => {
         const newResults: StreamingResults = {};
-        
-        // Fixed two-model approach: GPT in pane 1 ("your icons"), Banana in pane 2 ("variations")
-        if (enabledServices.gpt) {
-            newResults['gpt-gen1'] = {
-                icons: [],
-                generationTimeMs: 0,
-                status: 'started',
-                message: 'Progressing..',
-                generationIndex: 1,
-            };
-        }
-        
-        if (enabledServices.banana) {
-            newResults['banana-gen2'] = {
-                icons: [],
-                generationTimeMs: 0,
-                status: 'started',
-                message: 'Progressing..',
-                generationIndex: 2,
-            };
-        }
-        
+        const allServices = [
+            { id: 'flux', name: 'Flux-Pro' },
+            { id: 'recraft', name: 'Recraft V3' },
+            { id: 'photon', name: 'Luma Photon' },
+            { id: 'gpt', name: '' },
+            { id: 'imagen', name: 'Imagen 4' },
+        ];
+
+        const enabledServicesList = allServices.filter((service) => enabledServices[service.id]);
+        const generationsNum = parseInt(generationsPerService) || 1;
+        enabledServicesList.forEach((service) => {
+            for (let genIndex = 1; genIndex <= generationsNum; genIndex++) {
+                const uniqueId = `${service.id}-gen${genIndex}`;
+                newResults[uniqueId] = {
+                    icons: [],
+                    generationTimeMs: 0,
+                    status: 'started',
+                    message: 'Progressing..',
+                    generationIndex: genIndex,
+                };
+            }
+        });
         setStreamingResults(newResults);
     };
 
@@ -392,7 +391,6 @@ export default function Page() {
                 photonResults: [] as ServiceResult[],
                 gptResults: [] as ServiceResult[],
                 imagenResults: [] as ServiceResult[],
-                bananaResults: [] as ServiceResult[],
             };
             Object.entries(latestStreamingResults).forEach(([serviceKey, result]) => {
                 const baseServiceId = serviceKey.replace(/-gen\d+$/, '');
@@ -411,9 +409,6 @@ export default function Page() {
                         break;
                     case 'imagen':
                         groupedResults.imagenResults.push(result);
-                        break;
-                    case 'banana':
-                        groupedResults.bananaResults.push(result);
                         break;
                 }
             });
@@ -651,9 +646,6 @@ export default function Page() {
                 break;
             case 'imagen':
                 resultsArray = currentResponse.imagenResults;
-                break;
-            case 'banana':
-                resultsArray = currentResponse.bananaResults;
                 break;
             default:
                 return null;
