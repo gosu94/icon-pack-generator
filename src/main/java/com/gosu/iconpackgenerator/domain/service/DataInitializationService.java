@@ -38,11 +38,20 @@ public class DataInitializationService implements CommandLineRunner {
             defaultUser.setPassword(DEFAULT_USER_PASSWORD); // In real app, this would be hashed
             defaultUser.setDirectoryPath("default-user");
             defaultUser.setIsActive(true);
+            defaultUser.setCoins(100); // Start with 100 coins for the default user
             
             userRepository.save(defaultUser);
-            log.info("Created default user with email: {}", DEFAULT_USER_EMAIL);
+            log.info("Created default user with email: {} and {} coins", DEFAULT_USER_EMAIL, defaultUser.getCoins());
         } else {
-            log.info("Default user already exists");
+            // Update existing user to have coins if they don't have any
+            User existingUser = userRepository.findByEmail(DEFAULT_USER_EMAIL).orElse(null);
+            if (existingUser != null && existingUser.getCoins() == null) {
+                existingUser.setCoins(100);
+                userRepository.save(existingUser);
+                log.info("Updated existing default user with {} coins", existingUser.getCoins());
+            } else {
+                log.info("Default user already exists with {} coins", existingUser != null ? existingUser.getCoins() : "unknown");
+            }
         }
     }
     

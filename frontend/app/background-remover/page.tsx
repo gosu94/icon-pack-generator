@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import Navigation from "../../components/Navigation";
 
 type ProcessedImageResponse = {
@@ -25,6 +25,31 @@ export default function BackgroundRemoverPage() {
   const [stats, setStats] = useState<Partial<ProcessedImageResponse>>({});
   const [error, setError] = useState<string>("");
   const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  // Coin state
+  const [coins, setCoins] = useState<number>(0);
+  const [coinsLoading, setCoinsLoading] = useState(true);
+
+  // Fetch coins on component mount
+  useEffect(() => {
+    const fetchCoins = async () => {
+      try {
+        const response = await fetch("/api/user/coins");
+        if (response.ok) {
+          const coinBalance = await response.json();
+          setCoins(coinBalance);
+        } else {
+          console.error("Failed to fetch coin balance");
+        }
+      } catch (error) {
+        console.error("Error fetching coin balance:", error);
+      } finally {
+        setCoinsLoading(false);
+      }
+    };
+
+    fetchCoins();
+  }, []);
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -107,7 +132,7 @@ export default function BackgroundRemoverPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50/30">
-      <Navigation />
+      <Navigation coins={coins} coinsLoading={coinsLoading} />
       <div className="container mx-auto px-4 py-12">
         <div className="max-w-4xl mx-auto">
           <div className="text-center mb-12">

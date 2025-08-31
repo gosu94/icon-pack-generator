@@ -45,6 +45,9 @@ public class User {
     @Column(name = "is_active")
     private Boolean isActive = true;
     
+    @Column(name = "coins")
+    private Integer coins = 10; // Default starting coins
+    
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<GeneratedIcon> generatedIcons;
 }

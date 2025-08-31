@@ -6,6 +6,7 @@ import com.gosu.iconpackgenerator.domain.dto.IconGenerationResponse;
 import com.gosu.iconpackgenerator.domain.dto.ServiceProgressUpdate;
 import com.gosu.iconpackgenerator.domain.entity.GeneratedIcon;
 import com.gosu.iconpackgenerator.user.model.User;
+import com.gosu.iconpackgenerator.user.service.UserService;
 import com.gosu.iconpackgenerator.exception.FalAiException;
 import com.gosu.iconpackgenerator.domain.repository.GeneratedIconRepository;
 import lombok.RequiredArgsConstructor;
@@ -37,6 +38,7 @@ public class IconGenerationService {
     private final GeneratedIconRepository generatedIconRepository;
     private final DataInitializationService dataInitializationService;
     private final FileStorageService fileStorageService;
+    private final UserService userService;
     
     public CompletableFuture<IconGenerationResponse> generateIcons(IconGenerationRequest request) {
         return generateIcons(request, UUID.randomUUID().toString(), null);
@@ -46,6 +48,21 @@ public class IconGenerationService {
      * Generate icons with optional progress callback for real-time updates
      */
     public CompletableFuture<IconGenerationResponse> generateIcons(IconGenerationRequest request, String requestId, ProgressUpdateCallback progressCallback) {
+        // Check if user has enough coins before starting generation
+        String defaultUserEmail = "default@iconpack.com";
+        if (!userService.hasEnoughCoinsByEmail(defaultUserEmail, 1)) {
+            log.warn("User {} has insufficient coins for icon generation", defaultUserEmail);
+            return CompletableFuture.completedFuture(createErrorResponse(requestId, "Insufficient coins. You need 1 coin to generate icons."));
+        }
+        
+        // Deduct 1 coin for the generation
+        if (!userService.deductCoinsByEmail(defaultUserEmail, 1)) {
+            log.error("Failed to deduct coins from user {}", defaultUserEmail);
+            return CompletableFuture.completedFuture(createErrorResponse(requestId, "Failed to process payment. Please try again."));
+        }
+        
+        log.info("Deducted 1 coin from user {} for icon generation. Request ID: {}", defaultUserEmail, requestId);
+        
         List<String> enabledServices = new ArrayList<>();
         if (aiServicesConfig.isFluxAiEnabled()) enabledServices.add("FalAI");
         if (aiServicesConfig.isRecraftEnabled()) enabledServices.add("Recraft");

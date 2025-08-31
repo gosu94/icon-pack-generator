@@ -28,6 +28,10 @@ export default function GalleryPage() {
   const [showExportModal, setShowExportModal] = useState(false);
   const [showProgressModal, setShowProgressModal] = useState(false);
   const [iconsToExport, setIconsToExport] = useState<Icon[]>([]);
+  
+  // Coin state
+  const [coins, setCoins] = useState<number>(0);
+  const [coinsLoading, setCoinsLoading] = useState(true);
   const [removeBackground, setRemoveBackground] = useState(true);
   const [outputFormat, setOutputFormat] = useState("png");
   const [exportProgress, setExportProgress] = useState({
@@ -66,6 +70,27 @@ export default function GalleryPage() {
     };
 
     fetchIcons();
+  }, []);
+
+  // Fetch coins on component mount
+  useEffect(() => {
+    const fetchCoins = async () => {
+      try {
+        const response = await fetch("/api/user/coins");
+        if (response.ok) {
+          const coinBalance = await response.json();
+          setCoins(coinBalance);
+        } else {
+          console.error("Failed to fetch coin balance");
+        }
+      } catch (error) {
+        console.error("Error fetching coin balance:", error);
+      } finally {
+        setCoinsLoading(false);
+      }
+    };
+
+    fetchCoins();
   }, []);
 
   const handleSelectRequest = (requestId: string) => {
@@ -159,7 +184,7 @@ export default function GalleryPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50/30">
-      <Navigation />
+      <Navigation coins={coins} coinsLoading={coinsLoading} />
       <div className="container mx-auto px-4 py-8">
         {loading && <p>Loading...</p>}
         {error && <p className="text-red-500">{error}</p>}

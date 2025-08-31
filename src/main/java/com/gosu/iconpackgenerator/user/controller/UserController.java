@@ -5,6 +5,7 @@ import com.gosu.iconpackgenerator.domain.entity.GeneratedIcon;
 import com.gosu.iconpackgenerator.domain.repository.GeneratedIconRepository;
 import com.gosu.iconpackgenerator.user.model.User;
 import com.gosu.iconpackgenerator.user.repository.UserRepository;
+import com.gosu.iconpackgenerator.user.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -25,6 +26,9 @@ public class UserController {
 
     @Autowired
     private UserRepository userRepository;
+    
+    @Autowired
+    private UserService userService;
 
     @GetMapping("/user/icons")
     public ResponseEntity<List<IconDto>> getUserIcons() {
@@ -51,5 +55,13 @@ public class UserController {
                 .collect(Collectors.toList());
 
         return ResponseEntity.ok(iconDtos);
+    }
+    
+    @GetMapping("/user/coins")
+    public ResponseEntity<Integer> getUserCoins() {
+        // Hardcoded user for now
+        String userEmail = "default@iconpack.com";
+        Integer coins = userService.getUserCoinsByEmail(userEmail);
+        return ResponseEntity.ok(coins);
     }
 }

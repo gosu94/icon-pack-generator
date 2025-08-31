@@ -21,6 +21,7 @@ import com.gosu.iconpackgenerator.domain.service.ImagenModelService;
 import com.gosu.iconpackgenerator.domain.service.PhotonModelService;
 import com.gosu.iconpackgenerator.domain.service.PromptGenerationService;
 import com.gosu.iconpackgenerator.domain.service.RecraftModelService;
+import com.gosu.iconpackgenerator.user.service.UserService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -59,6 +60,7 @@ public class IconGenerationController implements IconGenerationControllerAPI {
     private final DataInitializationService dataInitializationService;
     private final FileStorageService fileStorageService;
     private final StreamingStateStore streamingStateStore;
+    private final UserService userService;
 
     @Override
     @ResponseBody
@@ -234,6 +236,21 @@ public class IconGenerationController implements IconGenerationControllerAPI {
             long startTime = System.currentTimeMillis();
 
             try {
+                // Check if user has enough coins before starting generation
+                String defaultUserEmail = "default@iconpack.com";
+                if (!userService.hasEnoughCoinsByEmail(defaultUserEmail, 1)) {
+                    log.warn("User {} has insufficient coins for more icons generation", defaultUserEmail);
+                    return createErrorResponse(request, "Insufficient coins. You need 1 coin to generate more icons.", startTime);
+                }
+                
+                // Deduct 1 coin for the generation
+                if (!userService.deductCoinsByEmail(defaultUserEmail, 1)) {
+                    log.error("Failed to deduct coins from user {} for more icons", defaultUserEmail);
+                    return createErrorResponse(request, "Failed to process payment. Please try again.", startTime);
+                }
+                
+                log.info("Deducted 1 coin from user {} for more icons generation. Original Request ID: {}", defaultUserEmail, request.getOriginalRequestId());
+                
                 if (request.getServiceName() == null || request.getServiceName().trim().isEmpty()) {
                     return createErrorResponse(request, "Service name is required", startTime);
                 }

@@ -8,9 +8,16 @@ import {
   MessageSquare,
   Paintbrush,
   Settings,
+  Coins,
 } from "lucide-react";
 
-const Navigation = () => {
+interface NavigationProps {
+  coins: number;
+  coinsLoading: boolean;
+}
+
+const Navigation: React.FC<NavigationProps> = ({ coins, coinsLoading }) => {
+
   return (
     <nav className="border-b border-gray-200 px-6 py-4">
       <div className="flex items-center justify-between">
@@ -28,6 +35,14 @@ const Navigation = () => {
         </div>
 
         <div className="flex items-center space-x-4">
+          {/* Coin Balance Display */}
+          <div className="flex items-center space-x-2 bg-yellow-50 border border-yellow-200 rounded-lg px-3 py-2">
+            <Coins className="w-5 h-5 text-yellow-600" />
+            <span className="text-sm font-semibold text-yellow-800">
+              {coinsLoading ? "..." : coins}
+            </span>
+          </div>
+          
           <Link href="/" className="p-2 hover:bg-gray-100 rounded-lg">
             <Menu className="w-5 h-5 text-gray-700" />
           </Link>

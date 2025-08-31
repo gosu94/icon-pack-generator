@@ -60,6 +60,10 @@ export default function Page() {
   const [moreIconsDescriptions, setMoreIconsDescriptions] = useState<{
     [key: string]: string[];
   }>({});
+  
+  // Coin state
+  const [coins, setCoins] = useState<number>(0);
+  const [coinsLoading, setCoinsLoading] = useState(true);
 
   // Animation state
   const [animatingIcons, setAnimatingIcons] = useState<{
@@ -79,6 +83,27 @@ export default function Page() {
     const count = parseInt(iconCount);
     setIndividualDescriptions(new Array(count).fill(""));
   }, [iconCount]);
+
+  // Fetch coins on component mount
+  useEffect(() => {
+    const fetchCoins = async () => {
+      try {
+        const response = await fetch("/api/user/coins");
+        if (response.ok) {
+          const coinBalance = await response.json();
+          setCoins(coinBalance);
+        } else {
+          console.error("Failed to fetch coin balance");
+        }
+      } catch (error) {
+        console.error("Error fetching coin balance:", error);
+      } finally {
+        setCoinsLoading(false);
+      }
+    };
+
+    fetchCoins();
+  }, []);
 
   useEffect(() => {
     return () => {
@@ -204,6 +229,18 @@ export default function Page() {
     }
   };
 
+  const refreshCoins = async () => {
+    try {
+      const response = await fetch("/api/user/coins");
+      if (response.ok) {
+        const coinBalance = await response.json();
+        setCoins(coinBalance);
+      }
+    } catch (error) {
+      console.error("Error refreshing coin balance:", error);
+    }
+  };
+
   const validateForm = (): boolean => {
     if (inputType === "text" && !generalDescription.trim()) {
       setErrorMessage("Please provide a general description.");
@@ -215,6 +252,10 @@ export default function Page() {
     }
     if (!iconCount) {
       setErrorMessage("Please select the number of icons.");
+      return false;
+    }
+    if (coins < 1) {
+      setErrorMessage("Insufficient coins. You need 1 coin to generate icons.");
       return false;
     }
     return true;
@@ -452,6 +493,8 @@ export default function Page() {
       });
       setUiState("results");
       setIsGenerating(false);
+      // Refresh coins after successful generation
+      refreshCoins();
       return latestStreamingResults;
     });
   };
@@ -560,6 +603,13 @@ export default function Page() {
     serviceName: string,
     generationIndex: number,
   ) => {
+    // Check if user has enough coins
+    if (coins < 1) {
+      setErrorMessage("Insufficient coins. You need 1 coin to generate more icons.");
+      setUiState("error");
+      return;
+    }
+
     const uniqueId = `${serviceId}-gen${generationIndex}`;
     const descriptions = moreIconsDescriptions[uniqueId] || [];
     const serviceResults = getServiceResults(serviceId, generationIndex);
@@ -656,6 +706,8 @@ export default function Page() {
         }, 200);
 
         hideMoreIconsForm(uniqueId);
+        // Refresh coins after successful more icons generation
+        refreshCoins();
       } else {
         // Show error in streaming results
         setStreamingResults((prev) => ({
@@ -721,7 +773,7 @@ export default function Page() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50/30">
-      <Navigation />
+      <Navigation coins={coins} coinsLoading={coinsLoading} />
       <div className="flex h-screen">
         <GeneratorForm
           inputType={inputType}
