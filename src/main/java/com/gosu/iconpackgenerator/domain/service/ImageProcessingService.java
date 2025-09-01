@@ -533,6 +533,19 @@ public class ImageProcessingService {
     }
 
     /**
+     * Helper class to track boundary detection results and quality
+     */
+    private static class BoundaryResult {
+        public final int[] boundaries;
+        public final boolean hasPerfectTransparency;
+
+        public BoundaryResult(int[] boundaries, boolean hasPerfectTransparency) {
+            this.boundaries = boundaries;
+            this.hasPerfectTransparency = hasPerfectTransparency;
+        }
+    }
+
+    /**
      * Intelligently detect grid bounds by analyzing content and redistributing edge pixels
      * to prevent cutoff issues that occur with simple division. Now with transparent boundary detection.
      */
@@ -543,22 +556,29 @@ public class ImageProcessingService {
         log.debug("Detecting intelligent grid bounds for {}x{} image", width, height);
 
         // Step 1: Try to detect transparent pixel boundaries first (new approach)
-        int[] xBoundaries = detectTransparentBoundaries(image, true); // vertical boundaries (columns)
-        int[] yBoundaries = detectTransparentBoundaries(image, false); // horizontal boundaries (rows)
+        BoundaryResult xResult = detectTransparentBoundariesWithQuality(image, true); // vertical boundaries (columns)
+        BoundaryResult yResult = detectTransparentBoundariesWithQuality(image, false); // horizontal boundaries (rows)
+
+        int[] xBoundaries = xResult.boundaries;
+        int[] yBoundaries = yResult.boundaries;
+        boolean xHasPerfectTransparency = xResult.hasPerfectTransparency;
+        boolean yHasPerfectTransparency = yResult.hasPerfectTransparency;
 
         // Step 2: Fall back to content gap detection if transparent boundaries aren't found
         if (xBoundaries == null) {
             xBoundaries = detectContentBoundaries(image, true);
             log.debug("No transparent x-boundaries found, falling back to content detection");
         } else {
-            log.debug("Using transparent x boundaries: {}", java.util.Arrays.toString(xBoundaries));
+            log.debug("Using transparent x boundaries: {} (perfect: {})", 
+                    java.util.Arrays.toString(xBoundaries), xHasPerfectTransparency);
         }
 
         if (yBoundaries == null) {
             yBoundaries = detectContentBoundaries(image, false);
             log.debug("No transparent y-boundaries found, falling back to content detection");
         } else {
-            log.debug("Using transparent y boundaries: {}", java.util.Arrays.toString(yBoundaries));
+            log.debug("Using transparent y boundaries: {} (perfect: {})", 
+                    java.util.Arrays.toString(yBoundaries), yHasPerfectTransparency);
         }
 
         // Step 3: If still no boundaries found, use improved division with edge redistribution
@@ -573,45 +593,57 @@ public class ImageProcessingService {
         }
 
         // Step 4: Apply smart buffering to prevent pixel cutoff
-        // Use gentler buffering when we found high-quality boundaries (transparent or good content detection)
-        boolean hasHighQualityX = false;
-        boolean hasHighQualityY = false;
-
-        // Check if we have transparent boundaries (detected in step 1)
-        if (xBoundaries != null && xBoundaries.length == 4) {
-            // Check if these came from transparent detection by looking for the log message
-            // For now, assume content detection with perfect spacing is also high quality
-            int[] xSections = {xBoundaries[1] - xBoundaries[0], xBoundaries[2] - xBoundaries[1], xBoundaries[3] - xBoundaries[2]};
-            int idealSection = width / 3;
-            boolean xHasGoodSpacing = true;
-            for (int section : xSections) {
-                double deviation = Math.abs(section - idealSection) / (double) idealSection;
-                if (deviation > 0.1) { // 10% tolerance for content detection
-                    xHasGoodSpacing = false;
-                    break;
+        // For perfect transparent boundaries, skip ALL buffering to preserve exact boundaries
+        int[] bufferedXBoundaries;
+        int[] bufferedYBoundaries;
+        
+        if (xHasPerfectTransparency) {
+            log.debug("SKIPPING all buffering for perfect transparent X boundaries");
+            bufferedXBoundaries = xBoundaries; // Use exact boundaries
+        } else {
+            // Apply normal buffering logic for non-perfect boundaries
+            boolean hasHighQualityX = false;
+            if (xBoundaries != null && xBoundaries.length == 4) {
+                // Check spacing quality for non-perfect boundaries
+                int[] xSections = {xBoundaries[1] - xBoundaries[0], xBoundaries[2] - xBoundaries[1], xBoundaries[3] - xBoundaries[2]};
+                int idealSection = width / 3;
+                boolean xHasGoodSpacing = true;
+                for (int section : xSections) {
+                    double deviation = Math.abs(section - idealSection) / (double) idealSection;
+                    if (deviation > 0.1) {
+                        xHasGoodSpacing = false;
+                        break;
+                    }
                 }
+                hasHighQualityX = xHasGoodSpacing;
             }
-            hasHighQualityX = xHasGoodSpacing;
+            bufferedXBoundaries = applySmartBuffer(xBoundaries, width, true, hasHighQualityX);
+        }
+        
+        if (yHasPerfectTransparency) {
+            log.debug("SKIPPING all buffering for perfect transparent Y boundaries");
+            bufferedYBoundaries = yBoundaries; // Use exact boundaries
+        } else {
+            // Apply normal buffering logic for non-perfect boundaries
+            boolean hasHighQualityY = false;
+            if (yBoundaries != null && yBoundaries.length == 4) {
+                // Check spacing quality for non-perfect boundaries
+                int[] ySections = {yBoundaries[1] - yBoundaries[0], yBoundaries[2] - yBoundaries[1], yBoundaries[3] - yBoundaries[2]};
+                int idealSection = height / 3;
+                boolean yHasGoodSpacing = true;
+                for (int section : ySections) {
+                    double deviation = Math.abs(section - idealSection) / (double) idealSection;
+                    if (deviation > 0.1) {
+                        yHasGoodSpacing = false;
+                        break;
+                    }
+                }
+                hasHighQualityY = yHasGoodSpacing;
+            }
+            bufferedYBoundaries = applySmartBuffer(yBoundaries, height, false, hasHighQualityY);
         }
 
-        if (yBoundaries != null && yBoundaries.length == 4) {
-            int[] ySections = {yBoundaries[1] - yBoundaries[0], yBoundaries[2] - yBoundaries[1], yBoundaries[3] - yBoundaries[2]};
-            int idealSection = height / 3;
-            boolean yHasGoodSpacing = true;
-            for (int section : ySections) {
-                double deviation = Math.abs(section - idealSection) / (double) idealSection;
-                if (deviation > 0.1) { // 10% tolerance for content detection
-                    yHasGoodSpacing = false;
-                    break;
-                }
-            }
-            hasHighQualityY = yHasGoodSpacing;
-        }
-
-        int[] bufferedXBoundaries = applySmartBuffer(xBoundaries, width, true, hasHighQualityX);
-        int[] bufferedYBoundaries = applySmartBuffer(yBoundaries, height, false, hasHighQualityY);
-
-        log.debug("Applying buffering: hasHighQualityX={}, hasHighQualityY={}", hasHighQualityX, hasHighQualityY);
+        log.debug("Buffering results: X perfect={}, Y perfect={}", xHasPerfectTransparency, yHasPerfectTransparency);
 
         // Step 5: Convert boundaries to GridBounds format
         int[][] xBounds = new int[3][2]; // [column][start/end]
@@ -782,13 +814,16 @@ public class ImageProcessingService {
         double boundary1Transparency = calculateLineTransparency(image, vertical, bestBoundary1);
         double boundary2Transparency = calculateLineTransparency(image, vertical, bestBoundary2);
 
+        // Check if we found perfect transparent lines (100% transparency)
+        boolean hasPerfectTransparency = boundary1Transparency >= 1.0 && boundary2Transparency >= 1.0;
+
         // Check spacing - boundaries should divide the image into roughly equal thirds
         int section1Size = bestBoundary1 - 0;
         int section2Size = bestBoundary2 - bestBoundary1;
         int section3Size = dimension - bestBoundary2;
 
         // Calculate how much each section deviates from ideal size
-        double maxDeviationRatio = 0.05; // Allow only 5% deviation from ideal size for high precision
+        double maxDeviationRatio = hasPerfectTransparency ? 0.25 : 0.05; // More lenient for perfect boundaries
 
         double section1Deviation = Math.abs(section1Size - idealSectionSize) / (double) idealSectionSize;
         double section2Deviation = Math.abs(section2Size - idealSectionSize) / (double) idealSectionSize;
@@ -798,7 +833,8 @@ public class ImageProcessingService {
                 section2Deviation <= maxDeviationRatio &&
                 section3Deviation <= maxDeviationRatio;
 
-        if (boundary1Transparency < transparencyThreshold || boundary2Transparency < transparencyThreshold) {
+        // For non-perfect boundaries, enforce strict transparency threshold
+        if (!hasPerfectTransparency && (boundary1Transparency < transparencyThreshold || boundary2Transparency < transparencyThreshold)) {
             log.debug("Transparent {} boundaries don't meet quality threshold: {}%, {}% (need {}%)",
                     vertical ? "vertical" : "horizontal",
                     String.format("%.1f", boundary1Transparency * 100),
@@ -807,9 +843,11 @@ public class ImageProcessingService {
             return null;
         }
 
+        // Apply spacing validation with different tolerances
         if (!spacingIsGood) {
-            log.debug("Transparent {} boundaries have poor spacing: sections=[{}, {}, {}] (ideal={}), deviations=[{}%, {}%, {}%] (max={}%)",
-                    vertical ? "vertical" : "horizontal",
+            String spacingType = hasPerfectTransparency ? "perfect transparency (relaxed spacing)" : "fallback boundaries";
+            log.debug("Transparent {} boundaries ({}) have poor spacing: sections=[{}, {}, {}] (ideal={}), deviations=[{}%, {}%, {}%] (max={}%)",
+                    vertical ? "vertical" : "horizontal", spacingType,
                     section1Size, section2Size, section3Size, idealSectionSize,
                     String.format("%.1f", section1Deviation * 100),
                     String.format("%.1f", section2Deviation * 100),
@@ -828,7 +866,56 @@ public class ImageProcessingService {
     }
 
     /**
+     * Detect transparent boundaries and track whether they came from perfect transparency
+     */
+    private BoundaryResult detectTransparentBoundariesWithQuality(BufferedImage image, boolean vertical) {
+        int[] boundaries = detectTransparentBoundaries(image, vertical);
+        
+        if (boundaries == null) {
+            return new BoundaryResult(null, false);
+        }
+        
+        // Check if both boundaries were found with perfect transparency (100% alpha=0)
+        boolean hasPerfectTransparency = false;
+        
+        if (boundaries.length == 4) {
+            boolean boundary1Perfect = isPerfectlyTransparentLine(image, vertical, boundaries[1]);
+            boolean boundary2Perfect = isPerfectlyTransparentLine(image, vertical, boundaries[2]);
+            
+            hasPerfectTransparency = boundary1Perfect && boundary2Perfect;
+            
+            log.debug("Transparent {} boundaries perfect check: boundary1={}, boundary2={}, both perfect={}",
+                    vertical ? "vertical" : "horizontal",
+                    boundary1Perfect ? "PERFECT" : "partial",
+                    boundary2Perfect ? "PERFECT" : "partial",
+                    hasPerfectTransparency);
+        }
+        
+        return new BoundaryResult(boundaries, hasPerfectTransparency);
+    }
+
+    /**
+     * Check if a line is perfectly transparent (all pixels have alpha = 0)
+     */
+    private boolean isPerfectlyTransparentLine(BufferedImage image, boolean vertical, int position) {
+        int dimension = vertical ? image.getHeight() : image.getWidth();
+        
+        for (int i = 0; i < dimension; i++) {
+            int rgb = vertical ? image.getRGB(position, i) : image.getRGB(i, position);
+            int alpha = (rgb >> 24) & 0xFF;
+            
+            // If any pixel is not completely transparent, this line is not perfect
+            if (alpha != 0) {
+                return false;
+            }
+        }
+        
+        return true;
+    }
+
+    /**
      * Find the line with the highest transparency percentage within a given range
+     * First tries to find 100% transparent lines, then falls back to 95% threshold
      *
      * @param image    The image to analyze
      * @param vertical If true, analyze vertical lines, else horizontal
@@ -837,9 +924,19 @@ public class ImageProcessingService {
      * @return Position of best transparent line, or -1 if none found
      */
     private int findBestTransparentLine(BufferedImage image, boolean vertical, int startPos, int endPos) {
-        int bestPosition = -1;
+        // First pass: Look for 100% transparent lines (perfect transparency)
+        int bestPosition = findPerfectTransparentLine(image, vertical, startPos, endPos);
+        
+        if (bestPosition != -1) {
+            log.debug("Found perfect transparent line at position {} with 100% transparency", bestPosition);
+            return bestPosition;
+        }
+        
+        // Second pass: Fall back to 95% transparency threshold
+        log.debug("No 100% transparent lines found, falling back to 95% threshold");
+        bestPosition = -1;
         double bestTransparency = 0.0;
-        double minTransparency = 0.95; // Minimum 85% transparency to consider
+        double minTransparency = 0.95; // Minimum 95% transparency to consider
 
         for (int pos = startPos; pos <= endPos; pos++) {
             double transparency = calculateLineTransparency(image, vertical, pos);
@@ -851,11 +948,50 @@ public class ImageProcessingService {
         }
 
         if (bestPosition != -1) {
-            log.debug("Best transparent line at position {} with {}% transparency",
+            log.debug("Best transparent line at position {} with {}% transparency (fallback)",
                     bestPosition, String.format("%.1f", bestTransparency * 100));
         }
 
         return bestPosition;
+    }
+
+    /**
+     * Find a line with perfect transparency (100% transparent - all pixels have alpha = 0)
+     *
+     * @param image    The image to analyze
+     * @param vertical If true, analyze vertical lines, else horizontal
+     * @param startPos Start position of search range
+     * @param endPos   End position of search range
+     * @return Position of perfectly transparent line, or -1 if none found
+     */
+    private int findPerfectTransparentLine(BufferedImage image, boolean vertical, int startPos, int endPos) {
+        int dimension = vertical ? image.getHeight() : image.getWidth();
+        
+        for (int pos = startPos; pos <= endPos; pos++) {
+            boolean isPerfectlyTransparent = true;
+            
+            // Check every pixel in this line
+            for (int i = 0; i < dimension; i++) {
+                int rgb = vertical ? image.getRGB(pos, i) : image.getRGB(i, pos);
+                int alpha = (rgb >> 24) & 0xFF;
+                
+                // If any pixel is not completely transparent, this line is not perfect
+                if (alpha != 0) {
+                    isPerfectlyTransparent = false;
+                    break;
+                }
+            }
+            
+            if (isPerfectlyTransparent) {
+                log.debug("Found perfectly transparent {} line at position {}", 
+                        vertical ? "vertical" : "horizontal", pos);
+                return pos;
+            }
+        }
+        
+        log.debug("No perfectly transparent {} lines found in range [{}, {}]", 
+                vertical ? "vertical" : "horizontal", startPos, endPos);
+        return -1;
     }
 
     /**
@@ -1085,7 +1221,6 @@ public class ImageProcessingService {
 
         log.debug("Starting intelligent 3x3 grid cropping for image {}x{}", width, height);
 
-        // Use intelligent grid detection instead of simple division
         GridBounds gridBounds = detectGridBounds(originalImage);
 
         for (int row = 0; row < 3; row++) {

@@ -272,6 +272,14 @@ public class IconGenerationController implements IconGenerationControllerAPI {
                 } catch (Exception e) {
                     log.error("Error persisting more icons for request {}", request.getOriginalRequestId(), e);
                 }
+                
+                // Update the stored response with new icons for export functionality
+                try {
+                    updateStoredResponseWithMoreIcons(request, newIcons);
+                    log.info("Successfully updated stored response with {} more icons for request {}", newIcons.size(), request.getOriginalRequestId());
+                } catch (Exception e) {
+                    log.error("Error updating stored response with more icons for request {}", request.getOriginalRequestId(), e);
+                }
 
                 MoreIconsResponse response = new MoreIconsResponse();
                 response.setStatus("success");
@@ -422,6 +430,73 @@ public class IconGenerationController implements IconGenerationControllerAPI {
 
         } catch (Exception e) {
             log.error("Error persisting more icons for request {}", request.getOriginalRequestId(), e);
+            throw e;
+        }
+    }
+    
+    /**
+     * Updates the stored response with new icons from "Generate More Icons" request
+     */
+    private void updateStoredResponseWithMoreIcons(MoreIconsRequest request, List<IconGenerationResponse.GeneratedIcon> newIcons) {
+        try {
+            // Get the existing stored response
+            IconGenerationResponse existingResponse = streamingStateStore.getResponse(request.getOriginalRequestId());
+            if (existingResponse == null) {
+                log.warn("No existing response found for request {}, cannot update with more icons", request.getOriginalRequestId());
+                return;
+            }
+            
+            // Get the appropriate service results list based on service name
+            List<IconGenerationResponse.ServiceResults> serviceResults = switch (request.getServiceName().toLowerCase()) {
+                case "flux" -> existingResponse.getFalAiResults();
+                case "recraft" -> existingResponse.getRecraftResults();
+                case "photon" -> existingResponse.getPhotonResults();
+                case "gpt" -> existingResponse.getGptResults();
+                case "imagen" -> existingResponse.getImagenResults();
+                default -> null;
+            };
+            
+            if (serviceResults == null) {
+                log.warn("No service results found for service {} in request {}", request.getServiceName(), request.getOriginalRequestId());
+                return;
+            }
+            
+            // Find or create a ServiceResults entry for this generation index
+            IconGenerationResponse.ServiceResults targetResult = null;
+            for (IconGenerationResponse.ServiceResults result : serviceResults) {
+                if (result.getGenerationIndex() == request.getGenerationIndex()) {
+                    targetResult = result;
+                    break;
+                }
+            }
+            
+            if (targetResult != null) {
+                // Add new icons to existing generation index
+                if (targetResult.getIcons() == null) {
+                    targetResult.setIcons(new ArrayList<>());
+                }
+                targetResult.getIcons().addAll(newIcons);
+                log.info("Added {} new icons to existing generation {} for service {}", 
+                        newIcons.size(), request.getGenerationIndex(), request.getServiceName());
+            } else {
+                // Create new ServiceResults for this generation index (this shouldn't normally happen)
+                IconGenerationResponse.ServiceResults newResult = new IconGenerationResponse.ServiceResults();
+                newResult.setStatus("success");
+                newResult.setMessage("More icons generated successfully");
+                newResult.setIcons(new ArrayList<>(newIcons));
+                newResult.setGenerationIndex(request.getGenerationIndex());
+                serviceResults.add(newResult);
+                log.info("Created new generation {} entry with {} icons for service {}", 
+                        request.getGenerationIndex(), newIcons.size(), request.getServiceName());
+            }
+            
+            // Update the stored response
+            streamingStateStore.addResponse(request.getOriginalRequestId(), existingResponse);
+            log.info("Successfully updated stored response for request {} with {} more icons", 
+                    request.getOriginalRequestId(), newIcons.size());
+            
+        } catch (Exception e) {
+            log.error("Error updating stored response with more icons for request {}", request.getOriginalRequestId(), e);
             throw e;
         }
     }

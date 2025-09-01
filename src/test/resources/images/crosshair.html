@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Image Cursor Tracker with Crosshair</title>
+    <style>
+        body { text-align: center; font-family: sans-serif; }
+        #container {
+            position: relative;
+            display: inline-block;
+        }
+        img {
+            display: block;
+            border: 1px solid #ccc;
+        }
+        #crosshair-x, #crosshair-y {
+            position: absolute;
+            background: red;
+            pointer-events: none; /* let mouse events pass through */
+        }
+        #crosshair-x {
+            width: 1px;
+            top: 0;
+            bottom: 0;
+        }
+        #crosshair-y {
+            height: 1px;
+            left: 0;
+            right: 0;
+        }
+        #coords { margin-top: 10px; font-size: 18px; }
+    </style>
+</head>
+<body>
+<h2>Image Cursor Tracker with Crosshair</h2>
+<div id="container">
+    <img id="myImage" src="wrong-cut-6.png" alt="test">
+    <div id="crosshair-x"></div>
+    <div id="crosshair-y"></div>
+</div>
+<div id="coords">X: -, Y: -</div>
+
+<script>
+    const img = document.getElementById("myImage");
+    const crossX = document.getElementById("crosshair-x");
+    const crossY = document.getElementById("crosshair-y");
+    const coords = document.getElementById("coords");
+
+    img.addEventListener("mousemove", e => {
+        const rect = img.getBoundingClientRect();
+        const x = Math.floor(e.clientX - rect.left);
+        const y = Math.floor(e.clientY - rect.top);
+
+        // Position crosshairs
+        crossX.style.left = `${x}px`;
+        crossY.style.top = `${y}px`;
+
+        // Update text
+        coords.textContent = `X: ${x}, Y: ${y}`;
+    });
+
+    img.addEventListener("mouseleave", () => {
+        coords.textContent = "X: -, Y: -";
+        crossX.style.left = "-9999px";
+        crossY.style.top = "-9999px";
+    });
+</script>
+</body>
+</html>

@@ -37,15 +37,15 @@ public class IconExportController implements IconExportControllerAPI {
     @Override
     @ResponseBody
     public ResponseEntity<byte[]> exportIcons(@RequestBody IconExportRequest exportRequest) {
-        log.info("Received export request for service: {}, generation: {} - creating comprehensive icon pack",
-                exportRequest.getServiceName(), exportRequest.getGenerationIndex());
+        log.info("Received export request for service: {} from request: {} - creating comprehensive icon pack with all generations",
+                exportRequest.getServiceName(), exportRequest.getRequestId());
 
         List<IconGenerationResponse.GeneratedIcon> iconsToExport = exportRequest.getIcons();
         log.info("Received export request with {} icons in the request body.", (iconsToExport != null ? iconsToExport.size() : 0));
 
-        // If icons are not provided in the request, fall back to fetching from storage
+        // If icons are not provided in the request, fall back to fetching ALL generations from storage
         if (iconsToExport == null || iconsToExport.isEmpty()) {
-            log.info("No icons in request body, fetching from stored results for request ID: {}", exportRequest.getRequestId());
+            log.info("No icons in request body, fetching all generations from stored results for request ID: {}", exportRequest.getRequestId());
             IconGenerationResponse generationResponse = streamingStateStore.getResponse(exportRequest.getRequestId());
             if (generationResponse == null) {
                 log.error("No generation results found for request ID: {}", exportRequest.getRequestId());
@@ -63,17 +63,20 @@ public class IconExportController implements IconExportControllerAPI {
             };
 
             if (serviceResults != null) {
+                // Export ALL icons from the specific generation index (all batches of that generation)
                 for (IconGenerationResponse.ServiceResults result : serviceResults) {
-                    if (result.getGenerationIndex() == exportRequest.getGenerationIndex()) {
+                    if (result.getGenerationIndex() == exportRequest.getGenerationIndex() && 
+                        result.getIcons() != null && !result.getIcons().isEmpty()) {
                         iconsToExport.addAll(result.getIcons());
-                        break;
+                        log.info("Added {} icons from generation {} batch for service {}", 
+                                result.getIcons().size(), result.getGenerationIndex(), exportRequest.getServiceName());
                     }
                 }
             }
         }
 
         if (iconsToExport.isEmpty()) {
-            log.error("No icons found for service: {} and generation index: {}", exportRequest.getServiceName(), exportRequest.getGenerationIndex());
+            log.error("No icons found for service: {} in request: {}", exportRequest.getServiceName(), exportRequest.getRequestId());
             return ResponseEntity.notFound().build();
         }
 
