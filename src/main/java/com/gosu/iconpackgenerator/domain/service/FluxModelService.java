@@ -8,6 +8,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.gson.JsonObject;
 import com.gosu.iconpackgenerator.exception.FalAiException;
 import com.gosu.iconpackgenerator.domain.model.AIModelConfig;
+import com.gosu.iconpackgenerator.util.ErrorMessageSanitizer;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -30,6 +31,7 @@ public class FluxModelService implements AIModelService {
     private final AIModelConfig config;
     private final ObjectMapper objectMapper;
     private final FalClient falClient;
+    private final ErrorMessageSanitizer errorMessageSanitizer;
 
     @Override
     public CompletableFuture<byte[]> generateImage(String prompt) {
@@ -85,7 +87,9 @@ public class FluxModelService implements AIModelService {
 
             } catch (Exception e) {
                 log.error("Error calling fal.ai API", e);
-                throw new FalAiException("Failed to generate image with fal.ai: " + getDetailedErrorMessage(e), e);
+                String detailedError = getDetailedErrorMessage(e);
+                String sanitizedError = errorMessageSanitizer.sanitizeErrorMessage(detailedError, "Flux");
+                throw new FalAiException(sanitizedError, e);
             }
         });
     }
@@ -207,7 +211,8 @@ public class FluxModelService implements AIModelService {
         } catch (Exception e) {
             String detailedError = createDetailedErrorMessage(e, endpoint, input);
             log.error("Error calling fal.ai custom endpoint API: {}", detailedError, e);
-            throw new FalAiException(detailedError, e);
+            String sanitizedError = errorMessageSanitizer.sanitizeErrorMessage(detailedError, "Flux");
+            throw new FalAiException(sanitizedError, e);
         }
     }
 
@@ -268,7 +273,8 @@ public class FluxModelService implements AIModelService {
 
             } catch (Exception e) {
                 log.error("Error calling Flux-LoRA image-to-image API", e);
-                throw new FalAiException("Failed to generate image-to-image with Flux-LoRA: " + e.getMessage(), e);
+                String sanitizedError = errorMessageSanitizer.sanitizeErrorMessage(e.getMessage(), "Flux");
+                throw new FalAiException(sanitizedError, e);
             }
         });
     }

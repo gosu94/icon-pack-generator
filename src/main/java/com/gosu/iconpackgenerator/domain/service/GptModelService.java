@@ -9,6 +9,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.gson.JsonObject;
 import com.gosu.iconpackgenerator.config.OpenAIConfig;
 import com.gosu.iconpackgenerator.exception.FalAiException;
+import com.gosu.iconpackgenerator.util.ErrorMessageSanitizer;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -32,6 +33,7 @@ public class GptModelService implements AIModelService {
     private final FalClient falClient;
     private final ObjectMapper objectMapper;
     private final OpenAIConfig openAIConfig;
+    private final ErrorMessageSanitizer errorMessageSanitizer;
     
     private static final String GPT_TEXT_TO_IMAGE_ENDPOINT = "fal-ai/gpt-image-1/text-to-image/byok";
     private static final String GPT_IMAGE_TO_IMAGE_ENDPOINT = "fal-ai/gpt-image-1/edit-image/byok";
@@ -59,45 +61,69 @@ public class GptModelService implements AIModelService {
     
     private CompletableFuture<byte[]> generateGptImageAsync(String prompt, Long seed) {
         return CompletableFuture.supplyAsync(() -> {
+            // First attempt
+            Exception lastException = null;
+            
             try {
-                log.info("Generating GPT image with endpoint: {} (seed: {})", GPT_TEXT_TO_IMAGE_ENDPOINT, seed);
-                
-                // Apply GPT-specific styling to the prompt with explicit constraints
-                String gptPrompt = prompt + " - clean icon design, no text, no labels, no grid lines, no borders, transparent background";
-                
-                Map<String, Object> input = createGptTextToImageInputMap(gptPrompt, seed);
-                log.info("Making GPT text-to-image API call with input keys: {} (seed: {})", input.keySet(), seed);
-                
-                // Use fal.ai client API with queue update handling
-                Output<JsonObject> output = falClient.subscribe(GPT_TEXT_TO_IMAGE_ENDPOINT,
-                    SubscribeOptions.<JsonObject>builder()
-                        .input(input)
-                        .logs(true)
-                        .resultType(JsonObject.class)
-                        .onQueueUpdate(update -> {
-                            if (update instanceof QueueStatus.InProgress) {
-                                log.debug("GPT generation progress: {}", 
-                                    ((QueueStatus.InProgress) update).getLogs());
-                            }
-                        })
-                        .build()
-                );
-                log.debug("Received output from GPT API: {}", output);
-                
-                // Extract the actual result from the Output wrapper
-                JsonObject result = output.getData();
-                log.debug("Extracted GPT result: {}", result);
-                
-                // Convert JsonObject to JsonNode for our processing
-                JsonNode jsonResult = objectMapper.readTree(result.toString());
-                
-                return extractImageFromResult(jsonResult);
-                
+                return attemptGptGeneration(prompt, seed, false);
             } catch (Exception e) {
-                log.error("Error calling GPT API", e);
-                throw new FalAiException("Failed to generate image with GPT Image: " + e.getMessage(), e);
+                lastException = e;
+                log.warn("First GPT generation attempt failed, checking if retry is warranted: {}", e.getMessage());
+                
+                // Check if this is a 422 error that warrants a retry
+                if (errorMessageSanitizer.is422Error(e.getMessage())) {
+                    log.info("422 error detected, attempting retry with same parameters");
+                    
+                    try {
+                        // Retry with identical parameters
+                        return attemptGptGeneration(prompt, seed, true);
+                    } catch (Exception retryException) {
+                        log.error("Retry attempt also failed", retryException);
+                        lastException = retryException;
+                    }
+                }
             }
+            
+            // Both attempts failed, throw sanitized error
+            String sanitizedMessage = errorMessageSanitizer.sanitizeErrorMessage(lastException.getMessage(), "GPT");
+            throw new FalAiException(sanitizedMessage, lastException);
         });
+    }
+    
+    private byte[] attemptGptGeneration(String prompt, Long seed, boolean isRetry) throws Exception {
+        log.info("Generating GPT image with endpoint: {} (seed: {}, retry: {})", GPT_TEXT_TO_IMAGE_ENDPOINT, seed, isRetry);
+        
+        // Apply GPT-specific styling to the prompt with explicit constraints
+        // Use the same prompt for both initial attempt and retry
+        String gptPrompt = prompt + " - clean icon design, no text, no labels, no grid lines, no borders, transparent background";
+        
+        Map<String, Object> input = createGptTextToImageInputMap(gptPrompt, seed);
+        log.info("Making GPT text-to-image API call with input keys: {} (seed: {}, retry: {})", input.keySet(), seed, isRetry);
+        
+        // Use fal.ai client API with queue update handling
+        Output<JsonObject> output = falClient.subscribe(GPT_TEXT_TO_IMAGE_ENDPOINT,
+            SubscribeOptions.<JsonObject>builder()
+                .input(input)
+                .logs(true)
+                .resultType(JsonObject.class)
+                .onQueueUpdate(update -> {
+                    if (update instanceof QueueStatus.InProgress) {
+                        log.debug("GPT generation progress: {}", 
+                            ((QueueStatus.InProgress) update).getLogs());
+                    }
+                })
+                .build()
+        );
+        log.debug("Received output from GPT API: {}", output);
+        
+        // Extract the actual result from the Output wrapper
+        JsonObject result = output.getData();
+        log.debug("Extracted GPT result: {}", result);
+        
+        // Convert JsonObject to JsonNode for our processing
+        JsonNode jsonResult = objectMapper.readTree(result.toString());
+        
+        return extractImageFromResult(jsonResult);
     }
     
     private Map<String, Object> createGptTextToImageInputMap(String prompt, Long seed) {
@@ -148,46 +174,71 @@ public class GptModelService implements AIModelService {
     
     private CompletableFuture<byte[]> generateGptImageToImageAsync(String prompt, byte[] sourceImageData, Long seed) {
         return CompletableFuture.supplyAsync(() -> {
+            // First attempt
+            Exception lastException = null;
+            
             try {
-                log.info("Generating GPT image-to-image with endpoint: {} (seed: {})", GPT_IMAGE_TO_IMAGE_ENDPOINT, seed);
-                
-                // Convert image data to data URL for image_urls parameter
-                String imageDataUrl = convertToDataUrl(sourceImageData);
-                
-
-                Map<String, Object> input = createGptImageToImageInputMap(prompt, imageDataUrl, seed);
-                log.info("Making GPT image-to-image API call with input keys: {} (seed: {})", input.keySet(), seed);
-                
-                // Use fal.ai client API with queue update handling
-                Output<JsonObject> output = falClient.subscribe(GPT_IMAGE_TO_IMAGE_ENDPOINT,
-                    SubscribeOptions.<JsonObject>builder()
-                        .input(input)
-                        .logs(true)
-                        .resultType(JsonObject.class)
-                        .onQueueUpdate(update -> {
-                            if (update instanceof QueueStatus.InProgress) {
-                                log.debug("GPT image-to-image generation progress: {}", 
-                                    ((QueueStatus.InProgress) update).getLogs());
-                            }
-                        })
-                        .build()
-                );
-                log.debug("Received output from GPT image-to-image API: {}", output);
-                
-                // Extract the actual result from the Output wrapper
-                JsonObject result = output.getData();
-                log.debug("Extracted GPT image-to-image result: {}", result);
-                
-                // Convert JsonObject to JsonNode for our processing
-                JsonNode jsonResult = objectMapper.readTree(result.toString());
-                
-                return extractImageFromResult(jsonResult);
-                
+                return attemptGptImageToImageGeneration(prompt, sourceImageData, seed, false);
             } catch (Exception e) {
-                log.error("Error calling GPT image-to-image API", e);
-                throw new FalAiException("Failed to generate image-to-image with GPT Image: " + e.getMessage(), e);
+                lastException = e;
+                log.warn("First GPT image-to-image attempt failed, checking if retry is warranted: {}", e.getMessage());
+                
+                // Check if this is a 422 error that warrants a retry
+                if (errorMessageSanitizer.is422Error(e.getMessage())) {
+                    log.info("422 error detected, attempting image-to-image retry with same parameters");
+                    
+                    try {
+                        // Retry with identical parameters
+                        return attemptGptImageToImageGeneration(prompt, sourceImageData, seed, true);
+                    } catch (Exception retryException) {
+                        log.error("Image-to-image retry attempt also failed", retryException);
+                        lastException = retryException;
+                    }
+                }
             }
+            
+            // Both attempts failed, throw sanitized error
+            String sanitizedMessage = errorMessageSanitizer.sanitizeErrorMessage(lastException.getMessage(), "GPT");
+            throw new FalAiException(sanitizedMessage, lastException);
         });
+    }
+    
+    private byte[] attemptGptImageToImageGeneration(String prompt, byte[] sourceImageData, Long seed, boolean isRetry) throws Exception {
+        log.info("Generating GPT image-to-image with endpoint: {} (seed: {}, retry: {})", GPT_IMAGE_TO_IMAGE_ENDPOINT, seed, isRetry);
+        
+        // Convert image data to data URL for image_urls parameter
+        String imageDataUrl = convertToDataUrl(sourceImageData);
+        
+        // Use the same prompt for both initial attempt and retry
+        String modifiedPrompt = prompt;
+
+        Map<String, Object> input = createGptImageToImageInputMap(modifiedPrompt, imageDataUrl, seed);
+        log.info("Making GPT image-to-image API call with input keys: {} (seed: {}, retry: {})", input.keySet(), seed, isRetry);
+        
+        // Use fal.ai client API with queue update handling
+        Output<JsonObject> output = falClient.subscribe(GPT_IMAGE_TO_IMAGE_ENDPOINT,
+            SubscribeOptions.<JsonObject>builder()
+                .input(input)
+                .logs(true)
+                .resultType(JsonObject.class)
+                .onQueueUpdate(update -> {
+                    if (update instanceof QueueStatus.InProgress) {
+                        log.debug("GPT image-to-image generation progress: {}", 
+                            ((QueueStatus.InProgress) update).getLogs());
+                    }
+                })
+                .build()
+        );
+        log.debug("Received output from GPT image-to-image API: {}", output);
+        
+        // Extract the actual result from the Output wrapper
+        JsonObject result = output.getData();
+        log.debug("Extracted GPT image-to-image result: {}", result);
+        
+        // Convert JsonObject to JsonNode for our processing
+        JsonNode jsonResult = objectMapper.readTree(result.toString());
+        
+        return extractImageFromResult(jsonResult);
     }
     
     private Map<String, Object> createGptImageToImageInputMap(String prompt, String imageDataUrl, Long seed) {

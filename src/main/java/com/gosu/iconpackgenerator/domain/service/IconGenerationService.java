@@ -9,6 +9,7 @@ import com.gosu.iconpackgenerator.user.model.User;
 import com.gosu.iconpackgenerator.user.service.UserService;
 import com.gosu.iconpackgenerator.exception.FalAiException;
 import com.gosu.iconpackgenerator.domain.repository.GeneratedIconRepository;
+import com.gosu.iconpackgenerator.util.ErrorMessageSanitizer;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -39,6 +40,7 @@ public class IconGenerationService {
     private final DataInitializationService dataInitializationService;
     private final FileStorageService fileStorageService;
     private final UserService userService;
+    private final ErrorMessageSanitizer errorMessageSanitizer;
     
     public CompletableFuture<IconGenerationResponse> generateIcons(IconGenerationRequest request) {
         return generateIcons(request, UUID.randomUUID().toString(), null);
@@ -586,13 +588,19 @@ public class IconGenerationService {
     }
     
     private String getDetailedErrorMessage(Throwable error, String serviceName) {
-        String message = error.getMessage();
+        String originalMessage = error.getMessage();
+        
+        // Extract the underlying error message
         if (error.getCause() instanceof FalAiException) {
-            return error.getCause().getMessage();
+            originalMessage = error.getCause().getMessage();
         } else if (error instanceof FalAiException) {
-            return error.getMessage();
+            originalMessage = error.getMessage();
+        } else if (originalMessage == null) {
+            originalMessage = serviceName + " service failed: Unknown error";
         }
-        return serviceName + " service failed: " + (message != null ? message : "Unknown error");
+        
+        // Sanitize the error message for user consumption
+        return errorMessageSanitizer.sanitizeErrorMessage(originalMessage, serviceName);
     }
     
     /**
