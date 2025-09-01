@@ -1,14 +1,14 @@
 import React from "react";
 import Link from "next/link";
 import {
-  Home,
-  Image as ImageIcon,
-  LogOut,
-  Menu,
-  MessageSquare,
-  Paintbrush,
-  Settings,
-  Coins,
+    Home,
+    Image as ImageIcon,
+    LogOut,
+    Menu,
+    MessageSquare,
+    Paintbrush,
+    Settings,
+    Coins, Store,
 } from "lucide-react";
 
 interface NavigationProps {
@@ -55,9 +55,9 @@ const Navigation: React.FC<NavigationProps> = ({ coins, coinsLoading }) => {
           >
             <Paintbrush className="w-5 h-5 text-gray-700" />
           </Link>
-          <button className="p-2 hover:bg-gray-100 rounded-lg">
-            <Home className="w-5 h-5 text-gray-700" />
-          </button>
+          <Link href="/store" className="p-2 hover:bg-gray-100 rounded-lg">
+            <Store className="w-5 h-5 text-gray-700" />
+          </Link>
           <button className="p-2 hover:bg-gray-100 rounded-lg">
             <MessageSquare className="w-5 h-5 text-gray-700" />
           </button>
