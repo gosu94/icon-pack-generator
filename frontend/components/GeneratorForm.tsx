@@ -1,10 +1,10 @@
 import React from "react";
+import { Coins } from "lucide-react";
 
 interface GeneratorFormProps {
   inputType: string;
   setInputType: (value: string) => void;
-  iconCount: string;
-  setIconCount: (value: string) => void;
+  
   generalDescription: string;
   setGeneralDescription: (value: string) => void;
   individualDescriptions: string[];
@@ -22,8 +22,7 @@ interface GeneratorFormProps {
 const GeneratorForm: React.FC<GeneratorFormProps> = ({
   inputType,
   setInputType,
-  iconCount,
-  setIconCount,
+  
   generalDescription,
   setGeneralDescription,
   individualDescriptions,
@@ -38,7 +37,7 @@ const GeneratorForm: React.FC<GeneratorFormProps> = ({
   formatFileSize,
 }) => {
   const renderIconFields = () => {
-    const count = parseInt(iconCount);
+    const count = 9;
     if (isNaN(count)) return null;
 
     const fields = [];
@@ -245,40 +244,17 @@ const GeneratorForm: React.FC<GeneratorFormProps> = ({
               )}
             </div>
 
-            <div data-oid="y3m3fme">
-              <label
-                className="block text-sm font-medium text-gray-900 mb-2"
-                data-oid="qa2s8nm"
-              >
-                Number of Icons
-              </label>
-              <select
-                value={iconCount}
-                onChange={(e) => setIconCount(e.target.value)}
-                required
-                className="w-full px-3 py-2 border border-gray-200 rounded-md focus:outline-none focus:ring-1 focus:ring-gray-300"
-                data-oid="vi6tc0j"
-              >
-                <option value="9" data-oid="mq2-eoi">
-                  9 Icons
-                </option>
-                <option value="18" data-oid=".g6z2.p">
-                  18 Icons
-                </option>
-              </select>
-            </div>
+            
 
-            {iconCount && (
-              <div data-oid="nd7t0dj">
-                <label
-                  className="block text-sm font-medium text-gray-900 mb-3"
-                  data-oid="-6l7ck_"
-                >
-                  Individual Icon Descriptions (Optional)
-                </label>
-                {renderIconFields()}
-              </div>
-            )}
+            <div data-oid="nd7t0dj">
+              <label
+                className="block text-sm font-medium text-gray-900 mb-3"
+                data-oid="-6l7ck_"
+              >
+                Individual Icon Descriptions (Optional)
+              </label>
+              {renderIconFields()}
+            </div>
 
             <button
               type="submit"
@@ -298,7 +274,13 @@ const GeneratorForm: React.FC<GeneratorFormProps> = ({
                   <span data-oid="-o8k1u8">Generating...</span>
                 </div>
               ) : (
-                "Generate Icons"
+                <div className="flex items-center justify-center space-x-2">
+                  <span>Generate Icons</span>
+                  <span className="flex items-center space-x-1 rounded-full bg-white/20 px-2 py-0.5 text-xs font-semibold">
+                    <Coins className="w-4 h-4" />
+                    <span>1</span>
+                  </span>
+                </div>
               )}
             </button>
           </form>

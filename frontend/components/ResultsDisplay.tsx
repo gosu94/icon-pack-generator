@@ -1,4 +1,5 @@
 import React from "react";
+import { Coins } from "lucide-react";
 import { UIState, ServiceResult, GenerationResponse } from "../lib/types";
 
 interface ResultsDisplayProps {
@@ -162,7 +163,13 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
                     className="px-4 py-2 rounded-xl text-sm font-semibold text-white bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 transform hover:scale-105 shadow-md hover:shadow-lg transition-all duration-200"
                     data-oid="or9y-ww"
                   >
-                    Generate More
+                    <div className="flex items-center justify-center space-x-2">
+                      <span>Generate More</span>
+                      <span className="flex items-center space-x-1 rounded-full bg-white/20 px-2 py-0.5 text-xs font-semibold">
+                        <Coins className="w-4 h-4" />
+                        <span>1</span>
+                      </span>
+                    </div>
                   </button>
                 )}
               </div>
@@ -222,7 +229,13 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
                           <span data-oid="-o8k1u8">Generating...</span>
                         </div>
                       ) : (
-                        "Generate 9 More Icons"
+                        <div className="flex items-center justify-center space-x-2">
+                          <span>Generate 9 More Icons</span>
+                          <span className="flex items-center space-x-1 rounded-full bg-white/20 px-2 py-0.5 text-xs font-semibold">
+                            <Coins className="w-4 h-4" />
+                            <span>1</span>
+                          </span>
+                        </div>
                       )}
                     </button>
                     <button

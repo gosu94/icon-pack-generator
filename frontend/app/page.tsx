@@ -17,7 +17,7 @@ import ProgressModal from "../components/ProgressModal";
 export default function Page() {
   // Form state
   const [inputType, setInputType] = useState("text");
-  const [iconCount, setIconCount] = useState("9");
+  
   const [generationsPerService] = useState("2");
   const [generalDescription, setGeneralDescription] = useState("");
   const [individualDescriptions, setIndividualDescriptions] = useState<
@@ -78,9 +78,8 @@ export default function Page() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    const count = parseInt(iconCount);
-    setIndividualDescriptions(new Array(count).fill(""));
-  }, [iconCount]);
+    setIndividualDescriptions(new Array(9).fill(""));
+  }, []);
 
   // Fetch coins on component mount
   useEffect(() => {
@@ -248,10 +247,7 @@ export default function Page() {
       setErrorMessage("Please select a reference image.");
       return false;
     }
-    if (!iconCount) {
-      setErrorMessage("Please select the number of icons.");
-      return false;
-    }
+    
     if (coins < 1) {
       setErrorMessage("Insufficient coins. You need 1 coin to generate icons.");
       return false;
@@ -276,9 +272,7 @@ export default function Page() {
       clearIconAnimation(serviceId);
     });
     let duration = 35000;
-    if (iconCount === "18") {
-      duration = 90000;
-    } else if (inputType === "image") {
+    if (inputType === "image") {
       duration = 60000;
     }
     setTotalDuration(duration);
@@ -296,7 +290,7 @@ export default function Page() {
       });
     }, 100);
     const formData: any = {
-      iconCount: parseInt(iconCount),
+            iconCount: 9,
       generationsPerService: parseInt(generationsPerService),
       individualDescriptions: individualDescriptions.filter((desc) =>
         desc.trim(),
@@ -772,8 +766,7 @@ export default function Page() {
         <GeneratorForm
           inputType={inputType}
           setInputType={setInputType}
-          iconCount={iconCount}
-          setIconCount={setIconCount}
+          
           generalDescription={generalDescription}
           setGeneralDescription={setGeneralDescription}
           individualDescriptions={individualDescriptions}
