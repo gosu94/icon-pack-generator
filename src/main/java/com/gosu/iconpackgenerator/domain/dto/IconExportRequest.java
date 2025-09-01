@@ -11,7 +11,8 @@ public class IconExportRequest {
     private String serviceName;
     private int generationIndex;
     private List<IconGenerationResponse.GeneratedIcon> icons;
-    private boolean removeBackground = true;
-    private String outputFormat = "png";
+    
+    // Icons are already generated with transparent backgrounds, no processing needed
+    // Multiple formats (PNG, SVG, ICO) are always generated
 
 }

@@ -37,8 +37,8 @@ public class IconExportController implements IconExportControllerAPI {
     @Override
     @ResponseBody
     public ResponseEntity<byte[]> exportIcons(@RequestBody IconExportRequest exportRequest) {
-        log.info("Received export request for service: {}, generation: {} (background removal: {}, format: {})",
-                exportRequest.getServiceName(), exportRequest.getGenerationIndex(), exportRequest.isRemoveBackground(), exportRequest.getOutputFormat());
+        log.info("Received export request for service: {}, generation: {} - creating comprehensive icon pack",
+                exportRequest.getServiceName(), exportRequest.getGenerationIndex());
 
         List<IconGenerationResponse.GeneratedIcon> iconsToExport = exportRequest.getIcons();
         log.info("Received export request with {} icons in the request body.", (iconsToExport != null ? iconsToExport.size() : 0));
@@ -135,8 +135,6 @@ public class IconExportController implements IconExportControllerAPI {
 
             IconExportRequest exportRequest = new IconExportRequest();
             exportRequest.setIcons(iconsToExport);
-            exportRequest.setRemoveBackground(galleryExportRequest.isRemoveBackground());
-            exportRequest.setOutputFormat(galleryExportRequest.getOutputFormat());
             exportRequest.setRequestId("gallery-export-" + UUID.randomUUID().toString().substring(0, 8));
             exportRequest.setServiceName("gallery");
             exportRequest.setGenerationIndex(1);

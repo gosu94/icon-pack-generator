@@ -32,8 +32,7 @@ export default function GalleryPage() {
   // Coin state
   const [coins, setCoins] = useState<number>(0);
   const [coinsLoading, setCoinsLoading] = useState(true);
-  const [removeBackground, setRemoveBackground] = useState(true);
-  const [outputFormat, setOutputFormat] = useState("png");
+
   const [exportProgress, setExportProgress] = useState({
     step: 1,
     message: "",
@@ -112,8 +111,6 @@ export default function GalleryPage() {
       const fileName = `icon-pack-gallery-${new Date().getTime()}.zip`;
       const exportData = {
         iconFilePaths,
-        removeBackground: removeBackground,
-        outputFormat: outputFormat,
       };
       setShowExportModal(false);
       downloadZip(exportData, fileName);
@@ -131,9 +128,7 @@ export default function GalleryPage() {
       setTimeout(() => {
         setExportProgress({
           step: 2,
-          message: exportData.removeBackground
-            ? "Processing icons and removing backgrounds..."
-            : "Processing icons...",
+          message: "Converting icons to multiple formats and sizes...",
           percent: 50,
         });
       }, 500);
@@ -354,10 +349,6 @@ export default function GalleryPage() {
         show={showExportModal}
         onClose={() => setShowExportModal(false)}
         onConfirm={confirmGalleryExport}
-        removeBackground={removeBackground}
-        setRemoveBackground={setRemoveBackground}
-        outputFormat={outputFormat}
-        setOutputFormat={setOutputFormat}
         iconCount={iconsToExport.length}
       />
 

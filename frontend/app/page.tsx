@@ -45,8 +45,6 @@ export default function Page() {
   const [showExportModal, setShowExportModal] = useState(false);
   const [showProgressModal, setShowProgressModal] = useState(false);
   const [exportContext, setExportContext] = useState<any>(null);
-  const [removeBackground, setRemoveBackground] = useState(true);
-  const [outputFormat, setOutputFormat] = useState("png");
   const [exportProgress, setExportProgress] = useState({
     step: 1,
     message: "",
@@ -516,8 +514,6 @@ export default function Page() {
         requestId: requestId,
         serviceName: serviceName,
         generationIndex: generationIndex,
-        removeBackground: removeBackground,
-        outputFormat: outputFormat,
       };
       setShowExportModal(false);
       downloadZip(exportData, fileName);
@@ -535,9 +531,7 @@ export default function Page() {
       setTimeout(() => {
         setExportProgress({
           step: 2,
-          message: exportData.removeBackground
-            ? "Processing icons and removing backgrounds..."
-            : "Processing icons...",
+          message: "Converting icons to multiple formats and sizes...",
           percent: 50,
         });
       }, 500);
@@ -820,10 +814,6 @@ export default function Page() {
         show={showExportModal}
         onClose={() => setShowExportModal(false)}
         onConfirm={confirmExport}
-        removeBackground={removeBackground}
-        setRemoveBackground={setRemoveBackground}
-        outputFormat={outputFormat}
-        setOutputFormat={setOutputFormat}
         iconCount={
           exportContext
             ? streamingResults[

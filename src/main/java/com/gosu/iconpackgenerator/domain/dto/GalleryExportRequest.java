@@ -6,6 +6,6 @@ import java.util.List;
 @Data
 public class GalleryExportRequest {
     private List<String> iconFilePaths;
-    private boolean removeBackground;
-    private String outputFormat;
+    
+    // Icons already have transparent backgrounds, multiple formats are generated automatically
 }

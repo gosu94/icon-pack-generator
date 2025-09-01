@@ -4,10 +4,6 @@ interface ExportModalProps {
   show: boolean;
   onClose: () => void;
   onConfirm: () => void;
-  removeBackground: boolean;
-  setRemoveBackground: (value: boolean) => void;
-  outputFormat: string;
-  setOutputFormat: (value: string) => void;
   iconCount: number;
 }
 
@@ -15,10 +11,6 @@ const ExportModal: React.FC<ExportModalProps> = ({
   show,
   onClose,
   onConfirm,
-  removeBackground,
-  setRemoveBackground,
-  outputFormat,
-  setOutputFormat,
   iconCount,
 }) => {
   if (!show) return null;
@@ -27,7 +19,7 @@ const ExportModal: React.FC<ExportModalProps> = ({
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-white rounded-lg p-6 w-full max-w-md">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-medium text-gray-900">Export Options</h3>
+          <h3 className="text-lg font-medium text-gray-900">Export Icon Pack</h3>
           <button
             onClick={onClose}
             className="text-gray-400 hover:text-gray-600"
@@ -47,50 +39,16 @@ const ExportModal: React.FC<ExportModalProps> = ({
             </svg>
           </button>
         </div>
+        
         <div className="space-y-4">
           <p className="text-gray-600 text-sm">
-            Configure your export settings before downloading the icon pack.
+            Download a comprehensive icon pack with multiple formats and sizes.
           </p>
-          <div className="flex items-center justify-between">
-            <div>
-              <label className="text-sm font-medium text-gray-900">
-                Remove Background
-              </label>
-              <p className="text-xs text-gray-500">
-                Remove backgrounds from icons for transparent PNG files
-              </p>
-            </div>
-            <label className="relative inline-flex items-center cursor-pointer">
-              <input
-                type="checkbox"
-                checked={removeBackground}
-                onChange={(e) => setRemoveBackground(e.target.checked)}
-                className="sr-only peer"
-              />
-
-              <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-            </label>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-900 mb-2">
-              Output Format
-            </label>
-            <select
-              value={outputFormat}
-              onChange={(e) => setOutputFormat(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-200 rounded-md focus:outline-none focus:ring-1 focus:ring-gray-300"
-            >
-              <option value="png">PNG</option>
-              <option value="svg">SVG</option>
-            </select>
-            <p className="text-xs text-gray-500 mt-1">
-              Choose between standard PNG and vector SVG format
-            </p>
-          </div>
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-            <div className="flex items-center">
+          
+          <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg p-4 border border-blue-100">
+            <div className="flex items-start">
               <svg
-                className="w-5 h-5 text-blue-500 mr-2"
+                className="w-6 h-6 text-blue-500 mr-3 mt-0.5 flex-shrink-0"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -102,17 +60,38 @@ const ExportModal: React.FC<ExportModalProps> = ({
                   d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10"
                 />
               </svg>
-              <div>
-                <p className="text-sm font-medium text-blue-800">
-                  Export Format: ZIP file
+              <div className="space-y-2">
+                <p className="text-sm font-semibold text-blue-900">
+                  Comprehensive Icon Pack
                 </p>
-                <p className="text-sm text-blue-700">
-                  Icon Count: {iconCount} icons
+                <p className="text-sm text-blue-800">
+                  {iconCount} icons • Multiple formats included
+                </p>
+                
+                <div className="grid grid-cols-1 gap-2 mt-3">
+                  <div className="flex items-center text-xs text-blue-700">
+                    <span className="w-2 h-2 bg-blue-400 rounded-full mr-2"></span>
+                    <strong>SVG:</strong>&nbsp;Vector format (scalable)
+                  </div>
+                  <div className="flex items-center text-xs text-blue-700">
+                    <span className="w-2 h-2 bg-green-400 rounded-full mr-2"></span>
+                    <strong>PNG:</strong>&nbsp;16px, 32px, 64px, 128px, 256px
+                  </div>
+                  <div className="flex items-center text-xs text-blue-700">
+                    <span className="w-2 h-2 bg-purple-400 rounded-full mr-2"></span>
+                    <strong>ICO:</strong>&nbsp;All sizes (16px-256px) for apps & favicons
+                  </div>
+                </div>
+                
+                <p className="text-xs text-blue-600 mt-2">
+                  ✓ All icons have transparent backgrounds<br/>
+                  ✓ Ready for web and app development
                 </p>
               </div>
             </div>
           </div>
         </div>
+        
         <div className="flex justify-end space-x-3 mt-6">
           <button
             onClick={onClose}
