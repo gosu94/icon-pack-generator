@@ -70,7 +70,6 @@ public class GptModelService implements AIModelService {
                 lastException = e;
                 log.warn("First GPT generation attempt failed, checking if retry is warranted: {}", e.getMessage());
                 
-                // Check if this is a 422 error that warrants a retry
                 if (errorMessageSanitizer.is422Error(e.getMessage())) {
                     log.info("422 error detected, attempting retry with same parameters");
                     
@@ -128,9 +127,7 @@ public class GptModelService implements AIModelService {
     
     private Map<String, Object> createGptTextToImageInputMap(String prompt, Long seed) {
         validateOpenAIConfiguration();
-        
 
-        
         Map<String, Object> input = new HashMap<>();
         input.put("prompt", prompt);
         input.put("image_size", "1024x1024"); // Use 1024x1024 as specified
@@ -138,13 +135,7 @@ public class GptModelService implements AIModelService {
         input.put("quality", "auto"); // Use auto quality as specified
         input.put("background", "transparent"); // Use transparent background as specified
         input.put("openai_api_key", openAIConfig.getApiKey());
-        
-        // Note: GPT Image doesn't seem to support seeds based on the schema, but we'll add it if provided
-        // and let the API ignore it if not supported
-        if (seed != null) {
-            input.put("seed", seed);
-        }
-        
+
         log.debug("GPT text-to-image input parameters: {}", input);
         return input;
     }
@@ -174,7 +165,6 @@ public class GptModelService implements AIModelService {
     
     private CompletableFuture<byte[]> generateGptImageToImageAsync(String prompt, byte[] sourceImageData, Long seed) {
         return CompletableFuture.supplyAsync(() -> {
-            // First attempt
             Exception lastException = null;
             
             try {
@@ -183,7 +173,6 @@ public class GptModelService implements AIModelService {
                 lastException = e;
                 log.warn("First GPT image-to-image attempt failed, checking if retry is warranted: {}", e.getMessage());
                 
-                // Check if this is a 422 error that warrants a retry
                 if (errorMessageSanitizer.is422Error(e.getMessage())) {
                     log.info("422 error detected, attempting image-to-image retry with same parameters");
                     
@@ -241,24 +230,23 @@ public class GptModelService implements AIModelService {
         return extractImageFromResult(jsonResult);
     }
     
-    private Map<String, Object> createGptImageToImageInputMap(String prompt, String imageDataUrl, Long seed) {
+    private Map<String, Object> createGptImageToImageInputMap(String prompt, String imageDataUrl, long seed) {
         validateOpenAIConfiguration();
-        
+        log.info("Creating input map with transparent background");
         Map<String, Object> input = new HashMap<>();
         input.put("image_urls", List.of(imageDataUrl)); // GPT uses image_urls list for image-to-image
         input.put("prompt", prompt);
-        input.put("image_size", "1024x1024"); // Use 1024x1024 as specified
-        input.put("num_images", 1); // Always generate 1 image
-        input.put("quality", "auto"); // Use auto quality as specified
-        input.put("input_fidelity", "low"); // Default input fidelity
+        input.put("image_size", "1024x1024");
+        input.put("num_images", 1);
+        input.put("quality", "auto");
+        input.put("background", "transparent");
+        input.put("transparent_background", "true");
+        // THIS up here IS PROBABLY UNDOCUMENTED OPTION IN FAL.AI that just gets passed through to OPENAI API, could be remove at some point (or introduced)
+        // still transparent image sometimes have a border which messes thins up thats why we need rembg fallback
+        input.put("input_fidelity", "low");
         input.put("openai_api_key", openAIConfig.getApiKey());
         
-        // Note: GPT Image doesn't seem to support seeds based on the schema, but we'll add it if provided
-        // and let the API ignore it if not supported
-        if (seed != null) {
-            input.put("seed", seed);
-        }
-        
+
         log.debug("GPT image-to-image input parameters: {}", input);
         return input;
     }
