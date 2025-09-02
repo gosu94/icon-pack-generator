@@ -9,7 +9,7 @@ import {
     MessageSquare,
     Paintbrush,
     Settings,
-    Coins, Store,
+    Store,
 } from "lucide-react";
 
 interface NavigationProps {
@@ -36,7 +36,7 @@ const Navigation: React.FC<NavigationProps> = ({ coins, coinsLoading }) => {
         <div className="flex items-center space-x-4">
           {/* Coin Balance Display */}
           <div className="flex items-center space-x-2 bg-yellow-50 border border-yellow-200 rounded-lg px-3 py-2">
-            <Coins className="w-5 h-5 text-yellow-600" />
+            <Image src="/images/coin.webp" alt="Coins" width={20} height={20} />
             <span className="text-sm font-semibold text-yellow-800">
               {coinsLoading ? "..." : coins}
             </span>

@@ -1,5 +1,5 @@
 import React from "react";
-import { Coins } from "lucide-react";
+import Image from "next/image";
 
 interface GeneratorFormProps {
   inputType: string;
@@ -277,7 +277,7 @@ const GeneratorForm: React.FC<GeneratorFormProps> = ({
                 <div className="flex items-center justify-center space-x-2">
                   <span>Generate Icons</span>
                   <span className="flex items-center space-x-1 rounded-full bg-white/20 px-2 py-0.5 text-xs font-semibold">
-                    <Coins className="w-4 h-4" />
+                    <Image src="/images/coin.webp" alt="Coins" width={16} height={16} />
                     <span>1</span>
                   </span>
                 </div>

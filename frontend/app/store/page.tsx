@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Navigation from "../../components/Navigation";
-import { Coins } from "lucide-react";
+import Image from "next/image";
 
 export default function StorePage() {
   const [coins, setCoins] = useState<number>(0);
@@ -74,7 +74,7 @@ export default function StorePage() {
                 </span>
               </p>
               <div className="mt-6 flex items-center justify-center gap-x-2">
-                <Coins className="h-6 w-6 text-yellow-500" />
+                <Image src="/images/coin.webp" alt="Coins" width={24} height={24} />
                 <span className="text-2xl font-bold text-gray-900">
                   {plan.coins} Coins
                 </span>
