@@ -30,25 +30,9 @@ export default function BackgroundRemoverPage() {
   const [coins, setCoins] = useState<number>(0);
   const [coinsLoading, setCoinsLoading] = useState(true);
 
-  // Fetch coins on component mount
+  // Initialize coins as 0 since Navigation handles coin display via auth check
   useEffect(() => {
-    const fetchCoins = async () => {
-      try {
-        const response = await fetch("/api/user/coins");
-        if (response.ok) {
-          const coinBalance = await response.json();
-          setCoins(coinBalance);
-        } else {
-          console.error("Failed to fetch coin balance");
-        }
-      } catch (error) {
-        console.error("Error fetching coin balance:", error);
-      } finally {
-        setCoinsLoading(false);
-      }
-    };
-
-    fetchCoins();
+    setCoinsLoading(false);
   }, []);
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -89,6 +73,7 @@ export default function BackgroundRemoverPage() {
     try {
       const response = await fetch("/background-removal/process", {
         method: "POST",
+        credentials: "include",
         body: formData,
       });
 

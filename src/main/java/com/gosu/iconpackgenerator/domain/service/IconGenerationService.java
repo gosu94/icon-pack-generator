@@ -42,28 +42,27 @@ public class IconGenerationService {
     private final UserService userService;
     private final ErrorMessageSanitizer errorMessageSanitizer;
     
-    public CompletableFuture<IconGenerationResponse> generateIcons(IconGenerationRequest request) {
-        return generateIcons(request, UUID.randomUUID().toString(), null);
+    public CompletableFuture<IconGenerationResponse> generateIcons(IconGenerationRequest request, User user) {
+        return generateIcons(request, UUID.randomUUID().toString(), null, user);
     }
 
     /**
      * Generate icons with optional progress callback for real-time updates
      */
-    public CompletableFuture<IconGenerationResponse> generateIcons(IconGenerationRequest request, String requestId, ProgressUpdateCallback progressCallback) {
+    public CompletableFuture<IconGenerationResponse> generateIcons(IconGenerationRequest request, String requestId, ProgressUpdateCallback progressCallback, User user) {
         // Check if user has enough coins before starting generation
-        String defaultUserEmail = "default@iconpack.com";
-        if (!userService.hasEnoughCoinsByEmail(defaultUserEmail, 1)) {
-            log.warn("User {} has insufficient coins for icon generation", defaultUserEmail);
+        if (!userService.hasEnoughCoins(user.getId(), 1)) {
+            log.warn("User {} has insufficient coins for icon generation", user.getEmail());
             return CompletableFuture.completedFuture(createErrorResponse(requestId, "Insufficient coins. You need 1 coin to generate icons."));
         }
         
         // Deduct 1 coin for the generation
-        if (!userService.deductCoinsByEmail(defaultUserEmail, 1)) {
-            log.error("Failed to deduct coins from user {}", defaultUserEmail);
+        if (!userService.deductCoins(user.getId(), 1)) {
+            log.error("Failed to deduct coins from user {}", user.getEmail());
             return CompletableFuture.completedFuture(createErrorResponse(requestId, "Failed to process payment. Please try again."));
         }
         
-        log.info("Deducted 1 coin from user {} for icon generation. Request ID: {}", defaultUserEmail, requestId);
+        log.info("Deducted 1 coin from user {} for icon generation. Request ID: {}", user.getEmail(), requestId);
         
         List<String> enabledServices = new ArrayList<>();
         if (aiServicesConfig.isFluxAiEnabled()) enabledServices.add("FalAI");
@@ -144,7 +143,7 @@ public class IconGenerationService {
                     // Persist generated icons to database and file system
                     if ("success".equals(finalResponse.getStatus())) {
                         try {
-                            persistGeneratedIcons(requestId, request, finalResponse);
+                            persistGeneratedIcons(requestId, request, finalResponse, user);
                             log.info("Successfully persisted {} icons for request {}", finalResponse.getIcons().size(), requestId);
                         } catch (Exception e) {
                             log.error("Error persisting icons for request {}", requestId, e);
@@ -757,9 +756,8 @@ public class IconGenerationService {
      * Persist generated icons to database and file system
      */
     @Transactional
-    private void persistGeneratedIcons(String requestId, IconGenerationRequest request, IconGenerationResponse response) {
+    private void persistGeneratedIcons(String requestId, IconGenerationRequest request, IconGenerationResponse response, User user) {
         try {
-            User defaultUser = dataInitializationService.getDefaultUser();
             
             // Get all service results for metadata
             List<IconGenerationResponse.ServiceResults> allServiceResults = new ArrayList<>();
@@ -787,7 +785,7 @@ public class IconGenerationService {
                     
                     // Save icon to file system
                     String filePath = fileStorageService.saveIcon(
-                            defaultUser.getDirectoryPath(),
+                            user.getDirectoryPath(),
                             requestId,
                             iconType,
                             fileName,
@@ -798,7 +796,7 @@ public class IconGenerationService {
                     GeneratedIcon generatedIcon = new GeneratedIcon();
                     generatedIcon.setRequestId(requestId);
                     generatedIcon.setIconId(icon.getId());
-                    generatedIcon.setUser(defaultUser);
+                    generatedIcon.setUser(user);
                     generatedIcon.setFileName(fileName);
                     generatedIcon.setFilePath(filePath);
                     generatedIcon.setServiceSource(icon.getServiceSource());
@@ -810,7 +808,7 @@ public class IconGenerationService {
                     generatedIcon.setIconType(iconType);
                     
                     // Calculate file size
-                    long fileSize = fileStorageService.getFileSize(defaultUser.getDirectoryPath(), requestId, iconType, fileName);
+                    long fileSize = fileStorageService.getFileSize(user.getDirectoryPath(), requestId, iconType, fileName);
                     generatedIcon.setFileSize(fileSize);
                     
                     generatedIconRepository.save(generatedIcon);

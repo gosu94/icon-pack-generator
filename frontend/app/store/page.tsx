@@ -9,23 +9,8 @@ export default function StorePage() {
   const [coinsLoading, setCoinsLoading] = useState(true);
 
   useEffect(() => {
-    const fetchCoins = async () => {
-      try {
-        const response = await fetch("/api/user/coins");
-        if (response.ok) {
-          const coinBalance = await response.json();
-          setCoins(coinBalance);
-        } else {
-          console.error("Failed to fetch coin balance");
-        }
-      } catch (error) {
-        console.error("Error fetching coin balance:", error);
-      } finally {
-        setCoinsLoading(false);
-      }
-    };
-
-    fetchCoins();
+    // Initialize coins as 0 since Navigation handles coin display via auth check
+    setCoinsLoading(false);
   }, []);
 
   const plans = [

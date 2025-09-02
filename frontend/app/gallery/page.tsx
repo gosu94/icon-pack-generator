@@ -42,7 +42,9 @@ export default function GalleryPage() {
   useEffect(() => {
     const fetchIcons = async () => {
       try {
-        const response = await fetch("/api/user/icons");
+        const response = await fetch("/api/user/icons", {
+          credentials: "include",
+        });
         if (!response.ok) {
           throw new Error("Failed to fetch icons");
         }
@@ -71,25 +73,9 @@ export default function GalleryPage() {
     fetchIcons();
   }, []);
 
-  // Fetch coins on component mount
+  // Initialize coins as 0 since Navigation handles coin display via auth check
   useEffect(() => {
-    const fetchCoins = async () => {
-      try {
-        const response = await fetch("/api/user/coins");
-        if (response.ok) {
-          const coinBalance = await response.json();
-          setCoins(coinBalance);
-        } else {
-          console.error("Failed to fetch coin balance");
-        }
-      } catch (error) {
-        console.error("Error fetching coin balance:", error);
-      } finally {
-        setCoinsLoading(false);
-      }
-    };
-
-    fetchCoins();
+    setCoinsLoading(false);
   }, []);
 
   const handleSelectRequest = (requestId: string) => {
@@ -136,6 +122,7 @@ export default function GalleryPage() {
       const response = await fetch("/api/export-gallery", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify(exportData),
       });
 

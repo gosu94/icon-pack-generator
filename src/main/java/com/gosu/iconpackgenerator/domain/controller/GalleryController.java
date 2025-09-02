@@ -4,9 +4,13 @@ import com.gosu.iconpackgenerator.domain.controller.api.GalleryControllerAPI;
 import com.gosu.iconpackgenerator.domain.entity.GeneratedIcon;
 import com.gosu.iconpackgenerator.domain.repository.GeneratedIconRepository;
 import com.gosu.iconpackgenerator.domain.service.DataInitializationService;
+import com.gosu.iconpackgenerator.user.model.User;
+import com.gosu.iconpackgenerator.user.service.CustomOAuth2User;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -26,10 +30,14 @@ public class GalleryController implements GalleryControllerAPI {
     @Override
     @GetMapping("/api/gallery/icons")
     @ResponseBody
-    public ResponseEntity<List<GeneratedIcon>> getUserIcons() {
+    public ResponseEntity<List<GeneratedIcon>> getUserIcons(@AuthenticationPrincipal OAuth2User principal) {
         try {
-            var defaultUser = dataInitializationService.getDefaultUser();
-            List<GeneratedIcon> icons = generatedIconRepository.findByUserOrderByCreatedAtDesc(defaultUser);
+            if (!(principal instanceof CustomOAuth2User customUser)) {
+                return ResponseEntity.status(401).build();
+            }
+
+            User user = customUser.getUser();
+            List<GeneratedIcon> icons = generatedIconRepository.findByUserOrderByCreatedAtDesc(user);
             return ResponseEntity.ok(icons);
         } catch (Exception e) {
             log.error("Error retrieving user icons", e);
@@ -56,10 +64,14 @@ public class GalleryController implements GalleryControllerAPI {
     @Override
     @GetMapping("/api/gallery/requests")
     @ResponseBody
-    public ResponseEntity<List<String>> getUserRequestIds() {
+    public ResponseEntity<List<String>> getUserRequestIds(@AuthenticationPrincipal OAuth2User principal) {
         try {
-            var defaultUser = dataInitializationService.getDefaultUser();
-            List<String> requestIds = generatedIconRepository.findDistinctRequestIdsByUserOrderByCreatedAtDesc(defaultUser);
+            if (!(principal instanceof CustomOAuth2User customUser)) {
+                return ResponseEntity.status(401).build();
+            }
+
+            User user = customUser.getUser();
+            List<String> requestIds = generatedIconRepository.findDistinctRequestIdsByUserOrderByCreatedAtDesc(user);
             return ResponseEntity.ok(requestIds);
         } catch (Exception e) {
             log.error("Error retrieving user request IDs", e);
@@ -70,14 +82,18 @@ public class GalleryController implements GalleryControllerAPI {
     @Override
     @GetMapping("/api/gallery/icons/{iconType}")
     @ResponseBody
-    public ResponseEntity<List<GeneratedIcon>> getUserIconsByType(@PathVariable String iconType) {
+    public ResponseEntity<List<GeneratedIcon>> getUserIconsByType(@PathVariable String iconType, @AuthenticationPrincipal OAuth2User principal) {
         try {
             if (!"original".equals(iconType) && !"variation".equals(iconType)) {
                 return ResponseEntity.badRequest().build();
             }
 
-            var defaultUser = dataInitializationService.getDefaultUser();
-            List<GeneratedIcon> icons = generatedIconRepository.findByUserAndIconTypeOrderByCreatedAtDesc(defaultUser, iconType);
+            if (!(principal instanceof CustomOAuth2User customUser)) {
+                return ResponseEntity.status(401).build();
+            }
+
+            User user = customUser.getUser();
+            List<GeneratedIcon> icons = generatedIconRepository.findByUserAndIconTypeOrderByCreatedAtDesc(user, iconType);
             return ResponseEntity.ok(icons);
         } catch (Exception e) {
             log.error("Error retrieving {} icons", iconType, e);

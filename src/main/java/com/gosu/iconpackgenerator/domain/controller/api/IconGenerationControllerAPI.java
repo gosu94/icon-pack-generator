@@ -8,6 +8,8 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -25,12 +27,12 @@ public interface IconGenerationControllerAPI {
     @Operation(summary = "Generate icons asynchronously", description = "Kicks off the icon generation process and returns immediately with a request ID.")
     @PostMapping("/generate")
     @ResponseBody
-    CompletableFuture<IconGenerationResponse> generateIcons(@Valid @RequestBody IconGenerationRequest request);
+    CompletableFuture<IconGenerationResponse> generateIcons(@Valid @RequestBody IconGenerationRequest request, @AuthenticationPrincipal OAuth2User principal);
 
     @Operation(summary = "Start streaming icon generation", description = "Initiates icon generation and provides a request ID for connecting to an SSE stream for progress updates.")
     @PostMapping("/generate-stream")
     @ResponseBody
-    ResponseEntity<Map<String, Object>> startStreamingGeneration(@Valid @RequestBody IconGenerationRequest request);
+    ResponseEntity<Map<String, Object>> startStreamingGeneration(@Valid @RequestBody IconGenerationRequest request, @AuthenticationPrincipal OAuth2User principal);
 
     @Operation(summary = "Connect to SSE stream for progress updates", description = "Connects a client to the Server-Sent Events (SSE) stream for a given generation request.")
     @GetMapping("/stream/{requestId}")
@@ -40,5 +42,5 @@ public interface IconGenerationControllerAPI {
     @Operation(summary = "Generate additional icons", description = "Generates more icons based on an existing generation request, maintaining the style.")
     @PostMapping("/generate-more")
     @ResponseBody
-    DeferredResult<MoreIconsResponse> generateMoreIcons(@RequestBody MoreIconsRequest request);
+    DeferredResult<MoreIconsResponse> generateMoreIcons(@RequestBody MoreIconsRequest request, @AuthenticationPrincipal OAuth2User principal);
 }

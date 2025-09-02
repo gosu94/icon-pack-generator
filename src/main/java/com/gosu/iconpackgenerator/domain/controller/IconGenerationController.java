@@ -21,11 +21,15 @@ import com.gosu.iconpackgenerator.domain.service.ImagenModelService;
 import com.gosu.iconpackgenerator.domain.service.PhotonModelService;
 import com.gosu.iconpackgenerator.domain.service.PromptGenerationService;
 import com.gosu.iconpackgenerator.domain.service.RecraftModelService;
+import com.gosu.iconpackgenerator.user.model.User;
+import com.gosu.iconpackgenerator.user.service.CustomOAuth2User;
 import com.gosu.iconpackgenerator.user.service.UserService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -64,10 +68,18 @@ public class IconGenerationController implements IconGenerationControllerAPI {
 
     @Override
     @ResponseBody
-    public CompletableFuture<IconGenerationResponse> generateIcons(@Valid @RequestBody IconGenerationRequest request) {
+    public CompletableFuture<IconGenerationResponse> generateIcons(@Valid @RequestBody IconGenerationRequest request,
+                                                                   @AuthenticationPrincipal OAuth2User principal) {
         if (!request.isValid()) {
             throw new IllegalArgumentException("Either general description or reference image must be provided");
         }
+
+        if (!(principal instanceof CustomOAuth2User customUser)) {
+            throw new SecurityException("User not authenticated");
+        }
+
+        User user = customUser.getUser();
+        log.info("Icon generation request from user: {}", user.getEmail());
 
         if (request.hasReferenceImage()) {
             log.info("Received reference image-based icon generation request for {} icons", request.getIconCount());
@@ -84,7 +96,7 @@ public class IconGenerationController implements IconGenerationControllerAPI {
             request.getIndividualDescriptions().add("");
         }
 
-        return iconGenerationService.generateIcons(request)
+        return iconGenerationService.generateIcons(request, user)
                 .whenComplete((response, error) -> {
                     if (error != null) {
                         log.error("Error generating icons", error);
@@ -96,10 +108,17 @@ public class IconGenerationController implements IconGenerationControllerAPI {
 
     @Override
     @ResponseBody
-    public ResponseEntity<Map<String, Object>> startStreamingGeneration(@Valid @RequestBody IconGenerationRequest request) {
+    public ResponseEntity<Map<String, Object>> startStreamingGeneration(@Valid @RequestBody IconGenerationRequest request, @AuthenticationPrincipal OAuth2User principal) {
         if (!request.isValid()) {
             throw new IllegalArgumentException("Either general description or reference image must be provided");
         }
+
+        if (!(principal instanceof CustomOAuth2User customUser)) {
+            throw new SecurityException("User not authenticated");
+        }
+
+        User user = customUser.getUser();
+        log.info("Streaming icon generation request from user: {}", user.getEmail());
 
         if (request.hasReferenceImage()) {
             log.info("Starting streaming reference image-based icon generation for {} icons", request.getIconCount());
@@ -112,7 +131,7 @@ public class IconGenerationController implements IconGenerationControllerAPI {
         streamingStateStore.addRequest(requestId, request);
 
         CompletableFuture.runAsync(() -> {
-            processStreamingGeneration(requestId, request);
+            processStreamingGeneration(requestId, request, user);
         });
 
         Map<String, Object> response = new HashMap<>();
@@ -158,7 +177,7 @@ public class IconGenerationController implements IconGenerationControllerAPI {
         return emitter;
     }
 
-    private void processStreamingGeneration(String requestId, IconGenerationRequest request) {
+    private void processStreamingGeneration(String requestId, IconGenerationRequest request, User user) {
         try {
             if (!request.isValid()) {
                 throw new IllegalArgumentException("Either general description or reference image must be provided");
@@ -189,7 +208,7 @@ public class IconGenerationController implements IconGenerationControllerAPI {
                         emitter.completeWithError(e);
                     }
                 }
-            }).whenComplete((response, error) -> {
+            }, user).whenComplete((response, error) -> {
                 SseEmitter emitter = streamingStateStore.getEmitter(requestId);
                 if (emitter != null && error != null) {
                     log.error("Error in streaming generation for request: {}", requestId, error);
@@ -224,8 +243,16 @@ public class IconGenerationController implements IconGenerationControllerAPI {
 
     @Override
     @ResponseBody
-    public DeferredResult<MoreIconsResponse> generateMoreIcons(@RequestBody MoreIconsRequest request) {
-        log.info("Received generate more icons request for service: {} with {} icon descriptions for generation index: {}",
+    public DeferredResult<MoreIconsResponse> generateMoreIcons(@RequestBody MoreIconsRequest request, @AuthenticationPrincipal OAuth2User principal) {
+        if (!(principal instanceof CustomOAuth2User customUser)) {
+            DeferredResult<MoreIconsResponse> result = new DeferredResult<>();
+            result.setResult(createErrorResponse(request, "User not authenticated", System.currentTimeMillis()));
+            return result;
+        }
+
+        User user = customUser.getUser();
+        log.info("Received generate more icons request from user {} for service: {} with {} icon descriptions for generation index: {}",
+                user.getEmail(),
                 request.getServiceName(),
                 request.getIconDescriptions() != null ? request.getIconDescriptions().size() : 0,
                 request.getGenerationIndex());
@@ -237,19 +264,18 @@ public class IconGenerationController implements IconGenerationControllerAPI {
 
             try {
                 // Check if user has enough coins before starting generation
-                String defaultUserEmail = "default@iconpack.com";
-                if (!userService.hasEnoughCoinsByEmail(defaultUserEmail, 1)) {
-                    log.warn("User {} has insufficient coins for more icons generation", defaultUserEmail);
+                if (!userService.hasEnoughCoins(user.getId(), 1)) {
+                    log.warn("User {} has insufficient coins for more icons generation", user.getEmail());
                     return createErrorResponse(request, "Insufficient coins. You need 1 coin to generate more icons.", startTime);
                 }
                 
                 // Deduct 1 coin for the generation
-                if (!userService.deductCoinsByEmail(defaultUserEmail, 1)) {
-                    log.error("Failed to deduct coins from user {} for more icons", defaultUserEmail);
+                if (!userService.deductCoins(user.getId(), 1)) {
+                    log.error("Failed to deduct coins from user {} for more icons", user.getEmail());
                     return createErrorResponse(request, "Failed to process payment. Please try again.", startTime);
                 }
                 
-                log.info("Deducted 1 coin from user {} for more icons generation. Original Request ID: {}", defaultUserEmail, request.getOriginalRequestId());
+                log.info("Deducted 1 coin from user {} for more icons generation. Original Request ID: {}", user.getEmail(), request.getOriginalRequestId());
                 
                 if (request.getServiceName() == null || request.getServiceName().trim().isEmpty()) {
                     return createErrorResponse(request, "Service name is required", startTime);
@@ -267,7 +293,7 @@ public class IconGenerationController implements IconGenerationControllerAPI {
                 List<IconGenerationResponse.GeneratedIcon> newIcons = createIconList(base64Icons, request);
 
                 try {
-                    persistMoreIcons(request, newIcons);
+                    persistMoreIcons(request, newIcons, user);
                     log.info("Successfully persisted {} more icons for request {}", newIcons.size(), request.getOriginalRequestId());
                 } catch (Exception e) {
                     log.error("Error persisting more icons for request {}", request.getOriginalRequestId(), e);
@@ -387,9 +413,8 @@ public class IconGenerationController implements IconGenerationControllerAPI {
         return response;
     }
 
-    private void persistMoreIcons(MoreIconsRequest request, List<IconGenerationResponse.GeneratedIcon> newIcons) {
+    private void persistMoreIcons(MoreIconsRequest request, List<IconGenerationResponse.GeneratedIcon> newIcons, User user) {
         try {
-            var defaultUser = dataInitializationService.getDefaultUser();
             String iconType = (request.getGenerationIndex() == 1) ? "original" : "variation";
 
             for (IconGenerationResponse.GeneratedIcon icon : newIcons) {
@@ -400,7 +425,7 @@ public class IconGenerationController implements IconGenerationControllerAPI {
                             icon.getGridPosition());
 
                     String filePath = fileStorageService.saveIcon(
-                            defaultUser.getDirectoryPath(),
+                            user.getDirectoryPath(),
                             request.getOriginalRequestId(),
                             iconType,
                             fileName,
@@ -410,7 +435,7 @@ public class IconGenerationController implements IconGenerationControllerAPI {
                     GeneratedIcon generatedIcon = new GeneratedIcon();
                     generatedIcon.setRequestId(request.getOriginalRequestId());
                     generatedIcon.setIconId(icon.getId());
-                    generatedIcon.setUser(defaultUser);
+                    generatedIcon.setUser(user);
                     generatedIcon.setFileName(fileName);
                     generatedIcon.setFilePath(filePath);
                     generatedIcon.setServiceSource(icon.getServiceSource());
@@ -421,7 +446,7 @@ public class IconGenerationController implements IconGenerationControllerAPI {
                     generatedIcon.setGenerationIndex(request.getGenerationIndex());
                     generatedIcon.setIconType(iconType);
 
-                    long fileSize = fileStorageService.getFileSize(defaultUser.getDirectoryPath(), request.getOriginalRequestId(), iconType, fileName);
+                    long fileSize = fileStorageService.getFileSize(user.getDirectoryPath(), request.getOriginalRequestId(), iconType, fileName);
                     generatedIcon.setFileSize(fileSize);
 
                     generatedIconRepository.save(generatedIcon);

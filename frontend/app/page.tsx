@@ -81,25 +81,9 @@ export default function Page() {
     setIndividualDescriptions(new Array(9).fill(""));
   }, []);
 
-  // Fetch coins on component mount
+  // Initialize coins as 0 since Navigation handles coin display via auth check
   useEffect(() => {
-    const fetchCoins = async () => {
-      try {
-        const response = await fetch("/api/user/coins");
-        if (response.ok) {
-          const coinBalance = await response.json();
-          setCoins(coinBalance);
-        } else {
-          console.error("Failed to fetch coin balance");
-        }
-      } catch (error) {
-        console.error("Error fetching coin balance:", error);
-      } finally {
-        setCoinsLoading(false);
-      }
-    };
-
-    fetchCoins();
+    setCoinsLoading(false);
   }, []);
 
   useEffect(() => {
@@ -227,15 +211,9 @@ export default function Page() {
   };
 
   const refreshCoins = async () => {
-    try {
-      const response = await fetch("/api/user/coins");
-      if (response.ok) {
-        const coinBalance = await response.json();
-        setCoins(coinBalance);
-      }
-    } catch (error) {
-      console.error("Error refreshing coin balance:", error);
-    }
+    // Coins are now handled by Navigation component via auth check
+    // This function can trigger a page reload to refresh the auth state
+    window.location.reload();
   };
 
   const validateForm = (): boolean => {
@@ -316,6 +294,7 @@ export default function Page() {
       const response = await fetch("/generate-stream", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify(formData),
       });
       if (!response.ok)
@@ -532,6 +511,7 @@ export default function Page() {
       const response = await fetch("/export", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify(exportData),
       });
       setExportProgress({
@@ -654,6 +634,7 @@ export default function Page() {
       const response = await fetch("/generate-more", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify(moreIconsRequest),
       });
       if (!response.ok)

@@ -5,11 +5,16 @@ A Spring Boot web application for generating custom icon packs using AI. This ap
 ## Features
 
 - **Web Interface**: Clean, responsive UI with form-based icon generation
+- **Google OAuth2 Authentication**: Secure user authentication with Google accounts
+- **User Management**: Individual user accounts with personal icon galleries and coin balances
 - **AI Integration**: Integrated with Flux-1-Kontext-Pro model for high-quality icon generation
 - **Flexible Icon Counts**: Generate 9 or 18 icons at once
 - **Automated Processing**: Automatic image cropping to extract individual icons from generated grids
 - **Background Removal**: Intelligent background removal using rembg before icon processing
 - **Real-time Results**: Live display of generated icons in the browser
+- **Coins System**: Credit-based system for managing icon generation usage
+- **Personal Gallery**: Each user has their own gallery of generated icons
+- **Secure File Storage**: User-specific directories with UUID-based naming for security
 
 ## Prerequisites
 
@@ -17,6 +22,106 @@ A Spring Boot web application for generating custom icon packs using AI. This ap
 - Gradle 7.x or higher  
 - Flux AI API key (or compatible AI service)
 - Python 3.9+ with rembg installed (for background removal, optional)
+- Google OAuth2 credentials (for user authentication)
+- PostgreSQL database (for user data storage)
+
+## Google OAuth2 Setup
+
+This application uses Google OAuth2 for user authentication. Follow these steps to configure Google OAuth2:
+
+### 1. Create Google OAuth2 Credentials
+
+1. **Go to the Google Cloud Console**:
+   - Visit [Google Cloud Console](https://console.cloud.google.com/)
+   - Sign in with your Google account
+
+2. **Create or select a project**:
+   - If you don't have a project, create one by clicking "Select a project" → "New Project"
+   - Give your project a name and click "Create"
+
+3. **Enable the Google+ API**:
+   - In the left sidebar, go to "APIs & Services" → "Library"
+   - Search for "Google+ API" and enable it
+   - Also enable "Google OAuth2 API" if available
+
+4. **Configure the OAuth consent screen**:
+   - Go to "APIs & Services" → "OAuth consent screen"
+   - Choose "External" for user type (unless you have a Google Workspace)
+   - Fill in the required information:
+     - App name: "Icon Pack Generator"
+     - User support email: Your email
+     - Developer contact information: Your email
+   - Add authorized domains (for production): your domain (e.g., `yourdomain.com`)
+   - Save and continue through the scopes and test users sections
+
+5. **Create OAuth2 credentials**:
+   - Go to "APIs & Services" → "Credentials"
+   - Click "Create Credentials" → "OAuth 2.0 Client IDs"
+   - Select "Web application" as the application type
+   - Add authorized redirect URIs:
+     - For development: `http://localhost:8080/login/oauth2/code/google`
+     - For production: `https://yourdomain.com/login/oauth2/code/google`
+   - Click "Create"
+   - **Save the Client ID and Client Secret** - you'll need these for configuration
+
+### 2. Configure Environment Variables
+
+Set the following environment variables with your Google OAuth2 credentials:
+
+```bash
+export GOOGLE_CLIENT_ID=your-google-client-id-here
+export GOOGLE_CLIENT_SECRET=your-google-client-secret-here
+```
+
+Or create a `.env` file in your project root:
+
+```env
+GOOGLE_CLIENT_ID=your-google-client-id-here
+GOOGLE_CLIENT_SECRET=your-google-client-secret-here
+```
+
+### 3. Database Configuration
+
+The application uses PostgreSQL to store user data. Make sure you have PostgreSQL running and configured:
+
+1. **Install PostgreSQL** (if not already installed)
+2. **Create a database**:
+   ```sql
+   CREATE DATABASE icon_pack_generator;
+   CREATE USER iconpack WITH PASSWORD 'iconpack123';
+   GRANT ALL PRIVILEGES ON DATABASE icon_pack_generator TO iconpack;
+   ```
+
+3. **Configure database connection** (already configured in `application.yaml`):
+   ```yaml
+   spring:
+     datasource:
+       url: jdbc:postgresql://localhost:5432/icon_pack_generator
+       username: ${POSTGRES_USER:iconpack}
+       password: ${POSTGRES_PASSWORD:iconpack123}
+   ```
+
+### 4. Authentication Flow
+
+After setup, the authentication flow works as follows:
+
+1. **Unauthenticated users** see a "Sign In" button in the navigation bar
+2. **Clicking "Sign In"** opens a modal with a "Continue with Google" button
+3. **OAuth2 flow** redirects users to Google for authentication
+4. **After successful authentication**, users are redirected back to the application
+5. **Authenticated users** can:
+   - Generate icons (costs coins from their account)
+   - View their icon gallery
+   - Access all application features
+6. **Each new user** starts with 0 coins and gets a unique UUID-based directory for their generated icons
+7. **Logout** is available via the logout button in the navigation bar
+
+### 5. User Data Storage
+
+- **User profiles** are automatically created on first login
+- **Directory structure**: Each user gets a unique UUID-based directory (e.g., `static/user-icons/a1b2c3d4-e5f6-7890-abcd-ef1234567890/`)
+- **Icon metadata** is stored in PostgreSQL with user associations
+- **Coins system** tracks user credits for icon generation
 
 ## Setup
 
