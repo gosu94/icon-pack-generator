@@ -29,9 +29,9 @@ export default function StorePage() {
   }, []);
 
   const plans = [
-    { name: "Starter Pack", price: 5, coins: 8, popular: false },
-    { name: "Creator Pack", price: 10, coins: 18, popular: true },
-    { name: "Pro Pack", price: 20, coins: 20, popular: false },
+    { name: "Starter Pack", price: 5, coins: 8, icons: 72, popular: false },
+    { name: "Creator Pack", price: 10, coins: 18, icons: 162, popular: true },
+    { name: "Pro Pack", price: 20, coins: 40, icons: 360, popular: false },
   ];
 
   return (
@@ -79,6 +79,9 @@ export default function StorePage() {
                   {plan.coins} Coins
                 </span>
               </div>
+              <p className="mt-2 text-sm text-gray-500">
+                Generates up to {plan.icons} icons
+              </p>
               <button
                 className={`mt-8 block w-full rounded-md py-3 text-sm font-semibold ${
                   plan.popular

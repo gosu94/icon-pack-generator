@@ -81,13 +81,17 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
                 className="text-lg font-medium text-gray-900 flex items-center"
                 data-oid="wndlt.f"
               >
-                <span className="mr-2" data-oid="qbnu-fi">
-                  {result.status === "success"
-                    ? "✅"
-                    : result.status === "error"
-                      ? "❌"
-                      : "🔄"}
-                </span>
+                {result.status === "success" ? (
+                  <span className="mr-2" data-oid="qbnu-fi">
+                    ✅
+                  </span>
+                ) : result.status === "error" ? (
+                  <span className="mr-2" data-oid="qbnu-fi">
+                    ❌
+                  </span>
+                ) : (
+                  <div className="mr-2 h-4 w-4 animate-spin rounded-full border-b-2 border-gray-900" />
+                )}
                 {result.status}
                 {result.generationTimeMs > 0 && (
                   <span
