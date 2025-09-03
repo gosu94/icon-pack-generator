@@ -4,6 +4,8 @@ import Image from "next/image";
 interface GeneratorFormProps {
   inputType: string;
   setInputType: (value: string) => void;
+  generateVariations: boolean;
+  setGenerateVariations: (value: boolean) => void;
 
   generalDescription: string;
   setGeneralDescription: (value: string) => void;
@@ -22,6 +24,8 @@ interface GeneratorFormProps {
 const GeneratorForm: React.FC<GeneratorFormProps> = ({
   inputType,
   setInputType,
+  generateVariations,
+  setGenerateVariations,
 
   generalDescription,
   setGeneralDescription,
@@ -286,6 +290,32 @@ const GeneratorForm: React.FC<GeneratorFormProps> = ({
                 Individual Icon Descriptions (Optional)
               </label>
               {renderIconFields()}
+            </div>
+
+            <div className="flex items-center justify-between">
+              <label
+                className="text-lg font-semibold text-slate-900"
+                htmlFor="variations-switch"
+              >
+                Generate Variations
+              </label>
+              <button
+                id="variations-switch"
+                type="button"
+                role="switch"
+                aria-checked={generateVariations}
+                onClick={() => setGenerateVariations(!generateVariations)}
+                className={`${
+                  generateVariations ? 'bg-purple-600' : 'bg-gray-200'
+                } relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2`}
+              >
+                <span
+                  aria-hidden="true"
+                  className={`${
+                    generateVariations ? 'translate-x-5' : 'translate-x-0'
+                  } pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out`}
+                />
+              </button>
             </div>
 
             <button

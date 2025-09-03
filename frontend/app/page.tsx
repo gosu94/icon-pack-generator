@@ -18,7 +18,7 @@ export default function Page() {
   // Form state
   const [inputType, setInputType] = useState("text");
   
-  const [generationsPerService] = useState("2");
+  const [generateVariations, setGenerateVariations] = useState(false);
   const [generalDescription, setGeneralDescription] = useState("");
   const [individualDescriptions, setIndividualDescriptions] = useState<
     string[]
@@ -304,7 +304,7 @@ export default function Page() {
     }, 100);
     const formData: any = {
             iconCount: 9,
-      generationsPerService: parseInt(generationsPerService),
+      generationsPerService: generateVariations ? 2 : 1,
       individualDescriptions: individualDescriptions.filter((desc) =>
         desc.trim(),
       ),
@@ -414,7 +414,7 @@ export default function Page() {
     const enabledServicesList = allServices.filter(
       (service) => enabledServices[service.id],
     );
-    const generationsNum = parseInt(generationsPerService) || 1;
+    const generationsNum = generateVariations ? 2 : 1;
     enabledServicesList.forEach((service) => {
       for (let genIndex = 1; genIndex <= generationsNum; genIndex++) {
         const uniqueId = `${service.id}-gen${genIndex}`;
@@ -791,6 +791,8 @@ export default function Page() {
         <GeneratorForm
           inputType={inputType}
           setInputType={setInputType}
+          generateVariations={generateVariations}
+          setGenerateVariations={setGenerateVariations}
           
           generalDescription={generalDescription}
           setGeneralDescription={setGeneralDescription}
@@ -808,6 +810,7 @@ export default function Page() {
 
         <ResultsDisplay
           uiState={uiState}
+          generateVariations={generateVariations}
           isGenerating={isGenerating}
           overallProgress={overallProgress}
           calculateTimeRemaining={calculateTimeRemaining}

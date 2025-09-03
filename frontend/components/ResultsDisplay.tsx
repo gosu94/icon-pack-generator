@@ -4,6 +4,7 @@ import { UIState, ServiceResult, GenerationResponse } from "../lib/types";
 
 interface ResultsDisplayProps {
   uiState: UIState;
+  generateVariations: boolean;
   isGenerating: boolean;
   overallProgress: number;
   calculateTimeRemaining: () => string;
@@ -36,6 +37,7 @@ interface ResultsDisplayProps {
 
 const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
   uiState,
+  generateVariations,
   isGenerating,
   overallProgress,
   calculateTimeRemaining,
@@ -124,17 +126,17 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
           </div>
 
           {showResultsPanes && result.icons && result.icons.length > 0 && (
-            <div className="grid grid-cols-3 gap-4" data-oid=".ge-1o5">
+            <div className="grid gap-4 grid-cols-[repeat(auto-fit,minmax(140px,1fr))]" data-oid=".ge-1o5">
               {result.icons.map((icon, iconIndex) => (
                 <div
                   key={iconIndex}
-                  className={`relative group transform ${getIconAnimationClass(result.serviceId, iconIndex)} hover:scale-105 hover:z-20`}
+                  className={`relative group transform ${getIconAnimationClass(result.serviceId, iconIndex)} hover:scale-105 hover:z-20 flex justify-center`}
                   data-oid="m76b0.p"
                 >
                   <img
                     src={`data:image/png;base64,${icon.base64Data}`}
                     alt={`Generated Icon ${iconIndex + 1}`}
-                    className="w-full h-auto rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-shadow duration-200"
+                    className="w-full h-auto max-w-[128px] rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-shadow duration-200"
                     data-oid="3jhfiim"
                   />
                   <div
@@ -380,62 +382,64 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
             </div>
           </div>
         </div>
-        <div
-          className="bg-white/80 backdrop-blur-md rounded-3xl shadow-2xl border border-purple-200/50 flex-1 relative"
-          data-oid="mj9c878"
-        >
-          <div className="absolute inset-0 rounded-3xl bg-gradient-to-br from-white/30 to-transparent pointer-events-none"></div>
+        {generateVariations && (
           <div
-            className="p-8 h-full flex flex-col relative z-10"
-            data-oid="o17l-tp"
+            className="bg-white/80 backdrop-blur-md rounded-3xl shadow-2xl border border-purple-200/50 flex-1 relative"
+            data-oid="mj9c878"
           >
+            <div className="absolute inset-0 rounded-3xl bg-gradient-to-br from-white/30 to-transparent pointer-events-none"></div>
             <div
-              className="flex items-center justify-between mb-6"
-              data-oid="qd67dxc"
+              className="p-8 h-full flex flex-col relative z-10"
+              data-oid="o17l-tp"
             >
-              <h2
-                className="text-2xl font-bold text-slate-900"
-                data-oid="pz2eo.j"
+              <div
+                className="flex items-center justify-between mb-6"
+                data-oid="qd67dxc"
               >
-                Variations
-              </h2>
-            </div>
-            <div className="flex-1 overflow-y-auto" data-oid="ocx--ar">
-              {uiState === "initial" && (
-                <div
-                  className="h-full flex items-center justify-center"
-                  data-oid="22__9nu"
+                <h2
+                  className="text-2xl font-bold text-slate-900"
+                  data-oid="pz2eo.j"
                 >
-                  <div className="text-center" data-oid="d0c1s_8">
-                    <svg
-                      className="mx-auto h-16 w-16 text-gray-400 mb-4"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                      data-oid="wo5.-8x"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={1}
-                        d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
-                        data-oid="2eg74fx"
-                      />
-                    </svg>
-                    <p className="text-gray-500" data-oid="2c96zzz">
-                      Icon variations will appear here
-                    </p>
+                  Variations
+                </h2>
+              </div>
+              <div className="flex-1 overflow-y-auto" data-oid="ocx--ar">
+                {uiState === "initial" && (
+                  <div
+                    className="h-full flex items-center justify-center"
+                    data-oid="22__9nu"
+                  >
+                    <div className="text-center" data-oid="d0c1s_8">
+                      <svg
+                        className="mx-auto h-16 w-16 text-gray-400 mb-4"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                        data-oid="wo5.-8x"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={1}
+                          d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                          data-oid="2eg74fx"
+                        />
+                      </svg>
+                      <p className="text-gray-500" data-oid="2c96zzz">
+                        Icon variations will appear here
+                      </p>
+                    </div>
                   </div>
-                </div>
-              )}
-              {(uiState === "streaming" || uiState === "results") && (
-                <div className="space-y-6" data-oid=":qzs.na">
-                  {renderGenerationResults(2)}
-                </div>
-              )}
+                )}
+                {(uiState === "streaming" || uiState === "results") && (
+                  <div className="space-y-6" data-oid=":qzs.na">
+                    {renderGenerationResults(2)}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );
