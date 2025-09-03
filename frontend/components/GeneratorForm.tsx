@@ -1,10 +1,10 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import Image from "next/image";
 
 interface GeneratorFormProps {
   inputType: string;
   setInputType: (value: string) => void;
-  
+
   generalDescription: string;
   setGeneralDescription: (value: string) => void;
   individualDescriptions: string[];
@@ -22,7 +22,7 @@ interface GeneratorFormProps {
 const GeneratorForm: React.FC<GeneratorFormProps> = ({
   inputType,
   setInputType,
-  
+
   generalDescription,
   setGeneralDescription,
   individualDescriptions,
@@ -36,6 +36,28 @@ const GeneratorForm: React.FC<GeneratorFormProps> = ({
   fileInputRef,
   formatFileSize,
 }) => {
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+
+  useEffect(() => {
+    const checkAuthenticationStatus = async () => {
+      console.log("🔍 GeneratorForm: Checking authentication status...");
+      try {
+        const response = await fetch("/api/auth/check", {
+          credentials: "include",
+        });
+        console.log("🔍 GeneratorForm: Auth response status:", response.status);
+        const data = await response.json();
+        console.log("🔍 GeneratorForm: Auth response data:", data);
+        setIsAuthenticated(data.authenticated);
+        console.log("🔍 GeneratorForm: Set isAuthenticated to:", data.authenticated);
+      } catch (error) {
+        console.error("❌ GeneratorForm: Error checking auth status:", error);
+        setIsAuthenticated(false);
+      }
+    };
+    checkAuthenticationStatus();
+  }, []);
+
   const renderIconFields = () => {
     const count = 9;
     if (isNaN(count)) return null;
@@ -85,7 +107,19 @@ const GeneratorForm: React.FC<GeneratorFormProps> = ({
 
           <form
             onSubmit={(e) => {
+              console.log("🚀 GeneratorForm: Form submitted!");
+              console.log("🚀 GeneratorForm: isAuthenticated:", isAuthenticated);
+              console.log("🚀 GeneratorForm: isGenerating:", isGenerating);
               e.preventDefault();
+              if (!isAuthenticated) {
+                console.log("❌ GeneratorForm: Blocked - user not authenticated");
+                return;
+              }
+              if (isGenerating) {
+                console.log("❌ GeneratorForm: Blocked - already generating");
+                return;
+              }
+              console.log("✅ GeneratorForm: Calling generateIcons()");
               generateIcons();
             }}
             className="space-y-8"
@@ -244,8 +278,6 @@ const GeneratorForm: React.FC<GeneratorFormProps> = ({
               )}
             </div>
 
-            
-
             <div data-oid="nd7t0dj">
               <label
                 className="block text-sm font-medium text-gray-900 mb-3"
@@ -258,8 +290,18 @@ const GeneratorForm: React.FC<GeneratorFormProps> = ({
 
             <button
               type="submit"
-              disabled={isGenerating}
-              className={`w-full py-4 px-6 rounded-2xl text-white font-semibold ${isGenerating ? "bg-slate-400 cursor-not-allowed" : "bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 transform hover:scale-[1.02] shadow-lg hover:shadow-xl"} transition-all duration-200`}
+              disabled={isGenerating || !isAuthenticated}
+              onClick={() => {
+                console.log("🔘 Button clicked!");
+                console.log("🔘 Button - isAuthenticated:", isAuthenticated);
+                console.log("🔘 Button - isGenerating:", isGenerating);
+                console.log("🔘 Button - disabled:", isGenerating || !isAuthenticated);
+              }}
+              className={`w-full py-4 px-6 rounded-2xl text-white font-semibold ${
+                isGenerating || !isAuthenticated
+                  ? "bg-slate-400 cursor-not-allowed"
+                  : "bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 transform hover:scale-[1.02] shadow-lg hover:shadow-xl"
+              } transition-all duration-200`}
               data-oid="c1kv6ls"
             >
               {isGenerating ? (
@@ -275,11 +317,20 @@ const GeneratorForm: React.FC<GeneratorFormProps> = ({
                 </div>
               ) : (
                 <div className="flex items-center justify-center space-x-2">
-                  <span>Generate Icons</span>
-                  <span className="flex items-center space-x-1 rounded-full bg-white/20 px-2 py-0.5 text-xs font-semibold">
-                    <Image src="/images/coin.webp" alt="Coins" width={16} height={16} />
-                    <span>1</span>
+                  <span>
+                    {isAuthenticated ? "Generate Icons" : "Sign in to Generate"}
                   </span>
+                  {isAuthenticated && (
+                    <span className="flex items-center space-x-1 rounded-full bg-white/20 px-2 py-0.5 text-xs font-semibold">
+                      <Image
+                        src="/images/coin.webp"
+                        alt="Coins"
+                        width={16}
+                        height={16}
+                      />
+                      <span>1</span>
+                    </span>
+                  )}
                 </div>
               )}
             </button>

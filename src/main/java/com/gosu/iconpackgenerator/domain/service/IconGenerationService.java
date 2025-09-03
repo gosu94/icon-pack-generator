@@ -50,9 +50,14 @@ public class IconGenerationService {
      * Generate icons with optional progress callback for real-time updates
      */
     public CompletableFuture<IconGenerationResponse> generateIcons(IconGenerationRequest request, String requestId, ProgressUpdateCallback progressCallback, User user) {
+        // Debug coin checking
+        log.info("🪙 COIN CHECK - User: {} (ID: {}), Coins in user object: {}", user.getEmail(), user.getId(), user.getCoins());
+        Integer dbCoins = userService.getUserCoins(user.getId());
+        log.info("🪙 COIN CHECK - Coins in database: {}", dbCoins);
+        
         // Check if user has enough coins before starting generation
         if (!userService.hasEnoughCoins(user.getId(), 1)) {
-            log.warn("User {} has insufficient coins for icon generation", user.getEmail());
+            log.warn("❌ User {} has insufficient coins for icon generation (DB coins: {})", user.getEmail(), dbCoins);
             return CompletableFuture.completedFuture(createErrorResponse(requestId, "Insufficient coins. You need 1 coin to generate icons."));
         }
         

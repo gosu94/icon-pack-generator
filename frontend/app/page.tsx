@@ -81,9 +81,33 @@ export default function Page() {
     setIndividualDescriptions(new Array(9).fill(""));
   }, []);
 
-  // Initialize coins as 0 since Navigation handles coin display via auth check
+  // Fetch user coins for form validation
   useEffect(() => {
-    setCoinsLoading(false);
+    const fetchUserCoins = async () => {
+      try {
+        console.log("🪙 Fetching user coins for main page...");
+        const response = await fetch("/api/auth/check", {
+          credentials: "include",
+        });
+        const data = await response.json();
+        console.log("🪙 Auth check response:", data);
+        
+        if (data.authenticated && data.user && typeof data.user.coins === 'number') {
+          setCoins(data.user.coins);
+          console.log("🪙 Updated coins to:", data.user.coins);
+        } else {
+          setCoins(0);
+          console.log("🪙 User not authenticated, coins set to 0");
+        }
+      } catch (error) {
+        console.error("❌ Error fetching user coins:", error);
+        setCoins(0);
+      } finally {
+        setCoinsLoading(false);
+      }
+    };
+
+    fetchUserCoins();
   }, []);
 
   useEffect(() => {
@@ -217,19 +241,29 @@ export default function Page() {
   };
 
   const validateForm = (): boolean => {
+    console.log("🔍 validateForm: Starting validation");
+    console.log("🔍 validateForm: inputType:", inputType);
+    console.log("🔍 validateForm: generalDescription:", generalDescription);
+    console.log("🔍 validateForm: coins:", coins);
+    
     if (inputType === "text" && !generalDescription.trim()) {
+      console.log("❌ validateForm: Missing general description");
       setErrorMessage("Please provide a general description.");
       return false;
     }
     if (inputType === "image" && !referenceImage) {
+      console.log("❌ validateForm: Missing reference image");
       setErrorMessage("Please select a reference image.");
       return false;
     }
     
     if (coins < 1) {
+      console.log("❌ validateForm: Insufficient coins - coins:", coins);
       setErrorMessage("Insufficient coins. You need 1 coin to generate icons.");
       return false;
     }
+    
+    console.log("✅ validateForm: All validation passed");
     return true;
   };
 
@@ -290,15 +324,22 @@ export default function Page() {
       }
     }
     setCurrentRequest({ ...formData });
+    console.log("🌐 About to send request to /generate-stream");
+    console.log("🌐 Request data:", formData);
     try {
+      console.log("🌐 Making fetch request...");
       const response = await fetch("/generate-stream", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify(formData),
       });
-      if (!response.ok)
+      console.log("🌐 Response received:", response.status, response.statusText);
+      if (!response.ok) {
+        const responseText = await response.text();
+        console.log("❌ Response not ok:", responseText);
         throw new Error(`HTTP error! status: ${response.status}`);
+      }
       const data = await response.json();
       const { requestId, enabledServices } = data;
       initializeStreamingResults(enabledServices);
@@ -348,7 +389,11 @@ export default function Page() {
         eventSource.close();
       };
     } catch (error) {
-      console.error("Error starting generation:", error);
+      console.error("❌ Error starting generation:", error);
+      if (error instanceof Error) {
+        console.error("❌ Error message:", error.message);
+        console.error("❌ Error stack:", error.stack);
+      }
       setErrorMessage("Failed to start generation. Please try again.");
       setUiState("error");
       setIsGenerating(false);
