@@ -260,8 +260,9 @@ export default function Page() {
       return false;
     }
     
-    if (coins < 1) {
-      setErrorMessage("Insufficient coins. You need 1 coin to generate icons.");
+    const cost = generateVariations ? 2 : 1;
+    if (coins < cost) {
+      setErrorMessage(`Insufficient coins. You need ${cost} coin${cost > 1 ? 's' : ''} to generate icons.`);
       return false;
     }
     

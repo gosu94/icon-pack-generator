@@ -367,7 +367,7 @@ public class IconGenerationController implements IconGenerationControllerAPI {
                 if (!aiServicesConfig.isGptEnabled()) {
                     throw new RuntimeException("GPT service is disabled");
                 }
-                return gptModelService.generateImageToImage(prompt, originalImageData, seed);
+                return gptModelService.generateImageToImage(prompt, originalImageData, 0L);
 
             case "imagen":
                 if (!aiServicesConfig.isImagenEnabled()) {

@@ -50,19 +50,21 @@ public class IconGenerationService {
      * Generate icons with optional progress callback for real-time updates
      */
     public CompletableFuture<IconGenerationResponse> generateIcons(IconGenerationRequest request, String requestId, ProgressUpdateCallback progressCallback, User user) {
+        int cost = Math.max(1, request.getGenerationsPerService());
+
         // Check if user has enough coins before starting generation
-        if (!userService.hasEnoughCoins(user.getId(), 1)) {
+        if (!userService.hasEnoughCoins(user.getId(), cost)) {
             log.warn("User {} has insufficient coins for icon generation", user.getEmail());
-            return CompletableFuture.completedFuture(createErrorResponse(requestId, "Insufficient coins. You need 1 coin to generate icons."));
+            return CompletableFuture.completedFuture(createErrorResponse(requestId, "Insufficient coins. You need " + cost + " coin(s) to generate icons."));
         }
         
-        // Deduct 1 coin for the generation
-        if (!userService.deductCoins(user.getId(), 1)) {
+        // Deduct coins for the generation
+        if (!userService.deductCoins(user.getId(), cost)) {
             log.error("Failed to deduct coins from user {}", user.getEmail());
             return CompletableFuture.completedFuture(createErrorResponse(requestId, "Failed to process payment. Please try again."));
         }
         
-        log.info("Deducted 1 coin from user {} for icon generation. Request ID: {}", user.getEmail(), requestId);
+        log.info("Deducted {} coin(s) from user {} for icon generation. Request ID: {}", cost, user.getEmail(), requestId);
         
         List<String> enabledServices = new ArrayList<>();
         if (aiServicesConfig.isFluxAiEnabled()) enabledServices.add("FalAI");
