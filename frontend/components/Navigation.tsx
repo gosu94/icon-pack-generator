@@ -37,6 +37,35 @@ const Navigation: React.FC<NavigationProps> = ({ coins, coinsLoading }) => {
 
   useEffect(() => {
     checkAuthenticationStatus();
+
+    // Listen for coin updates from main page
+    const handleCoinUpdate = (event: CustomEvent) => {
+      setAuthState(prev => ({
+        ...prev,
+        user: prev.user ? { ...prev.user, coins: event.detail.coins } : prev.user
+      }));
+    };
+
+    // Listen for page visibility changes to refresh coins
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        checkAuthenticationStatus();
+      }
+    };
+
+    // Set up periodic refresh of auth status every 5 minutes  
+    const refreshInterval = setInterval(() => {
+      checkAuthenticationStatus();
+    }, 300000);
+
+    window.addEventListener('coinsUpdated', handleCoinUpdate as EventListener);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      window.removeEventListener('coinsUpdated', handleCoinUpdate as EventListener);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      clearInterval(refreshInterval);
+    };
   }, []);
 
   const openLoginModal = () => {

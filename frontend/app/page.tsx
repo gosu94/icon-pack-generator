@@ -85,22 +85,18 @@ export default function Page() {
   useEffect(() => {
     const fetchUserCoins = async () => {
       try {
-        console.log("🪙 Fetching user coins for main page...");
         const response = await fetch("/api/auth/check", {
           credentials: "include",
         });
         const data = await response.json();
-        console.log("🪙 Auth check response:", data);
         
         if (data.authenticated && data.user && typeof data.user.coins === 'number') {
           setCoins(data.user.coins);
-          console.log("🪙 Updated coins to:", data.user.coins);
         } else {
           setCoins(0);
-          console.log("🪙 User not authenticated, coins set to 0");
         }
       } catch (error) {
-        console.error("❌ Error fetching user coins:", error);
+        console.error("Error fetching user coins:", error);
         setCoins(0);
       } finally {
         setCoinsLoading(false);
@@ -235,35 +231,40 @@ export default function Page() {
   };
 
   const refreshCoins = async () => {
-    // Coins are now handled by Navigation component via auth check
-    // This function can trigger a page reload to refresh the auth state
-    window.location.reload();
+    try {
+      const response = await fetch("/api/auth/check", {
+        credentials: "include",
+      });
+      const data = await response.json();
+      
+      if (data.authenticated && data.user && typeof data.user.coins === 'number') {
+        setCoins(data.user.coins);
+        
+        // Dispatch custom event to update Navigation component
+        window.dispatchEvent(new CustomEvent('coinsUpdated', { 
+          detail: { coins: data.user.coins } 
+        }));
+      }
+    } catch (error) {
+      console.error("Error refreshing coins:", error);
+    }
   };
 
   const validateForm = (): boolean => {
-    console.log("🔍 validateForm: Starting validation");
-    console.log("🔍 validateForm: inputType:", inputType);
-    console.log("🔍 validateForm: generalDescription:", generalDescription);
-    console.log("🔍 validateForm: coins:", coins);
-    
     if (inputType === "text" && !generalDescription.trim()) {
-      console.log("❌ validateForm: Missing general description");
       setErrorMessage("Please provide a general description.");
       return false;
     }
     if (inputType === "image" && !referenceImage) {
-      console.log("❌ validateForm: Missing reference image");
       setErrorMessage("Please select a reference image.");
       return false;
     }
     
     if (coins < 1) {
-      console.log("❌ validateForm: Insufficient coins - coins:", coins);
       setErrorMessage("Insufficient coins. You need 1 coin to generate icons.");
       return false;
     }
     
-    console.log("✅ validateForm: All validation passed");
     return true;
   };
 
@@ -324,20 +325,16 @@ export default function Page() {
       }
     }
     setCurrentRequest({ ...formData });
-    console.log("🌐 About to send request to /generate-stream");
-    console.log("🌐 Request data:", formData);
     try {
-      console.log("🌐 Making fetch request...");
       const response = await fetch("/generate-stream", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify(formData),
       });
-      console.log("🌐 Response received:", response.status, response.statusText);
       if (!response.ok) {
         const responseText = await response.text();
-        console.log("❌ Response not ok:", responseText);
+        console.error("❌ Generation request failed:", response.status, responseText);
         throw new Error(`HTTP error! status: ${response.status}`);
       }
       const data = await response.json();
@@ -510,7 +507,9 @@ export default function Page() {
       setUiState("results");
       setIsGenerating(false);
       // Refresh coins after successful generation
-      refreshCoins();
+      setTimeout(() => {
+        refreshCoins();
+      }, 3000); // 3-second delay to ensure backend transaction is committed
       return latestStreamingResults;
     });
   };

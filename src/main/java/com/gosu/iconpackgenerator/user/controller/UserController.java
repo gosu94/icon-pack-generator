@@ -39,11 +39,15 @@ public class UserController {
         Map<String, Object> response = new HashMap<>();
         
         if (principal instanceof CustomOAuth2User customUser) {
+            // Get fresh user data from database to ensure up-to-date coin count
+            Long userId = customUser.getUserId();
+            User freshUser = userRepository.findById(userId).orElse(customUser.getUser());
+            
             response.put("authenticated", true);
             response.put("user", Map.of(
                 "email", customUser.getEmail(),
                 "id", customUser.getUserId(),
-                "coins", customUser.getUser().getCoins()
+                "coins", freshUser.getCoins() // Use fresh data from DB
             ));
         } else {
             response.put("authenticated", false);
