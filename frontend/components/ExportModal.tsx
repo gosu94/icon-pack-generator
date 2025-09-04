@@ -75,7 +75,7 @@ const ExportModal: React.FC<ExportModalProps> = ({
                   </div>
                   <div className="flex items-center text-xs text-blue-700">
                     <span className="w-2 h-2 bg-green-400 rounded-full mr-2"></span>
-                    <strong>PNG:</strong>&nbsp;16px, 32px, 64px, 128px, 256px
+                    <strong>PNG:</strong>&nbsp;16px, 32px, 64px, 128px, 256px, 512px
                   </div>
                   <div className="flex items-center text-xs text-blue-700">
                     <span className="w-2 h-2 bg-purple-400 rounded-full mr-2"></span>

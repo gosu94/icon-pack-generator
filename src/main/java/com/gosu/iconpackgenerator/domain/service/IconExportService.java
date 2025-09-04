@@ -24,7 +24,7 @@ public class IconExportService {
     private final ImageProcessingService imageProcessingService;
     
     // Standard icon sizes for PNG exports
-    private static final int[] PNG_SIZES = {16, 32, 64, 128, 256};
+    private static final int[] PNG_SIZES = {16, 32, 64, 128, 256, 512};
     
     // Comprehensive ICO sizes for modern applications and high-DPI displays
     private static final int[] ICO_SIZES = {16, 32, 48, 64, 128, 256};
