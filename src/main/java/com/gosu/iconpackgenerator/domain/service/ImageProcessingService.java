@@ -31,7 +31,7 @@ public class ImageProcessingService {
      * @return List of cropped icon images as base64 strings
      */
     public List<String> cropIconsFromGrid(byte[] imageData, int iconCount, boolean removeBackground) {
-        return cropIconsFromGrid(imageData, iconCount, true, 0, removeBackground);
+        return cropIconsFromGrid(imageData, iconCount, true, 0, removeBackground, true);
     }
 
     /**
@@ -44,7 +44,7 @@ public class ImageProcessingService {
      * @return List of cropped icon images as base64 strings
      */
     public List<String> cropIconsFromGrid(byte[] imageData, int iconCount, boolean centerIcons, int targetSize) {
-        return cropIconsFromGrid(imageData, iconCount, centerIcons, targetSize, false);
+        return cropIconsFromGrid(imageData, iconCount, centerIcons, targetSize, false, true);
     }
 
     /**
@@ -55,9 +55,10 @@ public class ImageProcessingService {
      * @param centerIcons      Whether to center the icons on their canvas
      * @param targetSize       Target size for centered icons (0 = auto-size based on original)
      * @param removeBackground Whether to remove background from the entire grid before cropping (typically false during generation, true during export)
+     * @param cleanupArtifacts Whether to clean up artifacts from neighboring icons by making them transparent
      * @return List of cropped icon images as base64 strings
      */
-    public List<String> cropIconsFromGrid(byte[] imageData, int iconCount, boolean centerIcons, int targetSize, boolean removeBackground) {
+    public List<String> cropIconsFromGrid(byte[] imageData, int iconCount, boolean centerIcons, int targetSize, boolean removeBackground, boolean cleanupArtifacts) {
         try {
             // Add validation and logging
             if (imageData == null) {
@@ -129,11 +130,11 @@ public class ImageProcessingService {
             List<String> croppedIcons = new ArrayList<>();
 
             if (iconCount == 9) {
-                croppedIcons.addAll(cropGrid3x3(originalImage, centerIcons, targetSize));
+                croppedIcons.addAll(cropGrid3x3(originalImage, centerIcons, targetSize, cleanupArtifacts));
             } else if (iconCount == 18) {
                 // For 18 icons, we'll need to generate two 3x3 grids
                 // For now, we'll crop first 9 from one grid
-                croppedIcons.addAll(cropGrid3x3(originalImage, centerIcons, targetSize));
+                croppedIcons.addAll(cropGrid3x3(originalImage, centerIcons, targetSize, cleanupArtifacts));
                 // TODO: Handle second grid generation for 18 icons
             }
 
@@ -517,10 +518,12 @@ public class ImageProcessingService {
     private static class GridBounds {
         private final int[][] xBounds; // [column][start/end] - x coordinates for each column
         private final int[][] yBounds; // [row][start/end] - y coordinates for each row
+        private final boolean hasPerfectTransparency; // Whether grid lines are perfectly transparent
 
-        public GridBounds(int[][] xBounds, int[][] yBounds) {
+        public GridBounds(int[][] xBounds, int[][] yBounds, boolean hasPerfectTransparency) {
             this.xBounds = xBounds;
             this.yBounds = yBounds;
+            this.hasPerfectTransparency = hasPerfectTransparency;
         }
 
         public Rectangle getIconRectangle(int row, int col) {
@@ -529,6 +532,10 @@ public class ImageProcessingService {
             int width = xBounds[col][1] - xBounds[col][0];
             int height = yBounds[row][1] - yBounds[row][0];
             return new Rectangle(x, y, width, height);
+        }
+
+        public boolean hasPerfectTransparency() {
+            return hasPerfectTransparency;
         }
     }
 
@@ -662,7 +669,11 @@ public class ImageProcessingService {
             log.debug("Row {}: y={} to {} (height={}) [buffered]", i, yBounds[i][0], yBounds[i][1], yBounds[i][1] - yBounds[i][0]);
         }
 
-        return new GridBounds(xBounds, yBounds);
+        // Perfect transparency exists only if BOTH X and Y boundaries are perfectly transparent
+        boolean overallPerfectTransparency = xHasPerfectTransparency && yHasPerfectTransparency;
+        log.debug("Overall perfect transparency: {} (X: {}, Y: {})", overallPerfectTransparency, xHasPerfectTransparency, yHasPerfectTransparency);
+
+        return new GridBounds(xBounds, yBounds, overallPerfectTransparency);
     }
 
     /**
@@ -1213,7 +1224,7 @@ public class ImageProcessingService {
         return boundaries;
     }
 
-    private List<String> cropGrid3x3(BufferedImage originalImage, boolean centerIcons, int targetSize) throws IOException {
+    private List<String> cropGrid3x3(BufferedImage originalImage, boolean centerIcons, int targetSize, boolean cleanupArtifacts) throws IOException {
         List<String> icons = new ArrayList<>();
 
         int width = originalImage.getWidth();
@@ -1222,6 +1233,12 @@ public class ImageProcessingService {
         log.debug("Starting intelligent 3x3 grid cropping for image {}x{}", width, height);
 
         GridBounds gridBounds = detectGridBounds(originalImage);
+
+        // Determine if we should skip artifact cleanup due to perfect transparency
+        boolean shouldSkipCleanup = gridBounds.hasPerfectTransparency();
+        if (cleanupArtifacts && shouldSkipCleanup) {
+            log.debug("Skipping artifact cleanup - perfect transparent grid lines detected");
+        }
 
         for (int row = 0; row < 3; row++) {
             for (int col = 0; col < 3; col++) {
@@ -1232,6 +1249,13 @@ public class ImageProcessingService {
 
                 BufferedImage croppedIcon = originalImage.getSubimage(
                         iconRect.x, iconRect.y, iconRect.width, iconRect.height);
+
+                // Optionally cleanup artifacts from neighboring icons
+                // Skip cleanup if we have perfect transparent grid lines (no artifacts expected)
+                if (cleanupArtifacts && !shouldSkipCleanup) {
+                    croppedIcon = cleanupIconArtifacts(croppedIcon, row, col);
+                    log.debug("Cleaned up artifacts for icon at position [{},{}]", row, col);
+                }
 
                 // Optionally center the icon
                 if (centerIcons) {
@@ -1249,6 +1273,324 @@ public class ImageProcessingService {
         }
 
         return icons;
+    }
+
+    /**
+     * Clean up artifacts from a cropped icon by detecting and removing pixels that likely belong to neighboring icons.
+     * This method analyzes edge pixels and content distribution to identify artifacts and make them transparent.
+     *
+     * @param croppedIcon The cropped icon image that may contain artifacts
+     * @param row         The row position of this icon in the 3x3 grid (0-2)
+     * @param col         The column position of this icon in the 3x3 grid (0-2)
+     * @return The cleaned icon with artifacts made transparent
+     */
+    private BufferedImage cleanupIconArtifacts(BufferedImage croppedIcon, int row, int col) {
+        int width = croppedIcon.getWidth();
+        int height = croppedIcon.getHeight();
+
+        log.debug("Cleaning up artifacts for icon at [{},{}] with size {}x{}", row, col, width, height);
+
+        // Convert to ARGB if not already to support transparency
+        BufferedImage cleanedIcon = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
+        Graphics2D g2d = cleanedIcon.createGraphics();
+        g2d.drawImage(croppedIcon, 0, 0, null);
+        g2d.dispose();
+
+        // Analyze content distribution to identify the main icon area
+        Rectangle mainContentBounds = detectMainIconBounds(cleanedIcon);
+        
+        if (mainContentBounds == null) {
+            log.debug("No main content detected in icon at [{},{}], skipping artifact cleanup", row, col);
+            return cleanedIcon;
+        }
+
+        log.debug("Main content bounds for icon [{},{}]: x={}, y={}, width={}, height={}", 
+                row, col, mainContentBounds.x, mainContentBounds.y, mainContentBounds.width, mainContentBounds.height);
+
+        // Define edge zones where artifacts are most likely to occur
+        int edgeThickness = Math.min(Math.max(width / 20, 3), 15); // 3-15 pixels depending on icon size
+        
+        int artifactsRemoved = 0;
+
+        // Process different edge zones based on grid position
+        if (col > 0) { // Not leftmost column - check left edge for artifacts
+            artifactsRemoved += cleanupEdgeArtifacts(cleanedIcon, mainContentBounds, 0, 0, edgeThickness, height, "left");
+        }
+        
+        if (col < 2) { // Not rightmost column - check right edge for artifacts  
+            artifactsRemoved += cleanupEdgeArtifacts(cleanedIcon, mainContentBounds, width - edgeThickness, 0, edgeThickness, height, "right");
+        }
+        
+        if (row > 0) { // Not top row - check top edge for artifacts
+            artifactsRemoved += cleanupEdgeArtifacts(cleanedIcon, mainContentBounds, 0, 0, width, edgeThickness, "top");
+        }
+        
+        if (row < 2) { // Not bottom row - check bottom edge for artifacts
+            artifactsRemoved += cleanupEdgeArtifacts(cleanedIcon, mainContentBounds, 0, height - edgeThickness, width, edgeThickness, "bottom");
+        }
+
+        // Clean up corner artifacts (common in diagonal cuts)
+        artifactsRemoved += cleanupCornerArtifacts(cleanedIcon, mainContentBounds, row, col);
+
+        log.debug("Removed {} artifact pixels from icon at [{},{}]", artifactsRemoved, row, col);
+        return cleanedIcon;
+    }
+
+    /**
+     * Detect the main icon's content bounds to distinguish it from potential artifacts
+     */
+    private Rectangle detectMainIconBounds(BufferedImage icon) {
+        int width = icon.getWidth();
+        int height = icon.getHeight();
+        
+        // Find the largest connected component of non-background pixels
+        // This represents the main icon content
+        boolean[][] visited = new boolean[height][width];
+        Rectangle largestBounds = null;
+        int largestArea = 0;
+
+        for (int y = 0; y < height; y++) {
+            for (int x = 0; x < width; x++) {
+                if (!visited[y][x] && isContentPixel(icon.getRGB(x, y))) {
+                    Rectangle componentBounds = findConnectedComponentBounds(icon, x, y, visited);
+                    int area = componentBounds.width * componentBounds.height;
+                    
+                    if (area > largestArea) {
+                        largestArea = area;
+                        largestBounds = componentBounds;
+                    }
+                }
+            }
+        }
+
+        // Expand bounds slightly to include edge details
+        if (largestBounds != null) {
+            int expansion = Math.min(5, Math.min(width, height) / 20);
+            largestBounds.x = Math.max(0, largestBounds.x - expansion);
+            largestBounds.y = Math.max(0, largestBounds.y - expansion);
+            largestBounds.width = Math.min(width - largestBounds.x, largestBounds.width + 2 * expansion);
+            largestBounds.height = Math.min(height - largestBounds.y, largestBounds.height + 2 * expansion);
+        }
+
+        return largestBounds;
+    }
+
+    /**
+     * Find connected component bounds using flood fill
+     */
+    private Rectangle findConnectedComponentBounds(BufferedImage icon, int startX, int startY, boolean[][] visited) {
+        int width = icon.getWidth();
+        int height = icon.getHeight();
+        
+        java.util.Queue<int[]> queue = new java.util.LinkedList<>();
+        queue.offer(new int[]{startX, startY});
+        visited[startY][startX] = true;
+        
+        int minX = startX, maxX = startX;
+        int minY = startY, maxY = startY;
+        
+        int[] dx = {-1, 1, 0, 0};
+        int[] dy = {0, 0, -1, 1};
+        
+        while (!queue.isEmpty()) {
+            int[] current = queue.poll();
+            int x = current[0], y = current[1];
+            
+            minX = Math.min(minX, x);
+            maxX = Math.max(maxX, x);
+            minY = Math.min(minY, y);
+            maxY = Math.max(maxY, y);
+            
+            for (int i = 0; i < 4; i++) {
+                int nx = x + dx[i];
+                int ny = y + dy[i];
+                
+                if (nx >= 0 && nx < width && ny >= 0 && ny < height && 
+                    !visited[ny][nx] && isContentPixel(icon.getRGB(nx, ny))) {
+                    visited[ny][nx] = true;
+                    queue.offer(new int[]{nx, ny});
+                }
+            }
+        }
+        
+        return new Rectangle(minX, minY, maxX - minX + 1, maxY - minY + 1);
+    }
+
+    /**
+     * Clean up artifacts in a specific edge zone
+     */
+    private int cleanupEdgeArtifacts(BufferedImage icon, Rectangle mainBounds, int x, int y, int width, int height, String edge) {
+        int artifactsRemoved = 0;
+        
+        for (int py = y; py < y + height && py < icon.getHeight(); py++) {
+            for (int px = x; px < x + width && px < icon.getWidth(); px++) {
+                int rgb = icon.getRGB(px, py);
+                
+                if (isContentPixel(rgb)) {
+                    // Check if this pixel is likely an artifact
+                    boolean isArtifact = false;
+                    
+                    // Artifact detection heuristics:
+                    
+                    // 1. Pixel is outside main content bounds
+                    if (!mainBounds.contains(px, py)) {
+                        isArtifact = true;
+                    }
+                    
+                    // 2. Isolated pixels (not connected to main content)
+                    if (!isArtifact && isIsolatedPixel(icon, px, py, mainBounds)) {
+                        isArtifact = true;
+                    }
+                    
+                    // 3. Color discontinuity (significantly different from nearby main content)
+                    if (!isArtifact && hasColorDiscontinuity(icon, px, py, mainBounds)) {
+                        isArtifact = true;
+                    }
+                    
+                    if (isArtifact) {
+                        // Make pixel transparent
+                        icon.setRGB(px, py, 0x00000000);
+                        artifactsRemoved++;
+                    }
+                }
+            }
+        }
+        
+        if (artifactsRemoved > 0) {
+            log.debug("Removed {} artifacts from {} edge", artifactsRemoved, edge);
+        }
+        
+        return artifactsRemoved;
+    }
+
+    /**
+     * Clean up corner artifacts (common when grid lines are not perfectly aligned)
+     */
+    private int cleanupCornerArtifacts(BufferedImage icon, Rectangle mainBounds, int row, int col) {
+        int width = icon.getWidth();
+        int height = icon.getHeight();
+        int cornerSize = Math.min(Math.max(width / 15, 5), 20); // 5-20 pixels
+        int artifactsRemoved = 0;
+
+        // Define corner regions to check based on grid position
+        Rectangle[] corners = new Rectangle[0];
+        
+        if (row > 0 && col > 0) { // Top-left corner
+            corners = java.util.Arrays.copyOf(corners, corners.length + 1);
+            corners[corners.length - 1] = new Rectangle(0, 0, cornerSize, cornerSize);
+        }
+        if (row > 0 && col < 2) { // Top-right corner
+            corners = java.util.Arrays.copyOf(corners, corners.length + 1);
+            corners[corners.length - 1] = new Rectangle(width - cornerSize, 0, cornerSize, cornerSize);
+        }
+        if (row < 2 && col > 0) { // Bottom-left corner
+            corners = java.util.Arrays.copyOf(corners, corners.length + 1);
+            corners[corners.length - 1] = new Rectangle(0, height - cornerSize, cornerSize, cornerSize);
+        }
+        if (row < 2 && col < 2) { // Bottom-right corner
+            corners = java.util.Arrays.copyOf(corners, corners.length + 1);
+            corners[corners.length - 1] = new Rectangle(width - cornerSize, height - cornerSize, cornerSize, cornerSize);
+        }
+
+        for (Rectangle corner : corners) {
+            for (int y = corner.y; y < corner.y + corner.height && y < height; y++) {
+                for (int x = corner.x; x < corner.x + corner.width && x < width; x++) {
+                    int rgb = icon.getRGB(x, y);
+                    
+                    if (isContentPixel(rgb) && !mainBounds.contains(x, y)) {
+                        // Corner pixels outside main bounds are likely artifacts
+                        icon.setRGB(x, y, 0x00000000);
+                        artifactsRemoved++;
+                    }
+                }
+            }
+        }
+
+        if (artifactsRemoved > 0) {
+            log.debug("Removed {} corner artifacts", artifactsRemoved);
+        }
+
+        return artifactsRemoved;
+    }
+
+    /**
+     * Check if a pixel represents content (not background/transparent/white)
+     */
+    private boolean isContentPixel(int rgb) {
+        int alpha = (rgb >> 24) & 0xFF;
+        int red = (rgb >> 16) & 0xFF;
+        int green = (rgb >> 8) & 0xFF;
+        int blue = rgb & 0xFF;
+
+        // Consider transparent and near-white pixels as background
+        boolean isTransparent = alpha < 50;
+        boolean isWhite = red > 240 && green > 240 && blue > 240;
+        
+        return !isTransparent && !isWhite;
+    }
+
+    /**
+     * Check if a pixel is isolated (not connected to main content)
+     */
+    private boolean isIsolatedPixel(BufferedImage icon, int x, int y, Rectangle mainBounds) {
+        // Check if pixel has nearby content pixels that connect to main bounds
+        int radius = 3;
+        
+        for (int dy = -radius; dy <= radius; dy++) {
+            for (int dx = -radius; dx <= radius; dx++) {
+                if (dx == 0 && dy == 0) continue;
+                
+                int nx = x + dx;
+                int ny = y + dy;
+                
+                if (nx >= 0 && nx < icon.getWidth() && ny >= 0 && ny < icon.getHeight()) {
+                    if (isContentPixel(icon.getRGB(nx, ny)) && mainBounds.contains(nx, ny)) {
+                        return false; // Connected to main content
+                    }
+                }
+            }
+        }
+        
+        return true; // Isolated
+    }
+
+    /**
+     * Check if a pixel has significant color discontinuity from nearby main content
+     */
+    private boolean hasColorDiscontinuity(BufferedImage icon, int x, int y, Rectangle mainBounds) {
+        int rgb = icon.getRGB(x, y);
+        int red = (rgb >> 16) & 0xFF;
+        int green = (rgb >> 8) & 0xFF;
+        int blue = rgb & 0xFF;
+        
+        // Find nearest main content pixel
+        int nearestDistance = Integer.MAX_VALUE;
+        int nearestRGB = rgb;
+        
+        // Search in main bounds area
+        for (int my = Math.max(0, mainBounds.y - 5); my < Math.min(icon.getHeight(), mainBounds.y + mainBounds.height + 5); my++) {
+            for (int mx = Math.max(0, mainBounds.x - 5); mx < Math.min(icon.getWidth(), mainBounds.x + mainBounds.width + 5); mx++) {
+                if (mainBounds.contains(mx, my) && isContentPixel(icon.getRGB(mx, my))) {
+                    int distance = Math.abs(mx - x) + Math.abs(my - y);
+                    if (distance < nearestDistance) {
+                        nearestDistance = distance;
+                        nearestRGB = icon.getRGB(mx, my);
+                    }
+                }
+            }
+        }
+        
+        if (nearestDistance == Integer.MAX_VALUE) return false;
+        
+        // Compare colors
+        int nearestRed = (nearestRGB >> 16) & 0xFF;
+        int nearestGreen = (nearestRGB >> 8) & 0xFF;
+        int nearestBlue = nearestRGB & 0xFF;
+        
+        int colorDistance = Math.abs(red - nearestRed) + Math.abs(green - nearestGreen) + Math.abs(blue - nearestBlue);
+        
+        // If color difference is significant, it's likely an artifact
+        return colorDistance > 150; // Threshold for significant color difference
     }
 
     private String bufferedImageToBase64(BufferedImage image) throws IOException {

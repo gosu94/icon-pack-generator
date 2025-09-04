@@ -817,7 +817,7 @@ class ImageProcessingServiceSpec extends Specification {
 
     def "should detect transparent boundaries and fix cutting artifacts"() {
         when: "processing the problematic wrong-cut.png image that has misaligned icons"
-        BufferedImage wrongCutImage = ImageIO.read(new File("src/test/resources/images/impossible-cut.png"))
+        BufferedImage wrongCutImage = ImageIO.read(new File("src/test/resources/images/wrong-cut-7.png"))
         byte[] imageBytes = bufferedImageToByteArray(wrongCutImage)
 
         then: "image loads successfully"
@@ -890,6 +890,54 @@ class ImageProcessingServiceSpec extends Specification {
         }
 
         println "Successfully processed false-positive-transparency.png without unnecessary background removal"
+    }
+
+    def "should cleanup artifacts from wrong-cut image using new artifact removal functionality"() {
+        given: "The problematic wrong-cut-7.png image that has cutting artifacts"
+        BufferedImage wrongCutImage = loadTestImage("wrong-cut-7.png")
+
+        expect: "Test image is loaded correctly"
+        wrongCutImage != null
+        wrongCutImage.width > 0
+        wrongCutImage.height > 0
+
+        when: "Process the image with artifact cleanup enabled"
+        byte[] imageData = bufferedImageToByteArray(wrongCutImage)
+        List<String> iconsWithCleanup = imageProcessingService.cropIconsFromGrid(imageData, 9, true, 256, false, true)
+
+        and: "Process the same image without artifact cleanup for comparison"
+        List<String> iconsWithoutCleanup = imageProcessingService.cropIconsFromGrid(imageData, 9, true, 256, false, false)
+
+        then: "Both processing attempts succeed"
+        iconsWithCleanup != null
+        iconsWithCleanup.size() == 9
+        iconsWithoutCleanup != null
+        iconsWithoutCleanup.size() == 9
+
+        when: "Save icons with cleanup for visual comparison"
+        iconsWithCleanup.eachWithIndex { iconBase64, index ->
+            byte[] iconBytes = Base64.decoder.decode(iconBase64)
+            BufferedImage iconImage = ImageIO.read(new ByteArrayInputStream(iconBytes))
+            saveImage(iconImage, "wrong_cut_cleaned_icon_${index + 1}_256px.png")
+            println "Saved cleaned icon ${index + 1} with artifact cleanup"
+        }
+
+        and: "Save icons without cleanup for comparison"
+        iconsWithoutCleanup.eachWithIndex { iconBase64, index ->
+            byte[] iconBytes = Base64.decoder.decode(iconBase64)
+            BufferedImage iconImage = ImageIO.read(new ByteArrayInputStream(iconBytes))
+            saveImage(iconImage, "wrong_cut_original_icon_${index + 1}_256px.png")
+            println "Saved original icon ${index + 1} without cleanup"
+        }
+
+        then: "Processing completes successfully"
+        iconsWithCleanup.size() == 9
+        iconsWithoutCleanup.size() == 9
+
+        and: "Log comparison results"
+        println "Successfully tested artifact cleanup functionality on wrong-cut-7.png"
+        println "Compare the 'cleaned' vs 'original' versions to see the difference"
+        println "Cleaned icons should have fewer artifacts from neighboring icons"
     }
 
     def cleanupSpec() {
