@@ -1,94 +1,27 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
-import {
-  Icon,
-  ServiceResult,
-  StreamingResults,
-  GenerationResponse,
-  UIState,
-} from "../lib/types";
+import { useState, useEffect } from "react";
 import Navigation from "../components/Navigation";
-import GeneratorForm from "../components/GeneratorForm";
-import ResultsDisplay from "../components/ResultsDisplay";
-import ExportModal from "../components/ExportModal";
-import ProgressModal from "../components/ProgressModal";
+import Image from "next/image";
+import { Play, Sparkles, Zap, Palette, Download, Star, User, X } from "lucide-react";
 
-export default function Page() {
-  // Form state
-  const [inputType, setInputType] = useState("text");
-  
-  const [generateVariations, setGenerateVariations] = useState(false);
-  const [generalDescription, setGeneralDescription] = useState("");
-  const [individualDescriptions, setIndividualDescriptions] = useState<
-    string[]
-  >([]);
-  const [referenceImage, setReferenceImage] = useState<File | null>(null);
-  const [imagePreview, setImagePreview] = useState<string>("");
-
-  // UI state
-  const [uiState, setUiState] = useState<UIState>("initial");
-  const [errorMessage, setErrorMessage] = useState("");
-  const [isGenerating, setIsGenerating] = useState(false);
-
-  // Generation data
-  const [currentIcons, setCurrentIcons] = useState<Icon[]>([]);
-  const [currentRequest, setCurrentRequest] = useState<any>(null);
-  const [currentResponse, setCurrentResponse] =
-    useState<GenerationResponse | null>(null);
-  const [streamingResults, setStreamingResults] = useState<StreamingResults>(
-    {},
-  );
-  const [showResultsPanes, setShowResultsPanes] = useState(false);
-
-  // Modal state
-  const [showExportModal, setShowExportModal] = useState(false);
-  const [showProgressModal, setShowProgressModal] = useState(false);
-  const [exportContext, setExportContext] = useState<any>(null);
-  const [exportProgress, setExportProgress] = useState({
-    step: 1,
-    message: "",
-    percent: 25,
-  });
-
-  // Generate more state
-  const [moreIconsVisible, setMoreIconsVisible] = useState<{
-    [key: string]: boolean;
-  }>({});
-  const [moreIconsDescriptions, setMoreIconsDescriptions] = useState<{
-    [key: string]: string[];
-  }>({});
-  
-  // Coin state
+export default function LandingPage() {
   const [coins, setCoins] = useState<number>(0);
   const [coinsLoading, setCoinsLoading] = useState(true);
+  const [authState, setAuthState] = useState<{ authenticated: boolean; user?: any }>({ authenticated: false });
+  const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
+  const [isModalVisible, setIsModalVisible] = useState(false);
 
-  // Animation state
-  const [animatingIcons, setAnimatingIcons] = useState<{
-    [key: string]: number;
-  }>({});
-  const [animationTimers, setAnimationTimers] = useState<{
-    [key: string]: NodeJS.Timeout[];
-  }>({});
-
-  // Unified progress timer
-  const [overallProgress, setOverallProgress] = useState(0);
-  const [totalDuration, setTotalDuration] = useState(0);
-  const overallProgressTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
+  // Fetch user coins and auth state
   useEffect(() => {
-    setIndividualDescriptions(new Array(9).fill(""));
-  }, []);
-
-  // Fetch user coins for form validation
-  useEffect(() => {
-    const fetchUserCoins = async () => {
+    const fetchUserData = async () => {
       try {
         const response = await fetch("/api/auth/check", {
           credentials: "include",
         });
         const data = await response.json();
+        
+        setAuthState(data);
         
         if (data.authenticated && data.user && typeof data.user.coins === 'number') {
           setCoins(data.user.coins);
@@ -96,756 +29,323 @@ export default function Page() {
           setCoins(0);
         }
       } catch (error) {
-        console.error("Error fetching user coins:", error);
+        console.error("Error fetching user data:", error);
         setCoins(0);
+        setAuthState({ authenticated: false });
       } finally {
         setCoinsLoading(false);
       }
     };
 
-    fetchUserCoins();
+    fetchUserData();
   }, []);
 
-  useEffect(() => {
-    return () => {
-      if (overallProgressTimerRef.current) {
-        clearInterval(overallProgressTimerRef.current);
-      }
-    };
-  }, []);
-
-  useEffect(() => {
-    return () => {
-      Object.values(animationTimers).forEach((timers) => {
-        timers.forEach((timer) => clearTimeout(timer));
-      });
-    };
-  }, [animationTimers]);
-
-  const startIconAnimation = (serviceId: string, iconCount: number) => {
-    if (animationTimers[serviceId]) {
-      animationTimers[serviceId].forEach((timer) => clearTimeout(timer));
-    }
-    setAnimatingIcons((prev) => ({ ...prev, [serviceId]: 0 }));
-    const timers: NodeJS.Timeout[] = [];
-    for (let i = 0; i < iconCount; i++) {
-      const timer = setTimeout(() => {
-        setAnimatingIcons((prev) => ({ ...prev, [serviceId]: i + 1 }));
-      }, i * 150);
-      timers.push(timer);
-    }
-    setAnimationTimers((prev) => ({ ...prev, [serviceId]: timers }));
+  const openLoginModal = () => {
+    setIsLoginModalOpen(true);
+    setTimeout(() => setIsModalVisible(true), 10);
   };
 
-  const clearIconAnimation = (serviceId: string) => {
-    if (animationTimers[serviceId]) {
-      animationTimers[serviceId].forEach((timer) => clearTimeout(timer));
-      setAnimationTimers((prev) => {
-        const newTimers = { ...prev };
-        delete newTimers[serviceId];
-        return newTimers;
-      });
-    }
-    setAnimatingIcons((prev) => {
-      const newAnimating = { ...prev };
-      delete newAnimating[serviceId];
-      return newAnimating;
-    });
+  const closeLoginModal = () => {
+    setIsModalVisible(false);
+    setTimeout(() => setIsLoginModalOpen(false), 300);
   };
 
-  const getIconAnimationClass = (serviceId: string, iconIndex: number) => {
-    const visibleCount = animatingIcons[serviceId] || 0;
-    const isVisible = iconIndex < visibleCount;
-    return isVisible
-      ? "opacity-100 scale-100 transition-all duration-500 ease-out"
-      : "opacity-0 scale-75 transition-all duration-500 ease-out";
+  const handleGoogleLogin = () => {
+    window.location.href = "/oauth2/authorization/google";
   };
 
-  const fileToBase64 = (file: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.readAsDataURL(file);
-      reader.onload = () => {
-        const base64 = (reader.result as string).split(",")[1];
-        resolve(base64);
-      };
-      reader.onerror = (error) => reject(error);
-    });
-  };
-
-  const formatFileSize = (bytes: number): string => {
-    if (bytes === 0) return "0 Bytes";
-    const k = 1024;
-    const sizes = ["Bytes", "KB", "MB", "GB"];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
-  };
-
-  const getServiceDisplayName = (serviceId: string): string => {
-    const serviceNames: { [key: string]: string } = {
-      flux: "Flux-Pro",
-      recraft: "Recraft V3",
-      photon: "Luma Photon",
-      gpt: "GPT Image",
-      imagen: "Imagen 4",
-    };
-    return serviceNames[serviceId] || serviceId;
-  };
-
-  const calculateTimeRemaining = () => {
-    if (overallProgress >= 100) return "0s";
-    const remainingMs = totalDuration * (1 - overallProgress / 100);
-    const remainingSeconds = Math.round(remainingMs / 1000);
-    return `${remainingSeconds}s`;
-  };
-
-  const handleImageSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) {
-      setReferenceImage(null);
-      setImagePreview("");
-      return;
-    }
-    if (!file.type.startsWith("image/")) {
-      alert("Please select a valid image file.");
-      return;
-    }
-    if (file.size > 10 * 1024 * 1024) {
-      alert("File size must be less than 10MB.");
-      return;
-    }
-    setReferenceImage(file);
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      setImagePreview(e.target?.result as string);
-    };
-    reader.readAsDataURL(file);
-  };
-
-  const removeImage = () => {
-    setReferenceImage(null);
-    setImagePreview("");
-    if (fileInputRef.current) {
-      fileInputRef.current.value = "";
+  const handleStartCreating = () => {
+    if (authState.authenticated) {
+      // If user is authenticated, redirect to main generator page
+      window.location.href = "/dashboard";
+    } else {
+      // If not authenticated, open login modal
+      openLoginModal();
     }
   };
 
-  const refreshCoins = async () => {
-    try {
-      const response = await fetch("/api/auth/check", {
-        credentials: "include",
-      });
-      const data = await response.json();
-      
-      if (data.authenticated && data.user && typeof data.user.coins === 'number') {
-        setCoins(data.user.coins);
-        
-        // Dispatch custom event to update Navigation component
-        window.dispatchEvent(new CustomEvent('coinsUpdated', { 
-          detail: { coins: data.user.coins } 
-        }));
-      }
-    } catch (error) {
-      console.error("Error refreshing coins:", error);
-    }
-  };
-
-  const validateForm = (): boolean => {
-    if (inputType === "text" && !generalDescription.trim()) {
-      setErrorMessage("Please provide a general description.");
-      return false;
-    }
-    if (inputType === "image" && !referenceImage) {
-      setErrorMessage("Please select a reference image.");
-      return false;
-    }
-    
-    const cost = generateVariations ? 2 : 1;
-    if (coins < cost) {
-      setErrorMessage(`Insufficient coins. You need ${cost} coin${cost > 1 ? 's' : ''} to generate icons.`);
-      return false;
-    }
-    
-    return true;
-  };
-
-  const generateIcons = async () => {
-    if (!validateForm()) {
-      setUiState("error");
-      return;
-    }
-    setIsGenerating(true);
-    setUiState("streaming");
-    setStreamingResults({});
-    setShowResultsPanes(false);
-    setOverallProgress(0);
-    if (overallProgressTimerRef.current) {
-      clearInterval(overallProgressTimerRef.current);
-    }
-    Object.keys(animationTimers).forEach((serviceId) => {
-      clearIconAnimation(serviceId);
-    });
-    let duration = 35000;
-    if (inputType === "image") {
-      duration = 60000;
-    }
-    setTotalDuration(duration);
-    const increment = 100 / (duration / 100);
-    overallProgressTimerRef.current = setInterval(() => {
-      setOverallProgress((prev) => {
-        const newProgress = prev + increment;
-        if (newProgress >= 100) {
-          if (overallProgressTimerRef.current) {
-            clearInterval(overallProgressTimerRef.current);
-          }
-          return 100;
-        }
-        return newProgress;
-      });
-    }, 100);
-    const formData: any = {
-            iconCount: 9,
-      generationsPerService: generateVariations ? 2 : 1,
-      individualDescriptions: individualDescriptions.filter((desc) =>
-        desc.trim(),
-      ),
-    };
-    if (inputType === "text") {
-      formData.generalDescription = generalDescription.trim();
-    } else if (inputType === "image" && referenceImage) {
-      try {
-        formData.referenceImageBase64 = await fileToBase64(referenceImage);
-      } catch (error) {
-        console.error("Error converting image to base64:", error);
-        setErrorMessage("Failed to process reference image");
-        setUiState("error");
-        setIsGenerating(false);
-        if (overallProgressTimerRef.current)
-          clearInterval(overallProgressTimerRef.current);
-        return;
-      }
-    }
-    setCurrentRequest({ ...formData });
-    try {
-      const response = await fetch("/generate-stream", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify(formData),
-      });
-      if (!response.ok) {
-        const responseText = await response.text();
-        console.error("❌ Generation request failed:", response.status, responseText);
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      const data = await response.json();
-      const { requestId, enabledServices } = data;
-      initializeStreamingResults(enabledServices);
-      const eventSource = new EventSource(`/stream/${requestId}`);
-      eventSource.addEventListener("service_update", (event) => {
-        try {
-          handleServiceUpdate(JSON.parse(event.data));
-        } catch (error) {
-          console.error("Error parsing service update:", error);
-        }
-      });
-      eventSource.addEventListener("generation_complete", (event) => {
-        try {
-          handleGenerationComplete(JSON.parse(event.data));
-          eventSource.close();
-        } catch (error) {
-          console.error("Error parsing completion update:", error);
-          eventSource.close();
-        }
-      });
-      eventSource.addEventListener("generation_error", (event) => {
-        try {
-          const update = JSON.parse(event.data);
-          setErrorMessage(update.message || "Generation failed");
-          setUiState("error");
-          setIsGenerating(false);
-          if (overallProgressTimerRef.current)
-            clearInterval(overallProgressTimerRef.current);
-          eventSource.close();
-        } catch (error) {
-          console.error("Error parsing error update:", error);
-          setErrorMessage("Generation failed with unknown error");
-          setUiState("error");
-          setIsGenerating(false);
-          if (overallProgressTimerRef.current)
-            clearInterval(overallProgressTimerRef.current);
-          eventSource.close();
-        }
-      });
-      eventSource.onerror = (error) => {
-        console.error("EventSource error:", error);
-        setErrorMessage("Connection error. Please try again.");
-        setUiState("error");
-        setIsGenerating(false);
-        if (overallProgressTimerRef.current)
-          clearInterval(overallProgressTimerRef.current);
-        eventSource.close();
-      };
-    } catch (error) {
-      console.error("❌ Error starting generation:", error);
-      if (error instanceof Error) {
-        console.error("❌ Error message:", error.message);
-        console.error("❌ Error stack:", error.stack);
-      }
-      setErrorMessage("Failed to start generation. Please try again.");
-      setUiState("error");
-      setIsGenerating(false);
-      if (overallProgressTimerRef.current)
-        clearInterval(overallProgressTimerRef.current);
-    }
-  };
-
-  const initializeStreamingResults = (enabledServices: {
-    [key: string]: boolean;
-  }) => {
-    const newResults: StreamingResults = {};
-    const allServices = [
-      { id: "flux", name: "Flux-Pro" },
-      { id: "recraft", name: "Recraft V3" },
-      { id: "photon", name: "Luma Photon" },
-      { id: "gpt", name: "" },
-      { id: "imagen", name: "Imagen 4" },
-    ];
-
-    const enabledServicesList = allServices.filter(
-      (service) => enabledServices[service.id],
-    );
-    const generationsNum = generateVariations ? 2 : 1;
-    enabledServicesList.forEach((service) => {
-      for (let genIndex = 1; genIndex <= generationsNum; genIndex++) {
-        const uniqueId = `${service.id}-gen${genIndex}`;
-        newResults[uniqueId] = {
-          icons: [],
-          generationTimeMs: 0,
-          status: "started",
-          message: "Progressing..",
-          generationIndex: genIndex,
-        };
-      }
-    });
-    setStreamingResults(newResults);
-  };
-
-  const handleServiceUpdate = (update: any) => {
-    const serviceId = update.serviceName;
-    setStreamingResults((prev) => {
-      const current = prev[serviceId] || {};
-      const updated = {
-        ...current,
-        status: update.status,
-        message: update.message || current.message,
-        generationTimeMs: update.generationTimeMs || current.generationTimeMs,
-      };
-      if (update.status === "success") {
-        updated.icons = update.icons || [];
-        updated.originalGridImageBase64 = update.originalGridImageBase64;
-        updated.generationIndex = update.generationIndex;
-      }
-      return { ...prev, [serviceId]: updated };
-    });
-  };
-
-  const handleGenerationComplete = (update: any) => {
-    if (overallProgressTimerRef.current) {
-      clearInterval(overallProgressTimerRef.current);
-    }
-    setOverallProgress(100);
-    setShowResultsPanes(true);
-    setStreamingResults((latestStreamingResults) => {
-      setTimeout(() => {
-        Object.entries(latestStreamingResults).forEach(
-          ([serviceId, result]) => {
-            if (result.status === "success" && result.icons.length > 0) {
-              startIconAnimation(serviceId, result.icons.length);
-            }
-          },
-        );
-      }, 300);
-      let allIcons: Icon[] = [];
-      Object.values(latestStreamingResults).forEach((result) => {
-        if (result.icons) {
-          allIcons = allIcons.concat(result.icons);
-        }
-      });
-      setCurrentIcons(allIcons);
-      const groupedResults = {
-        falAiResults: [] as ServiceResult[],
-        recraftResults: [] as ServiceResult[],
-        photonResults: [] as ServiceResult[],
-        gptResults: [] as ServiceResult[],
-        imagenResults: [] as ServiceResult[],
-      };
-      Object.entries(latestStreamingResults).forEach(([serviceKey, result]) => {
-        const baseServiceId = serviceKey.replace(/-gen\d+$/, "");
-        switch (baseServiceId) {
-          case "flux":
-            groupedResults.falAiResults.push(result);
-            break;
-          case "recraft":
-            groupedResults.recraftResults.push(result);
-            break;
-          case "photon":
-            groupedResults.photonResults.push(result);
-            break;
-          case "gpt":
-            groupedResults.gptResults.push(result);
-            break;
-          case "imagen":
-            groupedResults.imagenResults.push(result);
-            break;
-        }
-      });
-      setCurrentResponse({
-        icons: allIcons,
-        ...groupedResults,
-        requestId: update.requestId,
-      });
-      setUiState("results");
-      setIsGenerating(false);
-      // Refresh coins after successful generation
-      setTimeout(() => {
-        refreshCoins();
-      }, 3000); // 3-second delay to ensure backend transaction is committed
-      return latestStreamingResults;
-    });
-  };
-
-  const exportGeneration = (
-    requestId: string,
-    serviceName: string,
-    generationIndex: number,
-  ) => {
-    setExportContext({ requestId, serviceName, generationIndex });
-    setShowExportModal(true);
-  };
-
-  const confirmExport = () => {
-    if (exportContext) {
-      const { requestId, serviceName, generationIndex } = exportContext;
-      const fileName = `icon-pack-${requestId}-${serviceName}-gen${generationIndex}.zip`;
-      const exportData = {
-        requestId: requestId,
-        serviceName: serviceName,
-        generationIndex: generationIndex,
-      };
-      setShowExportModal(false);
-      downloadZip(exportData, fileName);
-    }
-  };
-
-  const downloadZip = async (exportData: any, fileName: string) => {
-    setShowProgressModal(true);
-    setExportProgress({
-      step: 1,
-      message: "Preparing export request...",
-      percent: 25,
-    });
-    try {
-      setTimeout(() => {
-        setExportProgress({
-          step: 2,
-          message: "Converting icons to multiple formats and sizes...",
-          percent: 50,
-        });
-      }, 500);
-      const response = await fetch("/export", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify(exportData),
-      });
-      setExportProgress({
-        step: 3,
-        message: "Creating ZIP file...",
-        percent: 75,
-      });
-      if (!response.ok)
-        throw new Error(`HTTP error! status: ${response.status}`);
-      const blob = await response.blob();
-      setExportProgress({
-        step: 4,
-        message: "Finalizing download...",
-        percent: 100,
-      });
-      setTimeout(() => {
-        setShowProgressModal(false);
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.style.display = "none";
-        a.href = url;
-        a.download = fileName;
-        document.body.appendChild(a);
-        a.click();
-        window.URL.revokeObjectURL(url);
-        document.body.removeChild(a);
-        // Icon pack downloaded successfully
-      }, 1000);
-    } catch (error) {
-      console.error("Error exporting icons:", error);
-      setShowProgressModal(false);
-      setErrorMessage("Failed to export icons. Please try again.");
-      setUiState("error");
-    }
-  };
-
-  // Removed toast functions - now using progress UI instead of alerts
-
-  const showMoreIconsForm = (uniqueId: string) => {
-    setMoreIconsVisible((prev) => ({ ...prev, [uniqueId]: true }));
-    setMoreIconsDescriptions((prev) => ({
-      ...prev,
-      [uniqueId]: new Array(9).fill(""),
-    }));
-  };
-
-  const hideMoreIconsForm = (uniqueId: string) => {
-    setMoreIconsVisible((prev) => ({ ...prev, [uniqueId]: false }));
-    setMoreIconsDescriptions((prev) => ({
-      ...prev,
-      [uniqueId]: new Array(9).fill(""),
-    }));
-  };
-
-  const generateMoreIcons = async (
-    serviceId: string,
-    serviceName: string,
-    generationIndex: number,
-  ) => {
-    // Check if user has enough coins
-    if (coins < 1) {
-      setErrorMessage("Insufficient coins. You need 1 coin to generate more icons.");
-      setUiState("error");
-      return;
-    }
-
-    const uniqueId = `${serviceId}-gen${generationIndex}`;
-    const descriptions = moreIconsDescriptions[uniqueId] || [];
-    const serviceResults = getServiceResults(serviceId, generationIndex);
-    if (!serviceResults?.originalGridImageBase64) {
-      setErrorMessage("Original image not found for this service");
-      setUiState("error");
-      return;
-    }
-
-    setIsGenerating(true);
-    setOverallProgress(0);
-    if (overallProgressTimerRef.current) {
-      clearInterval(overallProgressTimerRef.current);
-    }
-
-    let duration = 35000; // Default duration
-    setTotalDuration(duration);
-    const increment = 100 / (duration / 100);
-    overallProgressTimerRef.current = setInterval(() => {
-      setOverallProgress((prev) => {
-        const newProgress = prev + increment;
-        if (newProgress >= 100) {
-          if (overallProgressTimerRef.current) {
-            clearInterval(overallProgressTimerRef.current);
-          }
-          return 100;
-        }
-        return newProgress;
-      });
-    }, 100);
-
-    // Show progress for the specific generation
-    setStreamingResults((prev) => ({
-      ...prev,
-      [uniqueId]: {
-        ...prev[uniqueId],
-        status: "started",
-        message: "Generating more icons...",
-      },
-    }));
-
-    const moreIconsRequest = {
-      originalRequestId: currentResponse?.requestId,
-      serviceName: serviceId,
-      originalImageBase64: serviceResults.originalGridImageBase64,
-      generalDescription: currentRequest?.generalDescription,
-      iconDescriptions: descriptions,
-      iconCount: 9,
-      seed: serviceResults.seed,
-      generationIndex: generationIndex, // Include generation index
-    };
-
-    try {
-      const response = await fetch("/generate-more", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify(moreIconsRequest),
-      });
-      if (!response.ok)
-        throw new Error(`HTTP error! status: ${response.status}`);
-      const data = await response.json();
-
-      if (data.status === "success") {
-        // Update current icons list
-        setCurrentIcons((prev) => prev.concat(data.newIcons));
-
-        // Update streaming results
-        const previousIconCount =
-          streamingResults[uniqueId]?.icons?.length || 0;
-        setStreamingResults((prev) => ({
-          ...prev,
-          [uniqueId]: {
-            ...prev[uniqueId],
-            status: "success",
-            message: "More icons generated successfully",
-            icons: [...(prev[uniqueId]?.icons || []), ...data.newIcons],
-          },
-        }));
-
-        // Animate new icons
-        setTimeout(() => {
-          setAnimatingIcons((prev) => ({
-            ...prev,
-            [uniqueId]: previousIconCount,
-          }));
-          for (let i = 0; i < data.newIcons.length; i++) {
-            setTimeout(() => {
-              setAnimatingIcons((prev) => ({
-                ...prev,
-                [uniqueId]: previousIconCount + i + 1,
-              }));
-            }, i * 150);
-          }
-        }, 200);
-
-        hideMoreIconsForm(uniqueId);
-        // Refresh coins after successful more icons generation
-        refreshCoins();
-      } else {
-        // Show error in streaming results
-        setStreamingResults((prev) => ({
-          ...prev,
-          [uniqueId]: {
-            ...prev[uniqueId],
-            status: "error",
-            message: data.message || "Failed to generate more icons",
-          },
-        }));
-      }
-    } catch (error) {
-      console.error("Error generating more icons:", error);
-      setStreamingResults((prev) => ({
-        ...prev,
-        [uniqueId]: {
-          ...prev[uniqueId],
-          status: "error",
-          message: "Failed to generate more icons. Please try again.",
-        },
-      }));
-    } finally {
-      setIsGenerating(false);
-      if (overallProgressTimerRef.current) {
-        clearInterval(overallProgressTimerRef.current);
-      }
-      setOverallProgress(100); // Ensure progress is complete
-    }
-  };
-
-  const getServiceResults = (
-    serviceId: string,
-    generationIndex: number,
-  ): ServiceResult | null => {
-    if (!currentResponse) return null;
-    let resultsArray: ServiceResult[] | undefined;
-    switch (serviceId) {
-      case "flux":
-        resultsArray = currentResponse.falAiResults;
-        break;
-      case "recraft":
-        resultsArray = currentResponse.recraftResults;
-        break;
-      case "photon":
-        resultsArray = currentResponse.photonResults;
-        break;
-      case "gpt":
-        resultsArray = currentResponse.gptResults;
-        break;
-      case "imagen":
-        resultsArray = currentResponse.imagenResults;
-        break;
-      default:
-        return null;
-    }
-    if (resultsArray && resultsArray.length > 0) {
-      return (
-        resultsArray.find((r) => r.generationIndex === generationIndex) || null
-      );
-    }
-    return null;
-  };
+  // Sample gallery images - you can replace these with actual generated icons
+  const galleryImages = [
+    "/images/gallery/icon1.webp",
+    "/images/gallery/icon2.webp",
+    "/images/gallery/icon5.webp",
+    "/images/gallery/icon6.webp",
+    "/images/gallery/icon9.webp",
+    "/images/gallery/icon10.webp",
+    "/images/gallery/icon3.webp",
+    "/images/gallery/icon4.webp",
+    "/images/gallery/icon7.webp",
+    "/images/gallery/icon8.webp",
+    "/images/gallery/icon11.webp",
+    "/images/gallery/icon12.webp",
+  ];
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50/30">
       <Navigation coins={coins} coinsLoading={coinsLoading} />
-      <div className="flex h-screen">
-        <GeneratorForm
-          inputType={inputType}
-          setInputType={setInputType}
-          generateVariations={generateVariations}
-          setGenerateVariations={setGenerateVariations}
+      
+      {/* Hero Section with Video Card */}
+      <section className="px-6 py-12">
+        <div className="max-w-7xl mx-auto">
+          <div className="bg-white/80 backdrop-blur-md rounded-3xl shadow-2xl border border-purple-200/50 overflow-hidden">
+            <div className="flex flex-col lg:flex-row">
+              {/* Video Section - 3/4 width */}
+              <div className="lg:w-3/4 relative bg-gradient-to-br from-blue-600 to-purple-600 p-8 flex items-center justify-center min-h-[400px]">
+                <div className="relative w-full h-full flex items-center justify-center">
+                  {/* Placeholder for video - you can replace with actual video */}
+                  <div className="relative w-full max-w-2xl aspect-video bg-black/20 rounded-2xl flex items-center justify-center backdrop-blur-sm border border-white/20">
+                    <button className="group flex items-center justify-center w-20 h-20 bg-white/20 hover:bg-white/30 rounded-full transition-all duration-300 hover:scale-110">
+                      <Play className="w-8 h-8 text-white ml-1 group-hover:scale-110 transition-transform" />
+                    </button>
+                  </div>
+                  {/* Decorative elements */}
+                  <div className="absolute top-4 left-4 w-12 h-12 bg-white/10 rounded-full blur-xl"></div>
+                  <div className="absolute bottom-8 right-8 w-16 h-16 bg-purple-300/20 rounded-full blur-2xl"></div>
+                  <div className="absolute top-1/2 left-8 w-8 h-8 bg-blue-300/30 rounded-full blur-lg"></div>
+                </div>
+              </div>
+              
+              {/* Caption Section - 1/4 width */}
+              <div className="lg:w-1/4 p-8 flex flex-col justify-center bg-gradient-to-br from-white/50 to-purple-50/50">
+                <div className="space-y-6">
+                  <div className="flex items-center space-x-2">
+                    <Sparkles className="w-6 h-6 text-purple-600" />
+                    <span className="text-sm font-semibold text-purple-600 uppercase tracking-wide">AI-Powered</span>
+                  </div>
+                  
+                  <h1 className="text-3xl font-bold text-slate-900 leading-tight">
+                    Create Stunning Icon Packs in Minutes
+                  </h1>
+                  
+                  <p className="text-slate-600 leading-relaxed">
+                    Transform your ideas into professional icon packs using cutting-edge AI technology. Generate, customize, and export high-quality icons for your projects.
+                  </p>
+                  
+                  <div className="flex flex-col space-y-3">
+                    <button 
+                      onClick={handleStartCreating}
+                      className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold py-3 px-6 rounded-xl shadow-lg hover:shadow-xl transform hover:scale-[1.02] transition-all duration-200"
+                    >
+                      Start Creating
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Features Section */}
+      <section className="px-6 py-16">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center mb-12">
+            <h2 className="text-4xl font-bold text-slate-900 mb-4">
+              Powerful Features for Icon Creation
+            </h2>
+            <p className="text-xl text-slate-600 max-w-3xl mx-auto">
+              Everything you need to create professional icon packs with AI assistance
+            </p>
+          </div>
           
-          generalDescription={generalDescription}
-          setGeneralDescription={setGeneralDescription}
-          individualDescriptions={individualDescriptions}
-          setIndividualDescriptions={setIndividualDescriptions}
-          referenceImage={referenceImage}
-          imagePreview={imagePreview}
-          isGenerating={isGenerating}
-          generateIcons={generateIcons}
-          handleImageSelect={handleImageSelect}
-          removeImage={removeImage}
-          fileInputRef={fileInputRef}
-          formatFileSize={formatFileSize}
-        />
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {/* Feature 1 */}
+            <div className="bg-white/80 backdrop-blur-md rounded-2xl p-8 shadow-lg border border-purple-200/30 hover:shadow-xl transition-all duration-300 hover:scale-[1.02]">
+              <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-500 rounded-xl flex items-center justify-center mb-6">
+                <Zap className="w-6 h-6 text-white" />
+              </div>
+              <h3 className="text-xl font-bold text-slate-900 mb-4">Lightning Fast Generation</h3>
+              <p className="text-slate-600 leading-relaxed">
+                Generate complete icon packs in under a minute using our advanced AI models. No more waiting hours for custom designs.
+              </p>
+            </div>
 
-        <ResultsDisplay
-          uiState={uiState}
-          generateVariations={generateVariations}
-          isGenerating={isGenerating}
-          overallProgress={overallProgress}
-          calculateTimeRemaining={calculateTimeRemaining}
-          errorMessage={errorMessage}
-          streamingResults={streamingResults}
-          showResultsPanes={showResultsPanes}
-          getIconAnimationClass={getIconAnimationClass}
-          animatingIcons={animatingIcons}
-          exportGeneration={exportGeneration}
-          currentResponse={currentResponse}
-          moreIconsVisible={moreIconsVisible}
-          showMoreIconsForm={showMoreIconsForm}
-          hideMoreIconsForm={hideMoreIconsForm}
-          generateMoreIcons={generateMoreIcons}
-          moreIconsDescriptions={moreIconsDescriptions}
-          setMoreIconsDescriptions={setMoreIconsDescriptions}
-          getServiceDisplayName={getServiceDisplayName}
-          setIsGenerating={setIsGenerating}
-        />
-      </div>
-      <ExportModal
-        show={showExportModal}
-        onClose={() => setShowExportModal(false)}
-        onConfirm={confirmExport}
-        iconCount={
-          exportContext
-            ? streamingResults[
-                `${exportContext.serviceName}-gen${exportContext.generationIndex}`
-              ]?.icons?.length || 0
-            : 0
-        }
-      />
+            {/* Feature 2 */}
+            <div className="bg-white/80 backdrop-blur-md rounded-2xl p-8 shadow-lg border border-purple-200/30 hover:shadow-xl transition-all duration-300 hover:scale-[1.02]">
+              <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-pink-500 rounded-xl flex items-center justify-center mb-6">
+                <Palette className="w-6 h-6 text-white" />
+              </div>
+              <h3 className="text-xl font-bold text-slate-900 mb-4">Multiple AI Models</h3>
+              <p className="text-slate-600 leading-relaxed">
+                Choose from Flux-Pro, Recraft V3, Luma Photon, and more. Each model offers unique styles and capabilities for your icons.
+              </p>
+            </div>
 
-      <ProgressModal show={showProgressModal} progress={exportProgress} />
+            {/* Feature 3 */}
+            <div className="bg-white/80 backdrop-blur-md rounded-2xl p-8 shadow-lg border border-purple-200/30 hover:shadow-xl transition-all duration-300 hover:scale-[1.02]">
+              <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-blue-500 rounded-xl flex items-center justify-center mb-6">
+                <Download className="w-6 h-6 text-white" />
+              </div>
+              <h3 className="text-xl font-bold text-slate-900 mb-4">Export Ready Files</h3>
+              <p className="text-slate-600 leading-relaxed">
+                Download your icons in multiple formats and sizes. Perfect for web, mobile, and desktop applications.
+              </p>
+            </div>
+
+            {/* Feature 4 */}
+            <div className="bg-white/80 backdrop-blur-md rounded-2xl p-8 shadow-lg border border-purple-200/30 hover:shadow-xl transition-all duration-300 hover:scale-[1.02]">
+              <div className="w-12 h-12 bg-gradient-to-br from-orange-500 to-red-500 rounded-xl flex items-center justify-center mb-6">
+                <Sparkles className="w-6 h-6 text-white" />
+              </div>
+              <h3 className="text-xl font-bold text-slate-900 mb-4">Smart Variations</h3>
+              <p className="text-slate-600 leading-relaxed">
+                Generate multiple variations of each icon automatically. Get more options and find the perfect style for your project.
+              </p>
+            </div>
+
+            {/* Feature 5 */}
+            <div className="bg-white/80 backdrop-blur-md rounded-2xl p-8 shadow-lg border border-purple-200/30 hover:shadow-xl transition-all duration-300 hover:scale-[1.02]">
+              <div className="w-12 h-12 bg-gradient-to-br from-teal-500 to-green-500 rounded-xl flex items-center justify-center mb-6">
+                <Star className="w-6 h-6 text-white" />
+              </div>
+              <h3 className="text-xl font-bold text-slate-900 mb-4">Professional Quality</h3>
+              <p className="text-slate-600 leading-relaxed">
+                Every icon is generated at high resolution with crisp details. Perfect for professional applications and commercial use.
+              </p>
+            </div>
+
+            {/* Feature 6 */}
+            <div className="bg-white/80 backdrop-blur-md rounded-2xl p-8 shadow-lg border border-purple-200/30 hover:shadow-xl transition-all duration-300 hover:scale-[1.02]">
+              <div className="w-12 h-12 bg-gradient-to-br from-indigo-500 to-purple-500 rounded-xl flex items-center justify-center mb-6">
+                <Image src="/images/coin.webp" alt="Coins" width={24} height={24} />
+              </div>
+              <h3 className="text-xl font-bold text-slate-900 mb-4">Flexible Pricing</h3>
+              <p className="text-slate-600 leading-relaxed">
+                Pay only for what you use with our coin-based system. No monthly subscriptions or hidden fees.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Gallery Section */}
+      <section className="px-6 py-16 bg-gradient-to-br from-purple-50/50 to-blue-50/50">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center mb-12">
+            <h2 className="text-4xl font-bold text-slate-900 mb-4">
+              Generated Icon Gallery
+            </h2>
+            <p className="text-xl text-slate-600 max-w-3xl mx-auto">
+              Explore stunning icons created by our AI models. Each one unique and ready for your projects.
+            </p>
+          </div>
+          
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-6">
+            {galleryImages.map((image, index) => (
+              <div 
+                key={index}
+                className="group relative bg-white/80 backdrop-blur-md rounded-2xl p-6 shadow-lg border border-purple-200/30 hover:shadow-xl transition-all duration-300 hover:scale-[1.05] cursor-pointer"
+              >
+                <div className="relative aspect-square bg-gradient-to-br from-slate-100 to-slate-200 rounded-xl flex items-center justify-center overflow-hidden">
+                  <Image src={image} alt={`Gallery icon ${index + 1}`} layout="fill" className="object-cover" />
+                </div>
+                
+                {/* Hover overlay */}
+                <div className="absolute inset-0 bg-gradient-to-br from-blue-600/0 to-purple-600/0 group-hover:from-blue-600/10 group-hover:to-purple-600/10 rounded-2xl transition-all duration-300"></div>
+              </div>
+            ))}
+          </div>
+          
+          <div className="text-center mt-12">
+            <button 
+              onClick={() => window.location.href = "/gallery"}
+              className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold py-4 px-8 rounded-xl shadow-lg hover:shadow-xl transform hover:scale-[1.02] transition-all duration-200"
+            >
+              View Full Gallery
+            </button>
+          </div>
+        </div>
+      </section>
+
+      {/* CTA Section */}
+      <section className="px-6 py-16">
+        <div className="max-w-4xl mx-auto text-center">
+          <div className="bg-gradient-to-br from-blue-600 to-purple-600 rounded-3xl p-12 text-white relative overflow-hidden">
+            {/* Background decorations */}
+            <div className="absolute top-0 left-0 w-32 h-32 bg-white/10 rounded-full blur-3xl"></div>
+            <div className="absolute bottom-0 right-0 w-40 h-40 bg-purple-300/20 rounded-full blur-3xl"></div>
+            
+            <div className="relative z-10">
+              <h2 className="text-4xl font-bold mb-6">
+                Ready to Create Amazing Icons?
+              </h2>
+              <p className="text-xl mb-8 text-blue-100">
+                Join thousands of designers and developers who trust our AI-powered icon generator
+              </p>
+              <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                <button 
+                  onClick={handleStartCreating}
+                  className="bg-white text-blue-600 hover:bg-blue-50 font-semibold py-4 px-8 rounded-xl shadow-lg hover:shadow-xl transform hover:scale-[1.02] transition-all duration-200"
+                >
+                  Start Generating Icons
+                </button>
+                <button className="border-2 border-white/30 hover:border-white/50 text-white hover:bg-white/10 font-semibold py-4 px-8 rounded-xl transition-all duration-200">
+                  Learn More
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Login Modal - Same as Navigation component */}
+      {isLoginModalOpen && (
+        <div
+          className={`fixed inset-0 bg-black flex items-center justify-center z-50 transition-opacity duration-300 ${
+            isModalVisible ? "bg-opacity-50" : "bg-opacity-0"
+          }`}
+        >
+          <div
+            className={`relative bg-white/80 backdrop-blur-md rounded-3xl p-8 shadow-2xl border-2 border-purple-200/50 w-96 max-w-md mx-4 transition-all duration-300 ${
+              isModalVisible ? "opacity-100 scale-100" : "opacity-0 scale-95"
+            }`}
+          >
+            <div className="absolute inset-0 rounded-3xl bg-gradient-to-br from-white/30 to-transparent pointer-events-none"></div>
+            <div className="relative z-10">
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-2xl font-bold text-slate-900">Sign In</h2>
+                <button
+                  onClick={closeLoginModal}
+                  className="text-slate-400 hover:text-slate-600"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+
+              <div className="space-y-6">
+                <p className="text-slate-600 text-center">
+                  Sign in to access your account and generate custom icons
+                </p>
+
+                <button
+                  onClick={handleGoogleLogin}
+                  className="w-full flex items-center justify-center space-x-3 bg-white border border-gray-200 hover:bg-gray-50 text-gray-800 px-4 py-3 rounded-xl shadow-md hover:shadow-lg transition-all duration-200"
+                >
+                  <svg className="w-5 h-5" viewBox="0 0 24 24">
+                    <path
+                      fill="#4285F4"
+                      d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+                    />
+                    <path
+                      fill="#34A853"
+                      d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+                    />
+                    <path
+                      fill="#FBBC05"
+                      d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
+                    />
+                    <path
+                      fill="#EA4335"
+                      d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
+                    />
+                  </svg>
+                  <span className="font-medium">Continue with Google</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -148,7 +148,7 @@ const Navigation: React.FC<NavigationProps> = ({ coins, coinsLoading }) => {
                 </span>
               </div>
 
-              <Link href="/" className="p-2 hover:bg-gray-100 rounded-lg">
+              <Link href="/dashboard" className="p-2 hover:bg-gray-100 rounded-lg">
                 <Menu className="w-5 h-5 text-gray-700" />
               </Link>
               <Link
