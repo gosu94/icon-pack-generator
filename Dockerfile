@@ -7,7 +7,7 @@ COPY frontend/. .
 RUN yarn build
 
 # Stage 2: Build the Java Spring Boot application with Gradle and Java 21
-FROM openjdk:21-jdk-slim AS backend-builder
+FROM --platform=linux/amd64 openjdk:21-jdk-slim AS backend-builder
 WORKDIR /app/backend
 
 # Copy Gradle files first to leverage Docker cache for dependencies
@@ -25,8 +25,8 @@ COPY src ./src
 # Build the JAR (which will now include the frontend static files)
 RUN ./gradlew bootJar --no-daemon
 
-# Use OpenJDK 21 as base image with Python support
-FROM openjdk:21-jdk-slim
+# Use OpenJDK 21 as base image with Python support (force x86_64 for WebP compatibility)
+FROM --platform=linux/amd64 openjdk:21-jdk-slim
 
 # Install Python, pip, and system dependencies for rembg
 RUN apt-get update && apt-get install -y \
@@ -96,4 +96,7 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
     CMD curl -f http://localhost:8080/actuator/health 2>/dev/null || exit 1
 
 # Run the application
+# Note: This container uses x86_64 architecture for WebP native library compatibility
+# Build with: docker build --platform linux/amd64 -t icon-pack-generator .
+# Run with: docker run --platform linux/amd64 -p 8080:8080 icon-pack-generator
 CMD ["java", "-jar", "icon-pack-generator.jar"]

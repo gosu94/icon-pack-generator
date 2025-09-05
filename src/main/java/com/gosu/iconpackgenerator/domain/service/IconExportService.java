@@ -7,12 +7,14 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import javax.imageio.ImageIO;
+import javax.imageio.ImageWriter;
 import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.Base64;
+import java.util.Iterator;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
@@ -28,10 +30,22 @@ public class IconExportService {
     
     // Comprehensive ICO sizes for modern applications and high-DPI displays
     private static final int[] ICO_SIZES = {16, 32, 48, 64, 128, 256};
+    
+    // Cache for WebP writer availability to avoid repeated checks
+    private Boolean webpWriterAvailable = null;
 
     public byte[] createIconPackZip(IconExportRequest exportRequest) {
         log.info("Creating comprehensive icon pack ZIP for request: {} with {} icons (using existing transparent backgrounds)",
                 exportRequest.getRequestId(), exportRequest.getIcons().size());
+        
+        // Log available formats
+        String availableFormats = "SVG, PNG (" + PNG_SIZES.length + " sizes), ICO";
+        if (isWebpWriterAvailable()) {
+            availableFormats += ", WebP (" + PNG_SIZES.length + " sizes)";
+        } else {
+            log.info("WebP format will be excluded due to missing writers");
+        }
+        log.info("Export formats: {}", availableFormats);
 
         try (ByteArrayOutputStream baos = new ByteArrayOutputStream();
              ZipOutputStream zos = new ZipOutputStream(baos)) {
@@ -47,6 +61,14 @@ public class IconExportService {
                 // Create all formats for each icon
                 createSvgVersion(zos, iconBase64Data, baseName);
                 createPngVersions(zos, originalIconData, baseName);
+                
+                // Only create WebP if writers are available (ARM64 compatibility)
+                if (isWebpWriterAvailable()) {
+                    createWebpVersions(zos, originalIconData, baseName);
+                } else {
+                    log.debug("Skipping WebP creation for {} - no compatible WebP writer available", baseName);
+                }
+                
                 createIcoVersion(zos, originalIconData, baseName);
                 
                 log.debug("Created all formats for icon {} ({})", iconIndex, baseName);
@@ -117,6 +139,66 @@ public class IconExportService {
             
         } catch (IOException e) {
             log.error("Failed to create PNG versions for: {}", baseName, e);
+        }
+    }
+    
+    /**
+     * Check if WebP ImageWriter is available (cached result)
+     */
+    private boolean isWebpWriterAvailable() {
+        if (webpWriterAvailable == null) {
+            Iterator<ImageWriter> writers = ImageIO.getImageWritersByFormatName("webp");
+            webpWriterAvailable = writers.hasNext();
+            if (!webpWriterAvailable) {
+                log.info("No WebP ImageWriter found. WebP export will be skipped. " +
+                        "This is common on ARM64/Apple Silicon systems due to native library compatibility issues.");
+            } else {
+                log.debug("WebP ImageWriter available - WebP export will be included in icon packs");
+            }
+        }
+        return webpWriterAvailable;
+    }
+
+    private void createWebpVersions(ZipOutputStream zos, byte[] originalIconData, String baseName) throws IOException {
+        // This method should only be called when WebP writers are available
+        // The availability check is done in the calling method
+        
+        try {
+            ByteArrayInputStream bais = new ByteArrayInputStream(originalIconData);
+            BufferedImage originalImage = ImageIO.read(bais);
+
+            if (originalImage == null) {
+                log.warn("Could not read image for WEBP conversion: {}", baseName);
+                return;
+            }
+
+            for (int size : PNG_SIZES) {
+                BufferedImage resizedImage = resizeImage(originalImage, size, size);
+                
+                try {
+                    byte[] resizedImageData = imageToBytes(resizedImage, "webp");
+                    
+                    // Verify the WEBP data is not empty
+                    if (resizedImageData.length == 0) {
+                        log.warn("WebP conversion resulted in empty data for {}_{}x{}", baseName, size, size);
+                        continue;
+                    }
+
+                    ZipEntry zipEntry = new ZipEntry(String.format("webp/%s_%dx%d.webp", baseName, size, size));
+                    zos.putNextEntry(zipEntry);
+                    zos.write(resizedImageData);
+                    zos.closeEntry();
+                    
+                    log.debug("Successfully created WebP: {}_{}x{}.webp ({} bytes)", baseName, size, size, resizedImageData.length);
+                    
+                } catch (IOException webpError) {
+                    log.warn("Failed to convert {}_{}x{} to WebP format: {}. Skipping this size.", 
+                            baseName, size, size, webpError.getMessage());
+                }
+            }
+
+        } catch (IOException e) {
+            log.error("Failed to create WEBP versions for: {}", baseName, e);
         }
     }
     

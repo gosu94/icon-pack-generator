@@ -6,6 +6,7 @@ import org.springframework.context.annotation.Configuration;
 
 import javax.imageio.ImageIO;
 import javax.imageio.ImageReader;
+import javax.imageio.ImageWriter;
 import java.util.Iterator;
 
 @Configuration
@@ -35,23 +36,58 @@ public class WebPConfig {
                 log.warn("⚠️ No WebP ImageReader found. WebP images may not be supported.");
             }
             
+            // Check if WebP writers are available
+            Iterator<ImageWriter> writers = ImageIO.getImageWritersByFormatName("webp");
+            if (writers.hasNext()) {
+                ImageWriter writer = writers.next();
+                log.info("✅ WebP ImageWriter found: {}", writer.getClass().getName());
+                
+                // Log additional details about the writer
+                String[] suffixes = writer.getOriginatingProvider().getFileSuffixes();
+                String[] mimeTypes = writer.getOriginatingProvider().getMIMETypes();
+                
+                log.info("WebP writer file suffixes: {}", String.join(", ", suffixes));
+                log.info("WebP writer MIME types: {}", String.join(", ", mimeTypes));
+                
+                writer.dispose();
+            } else {
+                log.warn("⚠️ No WebP ImageWriter found. WebP export will not be available.");
+            }
+            
             // Log all available image formats
             String[] readerFormats = ImageIO.getReaderFormatNames();
+            String[] writerFormats = ImageIO.getWriterFormatNames();
             log.info("Available ImageIO reader formats: {}", String.join(", ", readerFormats));
+            log.info("Available ImageIO writer formats: {}", String.join(", ", writerFormats));
             
-            // Specifically check for webp in the list
-            boolean webpSupported = false;
+            // Specifically check for webp in the lists
+            boolean webpReadSupported = false;
+            boolean webpWriteSupported = false;
+            
             for (String format : readerFormats) {
                 if ("webp".equalsIgnoreCase(format)) {
-                    webpSupported = true;
+                    webpReadSupported = true;
                     break;
                 }
             }
             
-            if (webpSupported) {
-                log.info("✅ WebP format is supported by ImageIO");
+            for (String format : writerFormats) {
+                if ("webp".equalsIgnoreCase(format)) {
+                    webpWriteSupported = true;
+                    break;
+                }
+            }
+            
+            if (webpReadSupported) {
+                log.info("✅ WebP reading is supported by ImageIO");
             } else {
-                log.warn("⚠️ WebP format not found in ImageIO supported formats");
+                log.warn("⚠️ WebP reading not found in ImageIO supported formats");
+            }
+            
+            if (webpWriteSupported) {
+                log.info("✅ WebP writing is supported by ImageIO");
+            } else {
+                log.warn("⚠️ WebP writing not found in ImageIO supported formats");
             }
             
         } catch (Exception e) {
