@@ -91,12 +91,13 @@ export default function GalleryPage() {
     setShowExportModal(true);
   };
 
-  const confirmGalleryExport = () => {
+  const confirmGalleryExport = (formats: string[]) => {
     if (iconsToExport.length > 0) {
       const iconFilePaths = iconsToExport.map((icon) => icon.imageUrl);
       const fileName = `icon-pack-gallery-${new Date().getTime()}.zip`;
       const exportData = {
         iconFilePaths,
+        formats,
       };
       setShowExportModal(false);
       downloadZip(exportData, fileName);

@@ -9,6 +9,7 @@ import org.springframework.stereotype.Service;
 import javax.imageio.ImageIO;
 import javax.imageio.ImageWriter;
 import java.awt.*;
+import java.util.List;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -35,48 +36,46 @@ public class IconExportService {
     private Boolean webpWriterAvailable = null;
 
     public byte[] createIconPackZip(IconExportRequest exportRequest) {
-        log.info("Creating comprehensive icon pack ZIP for request: {} with {} icons (using existing transparent backgrounds)",
-                exportRequest.getRequestId(), exportRequest.getIcons().size());
-        
-        // Log available formats
-        String availableFormats = "SVG, PNG (" + PNG_SIZES.length + " sizes), ICO";
-        if (isWebpWriterAvailable()) {
-            availableFormats += ", WebP (" + PNG_SIZES.length + " sizes)";
-        } else {
-            log.info("WebP format will be excluded due to missing writers");
+        List<String> formats = exportRequest.getFormats();
+        if (formats == null || formats.isEmpty()) {
+            log.info("No formats specified, defaulting to all available formats.");
+            formats = new java.util.ArrayList<>(java.util.Arrays.asList("svg", "png", "ico"));
+            if (isWebpWriterAvailable()) {
+                formats.add("webp");
+            }
         }
-        log.info("Export formats: {}", availableFormats);
+
+        log.info("Creating icon pack for request: {} with {} icons and formats: {}",
+                exportRequest.getRequestId(), exportRequest.getIcons().size(), formats);
 
         try (ByteArrayOutputStream baos = new ByteArrayOutputStream();
              ZipOutputStream zos = new ZipOutputStream(baos)) {
 
             int iconIndex = 1;
             for (IconGenerationResponse.GeneratedIcon icon : exportRequest.getIcons()) {
-                // Use icons directly since they already have transparent backgrounds
                 String iconBase64Data = icon.getBase64Data();
                 byte[] originalIconData = Base64.getDecoder().decode(iconBase64Data);
-                
                 String baseName = createBaseName(icon, iconIndex);
-                
-                // Create all formats for each icon
-                createSvgVersion(zos, iconBase64Data, baseName);
-                createPngVersions(zos, originalIconData, baseName);
-                
-                // Only create WebP if writers are available (ARM64 compatibility)
-                if (isWebpWriterAvailable()) {
-                    createWebpVersions(zos, originalIconData, baseName);
-                } else {
-                    log.debug("Skipping WebP creation for {} - no compatible WebP writer available", baseName);
+
+                if (formats.contains("svg")) {
+                    createSvgVersion(zos, iconBase64Data, baseName);
                 }
-                
-                createIcoVersion(zos, originalIconData, baseName);
-                
-                log.debug("Created all formats for icon {} ({})", iconIndex, baseName);
+                if (formats.contains("png")) {
+                    createPngVersions(zos, originalIconData, baseName);
+                }
+                if (formats.contains("webp") && isWebpWriterAvailable()) {
+                    createWebpVersions(zos, originalIconData, baseName);
+                }
+                if (formats.contains("ico")) {
+                    createIcoVersion(zos, originalIconData, baseName);
+                }
+
+                log.debug("Created requested formats for icon {} ({})", iconIndex, baseName);
                 iconIndex++;
             }
 
             zos.finish();
-            log.info("Successfully created comprehensive ZIP file with {} icons in multiple formats", exportRequest.getIcons().size());
+            log.info("Successfully created icon pack ZIP with {} icons in formats: {}", exportRequest.getIcons().size(), formats);
             return baos.toByteArray();
 
         } catch (IOException e) {

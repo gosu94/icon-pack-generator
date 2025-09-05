@@ -141,6 +141,7 @@ public class IconExportController implements IconExportControllerAPI {
             exportRequest.setRequestId("gallery-export-" + UUID.randomUUID().toString().substring(0, 8));
             exportRequest.setServiceName("gallery");
             exportRequest.setGenerationIndex(1);
+            exportRequest.setFormats(galleryExportRequest.getFormats()); // Pass formats from gallery request
 
             byte[] zipData = iconExportService.createIconPackZip(exportRequest);
 

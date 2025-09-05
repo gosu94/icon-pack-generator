@@ -524,7 +524,7 @@ export default function Page() {
     setShowExportModal(true);
   };
 
-  const confirmExport = () => {
+  const confirmExport = (formats: string[]) => {
     if (exportContext) {
       const { requestId, serviceName, generationIndex } = exportContext;
       const fileName = `icon-pack-${requestId}-${serviceName}-gen${generationIndex}.zip`;
@@ -532,6 +532,7 @@ export default function Page() {
         requestId: requestId,
         serviceName: serviceName,
         generationIndex: generationIndex,
+        formats: formats,
       };
       setShowExportModal(false);
       downloadZip(exportData, fileName);

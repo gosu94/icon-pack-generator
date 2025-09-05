@@ -1,9 +1,10 @@
-import React from "react";
+import React, { useState } from "react";
+import { Switch } from "@/components/ui/switch";
 
 interface ExportModalProps {
   show: boolean;
   onClose: () => void;
-  onConfirm: () => void;
+  onConfirm: (formats: string[]) => void;
   iconCount: number;
 }
 
@@ -13,6 +14,24 @@ const ExportModal: React.FC<ExportModalProps> = ({
   onConfirm,
   iconCount,
 }) => {
+  const [formats, setFormats] = useState({
+    svg: true,
+    png: true,
+    ico: true,
+    webp: true,
+  });
+
+  const handleFormatChange = (format: keyof typeof formats) => {
+    setFormats((prev) => ({ ...prev, [format]: !prev[format] }));
+  };
+
+  const handleConfirm = () => {
+    const selectedFormats = Object.entries(formats)
+      .filter(([, isSelected]) => isSelected)
+      .map(([format]) => format);
+    onConfirm(selectedFormats);
+  };
+
   if (!show) return null;
 
   return (
@@ -42,7 +61,7 @@ const ExportModal: React.FC<ExportModalProps> = ({
         
         <div className="space-y-4">
           <p className="text-gray-600 text-sm">
-            Download a comprehensive icon pack with multiple formats and sizes.
+            Select the formats you need for your icon pack.
           </p>
           
           <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg p-4 border border-blue-100">
@@ -60,33 +79,25 @@ const ExportModal: React.FC<ExportModalProps> = ({
                   d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10"
                 />
               </svg>
-              <div className="space-y-2">
-                <p className="text-sm font-semibold text-blue-900">
-                  Comprehensive Icon Pack
-                </p>
-                <p className="text-sm text-blue-800">
-                  {iconCount} icons • Multiple formats included
+              <div className="w-full">
+                <p className="text-sm font-semibold text-blue-900 mb-3">
+                  {iconCount} icons • Choose your formats
                 </p>
                 
-                <div className="grid grid-cols-1 gap-2 mt-3">
-                  <div className="flex items-center text-xs text-blue-700">
-                    <span className="w-2 h-2 bg-blue-400 rounded-full mr-2"></span>
-                    <strong>SVG:</strong>&nbsp;Vector format (scalable)
-                  </div>
-                  <div className="flex items-center text-xs text-blue-700">
-                    <span className="w-2 h-2 bg-green-400 rounded-full mr-2"></span>
-                    <strong>PNG:</strong>&nbsp;16px, 32px, 64px, 128px, 256px, 512px
-                  </div>
-                  <div className="flex items-center text-xs text-blue-700">
-                    <span className="w-2 h-2 bg-purple-400 rounded-full mr-2"></span>
-                    <strong>ICO:</strong>&nbsp;All sizes (16px-256px) for apps & favicons
-                  </div>
+                <div className="grid grid-cols-2 gap-4">
+                  {Object.keys(formats).map((format) => (
+                    <div key={format} className="flex items-center space-x-2">
+                      <Switch
+                        id={format}
+                        checked={formats[format as keyof typeof formats]}
+                        onCheckedChange={() => handleFormatChange(format as keyof typeof formats)}
+                      />
+                      <label htmlFor={format} className="text-sm font-medium text-gray-700 uppercase cursor-pointer">
+                        {format}
+                      </label>
+                    </div>
+                  ))}
                 </div>
-                
-                <p className="text-xs text-blue-600 mt-2">
-                  ✓ All icons have transparent backgrounds<br/>
-                  ✓ Ready for web and app development
-                </p>
               </div>
             </div>
           </div>
@@ -100,7 +111,7 @@ const ExportModal: React.FC<ExportModalProps> = ({
             Cancel
           </button>
           <button
-            onClick={onConfirm}
+            onClick={handleConfirm}
             className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
           >
             Download ZIP
