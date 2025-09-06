@@ -1,72 +1,27 @@
-import React, { useEffect, useState } from "react";
+'use client';
+
+import React, { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import {
-    Home,
     Image as ImageIcon,
     LogOut,
-    Menu,
     MessageSquare,
     Paintbrush,
     Settings,
     Store,
     User,
     X,
+    Sparkles,
 } from "lucide-react";
+import { useAuth } from "../context/AuthContext";
 
-interface NavigationProps {
-  coins: number;
-  coinsLoading: boolean;
-}
+interface NavigationProps {}
 
-interface AuthUser {
-  email: string;
-  id: number;
-  coins: number;
-}
-
-interface AuthState {
-  authenticated: boolean;
-  user?: AuthUser;
-}
-
-const Navigation: React.FC<NavigationProps> = ({ coins, coinsLoading }) => {
-  const [authState, setAuthState] = useState<AuthState>({ authenticated: false });
+const Navigation: React.FC<NavigationProps> = () => {
+  const { authState, coinsLoading, handleLogout } = useAuth();
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const [isModalVisible, setIsModalVisible] = useState(false);
-
-  useEffect(() => {
-    checkAuthenticationStatus();
-
-    // Listen for coin updates from main page
-    const handleCoinUpdate = (event: CustomEvent) => {
-      setAuthState(prev => ({
-        ...prev,
-        user: prev.user ? { ...prev.user, coins: event.detail.coins } : prev.user
-      }));
-    };
-
-    // Listen for page visibility changes to refresh coins
-    const handleVisibilityChange = () => {
-      if (!document.hidden) {
-        checkAuthenticationStatus();
-      }
-    };
-
-    // Set up periodic refresh of auth status every 5 minutes  
-    const refreshInterval = setInterval(() => {
-      checkAuthenticationStatus();
-    }, 300000);
-
-    window.addEventListener('coinsUpdated', handleCoinUpdate as EventListener);
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-
-    return () => {
-      window.removeEventListener('coinsUpdated', handleCoinUpdate as EventListener);
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-      clearInterval(refreshInterval);
-    };
-  }, []);
 
   const openLoginModal = () => {
     setIsLoginModalOpen(true);
@@ -78,40 +33,12 @@ const Navigation: React.FC<NavigationProps> = ({ coins, coinsLoading }) => {
     setTimeout(() => setIsLoginModalOpen(false), 300);
   };
 
-  const checkAuthenticationStatus = async () => {
-    try {
-      const response = await fetch("/api/auth/check", {
-        credentials: "include",
-      });
-      const data = await response.json();
-      setAuthState(data);
-    } catch (error) {
-      console.error("Error checking auth status:", error);
-      setAuthState({ authenticated: false });
-    }
-  };
-
-  const handleLogout = async () => {
-    try {
-      const response = await fetch("/api/auth/logout", {
-        method: "POST",
-        credentials: "include",
-      });
-      if (response.ok) {
-        setAuthState({ authenticated: false });
-        window.location.reload(); // Reload to clear any cached data
-      }
-    } catch (error) {
-      console.error("Error during logout:", error);
-    }
-  };
-
   const handleGoogleLogin = () => {
     window.location.href = "/oauth2/authorization/google";
   };
 
   const displayCoins =
-    authState.authenticated && authState.user ? authState.user.coins : coins;
+    authState.authenticated && authState.user ? authState.user.coins : 0;
 
   return (
     <nav className="border-b border-gray-200 px-6 py-4">
@@ -149,7 +76,7 @@ const Navigation: React.FC<NavigationProps> = ({ coins, coinsLoading }) => {
               </div>
 
               <Link href="/dashboard" className="p-2 hover:bg-gray-100 rounded-lg">
-                <Menu className="w-5 h-5 text-gray-700" />
+                <Sparkles className="w-5 h-5 text-gray-700" />
               </Link>
               <Link
                 href="/gallery"

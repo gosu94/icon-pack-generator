@@ -29,10 +29,6 @@ export default function GalleryPage() {
   const [showProgressModal, setShowProgressModal] = useState(false);
   const [iconsToExport, setIconsToExport] = useState<Icon[]>([]);
   
-  // Coin state
-  const [coins, setCoins] = useState<number>(0);
-  const [coinsLoading, setCoinsLoading] = useState(true);
-
   const [exportProgress, setExportProgress] = useState({
     step: 1,
     message: "",
@@ -71,11 +67,6 @@ export default function GalleryPage() {
     };
 
     fetchIcons();
-  }, []);
-
-  // Initialize coins as 0 since Navigation handles coin display via auth check
-  useEffect(() => {
-    setCoinsLoading(false);
   }, []);
 
   const handleSelectRequest = (requestId: string) => {
@@ -167,7 +158,7 @@ export default function GalleryPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50/30">
-      <Navigation coins={coins} coinsLoading={coinsLoading} />
+      <Navigation />
       <div className="container mx-auto px-4 py-8">
         {loading && <p>Loading...</p>}
         {error && <p className="text-red-500">{error}</p>}

@@ -5,14 +5,6 @@ import Navigation from "../../components/Navigation";
 import Image from "next/image";
 
 export default function StorePage() {
-  const [coins, setCoins] = useState<number>(0);
-  const [coinsLoading, setCoinsLoading] = useState(true);
-
-  useEffect(() => {
-    // Initialize coins as 0 since Navigation handles coin display via auth check
-    setCoinsLoading(false);
-  }, []);
-
   const plans = [
     { name: "Starter Pack", price: 5, coins: 8, icons: 72, popular: false },
     { name: "Creator Pack", price: 10, coins: 18, icons: 162, popular: true },
@@ -21,7 +13,7 @@ export default function StorePage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50/30">
-      <Navigation coins={coins} coinsLoading={coinsLoading} />
+      <Navigation />
       <main className="container mx-auto px-4 py-12">
         <div className="text-center mb-12">
           <h1 className="text-4xl font-bold tracking-tight text-gray-900 sm:text-6xl">

@@ -86,3 +86,42 @@
     @apply bg-background text-foreground;
   }
 }
+
+@keyframes scroll-left-to-right {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+.animate-scroll-left-to-right {
+  animation: scroll-left-to-right 60s linear infinite;
+}
+
+@keyframes scroll-left-to-right-slow {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+.animate-scroll-left-to-right-slow {
+  animation: scroll-left-to-right-slow 80s linear infinite;
+}
+
+@keyframes scroll-left-to-right-fast {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+.animate-scroll-left-to-right-fast {
+  animation: scroll-left-to-right-fast 40s linear infinite;
+}

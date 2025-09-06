@@ -1,44 +1,15 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import Navigation from "../components/Navigation";
 import Image from "next/image";
 import { Play, Sparkles, Zap, Palette, Download, Star, User, X } from "lucide-react";
+import { useAuth } from "../context/AuthContext";
 
 export default function LandingPage() {
-  const [coins, setCoins] = useState<number>(0);
-  const [coinsLoading, setCoinsLoading] = useState(true);
-  const [authState, setAuthState] = useState<{ authenticated: boolean; user?: any }>({ authenticated: false });
+  const { authState } = useAuth();
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const [isModalVisible, setIsModalVisible] = useState(false);
-
-  // Fetch user coins and auth state
-  useEffect(() => {
-    const fetchUserData = async () => {
-      try {
-        const response = await fetch("/api/auth/check", {
-          credentials: "include",
-        });
-        const data = await response.json();
-        
-        setAuthState(data);
-        
-        if (data.authenticated && data.user && typeof data.user.coins === 'number') {
-          setCoins(data.user.coins);
-        } else {
-          setCoins(0);
-        }
-      } catch (error) {
-        console.error("Error fetching user data:", error);
-        setCoins(0);
-        setAuthState({ authenticated: false });
-      } finally {
-        setCoinsLoading(false);
-      }
-    };
-
-    fetchUserData();
-  }, []);
 
   const openLoginModal = () => {
     setIsLoginModalOpen(true);
@@ -65,7 +36,7 @@ export default function LandingPage() {
   };
 
   // Sample gallery images - you can replace these with actual generated icons
-  const galleryImages = [
+  const galleryImagesRow1 = [
     "/images/gallery/icon1.webp",
     "/images/gallery/icon2.webp",
     "/images/gallery/icon5.webp",
@@ -80,9 +51,40 @@ export default function LandingPage() {
     "/images/gallery/icon12.webp",
   ];
 
+  const galleryImagesRow2 = [
+    "/images/gallery/icon3.webp",
+    "/images/gallery/icon4.webp",
+    "/images/gallery/icon7.webp",
+    "/images/gallery/icon8.webp",
+    "/images/gallery/icon11.webp",
+    "/images/gallery/icon12.webp",
+    "/images/gallery/icon1.webp",
+    "/images/gallery/icon2.webp",
+    "/images/gallery/icon5.webp",
+    "/images/gallery/icon6.webp",
+    "/images/gallery/icon9.webp",
+    "/images/gallery/icon10.webp",
+  ];
+
+  const galleryImagesRow3 = [
+    "/images/gallery/icon9.webp",
+    "/images/gallery/icon10.webp",
+    "/images/gallery/icon3.webp",
+    "/images/gallery/icon4.webp",
+    "/images/gallery/icon7.webp",
+    "/images/gallery/icon8.webp",
+    "/images/gallery/icon11.webp",
+    "/images/gallery/icon12.webp",
+    "/images/gallery/icon1.webp",
+    "/images/gallery/icon2.webp",
+    "/images/gallery/icon5.webp",
+    "/images/gallery/icon6.webp",
+  ];
+
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50/30">
-      <Navigation coins={coins} coinsLoading={coinsLoading} />
+      <Navigation />
       
       {/* Hero Section with Video Card */}
       <section className="px-6 py-12">
@@ -219,7 +221,7 @@ export default function LandingPage() {
       </section>
 
       {/* Gallery Section */}
-      <section className="px-6 py-16 bg-gradient-to-br from-purple-50/50 to-blue-50/50">
+      <section className="px-6 py-16 bg-gradient-to-br from-purple-50/50 to-blue-50/50 overflow-hidden">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-12">
             <h2 className="text-4xl font-bold text-slate-900 mb-4">
@@ -230,20 +232,37 @@ export default function LandingPage() {
             </p>
           </div>
           
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-6">
-            {galleryImages.map((image, index) => (
-              <div 
-                key={index}
-                className="group relative bg-white/80 backdrop-blur-md rounded-2xl p-6 shadow-lg border border-purple-200/30 hover:shadow-xl transition-all duration-300 hover:scale-[1.05] cursor-pointer"
-              >
-                <div className="relative aspect-square bg-gradient-to-br from-slate-100 to-slate-200 rounded-xl flex items-center justify-center overflow-hidden">
-                  <Image src={image} alt={`Gallery icon ${index + 1}`} layout="fill" className="object-cover" />
+          <div className="relative flex flex-col gap-6">
+            <div className="flex w-max animate-scroll-left-to-right-fast">
+              {[...galleryImagesRow1, ...galleryImagesRow1].map((image, index) => (
+                <div key={index} className="group relative bg-white/80 backdrop-blur-md rounded-2xl p-6 shadow-lg border border-purple-200/30 hover:shadow-xl transition-all duration-300 hover:scale-[1.05] cursor-pointer mx-3">
+                  <div className="relative aspect-square w-48 h-48 bg-gradient-to-br from-slate-100 to-slate-200 rounded-xl flex items-center justify-center overflow-hidden">
+                    <Image src={image} alt={`Gallery icon ${index + 1}`} layout="fill" className="object-cover" />
+                  </div>
+                  <div className="absolute inset-0 bg-gradient-to-br from-blue-600/0 to-purple-600/0 group-hover:from-blue-600/10 group-hover:to-purple-600/10 rounded-2xl transition-all duration-300"></div>
                 </div>
-                
-                {/* Hover overlay */}
-                <div className="absolute inset-0 bg-gradient-to-br from-blue-600/0 to-purple-600/0 group-hover:from-blue-600/10 group-hover:to-purple-600/10 rounded-2xl transition-all duration-300"></div>
-              </div>
-            ))}
+              ))}
+            </div>
+            <div className="flex w-max animate-scroll-left-to-right">
+              {[...galleryImagesRow2, ...galleryImagesRow2].map((image, index) => (
+                <div key={index} className="group relative bg-white/80 backdrop-blur-md rounded-2xl p-6 shadow-lg border border-purple-200/30 hover:shadow-xl transition-all duration-300 hover:scale-[1.05] cursor-pointer mx-3">
+                  <div className="relative aspect-square w-48 h-48 bg-gradient-to-br from-slate-100 to-slate-200 rounded-xl flex items-center justify-center overflow-hidden">
+                    <Image src={image} alt={`Gallery icon ${index + 1}`} layout="fill" className="object-cover" />
+                  </div>
+                  <div className="absolute inset-0 bg-gradient-to-br from-blue-600/0 to-purple-600/0 group-hover:from-blue-600/10 group-hover:to-purple-600/10 rounded-2xl transition-all duration-300"></div>
+                </div>
+              ))}
+            </div>
+            <div className="flex w-max animate-scroll-left-to-right-slow">
+              {[...galleryImagesRow3, ...galleryImagesRow3].map((image, index) => (
+                <div key={index} className="group relative bg-white/80 backdrop-blur-md rounded-2xl p-6 shadow-lg border border-purple-200/30 hover:shadow-xl transition-all duration-300 hover:scale-[1.05] cursor-pointer mx-3">
+                  <div className="relative aspect-square w-48 h-48 bg-gradient-to-br from-slate-100 to-slate-200 rounded-xl flex items-center justify-center overflow-hidden">
+                    <Image src={image} alt={`Gallery icon ${index + 1}`} layout="fill" className="object-cover" />
+                  </div>
+                  <div className="absolute inset-0 bg-gradient-to-br from-blue-600/0 to-purple-600/0 group-hover:from-blue-600/10 group-hover:to-purple-600/10 rounded-2xl transition-all duration-300"></div>
+                </div>
+              ))}
+            </div>
           </div>
           
           <div className="text-center mt-12">

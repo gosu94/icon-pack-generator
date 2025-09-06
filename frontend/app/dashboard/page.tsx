@@ -13,8 +13,11 @@ import GeneratorForm from "../../components/GeneratorForm";
 import ResultsDisplay from "../../components/ResultsDisplay";
 import ExportModal from "../../components/ExportModal";
 import ProgressModal from "../../components/ProgressModal";
+import { useAuth } from "../../context/AuthContext";
 
 export default function Page() {
+  const { authState, checkAuthenticationStatus } = useAuth();
+
   // Form state
   const [inputType, setInputType] = useState("text");
   
@@ -58,10 +61,6 @@ export default function Page() {
   const [moreIconsDescriptions, setMoreIconsDescriptions] = useState<{
     [key: string]: string[];
   }>({});
-  
-  // Coin state
-  const [coins, setCoins] = useState<number>(0);
-  const [coinsLoading, setCoinsLoading] = useState(true);
 
   // Animation state
   const [animatingIcons, setAnimatingIcons] = useState<{
@@ -79,31 +78,6 @@ export default function Page() {
 
   useEffect(() => {
     setIndividualDescriptions(new Array(9).fill(""));
-  }, []);
-
-  // Fetch user coins for form validation
-  useEffect(() => {
-    const fetchUserCoins = async () => {
-      try {
-        const response = await fetch("/api/auth/check", {
-          credentials: "include",
-        });
-        const data = await response.json();
-        
-        if (data.authenticated && data.user && typeof data.user.coins === 'number') {
-          setCoins(data.user.coins);
-        } else {
-          setCoins(0);
-        }
-      } catch (error) {
-        console.error("Error fetching user coins:", error);
-        setCoins(0);
-      } finally {
-        setCoinsLoading(false);
-      }
-    };
-
-    fetchUserCoins();
   }, []);
 
   useEffect(() => {
@@ -230,26 +204,6 @@ export default function Page() {
     }
   };
 
-  const refreshCoins = async () => {
-    try {
-      const response = await fetch("/api/auth/check", {
-        credentials: "include",
-      });
-      const data = await response.json();
-      
-      if (data.authenticated && data.user && typeof data.user.coins === 'number') {
-        setCoins(data.user.coins);
-        
-        // Dispatch custom event to update Navigation component
-        window.dispatchEvent(new CustomEvent('coinsUpdated', { 
-          detail: { coins: data.user.coins } 
-        }));
-      }
-    } catch (error) {
-      console.error("Error refreshing coins:", error);
-    }
-  };
-
   const validateForm = (): boolean => {
     if (inputType === "text" && !generalDescription.trim()) {
       setErrorMessage("Please provide a general description.");
@@ -261,7 +215,7 @@ export default function Page() {
     }
     
     const cost = generateVariations ? 2 : 1;
-    if (coins < cost) {
+    if (authState.user && authState.user.coins < cost) {
       setErrorMessage(`Insufficient coins. You need ${cost} coin${cost > 1 ? 's' : ''} to generate icons.`);
       return false;
     }
@@ -509,7 +463,7 @@ export default function Page() {
       setIsGenerating(false);
       // Refresh coins after successful generation
       setTimeout(() => {
-        refreshCoins();
+        checkAuthenticationStatus();
       }, 3000); // 3-second delay to ensure backend transaction is committed
       return latestStreamingResults;
     });
@@ -618,7 +572,7 @@ export default function Page() {
     generationIndex: number,
   ) => {
     // Check if user has enough coins
-    if (coins < 1) {
+    if (authState.user && authState.user.coins < 1) {
       setErrorMessage("Insufficient coins. You need 1 coin to generate more icons.");
       setUiState("error");
       return;
@@ -722,7 +676,7 @@ export default function Page() {
 
         hideMoreIconsForm(uniqueId);
         // Refresh coins after successful more icons generation
-        refreshCoins();
+        checkAuthenticationStatus();
       } else {
         // Show error in streaming results
         setStreamingResults((prev) => ({
@@ -788,7 +742,7 @@ export default function Page() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50/30">
-      <Navigation coins={coins} coinsLoading={coinsLoading} />
+      <Navigation />
       <div className="flex h-screen">
         <GeneratorForm
           inputType={inputType}

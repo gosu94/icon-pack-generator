@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef } from "react";
 import Navigation from "../../components/Navigation";
+
 
 type ProcessedImageResponse = {
   success: boolean;
@@ -25,15 +26,6 @@ export default function BackgroundRemoverPage() {
   const [stats, setStats] = useState<Partial<ProcessedImageResponse>>({});
   const [error, setError] = useState<string>("");
   const fileInputRef = useRef<HTMLInputElement>(null);
-  
-  // Coin state
-  const [coins, setCoins] = useState<number>(0);
-  const [coinsLoading, setCoinsLoading] = useState(true);
-
-  // Initialize coins as 0 since Navigation handles coin display via auth check
-  useEffect(() => {
-    setCoinsLoading(false);
-  }, []);
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -117,7 +109,7 @@ export default function BackgroundRemoverPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50/30">
-      <Navigation coins={coins} coinsLoading={coinsLoading} />
+      <Navigation />
       <div className="container mx-auto px-4 py-12">
         <div className="max-w-4xl mx-auto">
           <div className="text-center mb-12">
