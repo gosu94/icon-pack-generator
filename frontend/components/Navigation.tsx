@@ -166,9 +166,9 @@ const Navigation: React.FC<NavigationProps> = ({ coins, coinsLoading }) => {
               <Link href="/store" className="p-2 hover:bg-gray-100 rounded-lg">
                 <Store className="w-5 h-5 text-gray-700" />
               </Link>
-              <button className="p-2 hover:bg-gray-100 rounded-lg">
+              <Link href="/feedback" className="p-2 hover:bg-gray-100 rounded-lg">
                 <MessageSquare className="w-5 h-5 text-gray-700" />
-              </button>
+              </Link>
               <button className="p-2 hover:bg-gray-100 rounded-lg">
                 <Settings className="w-5 h-5 text-gray-700" />
               </button>
