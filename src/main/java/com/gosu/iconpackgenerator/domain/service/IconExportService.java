@@ -2,12 +2,13 @@ package com.gosu.iconpackgenerator.domain.service;
 
 import com.gosu.iconpackgenerator.domain.dto.IconExportRequest;
 import com.gosu.iconpackgenerator.domain.dto.IconGenerationResponse;
+import dev.matrixlab.webp4j.NativeWebP;
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import javax.imageio.ImageIO;
-import javax.imageio.ImageWriter;
 import java.awt.*;
 import java.util.List;
 import java.awt.image.BufferedImage;
@@ -15,7 +16,6 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.Base64;
-import java.util.Iterator;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
@@ -32,15 +32,16 @@ public class IconExportService {
     // Comprehensive ICO sizes for modern applications and high-DPI displays
     private static final int[] ICO_SIZES = {16, 32, 48, 64, 128, 256};
     
-    // Cache for WebP writer availability to avoid repeated checks
-    private Boolean webpWriterAvailable = null;
+    // Cache for WebP4j availability to avoid repeated checks
+    private Boolean webp4jAvailable = null;
+    private NativeWebP nativeWebP = null;
 
     public byte[] createIconPackZip(IconExportRequest exportRequest) {
         List<String> formats = exportRequest.getFormats();
         if (formats == null || formats.isEmpty()) {
             log.info("No formats specified, defaulting to all available formats.");
             formats = new java.util.ArrayList<>(java.util.Arrays.asList("svg", "png", "ico"));
-            if (isWebpWriterAvailable()) {
+            if (isWebp4jAvailable()) {
                 formats.add("webp");
             }
         }
@@ -63,7 +64,7 @@ public class IconExportService {
                 if (formats.contains("png")) {
                     createPngVersions(zos, originalIconData, baseName);
                 }
-                if (formats.contains("webp") && isWebpWriterAvailable()) {
+                if (formats.contains("webp") && isWebp4jAvailable()) {
                     createWebpVersions(zos, originalIconData, baseName);
                 }
                 if (formats.contains("ico")) {
@@ -142,24 +143,26 @@ public class IconExportService {
     }
     
     /**
-     * Check if WebP ImageWriter is available (cached result)
+     * Check if WebP4j library is available (cached result)
      */
-    private boolean isWebpWriterAvailable() {
-        if (webpWriterAvailable == null) {
-            Iterator<ImageWriter> writers = ImageIO.getImageWritersByFormatName("webp");
-            webpWriterAvailable = writers.hasNext();
-            if (!webpWriterAvailable) {
-                log.info("No WebP ImageWriter found. WebP export will be skipped. " +
-                        "This is common on ARM64/Apple Silicon systems due to native library compatibility issues.");
-            } else {
-                log.debug("WebP ImageWriter available - WebP export will be included in icon packs");
-            }
+    private boolean isWebp4jAvailable() {
+        if (webp4jAvailable == null) {
+        try {
+            // Try to create NativeWebP instance to test if the library is available
+            nativeWebP = new NativeWebP();
+            webp4jAvailable = true;
+            log.info("WebP4j library loaded successfully - WebP export will be available");
+        } catch (Exception e) {
+            webp4jAvailable = false;
+            nativeWebP = null;
+            log.warn("WebP4j library not available. WebP export will be skipped. Error: {}", e.getMessage());
         }
-        return webpWriterAvailable;
+        }
+        return webp4jAvailable;
     }
 
     private void createWebpVersions(ZipOutputStream zos, byte[] originalIconData, String baseName) throws IOException {
-        // This method should only be called when WebP writers are available
+        // This method should only be called when WebP4j is available
         // The availability check is done in the calling method
         
         try {
@@ -175,22 +178,22 @@ public class IconExportService {
                 BufferedImage resizedImage = resizeImage(originalImage, size, size);
                 
                 try {
-                    byte[] resizedImageData = imageToBytes(resizedImage, "webp");
+                    byte[] webpData = encodeImageToWebP(resizedImage);
                     
                     // Verify the WEBP data is not empty
-                    if (resizedImageData.length == 0) {
+                    if (webpData.length == 0) {
                         log.warn("WebP conversion resulted in empty data for {}_{}x{}", baseName, size, size);
                         continue;
                     }
 
                     ZipEntry zipEntry = new ZipEntry(String.format("webp/%s_%dx%d.webp", baseName, size, size));
                     zos.putNextEntry(zipEntry);
-                    zos.write(resizedImageData);
+                    zos.write(webpData);
                     zos.closeEntry();
                     
-                    log.debug("Successfully created WebP: {}_{}x{}.webp ({} bytes)", baseName, size, size, resizedImageData.length);
+                    log.debug("Successfully created WebP: {}_{}x{}.webp ({} bytes)", baseName, size, size, webpData.length);
                     
-                } catch (IOException webpError) {
+                } catch (Exception webpError) {
                     log.warn("Failed to convert {}_{}x{} to WebP format: {}. Skipping this size.", 
                             baseName, size, size, webpError.getMessage());
                 }
@@ -296,6 +299,81 @@ public class IconExportService {
         stream.write((value >> 8) & 0xFF);
         stream.write((value >> 16) & 0xFF);
         stream.write((value >> 24) & 0xFF);
+    }
+
+    /**
+     * Encode BufferedImage to WebP format using WebP4j
+     */
+    private byte[] encodeImageToWebP(BufferedImage image) throws Exception {
+        int width = image.getWidth();
+        int height = image.getHeight();
+        boolean hasAlpha = image.getColorModel().hasAlpha();
+        
+        if (nativeWebP == null) {
+            throw new Exception("NativeWebP not initialized");
+        }
+        
+        // Convert BufferedImage to byte array based on the example WebPCodec
+        byte[] imageBytes = convertBufferedImageToBytes(image);
+        if (imageBytes.length == 0) {
+            throw new Exception("Failed to convert BufferedImage to byte array");
+        }
+        
+        // Calculate stride (bytes per row)
+        int stride = width * (hasAlpha ? 4 : 3);
+        float quality = 75.0f;
+        
+        // Encode using the native library (following the WebPCodec example pattern)
+        byte[] encodedWebP = hasAlpha 
+            ? nativeWebP.encodeRGBA(imageBytes, width, height, stride, quality)
+            : nativeWebP.encodeRGB(imageBytes, width, height, stride, quality);
+            
+        if (encodedWebP == null || encodedWebP.length == 0) {
+            throw new Exception("WebP encoding failed - native library returned null or empty result");
+        }
+        
+        return encodedWebP;
+    }
+    
+    /**
+     * Convert BufferedImage to byte array (RGB or RGBA based on alpha channel)
+     * Based on the WebPCodec example implementation
+     */
+    private byte[] convertBufferedImageToBytes(BufferedImage image) {
+        boolean hasAlpha = image.getColorModel().hasAlpha();
+        int width = image.getWidth();
+        int height = image.getHeight();
+        int bytesPerPixel = hasAlpha ? 4 : 3;
+        
+        byte[] output = new byte[width * height * bytesPerPixel];
+        
+        // Use efficient row-by-row processing (from the WebPCodec example)
+        int[] rowBuffer = new int[width];
+        int index = 0;
+        
+        for (int y = 0; y < height; y++) {
+            // Get entire row at once for better performance
+            image.getRGB(0, y, width, 1, rowBuffer, 0, width);
+            
+            if (hasAlpha) {
+                for (int x = 0; x < width; x++) {
+                    int argb = rowBuffer[x];
+                    output[index++] = (byte) ((argb >> 16) & 0xFF); // Red
+                    output[index++] = (byte) ((argb >> 8) & 0xFF);  // Green
+                    output[index++] = (byte) (argb & 0xFF);         // Blue
+                    output[index++] = (byte) ((argb >> 24) & 0xFF); // Alpha
+                }
+            } else {
+                for (int x = 0; x < width; x++) {
+                    int argb = rowBuffer[x];
+                    output[index++] = (byte) ((argb >> 16) & 0xFF); // Red
+                    output[index++] = (byte) ((argb >> 8) & 0xFF);  // Green
+                    output[index++] = (byte) (argb & 0xFF);         // Blue
+                }
+            }
+        }
+        
+        return output;
     }
 
     private String createBaseName(IconGenerationResponse.GeneratedIcon icon, int index) {

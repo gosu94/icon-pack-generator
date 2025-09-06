@@ -26,7 +26,7 @@ COPY src ./src
 RUN ./gradlew bootJar --no-daemon
 
 # Use OpenJDK 21 as base image with Python support (force x86_64 for WebP compatibility)
-FROM --platform=linux/amd64 openjdk:21-jdk-slim
+FROM openjdk:21-jdk-slim
 
 # Install Python, pip, and system dependencies for rembg
 RUN apt-get update && apt-get install -y \
