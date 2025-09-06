@@ -41,19 +41,16 @@ const GeneratorForm: React.FC<GeneratorFormProps> = ({
   formatFileSize,
 }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isDragOver, setIsDragOver] = useState(false);
 
   useEffect(() => {
     const checkAuthenticationStatus = async () => {
-      console.log("🔍 GeneratorForm: Checking authentication status...");
       try {
         const response = await fetch("/api/auth/check", {
           credentials: "include",
         });
-        console.log("🔍 GeneratorForm: Auth response status:", response.status);
         const data = await response.json();
-        console.log("🔍 GeneratorForm: Auth response data:", data);
         setIsAuthenticated(data.authenticated);
-        console.log("🔍 GeneratorForm: Set isAuthenticated to:", data.authenticated);
       } catch (error) {
         console.error("❌ GeneratorForm: Error checking auth status:", error);
         setIsAuthenticated(false);
@@ -61,6 +58,50 @@ const GeneratorForm: React.FC<GeneratorFormProps> = ({
     };
     checkAuthenticationStatus();
   }, []);
+
+  const handleDragEnter = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(false);
+  };
+
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(false);
+
+    const file = e.dataTransfer.files?.[0];
+    if (!file) {
+      return;
+    }
+    if (!file.type.startsWith("image/")) {
+      alert("Please select a valid image file.");
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      alert("File size must be less than 10MB.");
+      return;
+    }
+    
+    const event = {
+        target: {
+            files: e.dataTransfer.files
+        }
+    } as unknown as React.ChangeEvent<HTMLInputElement>
+
+    handleImageSelect(event);
+  };
 
   const renderIconFields = () => {
     const count = 9;
@@ -80,121 +121,101 @@ const GeneratorForm: React.FC<GeneratorFormProps> = ({
             setIndividualDescriptions(newDescriptions);
           }}
           className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-gray-300"
-          data-oid="utuin-s"
         />,
       );
     }
     return (
-      <div className="grid grid-cols-3 gap-3" data-oid="hmbprf9">
+      <div className="grid grid-cols-3 gap-3">
         {fields}
       </div>
     );
   };
 
   return (
-    <div className="w-1/3 p-8" data-oid=".5jo.8i">
+    <div className="w-1/3 p-8">
       <div
         className="bg-white/80 backdrop-blur-md rounded-3xl p-8 shadow-2xl border-2 border-purple-200/50 h-full overflow-y-auto relative"
-        data-oid="l3nyxqb"
       >
         <div
           className="absolute inset-0 rounded-3xl bg-gradient-to-br from-white/30 to-transparent pointer-events-none"
-          data-oid="56u82tz"
         ></div>
-        <div className="relative z-10" data-oid="7_67d:p">
+        <div className="relative z-10">
           <h2
             className="text-2xl font-bold text-slate-900 mb-8"
-            data-oid="chy.mp_"
           >
             Icon Pack Generator
           </h2>
 
           <form
             onSubmit={(e) => {
-              console.log("🚀 GeneratorForm: Form submitted!");
-              console.log("🚀 GeneratorForm: isAuthenticated:", isAuthenticated);
-              console.log("🚀 GeneratorForm: isGenerating:", isGenerating);
               e.preventDefault();
               if (!isAuthenticated) {
-                console.log("❌ GeneratorForm: Blocked - user not authenticated");
                 return;
               }
               if (isGenerating) {
-                console.log("❌ GeneratorForm: Blocked - already generating");
                 return;
               }
-              console.log("✅ GeneratorForm: Calling generateIcons()");
               generateIcons();
             }}
             className="space-y-8"
-            data-oid="q9a5ht9"
           >
-            <div data-oid="1mlykbw">
+            <div>
               <label
                 className="block text-lg font-semibold text-slate-900 mb-6"
-                data-oid="iazz1yl"
               >
                 Choose input type
               </label>
               <div
                 className="bg-slate-100 p-1.5 rounded-2xl flex"
-                data-oid="s9825hx"
               >
                 <button
                   type="button"
                   onClick={() => setInputType("text")}
                   className={`flex-1 px-5 py-4 rounded-xl text-sm font-semibold transition-all duration-300 flex items-center justify-center space-x-2 ${inputType === "text" ? "bg-white text-slate-900 shadow-lg shadow-slate-200/50" : "text-slate-600 hover:text-slate-900 hover:bg-white/50"}`}
-                  data-oid="1tmjnjh"
                 >
                   <svg
                     className="w-4 h-4"
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
-                    data-oid="r81_4xh"
                   >
                     <path
                       strokeLinecap="round"
                       strokeLinejoin="round"
                       strokeWidth={2}
                       d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                      data-oid="oyl9h-v"
                     />
                   </svg>
-                  <span data-oid="q36hak1">Text Description</span>
+                  <span>Text Description</span>
                 </button>
                 <button
                   type="button"
                   onClick={() => setInputType("image")}
                   className={`flex-1 px-5 py-4 rounded-xl text-sm font-semibold transition-all duration-300 flex items-center justify-center space-x-2 ${inputType === "image" ? "bg-white text-slate-900 shadow-lg shadow-slate-200/50" : "text-slate-600 hover:text-slate-900 hover:bg-white/50"}`}
-                  data-oid="hdn2ne9"
                 >
                   <svg
                     className="w-4 h-4"
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
-                    data-oid="d.l2zs."
                   >
                     <path
                       strokeLinecap="round"
                       strokeLinejoin="round"
                       strokeWidth={2}
                       d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
-                      data-oid="0i-4v7u"
                     />
                   </svg>
-                  <span data-oid="g5gpafy">Reference Image</span>
+                  <span>Reference Image</span>
                 </button>
               </div>
             </div>
 
-            <div data-oid="_.5jto0">
+            <div>
               {inputType === "text" ? (
-                <div data-oid="zwfv0z:">
+                <div>
                   <label
                     className="block text-lg font-semibold text-slate-900 mb-4"
-                    data-oid="5s95r1i"
                   >
                     General Theme Description
                   </label>
@@ -205,76 +226,67 @@ const GeneratorForm: React.FC<GeneratorFormProps> = ({
                     required={inputType === "text"}
                     className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl text-base placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent focus:bg-white transition-all duration-200 resize-none"
                     placeholder="Describe the general theme for your icon pack... (e.g., minimalist business icons, colorful social media icons, etc.)"
-                    data-oid="ejikj:q"
                   />
                 </div>
               ) : (
-                <div data-oid="s7wsnqu">
+                <div>
                   <label
-                    className="block text-sm font-medium text-gray-900 mb-2"
-                    data-oid=":ho_1in"
+                    className="block text-lg font-semibold text-slate-900 mb-4"
                   >
                     Reference Image
                   </label>
-                  <div className="space-y-3" data-oid="dd0fi:d">
+                  <div 
+                    className={`relative block w-full border-2 ${isDragOver ? 'border-purple-600' : 'border-dashed border-slate-300'} rounded-lg p-6 text-center cursor-pointer transition-all duration-300`}
+                    onDragEnter={handleDragEnter}
+                    onDragLeave={handleDragLeave}
+                    onDragOver={handleDragOver}
+                    onDrop={handleDrop}
+                  >
                     <input
                       ref={fileInputRef}
                       type="file"
                       accept="image/*"
                       required={inputType === "image"}
                       onChange={handleImageSelect}
-                      className="w-full px-3 py-2 border border-gray-200 rounded-md focus:outline-none focus:ring-1 focus:ring-gray-300"
-                      data-oid="nmg8h6b"
+                      className="hidden"
                     />
-
-                    <div className="text-xs text-gray-500" data-oid="z6tjnmd">
-                      Upload an image to use as style reference. The AI will
-                      create icons matching the style of your reference image.
-                    </div>
-                    {imagePreview && (
-                      <div className="mt-3" data-oid="44m5z.s">
-                        <label
-                          className="block text-sm font-medium text-gray-900 mb-2"
-                          data-oid="9po_9p_"
-                        >
-                          Preview:
-                        </label>
-                        <div
-                          className="border rounded p-2 bg-gray-50 flex items-center space-x-3"
-                          data-oid="5g3q0a2"
-                        >
-                          <img
-                            src={imagePreview}
-                            alt="Reference preview"
-                            className="h-20 w-20 object-cover rounded"
-                            data-oid="vszm7t."
-                          />
-
-                          <div className="flex-1" data-oid="zifj0__">
-                            <p
-                              className="text-sm text-gray-600"
-                              data-oid="ore_36n"
-                            >
-                              {referenceImage?.name}
-                            </p>
-                            <p
-                              className="text-xs text-gray-400"
-                              data-oid="4ibjt27"
-                            >
-                              {referenceImage
-                                ? formatFileSize(referenceImage.size)
-                                : ""}
-                            </p>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={removeImage}
-                            className="text-red-500 hover:text-red-700 text-sm"
-                            data-oid=":hssy_d"
-                          >
-                            Remove
-                          </button>
+                    {imagePreview ? (
+                      <div>
+                        <img
+                          src={imagePreview}
+                          alt="Reference preview"
+                          className="h-32 mx-auto object-cover rounded-lg"
+                        />
+                        <div className="mt-4 text-sm text-slate-600">
+                          <p>{referenceImage?.name}</p>
+                          <p className="text-xs text-slate-400">
+                            {referenceImage ? formatFileSize(referenceImage.size) : ""}
+                          </p>
                         </div>
+                        <button
+                          type="button"
+                          onClick={removeImage}
+                          className="mt-2 text-sm font-semibold text-red-500 hover:text-red-700"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="text-center">
+                        <svg className="mx-auto h-12 w-12 text-slate-400" stroke="currentColor" fill="none" viewBox="0 0 48 48" aria-hidden="true">
+                          <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                        <p className="mt-2 block text-sm font-semibold text-slate-900">
+                          Drop your image here or
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => fileInputRef.current?.click()}
+                          className="mt-2 rounded-md bg-gradient-to-r from-blue-600 to-purple-600 px-3.5 py-2.5 text-sm font-semibold text-white shadow-sm hover:from-blue-700 hover:to-purple-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
+                        >
+                          Browse
+                        </button>
+                        <p className="mt-2 text-xs text-slate-500">PNG, JPG, WEBP up to 10MB</p>
                       </div>
                     )}
                   </div>
@@ -282,10 +294,9 @@ const GeneratorForm: React.FC<GeneratorFormProps> = ({
               )}
             </div>
 
-            <div data-oid="nd7t0dj">
+            <div>
               <label
-                className="block text-sm font-medium text-gray-900 mb-3"
-                data-oid="-6l7ck_"
+                className="block text-lg font-semibold text-slate-900 mb-4"
               >
                 Individual Icon Descriptions (Optional)
               </label>
@@ -334,29 +345,21 @@ const GeneratorForm: React.FC<GeneratorFormProps> = ({
             <button
               type="submit"
               disabled={isGenerating || !isAuthenticated}
-              onClick={() => {
-                console.log("🔘 Button clicked!");
-                console.log("🔘 Button - isAuthenticated:", isAuthenticated);
-                console.log("🔘 Button - isGenerating:", isGenerating);
-                console.log("🔘 Button - disabled:", isGenerating || !isAuthenticated);
-              }}
+              onClick={() => {}}
               className={`w-full py-4 px-6 rounded-2xl text-white font-semibold ${
                 isGenerating || !isAuthenticated
                   ? "bg-slate-400 cursor-not-allowed"
                   : "bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 transform hover:scale-[1.02] shadow-lg hover:shadow-xl"
               } transition-all duration-200`}
-              data-oid="c1kv6ls"
             >
               {isGenerating ? (
                 <div
                   className="flex items-center justify-center space-x-2"
-                  data-oid="wr:qqx5"
                 >
                   <div
                     className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"
-                    data-oid="klkpq:y"
                   ></div>
-                  <span data-oid="-o8k1u8">Generating...</span>
+                  <span>Generating...</span>
                 </div>
               ) : (
                 <div className="flex items-center justify-center space-x-2">
