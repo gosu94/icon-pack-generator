@@ -236,7 +236,7 @@ export default function LandingPage() {
             <div className="flex w-max animate-scroll-left-to-right-fast">
               {[...galleryImagesRow1, ...galleryImagesRow1].map((image, index) => (
                 <div key={index} className="group relative bg-white/80 backdrop-blur-md rounded-2xl p-6 shadow-lg border border-purple-200/30 hover:shadow-xl transition-all duration-300 hover:scale-[1.05] cursor-pointer mx-3">
-                  <div className="relative aspect-square w-48 h-48 bg-gradient-to-br from-slate-100 to-slate-200 rounded-xl flex items-center justify-center overflow-hidden">
+                  <div className="relative aspect-square w-32 h-32 bg-gradient-to-br from-slate-100 to-slate-200 rounded-xl flex items-center justify-center overflow-hidden">
                     <Image src={image} alt={`Gallery icon ${index + 1}`} layout="fill" className="object-cover" />
                   </div>
                   <div className="absolute inset-0 bg-gradient-to-br from-blue-600/0 to-purple-600/0 group-hover:from-blue-600/10 group-hover:to-purple-600/10 rounded-2xl transition-all duration-300"></div>
@@ -246,7 +246,7 @@ export default function LandingPage() {
             <div className="flex w-max animate-scroll-left-to-right">
               {[...galleryImagesRow2, ...galleryImagesRow2].map((image, index) => (
                 <div key={index} className="group relative bg-white/80 backdrop-blur-md rounded-2xl p-6 shadow-lg border border-purple-200/30 hover:shadow-xl transition-all duration-300 hover:scale-[1.05] cursor-pointer mx-3">
-                  <div className="relative aspect-square w-48 h-48 bg-gradient-to-br from-slate-100 to-slate-200 rounded-xl flex items-center justify-center overflow-hidden">
+                  <div className="relative aspect-square w-32 h-32 bg-gradient-to-br from-slate-100 to-slate-200 rounded-xl flex items-center justify-center overflow-hidden">
                     <Image src={image} alt={`Gallery icon ${index + 1}`} layout="fill" className="object-cover" />
                   </div>
                   <div className="absolute inset-0 bg-gradient-to-br from-blue-600/0 to-purple-600/0 group-hover:from-blue-600/10 group-hover:to-purple-600/10 rounded-2xl transition-all duration-300"></div>
@@ -256,22 +256,13 @@ export default function LandingPage() {
             <div className="flex w-max animate-scroll-left-to-right-slow">
               {[...galleryImagesRow3, ...galleryImagesRow3].map((image, index) => (
                 <div key={index} className="group relative bg-white/80 backdrop-blur-md rounded-2xl p-6 shadow-lg border border-purple-200/30 hover:shadow-xl transition-all duration-300 hover:scale-[1.05] cursor-pointer mx-3">
-                  <div className="relative aspect-square w-48 h-48 bg-gradient-to-br from-slate-100 to-slate-200 rounded-xl flex items-center justify-center overflow-hidden">
+                  <div className="relative aspect-square w-32 h-32 bg-gradient-to-br from-slate-100 to-slate-200 rounded-xl flex items-center justify-center overflow-hidden">
                     <Image src={image} alt={`Gallery icon ${index + 1}`} layout="fill" className="object-cover" />
                   </div>
                   <div className="absolute inset-0 bg-gradient-to-br from-blue-600/0 to-purple-600/0 group-hover:from-blue-600/10 group-hover:to-purple-600/10 rounded-2xl transition-all duration-300"></div>
                 </div>
               ))}
             </div>
-          </div>
-          
-          <div className="text-center mt-12">
-            <button 
-              onClick={() => window.location.href = "/gallery"}
-              className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold py-4 px-8 rounded-xl shadow-lg hover:shadow-xl transform hover:scale-[1.02] transition-all duration-200"
-            >
-              View Full Gallery
-            </button>
           </div>
         </div>
       </section>
