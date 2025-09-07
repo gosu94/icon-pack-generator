@@ -28,7 +28,7 @@ export default function LandingPage() {
   const handleStartCreating = () => {
     if (authState.authenticated) {
       // If user is authenticated, redirect to main generator page
-      window.location.href = "/dashboard";
+      window.location.href = "/dashboard/index.html";
     } else {
       // If not authenticated, open login modal
       openLoginModal();
