@@ -199,7 +199,7 @@ export default function GalleryPage() {
                         ...selectedIconGroup.variation,
                       ])
                     }
-                    className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+                    className="px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200"
                   >
                     Export All (
                     {selectedIconGroup.original.length +
@@ -218,7 +218,7 @@ export default function GalleryPage() {
                         onClick={() =>
                           openExportModal(selectedIconGroup.original)
                         }
-                        className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                        className="px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200"
                       >
                         Export Originals ({selectedIconGroup.original.length})
                       </button>
@@ -250,7 +250,7 @@ export default function GalleryPage() {
                         onClick={() =>
                           openExportModal(selectedIconGroup.variation)
                         }
-                        className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                        className="px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200"
                       >
                         Export Variations ({selectedIconGroup.variation.length})
                       </button>
