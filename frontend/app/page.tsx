@@ -39,46 +39,46 @@ export default function LandingPage() {
   const galleryImagesRow1 = [
     "/images/gallery/icon1.webp",
     "/images/gallery/icon2.webp",
-    "/images/gallery/icon5.webp",
-    "/images/gallery/icon6.webp",
-    "/images/gallery/icon9.webp",
-    "/images/gallery/icon10.webp",
     "/images/gallery/icon3.webp",
-    "/images/gallery/icon4.webp",
-    "/images/gallery/icon7.webp",
-    "/images/gallery/icon8.webp",
+    "/images/gallery/icon10.webp",
     "/images/gallery/icon11.webp",
     "/images/gallery/icon12.webp",
+    "/images/gallery/icon19.webp",
+    "/images/gallery/icon20.webp",
+    "/images/gallery/icon21.webp",
+    "/images/gallery/icon28.webp",
+    "/images/gallery/icon29.webp",
+    "/images/gallery/icon30.webp",
   ];
 
   const galleryImagesRow2 = [
-    "/images/gallery/icon3.webp",
     "/images/gallery/icon4.webp",
-    "/images/gallery/icon7.webp",
-    "/images/gallery/icon8.webp",
-    "/images/gallery/icon11.webp",
-    "/images/gallery/icon12.webp",
-    "/images/gallery/icon1.webp",
-    "/images/gallery/icon2.webp",
     "/images/gallery/icon5.webp",
     "/images/gallery/icon6.webp",
-    "/images/gallery/icon9.webp",
-    "/images/gallery/icon10.webp",
+    "/images/gallery/icon13.webp",
+    "/images/gallery/icon14.webp",
+    "/images/gallery/icon15.webp",
+    "/images/gallery/icon22.webp",
+    "/images/gallery/icon23.webp",
+    "/images/gallery/icon24.webp",
+    "/images/gallery/icon31.webp",
+    "/images/gallery/icon32.webp",
+    "/images/gallery/icon33.webp",
   ];
 
   const galleryImagesRow3 = [
-    "/images/gallery/icon9.webp",
-    "/images/gallery/icon10.webp",
-    "/images/gallery/icon3.webp",
-    "/images/gallery/icon4.webp",
     "/images/gallery/icon7.webp",
     "/images/gallery/icon8.webp",
-    "/images/gallery/icon11.webp",
-    "/images/gallery/icon12.webp",
-    "/images/gallery/icon1.webp",
-    "/images/gallery/icon2.webp",
-    "/images/gallery/icon5.webp",
-    "/images/gallery/icon6.webp",
+    "/images/gallery/icon9.webp",
+    "/images/gallery/icon16.webp",
+    "/images/gallery/icon17.webp",
+    "/images/gallery/icon18.webp",
+    "/images/gallery/icon25.webp",
+    "/images/gallery/icon26.webp",
+    "/images/gallery/icon27.webp",
+    "/images/gallery/icon34.webp",
+    "/images/gallery/icon35.webp",
+    "/images/gallery/icon36.webp",
   ];
 
 
@@ -288,9 +288,6 @@ export default function LandingPage() {
                   className="bg-white text-blue-600 hover:bg-blue-50 font-semibold py-4 px-8 rounded-xl shadow-lg hover:shadow-xl transform hover:scale-[1.02] transition-all duration-200"
                 >
                   Start Generating Icons
-                </button>
-                <button className="border-2 border-white/30 hover:border-white/50 text-white hover:bg-white/10 font-semibold py-4 px-8 rounded-xl transition-all duration-200">
-                  Learn More
                 </button>
               </div>
             </div>
