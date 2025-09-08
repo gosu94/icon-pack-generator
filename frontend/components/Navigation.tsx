@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import {
@@ -13,6 +13,7 @@ import {
     User,
     X,
     Sparkles,
+    Menu,
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 
@@ -22,6 +23,8 @@ const Navigation: React.FC<NavigationProps> = () => {
   const { authState, coinsLoading, handleLogout } = useAuth();
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const [isModalVisible, setIsModalVisible] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const mobileMenuRef = useRef<HTMLDivElement>(null);
 
   const openLoginModal = () => {
     setIsLoginModalOpen(true);
@@ -37,8 +40,35 @@ const Navigation: React.FC<NavigationProps> = () => {
     window.location.href = "/oauth2/authorization/google";
   };
 
+  const toggleMobileMenu = () => {
+    setIsMobileMenuOpen(!isMobileMenuOpen);
+  };
+
   const displayCoins =
     authState.authenticated && authState.user ? authState.user.coins : 0;
+
+  // Handle clicking outside mobile menu to close it
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (mobileMenuRef.current && !mobileMenuRef.current.contains(event.target as Node)) {
+        setIsMobileMenuOpen(false);
+      }
+    };
+
+    const handleResize = () => {
+      setIsMobileMenuOpen(false);
+    };
+
+    if (isMobileMenuOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+      window.addEventListener('resize', handleResize);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      window.removeEventListener('resize', handleResize);
+    };
+  }, [isMobileMenuOpen]);
 
   return (
     <nav className="border-b border-gray-200 px-6 py-4">
@@ -62,7 +92,7 @@ const Navigation: React.FC<NavigationProps> = () => {
         <div className="flex items-center space-x-4">
           {authState.authenticated ? (
             <>
-              {/* Coin Balance Display - only for authenticated users */}
+              {/* Coin Balance Display - always visible for authenticated users */}
               <div className="flex items-center space-x-2 bg-yellow-50 border border-yellow-200 rounded-lg px-3 py-2">
                 <Image
                   src="/images/coin.webp"
@@ -75,37 +105,117 @@ const Navigation: React.FC<NavigationProps> = () => {
                 </span>
               </div>
 
-              <Link href="/dashboard" className="p-2 hover:bg-gray-100 rounded-lg">
-                <Sparkles className="w-5 h-5 text-gray-700" />
-              </Link>
-              <Link
-                href="/gallery"
-                className="p-2 hover:bg-gray-100 rounded-lg"
-              >
-                <ImageIcon className="w-5 h-5 text-gray-700" />
-              </Link>
-              <Link
-                href="/background-remover"
-                className="p-2 hover:bg-gray-100 rounded-lg"
-              >
-                <Paintbrush className="w-5 h-5 text-gray-700" />
-              </Link>
-              <Link href="/store" className="p-2 hover:bg-gray-100 rounded-lg">
-                <Store className="w-5 h-5 text-gray-700" />
-              </Link>
-              <Link href="/feedback" className="p-2 hover:bg-gray-100 rounded-lg">
-                <MessageSquare className="w-5 h-5 text-gray-700" />
-              </Link>
-              <button className="p-2 hover:bg-gray-100 rounded-lg">
-                <Settings className="w-5 h-5 text-gray-700" />
-              </button>
-              <button
-                onClick={handleLogout}
-                className="p-2 hover:bg-gray-100 rounded-lg"
-                title="Logout"
-              >
-                <LogOut className="w-5 h-5 text-gray-700" />
-              </button>
+              {/* Desktop Navigation - hidden on mobile */}
+              <div className="hidden md:flex items-center space-x-4">
+                <Link href="/dashboard" className="p-2 hover:bg-gray-100 rounded-lg">
+                  <Sparkles className="w-5 h-5 text-gray-700" />
+                </Link>
+                <Link
+                  href="/gallery"
+                  className="p-2 hover:bg-gray-100 rounded-lg"
+                >
+                  <ImageIcon className="w-5 h-5 text-gray-700" />
+                </Link>
+                <Link
+                  href="/background-remover"
+                  className="p-2 hover:bg-gray-100 rounded-lg"
+                >
+                  <Paintbrush className="w-5 h-5 text-gray-700" />
+                </Link>
+                <Link href="/store" className="p-2 hover:bg-gray-100 rounded-lg">
+                  <Store className="w-5 h-5 text-gray-700" />
+                </Link>
+                <Link href="/feedback" className="p-2 hover:bg-gray-100 rounded-lg">
+                  <MessageSquare className="w-5 h-5 text-gray-700" />
+                </Link>
+                <button className="p-2 hover:bg-gray-100 rounded-lg">
+                  <Settings className="w-5 h-5 text-gray-700" />
+                </button>
+                <button
+                  onClick={handleLogout}
+                  className="p-2 hover:bg-gray-100 rounded-lg"
+                  title="Logout"
+                >
+                  <LogOut className="w-5 h-5 text-gray-700" />
+                </button>
+              </div>
+
+              {/* Mobile Menu Button - visible only on mobile */}
+              <div className="md:hidden relative" ref={mobileMenuRef}>
+                <button
+                  onClick={toggleMobileMenu}
+                  className="p-2 hover:bg-gray-100 rounded-lg"
+                  aria-label="Toggle mobile menu"
+                >
+                  <Menu className="w-5 h-5 text-gray-700" />
+                </button>
+
+                {/* Mobile Dropdown Menu */}
+                {isMobileMenuOpen && (
+                  <div className="absolute right-0 top-12 w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-50">
+                    <div className="py-2">
+                      <Link 
+                        href="/dashboard" 
+                        className="flex items-center space-x-3 px-4 py-3 hover:bg-gray-100"
+                        onClick={() => setIsMobileMenuOpen(false)}
+                      >
+                        <Sparkles className="w-4 h-4 text-gray-700" />
+                        <span className="text-sm font-medium text-gray-700">Dashboard</span>
+                      </Link>
+                      <Link 
+                        href="/gallery" 
+                        className="flex items-center space-x-3 px-4 py-3 hover:bg-gray-100"
+                        onClick={() => setIsMobileMenuOpen(false)}
+                      >
+                        <ImageIcon className="w-4 h-4 text-gray-700" />
+                        <span className="text-sm font-medium text-gray-700">Gallery</span>
+                      </Link>
+                      <Link 
+                        href="/background-remover" 
+                        className="flex items-center space-x-3 px-4 py-3 hover:bg-gray-100"
+                        onClick={() => setIsMobileMenuOpen(false)}
+                      >
+                        <Paintbrush className="w-4 h-4 text-gray-700" />
+                        <span className="text-sm font-medium text-gray-700">Background Remover</span>
+                      </Link>
+                      <Link 
+                        href="/store" 
+                        className="flex items-center space-x-3 px-4 py-3 hover:bg-gray-100"
+                        onClick={() => setIsMobileMenuOpen(false)}
+                      >
+                        <Store className="w-4 h-4 text-gray-700" />
+                        <span className="text-sm font-medium text-gray-700">Store</span>
+                      </Link>
+                      <Link 
+                        href="/feedback" 
+                        className="flex items-center space-x-3 px-4 py-3 hover:bg-gray-100"
+                        onClick={() => setIsMobileMenuOpen(false)}
+                      >
+                        <MessageSquare className="w-4 h-4 text-gray-700" />
+                        <span className="text-sm font-medium text-gray-700">Feedback</span>
+                      </Link>
+                      <button 
+                        className="flex items-center space-x-3 px-4 py-3 hover:bg-gray-100 w-full text-left"
+                        onClick={() => setIsMobileMenuOpen(false)}
+                      >
+                        <Settings className="w-4 h-4 text-gray-700" />
+                        <span className="text-sm font-medium text-gray-700">Settings</span>
+                      </button>
+                      <div className="border-t border-gray-100 my-2"></div>
+                      <button
+                        onClick={() => {
+                          handleLogout();
+                          setIsMobileMenuOpen(false);
+                        }}
+                        className="flex items-center space-x-3 px-4 py-3 hover:bg-gray-100 w-full text-left"
+                      >
+                        <LogOut className="w-4 h-4 text-red-600" />
+                        <span className="text-sm font-medium text-red-600">Logout</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
             </>
           ) : (
             <>

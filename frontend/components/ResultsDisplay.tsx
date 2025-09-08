@@ -262,7 +262,7 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
   };
 
   return (
-    <div className="flex-1 p-8 flex flex-col" data-oid="zbnho:w">
+    <div className="w-full flex-1 p-4 lg:p-8 flex flex-col" data-oid="zbnho:w">
       {isGenerating && (
         <div className="mb-6" data-oid="dy:7hpm">
           <div
@@ -282,7 +282,7 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
           {/*</p>*/}
         </div>
       )}
-      <div className="flex-1 flex space-x-8" data-oid=".0me_fy">
+      <div className="flex-1 flex flex-col lg:flex-row lg:space-x-8 space-y-8 lg:space-y-0" data-oid=".0me_fy">
         <div
           className="bg-white/80 backdrop-blur-md rounded-3xl shadow-2xl border border-purple-200/50 flex-1 relative"
           data-oid="pzu54n5"
