@@ -179,9 +179,15 @@ export default function LandingPage() {
                 <Download className="w-6 h-6 text-white" />
               </div>
               <h3 className="text-xl font-bold text-slate-900 mb-4">Export Ready Files</h3>
-              <p className="text-slate-600 leading-relaxed">
-                Download your icons in multiple formats and sizes. Perfect for web, mobile, and desktop applications.
-              </p>
+              <div className="text-slate-600 leading-relaxed">
+                <p className="mb-2">Download your icons in multiple formats and sizes, ready for web, mobile, and desktop applications.</p>
+                <ul className="list-disc list-inside space-y-1 text-sm">
+                  <li><span className="font-semibold">SVG embeded</span></li>
+                  <li><span className="font-semibold">PNG:</span> 16, 32, 64, 128, 256, 512px</li>
+                  <li><span className="font-semibold">WebP:</span> 16, 32, 64, 128, 256, 512px</li>
+                  <li><span className="font-semibold">ICO:</span> 16, 32, 48, 64, 128, 256px</li>
+                </ul>
+              </div>
             </div>
 
             {/* Feature 4 */}
