@@ -180,7 +180,7 @@ export default function LandingPage() {
               </div>
               <h3 className="text-xl font-bold text-slate-900 mb-4">Export Ready Files</h3>
               <div className="text-slate-600 leading-relaxed">
-                <p className="mb-2">Download your icons in multiple formats and sizes, ready for web, mobile, and desktop applications.</p>
+                <p className="mb-2">Download your icons in multiple formats and sizes:</p>
                 <ul className="list-disc list-inside space-y-1 text-sm">
                   <li><span className="font-semibold">SVG embeded</span></li>
                   <li><span className="font-semibold">PNG:</span> 16, 32, 64, 128, 256, 512px</li>
