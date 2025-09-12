@@ -85,6 +85,24 @@ fal:
 openai:
   api-key: ${OPENAI_API_KEY:your-openai-api-key-here}
 
+stripe:
+  secret-key: ${STRIPE_SECRET_KEY:your-stripe-secret-key}
+  publishable-key: ${STRIPE_PUBLISHABLE_KEY:your-stripe-publishable-key}
+  webhook-secret: ${STRIPE_WEBHOOK_SECRET:your-webhook-secret}
+  products:
+    starter-pack:
+      id: ${STRIPE_STARTER_PACK_PRODUCT_ID:starter_pack_product_id}
+      price-id: ${STRIPE_STARTER_PACK_PRICE_ID:starter_pack_price_id}
+      coins: 8
+    creator-pack:
+      id: ${STRIPE_CREATOR_PACK_PRODUCT_ID:creator_pack_product_id}
+      price-id: ${STRIPE_CREATOR_PACK_PRICE_ID:creator_pack_price_id}
+      coins: 18
+    pro-pack:
+      id: ${STRIPE_PRO_PACK_PRODUCT_ID:pro_pack_product_id}
+      price-id: ${STRIPE_PRO_PACK_PRICE_ID:pro_pack_price_id}
+      coins: 40
+
 background-removal:
   enabled: true
   rembg-command: rembg

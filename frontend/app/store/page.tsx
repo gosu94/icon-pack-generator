@@ -3,13 +3,90 @@
 import { useState, useEffect } from "react";
 import Navigation from "../../components/Navigation";
 import Image from "next/image";
+import { loadStripe } from "@stripe/stripe-js";
 
 export default function StorePage() {
+  const [stripePublishableKey, setStripePublishableKey] = useState<string>("");
+  const [isLoading, setIsLoading] = useState(false);
+
   const plans = [
-    { name: "Starter Pack", price: 5, coins: 8, icons: 72, popular: false },
-    { name: "Creator Pack", price: 10, coins: 18, icons: 162, popular: true },
-    { name: "Pro Pack", price: 20, coins: 40, icons: 360, popular: false },
+    { 
+      id: "starter-pack",
+      name: "Starter Pack", 
+      price: 5, 
+      coins: 8, 
+      icons: 72, 
+      popular: false 
+    },
+    { 
+      id: "creator-pack",
+      name: "Creator Pack", 
+      price: 10, 
+      coins: 18, 
+      icons: 162, 
+      popular: true 
+    },
+    { 
+      id: "pro-pack",
+      name: "Pro Pack", 
+      price: 20, 
+      coins: 40, 
+      icons: 360, 
+      popular: false 
+    },
   ];
+
+  useEffect(() => {
+    // Load Stripe configuration
+    fetch("/api/payment/config")
+      .then(res => res.json())
+      .then(data => {
+        setStripePublishableKey(data.publishableKey);
+      })
+      .catch(error => {
+        console.error("Error loading Stripe config:", error);
+      });
+  }, []);
+
+  const handlePurchase = async (planId: string) => {
+    if (!stripePublishableKey) {
+      alert("Stripe is not configured properly");
+      return;
+    }
+
+    setIsLoading(true);
+    
+    try {
+      // Create checkout session
+      const response = await fetch("/api/payment/create-checkout-session", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+        body: JSON.stringify({
+          productType: planId,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to create checkout session");
+      }
+
+      const { sessionId } = await response.json();
+      
+      // Redirect to Stripe Checkout
+      const stripe = await loadStripe(stripePublishableKey);
+      if (stripe) {
+        await stripe.redirectToCheckout({ sessionId });
+      }
+    } catch (error) {
+      console.error("Error creating checkout session:", error);
+      alert("Failed to start checkout process. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50/30">
@@ -60,13 +137,15 @@ export default function StorePage() {
                 Generates up to {plan.icons} icons
               </p>
               <button
-                className={`mt-8 block w-full rounded-md py-3 text-sm font-semibold ${
+                onClick={() => handlePurchase(plan.id)}
+                disabled={isLoading || !stripePublishableKey}
+                className={`mt-8 block w-full rounded-md py-3 text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed ${
                   plan.popular
-                    ? "bg-indigo-600 text-white hover:bg-indigo-500"
-                    : "bg-white text-indigo-600 ring-1 ring-inset ring-indigo-200 hover:ring-indigo-300"
+                    ? "bg-indigo-600 text-white hover:bg-indigo-500 disabled:hover:bg-indigo-600"
+                    : "bg-white text-indigo-600 ring-1 ring-inset ring-indigo-200 hover:ring-indigo-300 disabled:hover:ring-indigo-200"
                 }`}
               >
-                Buy now
+                {isLoading ? "Processing..." : "Buy now"}
               </button>
             </div>
           ))}

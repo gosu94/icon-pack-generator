@@ -34,7 +34,8 @@ dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter-oauth2-client'
 	implementation 'com.fasterxml.jackson.core:jackson-databind'
 	implementation 'ai.fal.client:fal-client:0.7.1'
-	
+    implementation 'com.stripe:stripe-java:29.5.0'
+
 	// Database dependencies
 	runtimeOnly 'org.postgresql:postgresql'
 	testImplementation 'com.h2database:h2'
