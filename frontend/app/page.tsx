@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Navigation from "../components/Navigation";
+import Footer from "../components/Footer";
 import Image from "next/image";
 import { Play, Sparkles, Zap, Palette, Download, Star, User, X } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
@@ -359,6 +360,8 @@ export default function LandingPage() {
           </div>
         </div>
       )}
+      
+      <Footer />
     </div>
   );
 }
