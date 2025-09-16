@@ -47,7 +47,8 @@ public class UserController {
             response.put("user", Map.of(
                 "email", customUser.getEmail(),
                 "id", customUser.getUserId(),
-                "coins", freshUser.getCoins() // Use fresh data from DB
+                "coins", freshUser.getCoins() != null ? freshUser.getCoins() : 0, // Use fresh data from DB
+                "trialCoins", freshUser.getTrialCoins() != null ? freshUser.getTrialCoins() : 0 // Include trial coins
             ));
         } else {
             response.put("authenticated", false);
@@ -94,5 +95,15 @@ public class UserController {
 
         User user = customUser.getUser();
         return ResponseEntity.ok(user.getCoins());
+    }
+    
+    @GetMapping("/user/trial-coins")
+    public ResponseEntity<Integer> getUserTrialCoins(@AuthenticationPrincipal OAuth2User principal) {
+        if (!(principal instanceof CustomOAuth2User customUser)) {
+            return ResponseEntity.status(401).body(0);
+        }
+
+        User user = customUser.getUser();
+        return ResponseEntity.ok(user.getTrialCoins() != null ? user.getTrialCoins() : 0);
     }
 }

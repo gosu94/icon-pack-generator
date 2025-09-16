@@ -69,7 +69,8 @@ public class CustomOidcUserService extends OidcUserService {
             String directoryPath = UUID.randomUUID().toString();
             user.setDirectoryPath(directoryPath); // Use random UUID for directory
             user.setIsActive(true);
-            user.setCoins(50); // New users start with 50 coins
+            user.setCoins(0); // New users start with 0 coins
+            user.setTrialCoins(1); // New users get 1 trial coin for first experience
             user.setRegisteredAt(LocalDateTime.now());
             
             user = userRepository.save(user);
@@ -77,7 +78,7 @@ public class CustomOidcUserService extends OidcUserService {
             // Create user directory structure
             createUserDirectoryStructure(user.getDirectoryPath());
             
-            log.info("Created new user: {} (ID: {})", email, user.getId());
+            log.info("Created new user: {} (ID: {}) with 0 regular coins and 1 trial coin", email, user.getId());
             
             return user;
         } catch (Exception e) {

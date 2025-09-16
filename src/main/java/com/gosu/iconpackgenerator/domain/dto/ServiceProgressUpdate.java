@@ -43,4 +43,10 @@ public class ServiceProgressUpdate {
         return new ServiceProgressUpdate(requestId, null, "complete", 
                 message, null, null, null, "generation_complete", 0);
     }
+    
+    public static ServiceProgressUpdate allCompleteWithIcons(String requestId, String message, 
+            List<IconGenerationResponse.GeneratedIcon> icons) {
+        return new ServiceProgressUpdate(requestId, null, "complete", 
+                message, icons, null, null, "generation_complete", 0);
+    }
 }

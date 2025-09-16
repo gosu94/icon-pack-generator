@@ -6,6 +6,7 @@ interface AuthUser {
   email: string;
   id: number;
   coins: number;
+  trialCoins: number;
 }
 
 interface AuthState {

@@ -46,6 +46,8 @@ const Navigation: React.FC<NavigationProps> = () => {
 
   const displayCoins =
     authState.authenticated && authState.user ? authState.user.coins : 0;
+  const displayTrialCoins = 
+    authState.authenticated && authState.user ? authState.user.trialCoins : 0;
 
   // Handle clicking outside mobile menu to close it
   useEffect(() => {
@@ -93,16 +95,31 @@ const Navigation: React.FC<NavigationProps> = () => {
           {authState.authenticated ? (
             <>
               {/* Coin Balance Display - always visible for authenticated users */}
-              <div className="flex items-center space-x-2 bg-yellow-50 border border-yellow-200 rounded-lg px-3 py-2">
-                <Image
-                  src="/images/coin.webp"
-                  alt="Coins"
-                  width={20}
-                  height={20}
-                />
-                <span className="text-sm font-semibold text-yellow-800">
-                  {coinsLoading ? "..." : displayCoins}
-                </span>
+              <div className="flex items-center space-x-3">
+                {/* Trial Coins - shown only if user has trial coins */}
+                {displayTrialCoins > 0 && (
+                  <div className="flex items-center space-x-2 bg-green-50 border border-green-200 rounded-lg px-3 py-2">
+                    <div className="w-5 h-5 bg-green-500 rounded-full flex items-center justify-center">
+                      <span className="text-xs font-bold text-white">T</span>
+                    </div>
+                    <span className="text-sm font-semibold text-green-800">
+                      {coinsLoading ? "..." : displayTrialCoins}
+                    </span>
+                  </div>
+                )}
+                
+                {/* Regular Coins */}
+                <div className="flex items-center space-x-2 bg-yellow-50 border border-yellow-200 rounded-lg px-3 py-2">
+                  <Image
+                    src="/images/coin.webp"
+                    alt="Coins"
+                    width={20}
+                    height={20}
+                  />
+                  <span className="text-sm font-semibold text-yellow-800">
+                    {coinsLoading ? "..." : displayCoins}
+                  </span>
+                </div>
               </div>
 
               {/* Desktop Navigation - hidden on mobile */}

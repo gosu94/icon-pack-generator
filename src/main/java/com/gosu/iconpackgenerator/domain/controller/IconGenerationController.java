@@ -39,6 +39,7 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.util.ArrayList;
 import java.util.Base64;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -263,19 +264,32 @@ public class IconGenerationController implements IconGenerationControllerAPI {
             long startTime = System.currentTimeMillis();
 
             try {
-                // Check if user has enough coins before starting generation
-                if (!userService.hasEnoughCoins(user.getId(), 1)) {
-                    log.warn("User {} has insufficient coins for more icons generation", user.getEmail());
-                    return createErrorResponse(request, "Insufficient coins. You need 1 coin to generate more icons.", startTime);
-                }
+                // Debug logging for more icons generation
+                int regularCoins = userService.getUserCoins(user.getId());
+                int trialCoins = userService.getUserTrialCoins(user.getId());
+                log.info("User {} more icons generation - coin check: regular={}, trial={}", user.getEmail(), regularCoins, trialCoins);
                 
-                // Deduct 1 coin for the generation
-                if (!userService.deductCoins(user.getId(), 1)) {
-                    log.error("Failed to deduct coins from user {} for more icons", user.getEmail());
-                    return createErrorResponse(request, "Failed to process payment. Please try again.", startTime);
+                // Check coins with same priority as main generation (regular coins first, then trial coins)
+                boolean usedTrialCoin = false;
+                if (userService.hasEnoughCoins(user.getId(), 1)) {
+                    // Use regular coins
+                    if (!userService.deductCoins(user.getId(), 1)) {
+                        log.error("Failed to deduct regular coins from user {} for more icons", user.getEmail());
+                        return createErrorResponse(request, "Failed to process payment. Please try again.", startTime);
+                    }
+                    log.info("Deducted 1 regular coin from user {} for more icons generation. Original Request ID: {}", user.getEmail(), request.getOriginalRequestId());
+                } else if (userService.hasTrialCoins(user.getId())) {
+                    // Use trial coins as fallback
+                    if (!userService.deductTrialCoins(user.getId(), 1)) {
+                        log.error("Failed to deduct trial coins from user {} for more icons", user.getEmail());
+                        return createErrorResponse(request, "Failed to process trial coin. Please try again.", startTime);
+                    }
+                    usedTrialCoin = true;
+                    log.info("Deducted 1 trial coin from user {} for more icons generation. Original Request ID: {}", user.getEmail(), request.getOriginalRequestId());
+                } else {
+                    log.warn("User {} has insufficient coins for more icons generation: regular={}, trial={}", user.getEmail(), regularCoins, trialCoins);
+                    return createErrorResponse(request, "Insufficient coins. You need 1 coin to generate more icons, or you can purchase coins in the store.", startTime);
                 }
-                
-                log.info("Deducted 1 coin from user {} for more icons generation. Original Request ID: {}", user.getEmail(), request.getOriginalRequestId());
                 
                 if (request.getServiceName() == null || request.getServiceName().trim().isEmpty()) {
                     return createErrorResponse(request, "Service name is required", startTime);
@@ -525,4 +539,5 @@ public class IconGenerationController implements IconGenerationControllerAPI {
             throw e;
         }
     }
+    
 }

@@ -215,9 +215,18 @@ export default function Page() {
     }
     
     const cost = generateVariations ? 2 : 1;
-    if (authState.user && authState.user.coins < cost) {
-      setErrorMessage(`Insufficient coins. You need ${cost} coin${cost > 1 ? 's' : ''} to generate icons.`);
-      return false;
+    if (authState.user) {
+      const regularCoins = authState.user.coins || 0;
+      const trialCoins = authState.user.trialCoins || 0;
+      
+      // Check if user has enough regular coins, or has trial coins (trial coins work regardless of cost)
+      const hasEnoughRegularCoins = regularCoins >= cost;
+      const hasTrialCoins = trialCoins > 0;
+      
+      if (!hasEnoughRegularCoins && !hasTrialCoins) {
+        setErrorMessage(`Insufficient coins. You need ${cost} coin${cost > 1 ? 's' : ''} to generate icons, or you can use your trial coin for a limited experience.`);
+        return false;
+      }
     }
     
     return true;
@@ -410,61 +419,147 @@ export default function Page() {
     }
     setOverallProgress(100);
     setShowResultsPanes(true);
+    
     setStreamingResults((latestStreamingResults) => {
-      setTimeout(() => {
-        Object.entries(latestStreamingResults).forEach(
-          ([serviceId, result]) => {
-            if (result.status === "success" && result.icons.length > 0) {
-              startIconAnimation(serviceId, result.icons.length);
-            }
-          },
-        );
-      }, 300);
-      let allIcons: Icon[] = [];
-      Object.values(latestStreamingResults).forEach((result) => {
-        if (result.icons) {
-          allIcons = allIcons.concat(result.icons);
-        }
-      });
-      setCurrentIcons(allIcons);
-      const groupedResults = {
-        falAiResults: [] as ServiceResult[],
-        recraftResults: [] as ServiceResult[],
-        photonResults: [] as ServiceResult[],
-        gptResults: [] as ServiceResult[],
-        imagenResults: [] as ServiceResult[],
-      };
-      Object.entries(latestStreamingResults).forEach(([serviceKey, result]) => {
-        const baseServiceId = serviceKey.replace(/-gen\d+$/, "");
-        switch (baseServiceId) {
-          case "flux":
-            groupedResults.falAiResults.push(result);
-            break;
-          case "recraft":
-            groupedResults.recraftResults.push(result);
-            break;
-          case "photon":
-            groupedResults.photonResults.push(result);
-            break;
-          case "gpt":
-            groupedResults.gptResults.push(result);
-            break;
-          case "imagen":
-            groupedResults.imagenResults.push(result);
-            break;
-        }
-      });
-      setCurrentResponse({
-        icons: allIcons,
-        ...groupedResults,
-        requestId: update.requestId,
-      });
+      // Always use the final icons from the completion update if available
+      // This ensures trial limitations are properly applied
+      const finalIcons = update.icons && update.icons.length > 0 ? update.icons : null;
+      
+      if (finalIcons) {
+        setCurrentIcons(finalIcons);
+        
+        // Update streaming results with the final limited icons
+        const updatedStreamingResults = { ...latestStreamingResults };
+        
+        // Map final icons back to their respective services
+        Object.keys(updatedStreamingResults).forEach((serviceKey) => {
+          const baseServiceId = serviceKey.replace(/-gen\d+$/, "");
+          // Filter icons from final response that belong to this service
+          const serviceIcons = finalIcons.filter((icon: any) => {
+            const iconService = icon.serviceSource?.toLowerCase();
+            return iconService === baseServiceId || 
+                   (baseServiceId === "flux" && (iconService === "falai" || iconService === "flux-pro"));
+          });
+          
+          if (serviceIcons.length > 0) {
+            const isTrialMode = update.message && update.message.includes("Trial Mode");
+            updatedStreamingResults[serviceKey] = {
+              ...updatedStreamingResults[serviceKey],
+              icons: serviceIcons,
+              message: updatedStreamingResults[serviceKey].message + 
+                      (isTrialMode ? " (Trial: 5 of 9 icons)" : "")
+            };
+          }
+        });
+        
+        // Build grouped results from updated streaming results
+        const groupedResults = {
+          falAiResults: [] as ServiceResult[],
+          recraftResults: [] as ServiceResult[],
+          photonResults: [] as ServiceResult[],
+          gptResults: [] as ServiceResult[],
+          imagenResults: [] as ServiceResult[],
+        };
+        
+        Object.entries(updatedStreamingResults).forEach(([serviceKey, result]) => {
+          const baseServiceId = serviceKey.replace(/-gen\d+$/, "");
+          switch (baseServiceId) {
+            case "flux":
+              groupedResults.falAiResults.push(result);
+              break;
+            case "recraft":
+              groupedResults.recraftResults.push(result);
+              break;
+            case "photon":
+              groupedResults.photonResults.push(result);
+              break;
+            case "gpt":
+              groupedResults.gptResults.push(result);
+              break;
+            case "imagen":
+              groupedResults.imagenResults.push(result);
+              break;
+          }
+        });
+        
+        setCurrentResponse({
+          icons: finalIcons,
+          ...groupedResults,
+          requestId: update.requestId,
+        });
+        
+        // Start animations with the correct icon count
+        setTimeout(() => {
+          Object.entries(updatedStreamingResults).forEach(
+            ([serviceId, result]) => {
+              if (result.status === "success" && result.icons && result.icons.length > 0) {
+                startIconAnimation(serviceId, result.icons.length);
+              }
+            },
+          );
+        }, 300);
+        
+      } else {
+        // Fallback to streaming results if no final icons in update
+        setTimeout(() => {
+          Object.entries(latestStreamingResults).forEach(
+            ([serviceId, result]) => {
+              if (result.status === "success" && result.icons.length > 0) {
+                startIconAnimation(serviceId, result.icons.length);
+              }
+            },
+          );
+        }, 300);
+        
+        let allIcons: Icon[] = [];
+        Object.values(latestStreamingResults).forEach((result) => {
+          if (result.icons) {
+            allIcons = allIcons.concat(result.icons);
+          }
+        });
+        setCurrentIcons(allIcons);
+        
+        const groupedResults = {
+          falAiResults: [] as ServiceResult[],
+          recraftResults: [] as ServiceResult[],
+          photonResults: [] as ServiceResult[],
+          gptResults: [] as ServiceResult[],
+          imagenResults: [] as ServiceResult[],
+        };
+        Object.entries(latestStreamingResults).forEach(([serviceKey, result]) => {
+          const baseServiceId = serviceKey.replace(/-gen\d+$/, "");
+          switch (baseServiceId) {
+            case "flux":
+              groupedResults.falAiResults.push(result);
+              break;
+            case "recraft":
+              groupedResults.recraftResults.push(result);
+              break;
+            case "photon":
+              groupedResults.photonResults.push(result);
+              break;
+            case "gpt":
+              groupedResults.gptResults.push(result);
+              break;
+            case "imagen":
+              groupedResults.imagenResults.push(result);
+              break;
+          }
+        });
+        setCurrentResponse({
+          icons: allIcons,
+          ...groupedResults,
+          requestId: update.requestId,
+        });
+      }
+      
       setUiState("results");
       setIsGenerating(false);
       // Refresh coins after successful generation
       setTimeout(() => {
         checkAuthenticationStatus();
       }, 3000); // 3-second delay to ensure backend transaction is committed
+      
       return latestStreamingResults;
     });
   };
@@ -571,11 +666,16 @@ export default function Page() {
     serviceName: string,
     generationIndex: number,
   ) => {
-    // Check if user has enough coins
-    if (authState.user && authState.user.coins < 1) {
-      setErrorMessage("Insufficient coins. You need 1 coin to generate more icons.");
-      setUiState("error");
-      return;
+    // Check if user has enough coins (regular coins or trial coins)
+    if (authState.user) {
+      const regularCoins = authState.user.coins || 0;
+      const trialCoins = authState.user.trialCoins || 0;
+      
+      if (regularCoins < 1 && trialCoins === 0) {
+        setErrorMessage("Insufficient coins. You need 1 coin to generate more icons.");
+        setUiState("error");
+        return;
+      }
     }
 
     const uniqueId = `${serviceId}-gen${generationIndex}`;

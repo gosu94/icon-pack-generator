@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import Image from "next/image";
+import { useAuth } from "../context/AuthContext";
 
 interface GeneratorFormProps {
   inputType: string;
@@ -40,24 +41,9 @@ const GeneratorForm: React.FC<GeneratorFormProps> = ({
   fileInputRef,
   formatFileSize,
 }) => {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const { authState } = useAuth();
   const [isDragOver, setIsDragOver] = useState(false);
-
-  useEffect(() => {
-    const checkAuthenticationStatus = async () => {
-      try {
-        const response = await fetch("/api/auth/check", {
-          credentials: "include",
-        });
-        const data = await response.json();
-        setIsAuthenticated(data.authenticated);
-      } catch (error) {
-        console.error("❌ GeneratorForm: Error checking auth status:", error);
-        setIsAuthenticated(false);
-      }
-    };
-    checkAuthenticationStatus();
-  }, []);
+  const isAuthenticated = authState.authenticated;
 
   const handleDragEnter = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
@@ -311,7 +297,7 @@ const GeneratorForm: React.FC<GeneratorFormProps> = ({
                 Generate Variations
               </label>
               <div className="flex items-center space-x-2">
-                {generateVariations && (
+                {generateVariations && authState.user && authState.user.trialCoins === 0 && (
                   <span className="flex items-center space-x-1 rounded-full bg-gray-200 px-2 py-0.5 text-xs font-semibold text-gray-700">
                     <span>+1</span>
                     <Image
@@ -320,6 +306,11 @@ const GeneratorForm: React.FC<GeneratorFormProps> = ({
                       width={16}
                       height={16}
                     />
+                  </span>
+                )}
+                {generateVariations && authState.user && authState.user.trialCoins > 0 && (
+                  <span className="flex items-center space-x-1 rounded-full bg-orange-100 px-2 py-0.5 text-xs font-semibold text-orange-700">
+                    <span>Trial limited to 5 icons</span>
                   </span>
                 )}
                 <button
@@ -366,15 +357,26 @@ const GeneratorForm: React.FC<GeneratorFormProps> = ({
                   <span>
                     {isAuthenticated ? "Generate Icons" : "Sign in to Generate"}
                   </span>
-                  {isAuthenticated && (
+                  {isAuthenticated && authState.user && (
                     <span className="flex items-center space-x-1 rounded-full bg-white/20 px-2 py-0.5 text-xs font-semibold">
-                      <Image
-                        src="/images/coin.webp"
-                        alt="Coins"
-                        width={16}
-                        height={16}
-                      />
-                      <span>{generateVariations ? 2 : 1}</span>
+                      {authState.user.trialCoins > 0 ? (
+                        <>
+                          <div className="w-4 h-4 bg-green-500 rounded-full flex items-center justify-center">
+                            <span className="text-xs font-bold text-white">T</span>
+                          </div>
+                          <span>Trial</span>
+                        </>
+                      ) : (
+                        <>
+                          <Image
+                            src="/images/coin.webp"
+                            alt="Coins"
+                            width={16}
+                            height={16}
+                          />
+                          <span>{generateVariations ? 2 : 1}</span>
+                        </>
+                      )}
                     </span>
                   )}
                 </div>

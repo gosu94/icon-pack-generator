@@ -173,4 +173,132 @@ public class UserService {
     public Optional<User> getUserById(Long userId) {
         return userRepository.findById(userId);
     }
+    
+    /**
+     * Get user's current trial coin balance
+     */
+    public Integer getUserTrialCoins(Long userId) {
+        Optional<User> user = userRepository.findById(userId);
+        return user.map(u -> u.getTrialCoins() != null ? u.getTrialCoins() : 0).orElse(0);
+    }
+    
+    /**
+     * Get user's current trial coin balance by email
+     */
+    public Integer getUserTrialCoinsByEmail(String email) {
+        Optional<User> user = userRepository.findByEmail(email);
+        return user.map(u -> u.getTrialCoins() != null ? u.getTrialCoins() : 0).orElse(0);
+    }
+    
+    /**
+     * Check if user has trial coins
+     */
+    public boolean hasTrialCoins(Long userId) {
+        int trialCoins = getUserTrialCoins(userId);
+        log.debug("Checking trial coins for user {}: {}", userId, trialCoins);
+        return trialCoins > 0;
+    }
+    
+    /**
+     * Check if user has trial coins by email
+     */
+    public boolean hasTrialCoinsByEmail(String email) {
+        return getUserTrialCoinsByEmail(email) > 0;
+    }
+    
+    /**
+     * Add trial coins to user account (typically 1 coin on first login)
+     */
+    @Transactional
+    public void addTrialCoins(Long userId, int trialCoinsToAdd) {
+        Optional<User> userOptional = userRepository.findById(userId);
+        if (userOptional.isEmpty()) {
+            log.error("User with ID {} not found", userId);
+            return;
+        }
+        
+        User user = userOptional.get();
+        Integer currentTrialCoins = user.getTrialCoins() != null ? user.getTrialCoins() : 0;
+        user.setTrialCoins(currentTrialCoins + trialCoinsToAdd);
+        userRepository.save(user);
+        
+        log.info("Added {} trial coins to user {}. New trial balance: {}", 
+                trialCoinsToAdd, userId, user.getTrialCoins());
+    }
+    
+    /**
+     * Add trial coins to user account by email
+     */
+    @Transactional
+    public void addTrialCoinsByEmail(String email, int trialCoinsToAdd) {
+        Optional<User> userOptional = userRepository.findByEmail(email);
+        if (userOptional.isEmpty()) {
+            log.error("User with email {} not found", email);
+            return;
+        }
+        
+        User user = userOptional.get();
+        Integer currentTrialCoins = user.getTrialCoins() != null ? user.getTrialCoins() : 0;
+        user.setTrialCoins(currentTrialCoins + trialCoinsToAdd);
+        userRepository.save(user);
+        
+        log.info("Added {} trial coins to user {}. New trial balance: {}", 
+                trialCoinsToAdd, email, user.getTrialCoins());
+    }
+    
+    /**
+     * Deduct trial coins from user account
+     */
+    @Transactional
+    public boolean deductTrialCoins(Long userId, int trialCoinsToDeduct) {
+        Optional<User> userOptional = userRepository.findById(userId);
+        if (userOptional.isEmpty()) {
+            log.error("User with ID {} not found", userId);
+            return false;
+        }
+        
+        User user = userOptional.get();
+        Integer currentTrialCoins = user.getTrialCoins() != null ? user.getTrialCoins() : 0;
+        
+        if (currentTrialCoins < trialCoinsToDeduct) {
+            log.warn("User {} has insufficient trial coins. Current: {}, Required: {}", 
+                    userId, currentTrialCoins, trialCoinsToDeduct);
+            return false;
+        }
+        
+        user.setTrialCoins(currentTrialCoins - trialCoinsToDeduct);
+        userRepository.save(user);
+        
+        log.info("Deducted {} trial coins from user {}. New trial balance: {}", 
+                trialCoinsToDeduct, userId, user.getTrialCoins());
+        return true;
+    }
+    
+    /**
+     * Deduct trial coins from user account by email
+     */
+    @Transactional
+    public boolean deductTrialCoinsByEmail(String email, int trialCoinsToDeduct) {
+        Optional<User> userOptional = userRepository.findByEmail(email);
+        if (userOptional.isEmpty()) {
+            log.error("User with email {} not found", email);
+            return false;
+        }
+        
+        User user = userOptional.get();
+        Integer currentTrialCoins = user.getTrialCoins() != null ? user.getTrialCoins() : 0;
+        
+        if (currentTrialCoins < trialCoinsToDeduct) {
+            log.warn("User {} has insufficient trial coins. Current: {}, Required: {}", 
+                    email, currentTrialCoins, trialCoinsToDeduct);
+            return false;
+        }
+        
+        user.setTrialCoins(currentTrialCoins - trialCoinsToDeduct);
+        userRepository.save(user);
+        
+        log.info("Deducted {} trial coins from user {}. New trial balance: {}", 
+                trialCoinsToDeduct, email, user.getTrialCoins());
+        return true;
+    }
 }

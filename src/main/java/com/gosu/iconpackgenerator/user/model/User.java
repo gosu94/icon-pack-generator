@@ -46,7 +46,10 @@ public class User {
     private Boolean isActive = true;
     
     @Column(name = "coins")
-    private Integer coins = 10; // Default starting coins
+    private Integer coins = 0; // Default starting coins
+    
+    @Column(name = "trial_coins")
+    private Integer trialCoins = 0; // Trial coins for first-time users
     
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<GeneratedIcon> generatedIcons;

@@ -2,7 +2,6 @@ package com.gosu.iconpackgenerator.user.service;
 
 import com.gosu.iconpackgenerator.user.model.User;
 import com.gosu.iconpackgenerator.user.repository.UserRepository;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Profile;
 import org.springframework.security.oauth2.client.userinfo.DefaultOAuth2UserService;
@@ -65,7 +64,8 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
             String directoryPath = UUID.randomUUID().toString();
             user.setDirectoryPath(directoryPath); // Use random UUID for directory
             user.setIsActive(true);
-            user.setCoins(50); // New users start with 50 coins
+            user.setCoins(0); // New users start with 0 coins
+            user.setTrialCoins(1); // New users get 1 trial coin for first experience
             user.setRegisteredAt(LocalDateTime.now());
             
             user = userRepository.save(user);
@@ -73,7 +73,7 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
             // Create user directory structure
             createUserDirectoryStructure(user.getDirectoryPath());
             
-            log.info("Created new user: {} (ID: {})", email, user.getId());
+            log.info("Created new user: {} (ID: {}) with 0 regular coins and 1 trial coin", email, user.getId());
             
             return user;
         } catch (Exception e) {
