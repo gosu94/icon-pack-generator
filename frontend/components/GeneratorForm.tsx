@@ -45,6 +45,19 @@ const GeneratorForm: React.FC<GeneratorFormProps> = ({
   const [isDragOver, setIsDragOver] = useState(false);
   const isAuthenticated = authState.authenticated;
 
+  // Automatically disable variations when user only has trial coins
+  useEffect(() => {
+    if (authState.user) {
+      const regularCoins = authState.user.coins || 0;
+      const trialCoins = authState.user.trialCoins || 0;
+      const isTrialOnly = regularCoins === 0 && trialCoins > 0;
+      
+      if (isTrialOnly && generateVariations) {
+        setGenerateVariations(false);
+      }
+    }
+  }, [authState.user, generateVariations, setGenerateVariations]);
+
   const handleDragEnter = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     e.stopPropagation();
@@ -294,34 +307,66 @@ const GeneratorForm: React.FC<GeneratorFormProps> = ({
                 className="text-lg font-semibold text-slate-900"
                 htmlFor="variations-switch"
               >
-                  Additional Variation
+                Additional Variation
               </label>
               <div className="flex items-center space-x-2">
-                {generateVariations && authState.user && authState.user.trialCoins === 0 && (
-                  <span className="flex items-center space-x-1 rounded-full bg-gray-200 px-2 py-0.5 text-xs font-semibold text-gray-700">
-                    <span>+1</span>
-                    <Image
-                      src="/images/coin.webp"
-                      alt="Coin"
-                      width={16}
-                      height={16}
-                    />
-                  </span>
-                )}
-                {generateVariations && authState.user && authState.user.trialCoins > 0 && (
-                  <span className="flex items-center space-x-1 rounded-full bg-orange-100 px-2 py-0.5 text-xs font-semibold text-orange-700">
-                    <span>Trial limited to 5 icons</span>
-                  </span>
-                )}
+                {(() => {
+                  const regularCoins = authState.user?.coins || 0;
+                  const trialCoins = authState.user?.trialCoins || 0;
+                  const isTrialOnly = regularCoins === 0 && trialCoins > 0;
+                  
+                  if (isTrialOnly) {
+                    return (
+                      <span className="flex items-center space-x-1 rounded-full bg-orange-100 px-2 py-0.5 text-xs font-semibold text-orange-700">
+                        <span>Not available with trial coin</span>
+                      </span>
+                    );
+                  } else if (generateVariations) {
+                    return (
+                      <span className="flex items-center space-x-1 rounded-full bg-gray-200 px-2 py-0.5 text-xs font-semibold text-gray-700">
+                        <span>+1</span>
+                        <Image
+                          src="/images/coin.webp"
+                          alt="Coin"
+                          width={16}
+                          height={16}
+                        />
+                      </span>
+                    );
+                  }
+                  return null;
+                })()}
                 <button
                   id="variations-switch"
                   type="button"
                   role="switch"
                   aria-checked={generateVariations}
-                  onClick={() => setGenerateVariations(!generateVariations)}
+                  disabled={(() => {
+                    const regularCoins = authState.user?.coins || 0;
+                    const trialCoins = authState.user?.trialCoins || 0;
+                    return regularCoins === 0 && trialCoins > 0;
+                  })()}
+                  onClick={() => {
+                    const regularCoins = authState.user?.coins || 0;
+                    const trialCoins = authState.user?.trialCoins || 0;
+                    const isTrialOnly = regularCoins === 0 && trialCoins > 0;
+                    
+                    if (!isTrialOnly) {
+                      setGenerateVariations(!generateVariations);
+                    }
+                  }}
                   className={`${
-                    generateVariations ? 'bg-purple-600' : 'bg-gray-200'
-                  } relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2`}
+                    (() => {
+                      const regularCoins = authState.user?.coins || 0;
+                      const trialCoins = authState.user?.trialCoins || 0;
+                      const isTrialOnly = regularCoins === 0 && trialCoins > 0;
+                      
+                      if (isTrialOnly) {
+                        return 'bg-gray-300 cursor-not-allowed';
+                      }
+                      return generateVariations ? 'bg-purple-600' : 'bg-gray-200';
+                    })()
+                  } relative inline-flex h-6 w-11 flex-shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2`}
                 >
                   <span
                     aria-hidden="true"
@@ -359,24 +404,48 @@ const GeneratorForm: React.FC<GeneratorFormProps> = ({
                   </span>
                   {isAuthenticated && authState.user && (
                     <span className="flex items-center space-x-1 rounded-full bg-white/20 px-2 py-0.5 text-xs font-semibold">
-                      {authState.user.trialCoins > 0 ? (
-                        <>
-                          <div className="w-4 h-4 bg-green-500 rounded-full flex items-center justify-center">
-                            <span className="text-xs font-bold text-white">T</span>
-                          </div>
-                          <span>Trial</span>
-                        </>
-                      ) : (
-                        <>
-                          <Image
-                            src="/images/coin.webp"
-                            alt="Coins"
-                            width={16}
-                            height={16}
-                          />
-                          <span>{generateVariations ? 2 : 1}</span>
-                        </>
-                      )}
+                      {(() => {
+                        const cost = generateVariations ? 2 : 1;
+                        const regularCoins = authState.user.coins || 0;
+                        const trialCoins = authState.user.trialCoins || 0;
+                        
+                        // Prioritize regular coins (same logic as backend)
+                        if (regularCoins >= cost) {
+                          return (
+                            <>
+                              <Image
+                                src="/images/coin.webp"
+                                alt="Coins"
+                                width={16}
+                                height={16}
+                              />
+                              <span>{cost}</span>
+                            </>
+                          );
+                        } else if (trialCoins > 0) {
+                          return (
+                            <>
+                              <div className="w-4 h-4 bg-green-500 rounded-full flex items-center justify-center">
+                                <span className="text-xs font-bold text-white">T</span>
+                              </div>
+                              <span>Trial</span>
+                            </>
+                          );
+                        } else {
+                          // Fallback - show required coins even if user doesn't have them
+                          return (
+                            <>
+                              <Image
+                                src="/images/coin.webp"
+                                alt="Coins"
+                                width={16}
+                                height={16}
+                              />
+                              <span>{cost}</span>
+                            </>
+                          );
+                        }
+                      })()}
                     </span>
                   )}
                 </div>
