@@ -159,19 +159,31 @@ export default function LandingPage() {
               </div>
               <h3 className="text-xl font-bold text-slate-900 mb-4">Lightning Fast Generation</h3>
               <p className="text-slate-600 leading-relaxed">
-                Generate complete icon packs in under a minute using our advanced AI models. No more waiting hours for custom designs.
+                Generate complete icon packs in under two minutes using our advanced AI models. No more waiting hours for custom designs.
               </p>
             </div>
 
             {/* Feature 2 */}
-            <div className="bg-white/80 backdrop-blur-md rounded-2xl p-8 shadow-lg border border-purple-200/30 hover:shadow-xl transition-all duration-300 hover:scale-[1.02]">
-              <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-pink-500 rounded-xl flex items-center justify-center mb-6">
-                <Palette className="w-6 h-6 text-white" />
+            <div className="bg-white/80 backdrop-blur-md rounded-2xl p-8 shadow-lg border border-green-200/50 hover:shadow-xl transition-all duration-300 hover:scale-[1.02] relative overflow-hidden">
+              {/* Free badge */}
+              <div className="absolute top-4 right-4 bg-gradient-to-r from-green-500 to-emerald-500 text-white text-xs font-bold px-2 py-1 rounded-full">
+                FREE
               </div>
-              <h3 className="text-xl font-bold text-slate-900 mb-4">Multiple AI Models</h3>
+              <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-emerald-500 rounded-xl flex items-center justify-center mb-6">
+                <div className="w-6 h-6 bg-white rounded-full flex items-center justify-center">
+                  <span className="text-green-600 text-xs font-bold">T</span>
+                </div>
+              </div>
+              <h3 className="text-xl font-bold text-slate-900 mb-4">Try for Free</h3>
               <p className="text-slate-600 leading-relaxed">
-                Choose from Flux-Pro, Recraft V3, Luma Photon, and more. Each model offers unique styles and capabilities for your icons.
+                Get started instantly with a free trial coin! Generate 5 professional icons at no cost and experience our AI-powered creation process.
               </p>
+              <div className="mt-4 flex items-center space-x-2 text-sm text-green-600 font-semibold">
+                <div className="w-4 h-4 bg-green-500 rounded-full flex items-center justify-center">
+                  <span className="text-white text-xs font-bold">T</span>
+                </div>
+                <span>1 Trial Coin = 5 Icons</span>
+              </div>
             </div>
 
             {/* Feature 3 */}
@@ -196,20 +208,23 @@ export default function LandingPage() {
               <div className="w-12 h-12 bg-gradient-to-br from-orange-500 to-red-500 rounded-xl flex items-center justify-center mb-6">
                 <Sparkles className="w-6 h-6 text-white" />
               </div>
-              <h3 className="text-xl font-bold text-slate-900 mb-4">Smart Variations</h3>
+              <h3 className="text-xl font-bold text-slate-900 mb-4">Style Variations</h3>
               <p className="text-slate-600 leading-relaxed">
-                Generate multiple variations of each icon automatically. Get more options and find the perfect style for your project.
+                  Use the 'Additional Variation' option to enrich your set with an alternate style.
+                  Get more choices and find the perfect look for your project.
               </p>
             </div>
 
             {/* Feature 5 */}
             <div className="bg-white/80 backdrop-blur-md rounded-2xl p-8 shadow-lg border border-purple-200/30 hover:shadow-xl transition-all duration-300 hover:scale-[1.02]">
-              <div className="w-12 h-12 bg-gradient-to-br from-teal-500 to-green-500 rounded-xl flex items-center justify-center mb-6">
-                <Star className="w-6 h-6 text-white" />
+              <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-indigo-500 rounded-xl flex items-center justify-center mb-6">
+                <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z" />
+                </svg>
               </div>
-              <h3 className="text-xl font-bold text-slate-900 mb-4">Professional Quality</h3>
+              <h3 className="text-xl font-bold text-slate-900 mb-4">Consistent Style</h3>
               <p className="text-slate-600 leading-relaxed">
-                Every icon is generated at high resolution with crisp details. Perfect for professional applications and commercial use.
+                All icons in your pack maintain the same visual style, color palette, and design language. Perfect cohesion for professional applications and brand consistency.
               </p>
             </div>
 
