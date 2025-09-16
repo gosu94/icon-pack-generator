@@ -34,6 +34,15 @@ public class WebhookController {
             switch (eventType) {
                 case "checkout.session.completed":
                     handleCheckoutSessionCompleted(event);
+                    log.info("Successfully processed checkout.session.completed event");
+                    break;
+                case "payment_intent.created":
+                case "payment_intent.succeeded":
+                case "charge.succeeded":
+                case "charge.updated":
+                    // These are expected events that occur during payment processing
+                    // We don't need to process them for our use case
+                    log.debug("Received expected event type: {}", eventType);
                     break;
                 default:
                     log.info("Unhandled event type: {}", eventType);
@@ -57,7 +66,7 @@ public class WebhookController {
             Map<String, String> metadata = stripeService.getSessionMetadata(event);
             
             if (metadata.isEmpty()) {
-                log.error("Could not retrieve session metadata from event");
+                log.error("Could not retrieve session metadata from checkout.session.completed event");
                 return;
             }
             
@@ -66,11 +75,20 @@ public class WebhookController {
             String coinsStr = metadata.get("coins");
             
             if (userEmail == null || productType == null || coinsStr == null) {
-                log.error("Missing metadata in session");
+                log.error("Missing required metadata in session. userEmail: {}, productType: {}, coins: {}", 
+                         userEmail != null ? "present" : "missing", 
+                         productType != null ? "present" : "missing", 
+                         coinsStr != null ? "present" : "missing");
                 return;
             }
             
-            int coins = Integer.parseInt(coinsStr);
+            int coins;
+            try {
+                coins = Integer.parseInt(coinsStr);
+            } catch (NumberFormatException e) {
+                log.error("Invalid coins value in metadata: {}", coinsStr, e);
+                return;
+            }
             
             paymentService.addCoinsToUser(userEmail, coins);
             log.info("Successfully added {} coins to user {} for product {}", 
