@@ -58,6 +58,13 @@ server:
   port: 8080
   tomcat:
     connection-timeout: 300000
+  servlet:
+    session:
+      timeout: 30m
+      cookie:
+        http-only: true
+        secure: false # Set to true in production with HTTPS
+        max-age: 1800s
 
 ai:
   services:
@@ -86,17 +93,17 @@ openai:
   api-key: ${OPENAI_API_KEY:your-openai-api-key-here}
 
 stripe:
-  secret-key: ${STRIPE_SECRET_KEY:your-stripe-secret-key}
-  publishable-key: ${STRIPE_PUBLISHABLE_KEY:your-stripe-publishable-key}
-  webhook-secret: ${STRIPE_WEBHOOK_SECRET:your-webhook-secret}
+  secret-key: ${STRIPE_SECRET_KEY:}
+  publishable-key: ${STRIPE_PUBLISHABLE_KEY:}
+  webhook-secret: ${STRIPE_WEBHOOK_SECRET:}
   products:
     starter-pack:
-      id: ${STRIPE_STARTER_PACK_PRODUCT_ID:starter_pack_product_id}
-      price-id: ${STRIPE_STARTER_PACK_PRICE_ID:starter_pack_price_id}
+      id: ${STRIPE_STARTER_PACK_PRODUCT_ID:prod_T46XgiMnbA3uMF}
+      price-id: ${STRIPE_STARTER_PACK_PRICE_ID:price_1S7yKeG7H7nvLRCSbS3XAqO9}
       coins: 8
     creator-pack:
-      id: ${STRIPE_CREATOR_PACK_PRODUCT_ID:creator_pack_product_id}
-      price-id: ${STRIPE_CREATOR_PACK_PRICE_ID:creator_pack_price_id}
+      id: ${STRIPE_CREATOR_PACK_PRODUCT_ID:prod_T46ZOSQZOhjxq6}
+      price-id: ${STRIPE_CREATOR_PACK_PRICE_ID:price_1S7yMgG7H7nvLRCSvXEf20Ub}
       coins: 18
     pro-pack:
       id: ${STRIPE_PRO_PACK_PRODUCT_ID:pro_pack_product_id}
@@ -136,9 +143,20 @@ management:
     health:
       show-details: when-authorized
 
+callmebot:
+  enabled: ${CALLMEBOT_ENABLED}
+  phone: ${PHONE_NUMBER}
+  apikey: ${CALLMEBOT_API_KEY}
+
 app:
   file-storage:
     base-path: ${FILE_STORAGE_PATH:static/user-icons}
+  base-url: ${APP_BASE_URL:http://localhost:8080}
+
+aws:
+  ses:
+    region: ${AWS_SES_REGION:us-east-1}
+    from-email: ${AWS_SES_FROM_EMAIL:noreply@yourdomain.com}
 
 springdoc:
   api-docs:

@@ -66,6 +66,8 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
             user.setIsActive(true);
             user.setCoins(0); // New users start with 0 coins
             user.setTrialCoins(1); // New users get 1 trial coin for first experience
+            user.setEmailVerified(true); // OAuth users are automatically email verified
+            user.setAuthProvider("GOOGLE"); // Mark as Google OAuth user
             user.setRegisteredAt(LocalDateTime.now());
             
             user = userRepository.save(user);

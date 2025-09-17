@@ -35,6 +35,10 @@ dependencies {
 	implementation 'com.fasterxml.jackson.core:jackson-databind'
 	implementation 'ai.fal.client:fal-client:0.7.1'
     implementation 'com.stripe:stripe-java:29.5.0'
+    
+    // Amazon SES for email sending
+    implementation 'software.amazon.awssdk:ses:2.28.11'
+    implementation 'software.amazon.awssdk:auth:2.28.11'
 
 	// Database dependencies
 	runtimeOnly 'org.postgresql:postgresql'

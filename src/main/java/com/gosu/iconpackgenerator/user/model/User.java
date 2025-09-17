@@ -51,6 +51,21 @@ public class User {
     @Column(name = "trial_coins")
     private Integer trialCoins = 0; // Trial coins for first-time users
     
+    @Column(name = "email_verified")
+    private Boolean emailVerified = false;
+    
+    @Column(name = "email_verification_token")
+    private String emailVerificationToken;
+    
+    @Column(name = "password_reset_token")
+    private String passwordResetToken;
+    
+    @Column(name = "password_reset_token_expiry")
+    private LocalDateTime passwordResetTokenExpiry;
+    
+    @Column(name = "auth_provider")
+    private String authProvider = "EMAIL"; // EMAIL, GOOGLE, etc.
+    
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<GeneratedIcon> generatedIcons;
 }
