@@ -148,10 +148,10 @@ const Navigation: React.FC<NavigationProps> = () => {
         // Refresh auth state
         await checkAuthenticationStatus();
         
-        // Close modal and redirect to homepage after short delay
+        // Close modal and redirect to dashboard after short delay
         setTimeout(() => {
           closeLoginModal();
-          window.location.reload(); // Refresh the entire page to ensure proper auth state
+          window.location.href = '/dashboard/index.html';
         }, 1500);
       } else {
         setAuthError(data.message || 'Invalid email or password');
@@ -290,9 +290,9 @@ const Navigation: React.FC<NavigationProps> = () => {
                 <Link href="/feedback" className="p-2 hover:bg-gray-100 rounded-lg">
                   <MessageSquare className="w-5 h-5 text-gray-700" />
                 </Link>
-                <button className="p-2 hover:bg-gray-100 rounded-lg">
+                <Link href="/settings/index.html" className="p-2 hover:bg-gray-100 rounded-lg">
                   <Settings className="w-5 h-5 text-gray-700" />
-                </button>
+                </Link>
                 <button
                   onClick={handleLogout}
                   className="p-2 hover:bg-gray-100 rounded-lg"
@@ -356,13 +356,14 @@ const Navigation: React.FC<NavigationProps> = () => {
                         <MessageSquare className="w-4 h-4 text-gray-700" />
                         <span className="text-sm font-medium text-gray-700">Feedback</span>
                       </Link>
-                      <button 
-                        className="flex items-center space-x-3 px-4 py-3 hover:bg-gray-100 w-full text-left"
+                      <Link 
+                        href="/settings/index.html"
+                        className="flex items-center space-x-3 px-4 py-3 hover:bg-gray-100"
                         onClick={() => setIsMobileMenuOpen(false)}
                       >
                         <Settings className="w-4 h-4 text-gray-700" />
                         <span className="text-sm font-medium text-gray-700">Settings</span>
-                      </button>
+                      </Link>
                       <div className="border-t border-gray-100 my-2"></div>
                       <button
                         onClick={() => {
@@ -473,7 +474,7 @@ const Navigation: React.FC<NavigationProps> = () => {
                     <span className="font-medium">Continue with Google</span>
                   </button>
 
-                  <div className="border-t border-gray-300" />
+                  <div className="h-4"></div>
 
                   <button
                     onClick={handleEmailContinue}

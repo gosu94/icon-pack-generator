@@ -1,5 +1,6 @@
 package com.gosu.iconpackgenerator.auth.controller;
 
+import com.gosu.iconpackgenerator.auth.dto.ChangePasswordRequest;
 import com.gosu.iconpackgenerator.auth.dto.EmailCheckRequest;
 import com.gosu.iconpackgenerator.auth.dto.EmailCheckResponse;
 import com.gosu.iconpackgenerator.auth.dto.LoginRequest;
@@ -17,8 +18,10 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
@@ -182,6 +185,37 @@ public class AuthController {
             
         } catch (Exception e) {
             log.error("Error setting password for token: {}", request.getToken(), e);
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+
+    @PostMapping("/change-password")
+    public ResponseEntity<Void> changePassword(@Valid @RequestBody ChangePasswordRequest request, @AuthenticationPrincipal OAuth2User principal) {
+        if (!(principal instanceof CustomOAuth2User customUser)) {
+            return ResponseEntity.status(401).build();
+        }
+
+        try {
+            // Validate password confirmation
+            if (!request.getNewPassword().equals(request.getConfirmPassword())) {
+                return ResponseEntity.badRequest().build();
+            }
+
+            Long userId = customUser.getUserId();
+            boolean success = emailAuthService.changePassword(
+                userId,
+                request.getCurrentPassword(),
+                request.getNewPassword()
+            );
+
+            if (success) {
+                return ResponseEntity.ok().build();
+            } else {
+                return ResponseEntity.badRequest().build();
+            }
+
+        } catch (Exception e) {
+            log.error("Error changing password for user: {}", customUser.getUserId(), e);
             return ResponseEntity.internalServerError().build();
         }
     }

@@ -277,6 +277,47 @@ public class EmailAuthService {
         }
     }
 
+    /**
+     * Change password for authenticated user
+     */
+    @Transactional
+    public boolean changePassword(Long userId, String currentPassword, String newPassword) {
+        try {
+            Optional<User> userOpt = userRepository.findById(userId);
+            
+            if (userOpt.isEmpty()) {
+                log.error("User with ID {} not found for password change", userId);
+                return false;
+            }
+            
+            User user = userOpt.get();
+            
+            // Check if user has email authentication (not OAuth-only)
+            if (user.getPassword() == null || user.getPassword().trim().isEmpty()) {
+                log.warn("Password change attempted for OAuth-only user: {}", userId);
+                return false;
+            }
+            
+            // Verify current password
+            if (!passwordEncoder.matches(currentPassword, user.getPassword())) {
+                log.warn("Invalid current password provided for user: {}", userId);
+                return false;
+            }
+            
+            // Hash and set new password
+            String hashedNewPassword = passwordEncoder.encode(newPassword);
+            user.setPassword(hashedNewPassword);
+            userRepository.save(user);
+            
+            log.info("Password changed successfully for user: {}", userId);
+            return true;
+            
+        } catch (Exception e) {
+            log.error("Error changing password for user: {}", userId, e);
+            return false;
+        }
+    }
+
     public enum EmailCheckResult {
         EMAIL_NOT_FOUND,
         NO_PASSWORD_SET,

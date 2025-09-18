@@ -60,7 +60,7 @@ public class SecurityConfig {
                     .userService(customOAuth2UserService)
                     .oidcUserService(customOidcUserService)
                 )
-                .defaultSuccessUrl("/", true)
+                .defaultSuccessUrl("/dashboard/index.html", true)
                 .failureUrl("/login?error")
             )
             .logout(logout -> logout
