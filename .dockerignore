@@ -13,6 +13,9 @@ build/
 .gradle/
 target/
 
+# Old frontend static files - will be replaced with fresh build
+src/main/resources/static/
+
 # Test artifacts
 src/test/resources/images/output/
 

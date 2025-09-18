@@ -16,13 +16,14 @@ COPY gradlew gradlew.bat ./
 COPY gradle ./gradle
 RUN ./gradlew dependencies --no-daemon
 
-# Copy frontend build artifacts into the backend's static resources
-COPY --from=frontend-builder /app/frontend/out ./src/main/resources/static
-
-# Copy backend source code
+# Copy backend source code first (but exclude static directory to avoid conflicts)
 COPY src ./src
 
-# Build the JAR (which will now include the frontend static files)
+# Clean any existing static files and copy fresh frontend build artifacts
+RUN rm -rf ./src/main/resources/static/*
+COPY --from=frontend-builder /app/frontend/out ./src/main/resources/static
+
+# Build the JAR (which will now include the fresh frontend static files)
 RUN ./gradlew bootJar --no-daemon
 
 # Use OpenJDK 21 as base image with Python support (force x86_64 for WebP compatibility)
