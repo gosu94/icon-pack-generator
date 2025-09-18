@@ -169,7 +169,7 @@ export default function TermsAndConditions() {
                   <p className="mb-2"><strong>Service Provider:</strong> Tomasz Pilarczyk</p>
                   <p className="mb-2"><strong>Address:</strong> Żwirki i Wigury 16, 66-620 Gubin, Poland</p>
                   <p className="mb-2"><strong>Tax ID:</strong> PL9261689360</p>
-                  <p className="mb-2"><strong>Email:</strong> [support_email]</p>
+                  <p className="mb-2"><strong>Email:</strong> support@iconpackgen.com</p>
                 </div>
                 <p className="mt-4">
                   For questions about these terms or our service, please contact us using the information above.

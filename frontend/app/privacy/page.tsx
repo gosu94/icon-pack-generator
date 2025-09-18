@@ -122,7 +122,7 @@ export default function PrivacyPolicy() {
                   <p className="mb-2"><strong>Data Controller:</strong> Tomasz Pilarczyk</p>
                   <p className="mb-2"><strong>Address:</strong> Żwirki i Wigury 16, 66-620 Gubin, Poland</p>
                   <p className="mb-2"><strong>Tax ID:</strong> PL9261689360</p>
-                  <p className="mb-2"><strong>Email:</strong> [support_email]</p>
+                  <p className="mb-2"><strong>Email:</strong> support@iconpackgen.com</p>
                 </div>
                 <p className="mt-4">
                   If you have questions about this privacy policy or how we handle your data, please contact us using the information above.
