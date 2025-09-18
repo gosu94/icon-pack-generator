@@ -183,20 +183,17 @@ public class EmailAuthService {
             
             User user = userOpt.get();
             
-            // Check if token has expired
-            if (user.getPasswordResetTokenExpiry() == null || 
+            if (user.getPasswordResetTokenExpiry() == null ||
                 user.getPasswordResetTokenExpiry().isBefore(LocalDateTime.now())) {
                 log.warn("Expired token used for password setup/reset: {}", token);
                 return false;
             }
             
-            // Hash and set password
             String hashedPassword = passwordEncoder.encode(password);
             user.setPassword(hashedPassword);
             user.setEmailVerified(true);
             user.setAuthProvider("EMAIL");
             
-            // Clear tokens
             user.setEmailVerificationToken(null);
             user.setPasswordResetToken(null);
             user.setPasswordResetTokenExpiry(null);
@@ -231,8 +228,7 @@ public class EmailAuthService {
             
             User user = userOpt.get();
             
-            // Check if token has expired
-            return user.getPasswordResetTokenExpiry() != null && 
+            return user.getPasswordResetTokenExpiry() != null &&
                    user.getPasswordResetTokenExpiry().isAfter(LocalDateTime.now());
             
         } catch (Exception e) {
@@ -282,8 +278,8 @@ public class EmailAuthService {
     }
 
     public enum EmailCheckResult {
-        EMAIL_NOT_FOUND,    // Email doesn't exist in database
-        NO_PASSWORD_SET,    // Email exists but no password set (OAuth user or new user)
-        PASSWORD_REQUIRED   // Email exists and password is required
+        EMAIL_NOT_FOUND,
+        NO_PASSWORD_SET,
+        PASSWORD_REQUIRED
     }
 }

@@ -284,12 +284,6 @@ const Navigation: React.FC<NavigationProps> = () => {
                 >
                   <ImageIcon className="w-5 h-5 text-gray-700" />
                 </Link>
-                <Link
-                  href="/background-remover"
-                  className="p-2 hover:bg-gray-100 rounded-lg"
-                >
-                  <Paintbrush className="w-5 h-5 text-gray-700" />
-                </Link>
                 <Link href="/store" className="p-2 hover:bg-gray-100 rounded-lg">
                   <Store className="w-5 h-5 text-gray-700" />
                 </Link>
@@ -453,9 +447,6 @@ const Navigation: React.FC<NavigationProps> = () => {
               {/* Method Selection Step */}
               {loginStep === 'method' && (
                 <div className="space-y-4">
-                  <p className="text-slate-600 text-center">
-                    Sign in to access your account and generate custom icons
-                  </p>
 
                   <button
                     onClick={handleGoogleLogin}
@@ -482,14 +473,7 @@ const Navigation: React.FC<NavigationProps> = () => {
                     <span className="font-medium">Continue with Google</span>
                   </button>
 
-                  <div className="relative">
-                    <div className="absolute inset-0 flex items-center">
-                      <div className="w-full border-t border-gray-300"></div>
-                    </div>
-                    <div className="relative flex justify-center text-sm">
-                      <span className="bg-white px-2 text-gray-500">or</span>
-                    </div>
-                  </div>
+                  <div className="border-t border-gray-300" />
 
                   <button
                     onClick={handleEmailContinue}
