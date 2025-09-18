@@ -71,7 +71,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
       if (response.ok) {
         setAuthState({ authenticated: false });
-        window.location.reload();
+        window.location.href = '/';
       }
     } catch (error) {
       console.error("Error during logout:", error);
