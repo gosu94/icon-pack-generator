@@ -842,7 +842,7 @@ export default function Page() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50/30">
-      <Navigation />
+      <Navigation useLoginPage={true} />
       <div className="flex flex-col lg:flex-row lg:h-screen">
         <GeneratorForm
           inputType={inputType}

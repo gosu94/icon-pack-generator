@@ -14,6 +14,7 @@ import {
   ArrowLeft
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import Navigation from '../../components/Navigation';
 
 function SettingsContent() {
   const { authState } = useAuth();
@@ -132,8 +133,9 @@ function SettingsContent() {
     true; // We'll let the backend handle the actual validation
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 to-blue-50 p-4">
-      <div className="max-w-4xl mx-auto">
+    <div className="min-h-screen bg-gradient-to-br from-purple-50 to-blue-50">
+      <Navigation useLoginPage={true} />
+      <div className="max-w-4xl mx-auto p-4">
         {/* Header */}
         <div className="mb-8">
           <button

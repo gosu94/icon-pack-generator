@@ -48,11 +48,21 @@ public class SecurityConfig {
                 .requestMatchers("/", "/error", "/favicon.ico").permitAll()
                 .requestMatchers("/static/**", "/_next/**").permitAll()
                 .requestMatchers("/webjars/**", "/css/**", "/js/**", "/images/**").permitAll()
+                // Public frontend pages - no authentication required
+                .requestMatchers("/privacy/**", "/terms/**").permitAll()
+                .requestMatchers("/payment/**").permitAll()
+                .requestMatchers("/password-setup/**").permitAll()
+                // Protected frontend pages - require authentication
+                .requestMatchers("/dashboard/**", "/dashboard").authenticated()
+                .requestMatchers("/settings/**", "/settings").authenticated()
+                .requestMatchers("/gallery/**", "/gallery").authenticated()
+                .requestMatchers("/store/**", "/store").authenticated()
+                .requestMatchers("/feedback/**", "/feedback").authenticated()
                 // Protected API endpoints - require authentication
                 .requestMatchers("/api/user/**", "/api/icons/**", "/api/gallery/**").authenticated()
                 .requestMatchers("/generate-stream", "/stream/**", "/generate-more").authenticated()
                 .requestMatchers("/export", "/export-gallery").authenticated()
-                // All other requests (frontend routes) - public
+                // All other requests (including home page) - public
                 .anyRequest().permitAll()
             )
             .oauth2Login(oauth2 -> oauth2
@@ -60,8 +70,30 @@ public class SecurityConfig {
                     .userService(customOAuth2UserService)
                     .oidcUserService(customOidcUserService)
                 )
-                .defaultSuccessUrl("/dashboard/index.html", true)
+                .defaultSuccessUrl("/dashboard", true)
                 .failureUrl("/login?error")
+                .loginPage("/login")
+            )
+            .formLogin(form -> form
+                .loginPage("/login")
+                .permitAll()
+            )
+            .exceptionHandling(exceptions -> exceptions
+                .authenticationEntryPoint((request, response, authException) -> {
+                    // For API requests, return 401
+                    if (request.getRequestURI().startsWith("/api/")) {
+                        response.setStatus(401);
+                        response.getWriter().write("{\"error\":\"Authentication required\"}");
+                        response.setContentType("application/json");
+                    } else {
+                        // For frontend routes, redirect to login with return URL
+                        String returnUrl = request.getRequestURI();
+                        if (request.getQueryString() != null) {
+                            returnUrl += "?" + request.getQueryString();
+                        }
+                        response.sendRedirect("/login?redirect=" + java.net.URLEncoder.encode(returnUrl, "UTF-8"));
+                    }
+                })
             )
             .logout(logout -> logout
                 .logoutUrl("/api/auth/logout")

@@ -49,7 +49,7 @@ export default function FeedbackPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-blue-50/30">
-      <Navigation />
+      <Navigation useLoginPage={true} />
       <main className="container mx-auto px-4 py-8">
         <div className="max-w-2xl mx-auto bg-white/80 backdrop-blur-md rounded-3xl p-8 shadow-2xl border-2 border-purple-200/50">
           <div className="absolute inset-0 rounded-3xl bg-gradient-to-br from-white/30 to-transparent pointer-events-none"></div>

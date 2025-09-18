@@ -158,7 +158,7 @@ export default function GalleryPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50/30">
-      <Navigation />
+      <Navigation useLoginPage={true} />
       <div className="container mx-auto px-4 py-8">
         {loading && <p>Loading...</p>}
         {error && <p className="text-red-500">{error}</p>}

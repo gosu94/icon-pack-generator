@@ -34,6 +34,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
       const data = await response.json();
       setAuthState(data);
+      
+      // Handle OAuth redirect after successful authentication
+      if (data.authenticated && typeof window !== 'undefined') {
+        const redirectUrl = sessionStorage.getItem('loginRedirect');
+        if (redirectUrl && window.location.pathname === '/') {
+          sessionStorage.removeItem('loginRedirect');
+          window.location.href = redirectUrl;
+        }
+      }
     } catch (error) {
       console.error("Error checking auth status:", error);
       setAuthState({ authenticated: false });

@@ -23,9 +23,11 @@ import {
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 
-interface NavigationProps {}
+interface NavigationProps {
+  useLoginPage?: boolean; // If true, redirect to /login instead of showing modal
+}
 
-const Navigation: React.FC<NavigationProps> = () => {
+const Navigation: React.FC<NavigationProps> = ({ useLoginPage = false }) => {
   const { authState, coinsLoading, handleLogout, checkAuthenticationStatus } = useAuth();
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const [isModalVisible, setIsModalVisible] = useState(false);
@@ -43,8 +45,15 @@ const Navigation: React.FC<NavigationProps> = () => {
   const [emailExists, setEmailExists] = useState(false);
 
   const openLoginModal = () => {
-    setIsLoginModalOpen(true);
-    setTimeout(() => setIsModalVisible(true), 10);
+    if (useLoginPage) {
+      // Redirect to login page with current path as redirect parameter
+      const currentPath = window.location.pathname;
+      const loginUrl = currentPath === '/' ? '/login' : `/login?redirect=${encodeURIComponent(currentPath)}`;
+      window.location.href = loginUrl;
+    } else {
+      setIsLoginModalOpen(true);
+      setTimeout(() => setIsModalVisible(true), 10);
+    }
   };
 
   const closeLoginModal = () => {
@@ -399,8 +408,8 @@ const Navigation: React.FC<NavigationProps> = () => {
         </div>
       </div>
 
-      {/* Login Modal */}
-      {isLoginModalOpen && (
+      {/* Login Modal - only show if not using login page */}
+      {!useLoginPage && isLoginModalOpen && (
         <div
           className={`fixed inset-0 bg-black flex items-center justify-center z-50 transition-opacity duration-300 ${
             isModalVisible ? "bg-opacity-50" : "bg-opacity-0"
