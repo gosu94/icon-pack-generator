@@ -152,15 +152,18 @@ export default function LandingPage() {
           </div>
           
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {/* Feature 1 */}
+
+            {/* Feature 5 */}
             <div className="bg-white/80 backdrop-blur-md rounded-2xl p-8 shadow-lg border border-purple-200/30 hover:shadow-xl transition-all duration-300 hover:scale-[1.02]">
-              <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-500 rounded-xl flex items-center justify-center mb-6">
-                <Zap className="w-6 h-6 text-white" />
-              </div>
-              <h3 className="text-xl font-bold text-slate-900 mb-4">Lightning Fast Generation</h3>
-              <p className="text-slate-600 leading-relaxed">
-                Generate complete icon packs in under two minutes using our advanced AI models. No more waiting hours for custom designs.
-              </p>
+                <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-indigo-500 rounded-xl flex items-center justify-center mb-6">
+                    <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z" />
+                    </svg>
+                </div>
+                <h3 className="text-xl font-bold text-slate-900 mb-4">Consistent Style</h3>
+                <p className="text-slate-600 leading-relaxed">
+                    All icons in your pack maintain the same visual style, color palette, and design language. Perfect cohesion for professional applications and brand consistency.
+                </p>
             </div>
 
             {/* Feature 2 */}
@@ -215,17 +218,15 @@ export default function LandingPage() {
               </p>
             </div>
 
-            {/* Feature 5 */}
+            {/* Feature 1 */}
             <div className="bg-white/80 backdrop-blur-md rounded-2xl p-8 shadow-lg border border-purple-200/30 hover:shadow-xl transition-all duration-300 hover:scale-[1.02]">
-              <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-indigo-500 rounded-xl flex items-center justify-center mb-6">
-                <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z" />
-                </svg>
-              </div>
-              <h3 className="text-xl font-bold text-slate-900 mb-4">Consistent Style</h3>
-              <p className="text-slate-600 leading-relaxed">
-                All icons in your pack maintain the same visual style, color palette, and design language. Perfect cohesion for professional applications and brand consistency.
-              </p>
+                <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-500 rounded-xl flex items-center justify-center mb-6">
+                    <Zap className="w-6 h-6 text-white" />
+                </div>
+                <h3 className="text-xl font-bold text-slate-900 mb-4">Lightning Fast Generation</h3>
+                <p className="text-slate-600 leading-relaxed">
+                    Generate complete icon packs in under two minutes using our advanced AI models. No more waiting hours for custom designs.
+                </p>
             </div>
 
             {/* Feature 6 */}
