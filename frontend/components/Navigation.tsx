@@ -235,8 +235,12 @@ const Navigation: React.FC<NavigationProps> = () => {
               height={32}
             />
             <Link href="/">
-              <span className="text-xl font-medium text-black cursor-pointer">
+              <span className="text-xl font-medium text-black cursor-pointer flex items-center">
                 Icon Pack Generator
+                <span className="ml-2 font-bold bg-clip-text text-transparent bg-gradient-to-b from-purple-400 to-purple-700">
+                  AI
+                </span>
+                <Sparkles className="w-3 h-3 text-purple-400 ml-1" />
               </span>
             </Link>
           </div>
@@ -473,9 +477,6 @@ const Navigation: React.FC<NavigationProps> = () => {
                     </svg>
                     <span className="font-medium">Continue with Google</span>
                   </button>
-
-                  <div className="h-4"></div>
-
                   <button
                     onClick={handleEmailContinue}
                     className="w-full flex items-center justify-center space-x-3 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white px-4 py-3 rounded-xl shadow-md hover:shadow-lg transition-all duration-200"
