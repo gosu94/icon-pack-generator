@@ -72,16 +72,29 @@ public class WebConfig implements WebMvcConfigurer {
                             return requestedResource;
                         }
                         
-                        // For routes that don't match files and don't start with /api, /stream, /export, /generate, /background-removal, /user-icons
-                        // serve index.html to support SPA routing
-                        if (!resourcePath.startsWith("api/") && 
-                            !resourcePath.startsWith("stream/") && 
-                            !resourcePath.startsWith("export") && 
-                            !resourcePath.startsWith("generate") && 
-                            !resourcePath.startsWith("background-removal/") &&
-                            !resourcePath.startsWith("swagger-ui/") &&
-                            !resourcePath.startsWith("user-icons/") &&
-                            !resourcePath.contains(".")) {
+                        // Try to find index.html in the requested directory (for Next.js routing)
+                        if (!resourcePath.contains(".") && !resourcePath.startsWith("api/") && 
+                            !resourcePath.startsWith("stream/") && !resourcePath.startsWith("export") && 
+                            !resourcePath.startsWith("generate") && !resourcePath.startsWith("background-removal/") &&
+                            !resourcePath.startsWith("swagger-ui/") && !resourcePath.startsWith("user-icons/")) {
+                            
+                            // First try: look for index.html in the requested path
+                            String indexPath = resourcePath.endsWith("/") ? resourcePath + "index.html" : resourcePath + "/index.html";
+                            Resource indexResource = location.createRelative(indexPath);
+                            if (indexResource.exists() && indexResource.isReadable()) {
+                                return indexResource;
+                            }
+                            
+                            // Second try: if no trailing slash, try with trailing slash + index.html
+                            if (!resourcePath.endsWith("/")) {
+                                String trailingSlashIndexPath = resourcePath + "/index.html";
+                                Resource trailingSlashIndexResource = location.createRelative(trailingSlashIndexPath);
+                                if (trailingSlashIndexResource.exists() && trailingSlashIndexResource.isReadable()) {
+                                    return trailingSlashIndexResource;
+                                }
+                            }
+                            
+                            // Fallback: serve root index.html for SPA routing
                             return new ClassPathResource("/static/index.html");
                         }
                         

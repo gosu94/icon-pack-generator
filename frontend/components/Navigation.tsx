@@ -151,7 +151,7 @@ const Navigation: React.FC<NavigationProps> = () => {
         // Close modal and redirect to dashboard after short delay
         setTimeout(() => {
           closeLoginModal();
-          window.location.href = '/dashboard/index.html';
+          window.location.href = '/dashboard';
         }, 1500);
       } else {
         setAuthError(data.message || 'Invalid email or password');
@@ -290,7 +290,7 @@ const Navigation: React.FC<NavigationProps> = () => {
                 <Link href="/feedback" className="p-2 hover:bg-gray-100 rounded-lg">
                   <MessageSquare className="w-5 h-5 text-gray-700" />
                 </Link>
-                <Link href="/settings/index.html" className="p-2 hover:bg-gray-100 rounded-lg">
+                <Link href="/settings" className="p-2 hover:bg-gray-100 rounded-lg">
                   <Settings className="w-5 h-5 text-gray-700" />
                 </Link>
                 <button
@@ -357,7 +357,7 @@ const Navigation: React.FC<NavigationProps> = () => {
                         <span className="text-sm font-medium text-gray-700">Feedback</span>
                       </Link>
                       <Link 
-                        href="/settings/index.html"
+                        href="/settings"
                         className="flex items-center space-x-3 px-4 py-3 hover:bg-gray-100"
                         onClick={() => setIsMobileMenuOpen(false)}
                       >
