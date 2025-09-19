@@ -80,10 +80,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
       if (response.ok) {
         setAuthState({ authenticated: false });
-        window.location.href = '/';
+        window.location.href = '/index.html';
       }
     } catch (error) {
       console.error("Error during logout:", error);
+      window.location.href = '/index.html';
     }
   };
 
