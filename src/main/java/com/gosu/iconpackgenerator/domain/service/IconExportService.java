@@ -27,10 +27,10 @@ public class IconExportService {
     private final ImageProcessingService imageProcessingService;
     
     // Standard icon sizes for PNG exports
-    private static final int[] PNG_SIZES = {16, 32, 64, 128, 256, 512};
+    private static final int[] PNG_SIZES = {32, 64, 128, 256, 512};
     
     // Comprehensive ICO sizes for modern applications and high-DPI displays
-    private static final int[] ICO_SIZES = {16, 32, 48, 64, 128, 256};
+    private static final int[] ICO_SIZES = {32, 48, 64, 128, 256};
     
     // Cache for WebP4j availability to avoid repeated checks
     private Boolean webp4jAvailable = null;
