@@ -83,8 +83,15 @@ public class GptModelService implements AIModelService {
                 }
             }
             
-            // Both attempts failed, throw sanitized error
+            // Both attempts failed, throw sanitized error with better context
             String sanitizedMessage = errorMessageSanitizer.sanitizeErrorMessage(lastException.getMessage(), "GPT");
+            
+            // Check if this looks like a temporary service issue
+            if (errorMessageSanitizer.is422Error(lastException.getMessage()) || 
+                isLikelyTemporaryFailure(lastException.getMessage())) {
+                sanitizedMessage = "Service is temporarily unavailable. " + sanitizedMessage;
+            }
+            
             throw new FalAiException(sanitizedMessage, lastException);
         });
     }
@@ -186,8 +193,15 @@ public class GptModelService implements AIModelService {
                 }
             }
             
-            // Both attempts failed, throw sanitized error
+            // Both attempts failed, throw sanitized error with better context
             String sanitizedMessage = errorMessageSanitizer.sanitizeErrorMessage(lastException.getMessage(), "GPT");
+            
+            // Check if this looks like a temporary service issue
+            if (errorMessageSanitizer.is422Error(lastException.getMessage()) || 
+                isLikelyTemporaryFailure(lastException.getMessage())) {
+                sanitizedMessage = "Service is temporarily unavailable. " + sanitizedMessage;
+            }
+            
             throw new FalAiException(sanitizedMessage, lastException);
         });
     }
@@ -360,5 +374,28 @@ public class GptModelService implements AIModelService {
             log.warn("GPT Image service is not available: {}", e.getMessage());
             return false;
         }
+    }
+    
+    /**
+     * Checks if an error message indicates a temporary service failure
+     */
+    private boolean isLikelyTemporaryFailure(String errorMessage) {
+        if (errorMessage == null) {
+            return false;
+        }
+        
+        String lowerMessage = errorMessage.toLowerCase();
+        
+        return lowerMessage.contains("timeout") ||
+               lowerMessage.contains("connection") ||
+               lowerMessage.contains("network") ||
+               lowerMessage.contains("server error") ||
+               lowerMessage.contains("internal error") ||
+               lowerMessage.contains("service unavailable") ||
+               lowerMessage.contains("temporarily unavailable") ||
+               lowerMessage.contains("429") || // Rate limiting
+               lowerMessage.contains("502") || // Bad Gateway
+               lowerMessage.contains("503") || // Service Unavailable
+               lowerMessage.contains("504");   // Gateway Timeout
     }
 }

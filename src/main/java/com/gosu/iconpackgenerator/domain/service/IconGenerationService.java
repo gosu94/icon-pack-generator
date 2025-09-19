@@ -4,20 +4,15 @@ import com.gosu.iconpackgenerator.config.AIServicesConfig;
 import com.gosu.iconpackgenerator.domain.dto.IconGenerationRequest;
 import com.gosu.iconpackgenerator.domain.dto.IconGenerationResponse;
 import com.gosu.iconpackgenerator.domain.dto.ServiceProgressUpdate;
-import com.gosu.iconpackgenerator.domain.entity.GeneratedIcon;
 import com.gosu.iconpackgenerator.user.model.User;
-import com.gosu.iconpackgenerator.user.service.UserService;
 import com.gosu.iconpackgenerator.exception.FalAiException;
-import com.gosu.iconpackgenerator.domain.repository.GeneratedIconRepository;
 import com.gosu.iconpackgenerator.util.ErrorMessageSanitizer;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.Base64;
-import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
@@ -37,10 +32,10 @@ public class IconGenerationService {
     private final ImageProcessingService imageProcessingService;
     private final PromptGenerationService promptGenerationService;
     private final AIServicesConfig aiServicesConfig;
-    private final GeneratedIconRepository generatedIconRepository;
-    private final DataInitializationService dataInitializationService;
-    private final FileStorageService fileStorageService;
-    private final UserService userService;
+    private final CoinManagementService coinManagementService;
+    private final ServiceFailureHandler serviceFailureHandler;
+    private final IconPersistenceService iconPersistenceService;
+    private final TrialModeService trialModeService;
     private final ErrorMessageSanitizer errorMessageSanitizer;
     
     public CompletableFuture<IconGenerationResponse> generateIcons(IconGenerationRequest request, User user) {
@@ -52,38 +47,15 @@ public class IconGenerationService {
      */
     public CompletableFuture<IconGenerationResponse> generateIcons(IconGenerationRequest request, String requestId, ProgressUpdateCallback progressCallback, User user) {
         int cost = Math.max(1, request.getGenerationsPerService());
-        boolean usingTrialCoins = false;
-
-        // Debug logging for coin checking
-        int regularCoins = userService.getUserCoins(user.getId());
-        int trialCoins = userService.getUserTrialCoins(user.getId());
-        log.info("User {} coin check: regular={}, trial={}, cost={}", user.getEmail(), regularCoins, trialCoins, cost);
         
-        // Check if we should use regular coins first, then trial coins as fallback
-        if (userService.hasEnoughCoins(user.getId(), cost)) {
-            // Use regular coins
-            if (!userService.deductCoins(user.getId(), cost)) {
-                log.error("Failed to deduct coins from user {}", user.getEmail());
-                return CompletableFuture.completedFuture(createErrorResponse(requestId, "Failed to process payment. Please try again."));
-            }
-            log.info("Deducted {} coin(s) from user {} for icon generation. Request ID: {}", cost, user.getEmail(), requestId);
-        } else if (trialCoins > 0) {
-            // Fallback to trial coins if no regular coins (trial coins always work regardless of cost)
-            log.info("Using trial coins for user {} (regular coins insufficient: {} < {}, but trial coins available: {})", 
-                    user.getEmail(), regularCoins, cost, trialCoins);
-            if (!userService.deductTrialCoins(user.getId(), 1)) {
-                log.error("Failed to deduct trial coins from user {}", user.getEmail());
-                return CompletableFuture.completedFuture(createErrorResponse(requestId, "Failed to process trial coin. Please try again."));
-            }
-            usingTrialCoins = true;
-            log.info("Deducted 1 trial coin from user {} for icon generation (no regular coins available). Request ID: {}", user.getEmail(), requestId);
-        } else {
-            // No coins at all
-            log.warn("User {} has insufficient coins: regular={}, trial={}, cost={}", user.getEmail(), regularCoins, trialCoins, cost);
-            return CompletableFuture.completedFuture(createErrorResponse(requestId, "Insufficient coins. You need " + cost + " coin(s) to generate icons, or you can purchase coins in the store."));
+        // Deduct coins using the dedicated service
+        CoinManagementService.CoinDeductionResult coinResult = coinManagementService.deductCoinsForGeneration(user, cost);
+        if (!coinResult.isSuccess()) {
+            return CompletableFuture.completedFuture(createErrorResponse(requestId, coinResult.getErrorMessage()));
         }
         
-        final boolean isTrialMode = usingTrialCoins;
+        final boolean isTrialMode = coinResult.isUsedTrialCoins();
+        final int deductedCost = coinResult.getDeductedAmount();
         
         List<String> enabledServices = new ArrayList<>();
         if (aiServicesConfig.isFluxAiEnabled()) enabledServices.add("FalAI");
@@ -162,16 +134,32 @@ public class IconGenerationService {
                     
                     IconGenerationResponse finalResponse = createCombinedResponse(requestId, falAiResults, recraftResults, photonResults, gptResults, imagenResults, seed);
                     
+                    // Check if all enabled services failed due to temporary unavailability and refund coins if needed
+                    if ("error".equals(finalResponse.getStatus())) {
+                        ServiceFailureHandler.FailureAnalysisResult failureAnalysis = 
+                            serviceFailureHandler.analyzeServiceFailures(falAiResults, recraftResults, photonResults, gptResults, imagenResults);
+                        
+                        if (failureAnalysis.shouldRefund()) {
+                            try {
+                                serviceFailureHandler.processRefund(user, deductedCost, isTrialMode, requestId);
+                                finalResponse.setMessage(failureAnalysis.getRefundMessage());
+                            } catch (Exception e) {
+                                log.error("Failed to refund coins to user {} for request {}", user.getEmail(), requestId, e);
+                                // Don't change the error message if refund fails
+                            }
+                        }
+                    }
+                    
                     // Apply trial mode limitations if using trial coins
                     if (isTrialMode && "success".equals(finalResponse.getStatus())) {
                         log.info("Applying trial mode limitations to response for request {}", requestId);
-                        limitResponseForTrial(finalResponse);
+                        trialModeService.applyTrialLimitations(finalResponse);
                     }
                     
                     // Persist generated icons to database and file system
                     if ("success".equals(finalResponse.getStatus())) {
                         try {
-                            persistGeneratedIcons(requestId, request, finalResponse, user);
+                            iconPersistenceService.persistGeneratedIcons(requestId, request, finalResponse, user);
                             log.info("Successfully persisted {} icons for request {} (trial mode: {})", 
                                     finalResponse.getIcons().size(), requestId, isTrialMode);
                         } catch (Exception e) {
@@ -780,140 +768,5 @@ public class IconGenerationService {
      */
     private long generateRandomSeed() {
         return System.currentTimeMillis() + (long) (Math.random() * 1000);
-    }
-    
-    /**
-     * Limits the icons in a ServiceResults to 5 random ones for trial users
-     */
-    private void limitIconsForTrial(IconGenerationResponse.ServiceResults serviceResults) {
-        if (serviceResults == null || serviceResults.getIcons() == null || serviceResults.getIcons().size() <= 5) {
-            return; // No need to limit if 5 or fewer icons
-        }
-        
-        List<IconGenerationResponse.GeneratedIcon> originalIcons = new ArrayList<>(serviceResults.getIcons());
-        Collections.shuffle(originalIcons); // Randomize the selection
-        
-        List<IconGenerationResponse.GeneratedIcon> limitedIcons = originalIcons.subList(0, 5);
-        serviceResults.setIcons(limitedIcons);
-        serviceResults.setMessage(serviceResults.getMessage() + " (Trial: 5 of 9 icons)");
-        
-        log.info("Limited icons to 5 random ones for trial user");
-    }
-    
-    /**
-     * Limits all service results in the response to 5 random icons each for trial users  
-     */
-    private void limitResponseForTrial(IconGenerationResponse response) {
-        if (response.getFalAiResults() != null) {
-            response.getFalAiResults().forEach(this::limitIconsForTrial);
-        }
-        if (response.getRecraftResults() != null) {
-            response.getRecraftResults().forEach(this::limitIconsForTrial);
-        }
-        if (response.getPhotonResults() != null) {
-            response.getPhotonResults().forEach(this::limitIconsForTrial);
-        }
-        if (response.getGptResults() != null) {
-            response.getGptResults().forEach(this::limitIconsForTrial);
-        }
-        if (response.getImagenResults() != null) {
-            response.getImagenResults().forEach(this::limitIconsForTrial);
-        }
-        
-        // Rebuild the combined icons list after limiting individual services
-        List<IconGenerationResponse.GeneratedIcon> allIcons = new ArrayList<>();
-        addIconsFromServiceResults(allIcons, response.getFalAiResults());
-        addIconsFromServiceResults(allIcons, response.getRecraftResults());
-        addIconsFromServiceResults(allIcons, response.getPhotonResults());
-        addIconsFromServiceResults(allIcons, response.getGptResults());
-        addIconsFromServiceResults(allIcons, response.getImagenResults());
-        response.setIcons(allIcons);
-        
-        // Add trial indicator to the overall response
-        response.setMessage((response.getMessage() != null ? response.getMessage() : "Generated") + 
-                          " - Trial Mode: Limited to 5 icons per service");
-        
-        log.info("Applied trial limitations to response. Final icon count: {}", allIcons.size());
-    }
-    
-    /**
-     * Persist generated icons to database and file system
-     */
-    @Transactional
-    private void persistGeneratedIcons(String requestId, IconGenerationRequest request, IconGenerationResponse response, User user) {
-        try {
-            
-            // Get all service results for metadata
-            List<IconGenerationResponse.ServiceResults> allServiceResults = new ArrayList<>();
-            allServiceResults.addAll(response.getFalAiResults());
-            allServiceResults.addAll(response.getRecraftResults());
-            allServiceResults.addAll(response.getPhotonResults());
-            allServiceResults.addAll(response.getGptResults());
-            allServiceResults.addAll(response.getImagenResults());
-            
-            // Save individual icons
-            for (IconGenerationResponse.GeneratedIcon icon : response.getIcons()) {
-                if (icon.getBase64Data() != null && !icon.getBase64Data().isEmpty()) {
-                    // Find generation index from service results
-                    Integer generationIndex = findGenerationIndex(icon, allServiceResults);
-                    
-                    // Determine icon type based on generation index
-                    String iconType = (generationIndex != null && generationIndex == 1) ? "original" : "variation";
-                    
-                    // Generate file name without "pos" prefix
-                    String fileName = fileStorageService.generateIconFileName(
-                            icon.getServiceSource(), 
-                            icon.getId(), 
-                            icon.getGridPosition()
-                    );
-                    
-                    // Save icon to file system
-                    String filePath = fileStorageService.saveIcon(
-                            user.getDirectoryPath(),
-                            requestId,
-                            iconType,
-                            fileName,
-                            icon.getBase64Data()
-                    );
-                    
-                    // Create database record
-                    GeneratedIcon generatedIcon = new GeneratedIcon();
-                    generatedIcon.setRequestId(requestId);
-                    generatedIcon.setIconId(icon.getId());
-                    generatedIcon.setUser(user);
-                    generatedIcon.setFileName(fileName);
-                    generatedIcon.setFilePath(filePath);
-                    generatedIcon.setServiceSource(icon.getServiceSource());
-                    generatedIcon.setGridPosition(icon.getGridPosition());
-                    generatedIcon.setDescription(icon.getDescription());
-                    generatedIcon.setTheme(request.getGeneralDescription());
-                    generatedIcon.setIconCount(request.getIconCount());
-                    generatedIcon.setGenerationIndex(generationIndex);
-                    generatedIcon.setIconType(iconType);
-                    
-                    // Calculate file size
-                    long fileSize = fileStorageService.getFileSize(user.getDirectoryPath(), requestId, iconType, fileName);
-                    generatedIcon.setFileSize(fileSize);
-                    
-                    generatedIconRepository.save(generatedIcon);
-                }
-            }
-            
-        } catch (Exception e) {
-            log.error("Error persisting icons for request {}", requestId, e);
-            throw e;
-        }
-    }
-    
-    /**
-     * Find the generation index for an icon based on service results
-     */
-    private Integer findGenerationIndex(IconGenerationResponse.GeneratedIcon icon, List<IconGenerationResponse.ServiceResults> allServiceResults) {
-        return allServiceResults.stream()
-                .filter(result -> icon.getServiceSource().equals(result.getServiceName()))
-                .filter(result -> result.getIcons() != null && result.getIcons().contains(icon))
-                .map(IconGenerationResponse.ServiceResults::getGenerationIndex)
-                .findFirst()
-                .orElse(1);
     }
 }

@@ -9,21 +9,19 @@ import com.gosu.iconpackgenerator.domain.dto.IconGenerationResponse;
 import com.gosu.iconpackgenerator.domain.dto.MoreIconsRequest;
 import com.gosu.iconpackgenerator.domain.dto.MoreIconsResponse;
 import com.gosu.iconpackgenerator.domain.dto.ServiceProgressUpdate;
-import com.gosu.iconpackgenerator.domain.entity.GeneratedIcon;
-import com.gosu.iconpackgenerator.domain.repository.GeneratedIconRepository;
-import com.gosu.iconpackgenerator.domain.service.DataInitializationService;
-import com.gosu.iconpackgenerator.domain.service.FileStorageService;
+import com.gosu.iconpackgenerator.domain.service.CoinManagementService;
 import com.gosu.iconpackgenerator.domain.service.FluxModelService;
 import com.gosu.iconpackgenerator.domain.service.GptModelService;
 import com.gosu.iconpackgenerator.domain.service.IconGenerationService;
+import com.gosu.iconpackgenerator.domain.service.IconPersistenceService;
 import com.gosu.iconpackgenerator.domain.service.ImageProcessingService;
 import com.gosu.iconpackgenerator.domain.service.ImagenModelService;
 import com.gosu.iconpackgenerator.domain.service.PhotonModelService;
 import com.gosu.iconpackgenerator.domain.service.PromptGenerationService;
 import com.gosu.iconpackgenerator.domain.service.RecraftModelService;
+import com.gosu.iconpackgenerator.domain.service.ServiceFailureHandler;
 import com.gosu.iconpackgenerator.user.model.User;
 import com.gosu.iconpackgenerator.user.service.CustomOAuth2User;
-import com.gosu.iconpackgenerator.user.service.UserService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -39,7 +37,6 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.util.ArrayList;
 import java.util.Base64;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -61,11 +58,10 @@ public class IconGenerationController implements IconGenerationControllerAPI {
     private final ImageProcessingService imageProcessingService;
     private final AIServicesConfig aiServicesConfig;
     private final ObjectMapper objectMapper;
-    private final GeneratedIconRepository generatedIconRepository;
-    private final DataInitializationService dataInitializationService;
-    private final FileStorageService fileStorageService;
     private final StreamingStateStore streamingStateStore;
-    private final UserService userService;
+    private final CoinManagementService coinManagementService;
+    private final ServiceFailureHandler serviceFailureHandler;
+    private final IconPersistenceService iconPersistenceService;
 
     @Override
     @ResponseBody
@@ -263,33 +259,15 @@ public class IconGenerationController implements IconGenerationControllerAPI {
         CompletableFuture.supplyAsync(() -> {
             long startTime = System.currentTimeMillis();
 
+            // Deduct coins using the dedicated service
+            CoinManagementService.CoinDeductionResult coinResult = coinManagementService.deductCoinForMoreIcons(user);
+            if (!coinResult.isSuccess()) {
+                return createErrorResponse(request, coinResult.getErrorMessage(), startTime);
+            }
+            
+            final boolean usedTrialCoin = coinResult.isUsedTrialCoins();
+
             try {
-                // Debug logging for more icons generation
-                int regularCoins = userService.getUserCoins(user.getId());
-                int trialCoins = userService.getUserTrialCoins(user.getId());
-                log.info("User {} more icons generation - coin check: regular={}, trial={}", user.getEmail(), regularCoins, trialCoins);
-                
-                // Check coins with same priority as main generation (regular coins first, then trial coins)
-                boolean usedTrialCoin = false;
-                if (userService.hasEnoughCoins(user.getId(), 1)) {
-                    // Use regular coins
-                    if (!userService.deductCoins(user.getId(), 1)) {
-                        log.error("Failed to deduct regular coins from user {} for more icons", user.getEmail());
-                        return createErrorResponse(request, "Failed to process payment. Please try again.", startTime);
-                    }
-                    log.info("Deducted 1 regular coin from user {} for more icons generation. Original Request ID: {}", user.getEmail(), request.getOriginalRequestId());
-                } else if (userService.hasTrialCoins(user.getId())) {
-                    // Use trial coins as fallback
-                    if (!userService.deductTrialCoins(user.getId(), 1)) {
-                        log.error("Failed to deduct trial coins from user {} for more icons", user.getEmail());
-                        return createErrorResponse(request, "Failed to process trial coin. Please try again.", startTime);
-                    }
-                    usedTrialCoin = true;
-                    log.info("Deducted 1 trial coin from user {} for more icons generation. Original Request ID: {}", user.getEmail(), request.getOriginalRequestId());
-                } else {
-                    log.warn("User {} has insufficient coins for more icons generation: regular={}, trial={}", user.getEmail(), regularCoins, trialCoins);
-                    return createErrorResponse(request, "Insufficient coins. You need 1 coin to generate more icons, or you can purchase coins in the store.", startTime);
-                }
                 
                 if (request.getServiceName() == null || request.getServiceName().trim().isEmpty()) {
                     return createErrorResponse(request, "Service name is required", startTime);
@@ -307,7 +285,9 @@ public class IconGenerationController implements IconGenerationControllerAPI {
                 List<IconGenerationResponse.GeneratedIcon> newIcons = createIconList(base64Icons, request);
 
                 try {
-                    persistMoreIcons(request, newIcons, user);
+                    iconPersistenceService.persistMoreIcons(request.getOriginalRequestId(), newIcons, user, 
+                                                           request.getServiceName(), request.getGeneralDescription(), 
+                                                           request.getGenerationIndex());
                     log.info("Successfully persisted {} more icons for request {}", newIcons.size(), request.getOriginalRequestId());
                 } catch (Exception e) {
                     log.error("Error persisting more icons for request {}", request.getOriginalRequestId(), e);
@@ -336,7 +316,25 @@ public class IconGenerationController implements IconGenerationControllerAPI {
 
             } catch (Exception e) {
                 log.error("Error generating more icons for service: {}", request.getServiceName(), e);
-                return createErrorResponse(request, "Failed to generate more icons: " + e.getMessage(), startTime);
+                
+                // Check if this is a temporary service failure and refund coins if needed
+                String errorMessage = e.getMessage();
+                ServiceFailureHandler.FailureAnalysisResult failureAnalysis = 
+                    serviceFailureHandler.analyzeSingleServiceFailure(errorMessage, request.getServiceName());
+                
+                if (failureAnalysis.shouldRefund()) {
+                    try {
+                        coinManagementService.refundCoins(user, 1, usedTrialCoin);
+                        log.info("Refunded {} coin to user {} due to temporary service unavailability for more icons generation", 
+                                usedTrialCoin ? "trial" : "regular", user.getEmail());
+                        return createErrorResponse(request, failureAnalysis.getRefundMessage(), startTime);
+                    } catch (Exception refundException) {
+                        log.error("Failed to refund coins to user {} for more icons generation", user.getEmail(), refundException);
+                        // Fall through to original error response if refund fails
+                    }
+                }
+                
+                return createErrorResponse(request, "Failed to generate more icons: " + errorMessage, startTime);
             }
         }).whenComplete((result, throwable) -> {
             if (throwable != null) {
@@ -427,51 +425,6 @@ public class IconGenerationController implements IconGenerationControllerAPI {
         return response;
     }
 
-    private void persistMoreIcons(MoreIconsRequest request, List<IconGenerationResponse.GeneratedIcon> newIcons, User user) {
-        try {
-            String iconType = (request.getGenerationIndex() == 1) ? "original" : "variation";
-
-            for (IconGenerationResponse.GeneratedIcon icon : newIcons) {
-                if (icon.getBase64Data() != null && !icon.getBase64Data().isEmpty()) {
-                    String fileName = String.format("%s_%s_%d.png",
-                            icon.getServiceSource(),
-                            icon.getId().substring(0, 8),
-                            icon.getGridPosition());
-
-                    String filePath = fileStorageService.saveIcon(
-                            user.getDirectoryPath(),
-                            request.getOriginalRequestId(),
-                            iconType,
-                            fileName,
-                            icon.getBase64Data()
-                    );
-
-                    GeneratedIcon generatedIcon = new GeneratedIcon();
-                    generatedIcon.setRequestId(request.getOriginalRequestId());
-                    generatedIcon.setIconId(icon.getId());
-                    generatedIcon.setUser(user);
-                    generatedIcon.setFileName(fileName);
-                    generatedIcon.setFilePath(filePath);
-                    generatedIcon.setServiceSource(icon.getServiceSource());
-                    generatedIcon.setGridPosition(icon.getGridPosition());
-                    generatedIcon.setDescription(icon.getDescription());
-                    generatedIcon.setTheme(request.getGeneralDescription());
-                    generatedIcon.setIconCount(9);
-                    generatedIcon.setGenerationIndex(request.getGenerationIndex());
-                    generatedIcon.setIconType(iconType);
-
-                    long fileSize = fileStorageService.getFileSize(user.getDirectoryPath(), request.getOriginalRequestId(), iconType, fileName);
-                    generatedIcon.setFileSize(fileSize);
-
-                    generatedIconRepository.save(generatedIcon);
-                }
-            }
-
-        } catch (Exception e) {
-            log.error("Error persisting more icons for request {}", request.getOriginalRequestId(), e);
-            throw e;
-        }
-    }
     
     /**
      * Updates the stored response with new icons from "Generate More Icons" request
@@ -539,5 +492,6 @@ public class IconGenerationController implements IconGenerationControllerAPI {
             throw e;
         }
     }
+    
     
 }
