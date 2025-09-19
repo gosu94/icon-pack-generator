@@ -8,6 +8,7 @@ import com.stripe.model.checkout.Session;
 import com.stripe.net.Webhook;
 import com.stripe.param.checkout.SessionCreateParams;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.util.HashMap;
@@ -16,14 +17,17 @@ import java.util.Map;
 @Service
 @Slf4j
 public class StripeService {
+
+    @Value("${app.base-url}")
+    private String baseUrl;
     
     public CheckoutSessionResponse createCheckoutSession(String priceId, String userEmail, 
                                                        String productType, String coins) throws StripeException {
         
         SessionCreateParams params = SessionCreateParams.builder()
                 .setMode(SessionCreateParams.Mode.PAYMENT)
-                .setSuccessUrl("http://localhost:8080/payment/success/index.html")
-                .setCancelUrl("http://localhost:8080/payment/failure/index.html")
+                .setSuccessUrl(baseUrl + "/payment/success/index.html")
+                .setCancelUrl(baseUrl + "/payment/failure/index.html")
                 .addLineItem(
                         SessionCreateParams.LineItem.builder()
                                 .setPrice(priceId)
