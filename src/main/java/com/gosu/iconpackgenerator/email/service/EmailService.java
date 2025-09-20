@@ -1,29 +1,33 @@
 package com.gosu.iconpackgenerator.email.service;
 
+import com.sendgrid.Method;
+import com.sendgrid.Request;
+import com.sendgrid.Response;
+import com.sendgrid.SendGrid;
+import com.sendgrid.helpers.mail.Mail;
+import com.sendgrid.helpers.mail.objects.Content;
+import com.sendgrid.helpers.mail.objects.Email;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
-import software.amazon.awssdk.regions.Region;
-import software.amazon.awssdk.services.ses.SesClient;
-import software.amazon.awssdk.services.ses.model.*;
+
+import java.io.IOException;
 
 @Service
 @Slf4j
 public class EmailService {
 
-    @Value("${aws.ses.region:us-east-1}")
-    private String awsRegion;
+    @Value("${sendgrid.api-key}")
+    private String sendGridApiKey;
 
-    @Value("${aws.ses.from-email}")
+    @Value("${sendgrid.from-email}")
     private String fromEmail;
 
     @Value("${app.base-url}")
     private String baseUrl;
 
-    private SesClient getSesClient() {
-        return SesClient.builder()
-                .region(Region.of(awsRegion))
-                .build();
+    private SendGrid getSendGridClient() {
+        return new SendGrid(sendGridApiKey);
     }
 
     public boolean sendPasswordSetupEmail(String toEmail, String token) {
@@ -185,48 +189,41 @@ public class EmailService {
     }
 
     private boolean sendEmail(String toEmail, String subject, String htmlBody, String textBody) {
-        try (SesClient sesClient = getSesClient()) {
-            Destination destination = Destination.builder()
-                    .toAddresses(toEmail)
-                    .build();
+        try {
+            Email from = new Email(fromEmail);
+            Email to = new Email(toEmail);
+            
+            // Create content objects for both HTML and plain text
+            Content htmlContent = new Content("text/html", htmlBody);
+            Content textContent = new Content("text/plain", textBody);
+            
+            // Create mail with HTML content as primary
+            Mail mail = new Mail(from, subject, to, htmlContent);
+            // Add plain text as alternative content
+            mail.addContent(textContent);
 
-            Content subjectContent = Content.builder()
-                    .data(subject)
-                    .charset("UTF-8")
-                    .build();
-
-            Content htmlContent = Content.builder()
-                    .data(htmlBody)
-                    .charset("UTF-8")
-                    .build();
-
-            Content textContent = Content.builder()
-                    .data(textBody)
-                    .charset("UTF-8")
-                    .build();
-
-            Body body = Body.builder()
-                    .html(htmlContent)
-                    .text(textContent)
-                    .build();
-
-            Message message = Message.builder()
-                    .subject(subjectContent)
-                    .body(body)
-                    .build();
-
-            SendEmailRequest emailRequest = SendEmailRequest.builder()
-                    .destination(destination)
-                    .message(message)
-                    .source(fromEmail)
-                    .build();
-
-            SendEmailResponse response = sesClient.sendEmail(emailRequest);
-            log.info("Email sent successfully to {} with message ID: {}", toEmail, response.messageId());
-            return true;
-
+            SendGrid sg = getSendGridClient();
+            Request request = new Request();
+            request.setMethod(Method.POST);
+            request.setEndpoint("mail/send");
+            request.setBody(mail.build());
+            
+            Response response = sg.api(request);
+            
+            if (response.getStatusCode() >= 200 && response.getStatusCode() < 300) {
+                log.info("Email sent successfully to {} with status code: {}", toEmail, response.getStatusCode());
+                return true;
+            } else {
+                log.error("Failed to send email to {}. Status code: {}, Response: {}", 
+                    toEmail, response.getStatusCode(), response.getBody());
+                return false;
+            }
+            
+        } catch (IOException e) {
+            log.error("Failed to send email to {} due to IO exception", toEmail, e);
+            return false;
         } catch (Exception e) {
-            log.error("Failed to send email to {}", toEmail, e);
+            log.error("Failed to send email to {} due to unexpected error", toEmail, e);
             return false;
         }
     }

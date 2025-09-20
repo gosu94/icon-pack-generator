@@ -62,9 +62,9 @@ services:
      - STRIPE_PRO_PACK_PRODUCT_ID=${STRIPE_PRO_PACK_PRODUCT_ID:-pro_pack_product_id}
      - STRIPE_PRO_PACK_PRICE_ID=${STRIPE_PRO_PACK_PRICE_ID:-pro_pack_price_id}
      
-     # AWS SES Configuration
-     - AWS_SES_REGION=${AWS_SES_REGION:-us-east-1}
-     - AWS_SES_FROM_EMAIL=${AWS_SES_FROM_EMAIL:-noreply@yourdomain.com}
+     # SendGrid Configuration
+     - SENDGRID_API_KEY=${SENDGRID_API_KEY}
+     - SENDGRID_FROM_EMAIL=${SENDGRID_FROM_EMAIL:-noreply@yourdomain.com}
      
      # Signal Bot Configuration (optional)
      - CALLMEBOT_ENABLED=${CALLMEBOT_ENABLED:-false}

@@ -153,10 +153,9 @@ app:
     base-path: ${FILE_STORAGE_PATH:static/user-icons}
   base-url: ${APP_BASE_URL:http://localhost:8080}
 
-aws:
-  ses:
-    region: ${AWS_SES_REGION:us-east-1}
-    from-email: ${AWS_SES_FROM_EMAIL:noreply@yourdomain.com}
+sendgrid:
+  api-key: ${SENDGRID_API_KEY:your-sendgrid-api-key-here}
+  from-email: ${SENDGRID_FROM_EMAIL:noreply@yourdomain.com}
 
 springdoc:
   api-docs:
