@@ -193,16 +193,17 @@ public class IconGenerationController implements IconGenerationControllerAPI {
                 if (emitter != null) {
                     try {
                         String jsonUpdate = objectMapper.writeValueAsString(update);
-                        emitter.send(SseEmitter.event()
-                                .name(update.getEventType())
-                                .data(jsonUpdate));
-
-                        if ("generation_complete".equals(update.getEventType())) {
-                            emitter.complete();
+                        boolean sent = safeSendSseUpdate(emitter, requestId, update.getEventType(), jsonUpdate);
+                        
+                        if (sent && "generation_complete".equals(update.getEventType())) {
+                            try {
+                                emitter.complete();
+                            } catch (Exception e) {
+                                log.debug("Error completing emitter for request: {} - {}", requestId, e.getMessage());
+                            }
                         }
                     } catch (Exception e) {
-                        log.error("Error sending SSE update for request: {}", requestId, e);
-                        emitter.completeWithError(e);
+                        log.error("Error preparing SSE update for request: {}", requestId, e);
                     }
                 }
             }, user).whenComplete((response, error) -> {
@@ -217,13 +218,18 @@ public class IconGenerationController implements IconGenerationControllerAPI {
                         errorUpdate.setMessage("Generation failed: " + error.getMessage());
 
                         String jsonUpdate = objectMapper.writeValueAsString(errorUpdate);
-                        emitter.send(SseEmitter.event()
-                                .name("generation_error")
-                                .data(jsonUpdate));
+                        boolean sent = safeSendSseUpdate(emitter, requestId, "generation_error", jsonUpdate);
+                        
+                        if (sent) {
+                            try {
+                                emitter.completeWithError(error);
+                            } catch (Exception e) {
+                                log.debug("Error completing emitter with error for request: {} - {}", requestId, e.getMessage());
+                            }
+                        }
                     } catch (Exception e) {
-                        log.error("Error sending error update for request: {}", requestId, e);
+                        log.error("Error preparing error update for request: {}", requestId, e);
                     }
-                    emitter.completeWithError(error);
                 } else if (response != null) {
                     streamingStateStore.addResponse(requestId, response);
                 }
@@ -423,6 +429,50 @@ public class IconGenerationController implements IconGenerationControllerAPI {
         response.setOriginalRequestId(request.getOriginalRequestId());
         response.setGenerationTimeMs(System.currentTimeMillis() - startTime);
         return response;
+    }
+
+    /**
+     * Safely send SSE update with graceful handling of client disconnections
+     */
+    private boolean safeSendSseUpdate(SseEmitter emitter, String requestId, String eventName, String data) {
+        if (emitter == null) {
+            return false;
+        }
+        
+        try {
+            emitter.send(SseEmitter.event()
+                    .name(eventName)
+                    .data(data));
+            return true;
+        } catch (org.springframework.web.context.request.async.AsyncRequestNotUsableException e) {
+            // Client disconnected - this is expected behavior, not an error
+            log.debug("Client disconnected from SSE stream for request: {} - {}", requestId, e.getMessage());
+            streamingStateStore.removeEmitter(requestId);
+            return false;
+        } catch (java.io.IOException e) {
+            if (e.getMessage() != null && e.getMessage().contains("Broken pipe")) {
+                // Client disconnected - this is expected behavior, not an error
+                log.debug("Client connection broken for SSE stream for request: {} - {}", requestId, e.getMessage());
+                streamingStateStore.removeEmitter(requestId);
+                return false;
+            } else {
+                log.error("I/O error sending SSE update for request: {}", requestId, e);
+                try {
+                    emitter.completeWithError(e);
+                } catch (Exception completionError) {
+                    log.debug("Error completing emitter after I/O error: {}", completionError.getMessage());
+                }
+                return false;
+            }
+        } catch (Exception e) {
+            log.error("Error sending SSE update for request: {}", requestId, e);
+            try {
+                emitter.completeWithError(e);
+            } catch (Exception completionError) {
+                log.debug("Error completing emitter after general error: {}", completionError.getMessage());
+            }
+            return false;
+        }
     }
 
     
