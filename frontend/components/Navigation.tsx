@@ -244,12 +244,14 @@ const Navigation: React.FC<NavigationProps> = ({ useLoginPage = false }) => {
               height={32}
             />
             <Link href="/">
-              <span className="text-xl font-medium text-black cursor-pointer flex items-center">
+              <span className="text-xl font-medium text-black cursor-pointer">
                 Icon Pack Generator
-                <span className="ml-2 font-bold bg-clip-text text-transparent bg-gradient-to-b from-purple-400 to-purple-700">
-                  AI
+                <span className="inline-flex items-center ml-2">
+                  <span className="font-bold bg-clip-text text-transparent bg-gradient-to-b from-purple-400 to-purple-700">
+                    AI
+                  </span>
+                  <Sparkles className="w-3 h-3 text-purple-400 ml-1" />
                 </span>
-                <Sparkles className="w-3 h-3 text-purple-400 ml-1" />
               </span>
             </Link>
           </div>
