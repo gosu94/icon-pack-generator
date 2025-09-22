@@ -194,13 +194,13 @@ public class EmailService {
             Email to = new Email(toEmail);
             
             // Create content objects for both HTML and plain text
-            Content htmlContent = new Content("text/html", htmlBody);
             Content textContent = new Content("text/plain", textBody);
+            Content htmlContent = new Content("text/html", htmlBody);
             
-            // Create mail with HTML content as primary
-            Mail mail = new Mail(from, subject, to, htmlContent);
-            // Add plain text as alternative content
-            mail.addContent(textContent);
+            // Create mail with text content as primary (SendGrid requires text/plain first)
+            Mail mail = new Mail(from, subject, to, textContent);
+            // Add HTML as additional content
+            mail.addContent(htmlContent);
 
             SendGrid sg = getSendGridClient();
             Request request = new Request();
