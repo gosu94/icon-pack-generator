@@ -152,31 +152,12 @@ public class SecurityConfig {
                     "form-action 'self' " +
                     "https://accounts.google.com https://oauth2.googleapis.com;";
         } else {
-            // Production CSP - very permissive to ensure Next.js functionality works
-            cspPolicy = "default-src 'self' 'unsafe-inline' 'unsafe-eval' data: blob: https:; " +
-                    "script-src 'self' 'unsafe-inline' 'unsafe-eval' " +
+            // Production CSP - simplified and more permissive to avoid hash management issues
+            // This is more permissive but eliminates the constant need to add new hashes
+            cspPolicy = "default-src 'self' 'unsafe-inline' 'unsafe-eval' data: blob: https: " +
                     "https://js.stripe.com https://m.stripe.network " +
-                    "https://accounts.google.com https://apis.google.com " +
-                    "'sha256-7PZaH7TzFg4JdT5xJguN7Och6VcMcP1LW4N3fQ936Fs=' " +
-                    "'sha256-e357n1PxCJ8d03/QCSKaHFmHF1JADyvSHdSfshxM494=' " +
-                    "'sha256-5DA+a07wxWmEka9IdoWjSPVHb17Cp5284/lJzfbl8KA=' " +
-                    "'sha256-/5Guo2nzv5n/w6ukZpOBZOtTJBJPSkJ6mhHpnBgm3Ls=' " +
-                    "'sha256-MqH8JJslY2fF2bGYY1rZlpCNrRCnWKRzrrDefixUJTI=' " +
-                    "'sha256-ZswfTY7H35rbv8WC7NXBoiC7WNu86vSzCDChNWwZZDM='; " +
-                    "style-src 'self' 'unsafe-inline' " +
-                    "https://fonts.googleapis.com https://js.stripe.com; " +
-                    "font-src 'self' data: " +
-                    "https://fonts.gstatic.com; " +
-                    "img-src 'self' data: blob: https:; " +
-                    "connect-src 'self' " +
-                    "https://api.stripe.com https://m.stripe.network " +
-                    "https://accounts.google.com https://oauth2.googleapis.com; " +
-                    "frame-src 'self' " +
-                    "https://js.stripe.com https://hooks.stripe.com " +
-                    "https://accounts.google.com; " +
-                    "form-action 'self' " +
-                    "https://accounts.google.com https://oauth2.googleapis.com; " +
-                    "object-src 'none'; base-uri 'self';";
+                    "https://accounts.google.com https://apis.google.com; " +
+                    "object-src 'none';";
         }
         
         log.info("Applied CSP Policy ({}): {}", 
