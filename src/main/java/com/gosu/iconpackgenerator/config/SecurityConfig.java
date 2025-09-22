@@ -152,8 +152,8 @@ public class SecurityConfig {
                     "form-action 'self' " +
                     "https://accounts.google.com https://oauth2.googleapis.com;";
         } else {
-            // Production CSP - permissive enough for Next.js while maintaining security
-            cspPolicy = "default-src 'self'; " +
+            // Production CSP - very permissive to ensure Next.js functionality works
+            cspPolicy = "default-src 'self' 'unsafe-inline' 'unsafe-eval' data: blob: https:; " +
                     "script-src 'self' 'unsafe-inline' 'unsafe-eval' " +
                     "https://js.stripe.com https://m.stripe.network " +
                     "https://accounts.google.com https://apis.google.com " +
@@ -165,8 +165,9 @@ public class SecurityConfig {
                     "'sha256-ZswfTY7H35rbv8WC7NXBoiC7WNu86vSzCDChNWwZZDM='; " +
                     "style-src 'self' 'unsafe-inline' " +
                     "https://fonts.googleapis.com https://js.stripe.com; " +
-                    "font-src 'self' https://fonts.gstatic.com; " +
-                    "img-src 'self' data: https: blob:; " +
+                    "font-src 'self' data: " +
+                    "https://fonts.gstatic.com; " +
+                    "img-src 'self' data: blob: https:; " +
                     "connect-src 'self' " +
                     "https://api.stripe.com https://m.stripe.network " +
                     "https://accounts.google.com https://oauth2.googleapis.com; " +
