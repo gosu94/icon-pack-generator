@@ -539,7 +539,8 @@ public class IconGenerationController implements IconGenerationControllerAPI {
             
         } catch (Exception e) {
             log.error("Error updating stored response with more icons for request {}", request.getOriginalRequestId(), e);
-            throw e;
+            // Don't rethrow - updating stored response is not critical for the core functionality
+            // The icons have already been generated and persisted successfully
         }
     }
     

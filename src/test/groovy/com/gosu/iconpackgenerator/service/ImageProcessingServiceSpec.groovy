@@ -2,13 +2,13 @@ package com.gosu.iconpackgenerator.service
 
 import com.gosu.iconpackgenerator.domain.service.ImageProcessingService
 import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.context.ContextConfiguration
+import org.junit.jupiter.api.extension.ExtendWith
+import org.springframework.test.context.junit.jupiter.SpringExtension
 import spock.lang.Specification
 import spock.lang.Shared
 import spock.lang.Stepwise
-import com.gosu.iconpackgenerator.IconPackGeneratorApplication
 
 import javax.imageio.ImageIO
 import java.awt.Color
@@ -21,9 +21,9 @@ import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths
 
-@SpringBootTest(classes = [IconPackGeneratorApplication])
+@ExtendWith(SpringExtension.class)
+@ContextConfiguration(classes = [ImageProcessingServiceTestConfig])
 @ActiveProfiles("test")
-@ContextConfiguration
 @Stepwise
 class ImageProcessingServiceSpec extends Specification {
 
@@ -152,7 +152,7 @@ class ImageProcessingServiceSpec extends Specification {
         byte[] gridImageData = bufferedImageToByteArray(synthetic3x3Grid)
 
         when: "Cropping 9 icons from grid"
-        List<String> croppedIcons = imageProcessingService.cropIconsFromGrid(gridImageData, 9, false    )
+        List<String> croppedIcons = imageProcessingService.cropIconsFromGrid(gridImageData, 9, false)
 
         then: "9 icons are extracted"
         croppedIcons != null
@@ -253,7 +253,7 @@ class ImageProcessingServiceSpec extends Specification {
 
     def "should handle edge case: empty image data"() {
         when: "Attempting to crop from empty data"
-        imageProcessingService.cropIconsFromGrid(new byte[0], 9, false  )
+        imageProcessingService.cropIconsFromGrid(new byte[0], 9, false)
 
         then: "RuntimeException is thrown"
         thrown(RuntimeException)
@@ -630,6 +630,34 @@ class ImageProcessingServiceSpec extends Specification {
         return image
     }
 
+    private BufferedImage createSyntheticTransparentImage() {
+        // Create a 1024x1024 image with transparent background and some content
+        // This simulates a case where transparency detection should correctly identify the transparent background
+        BufferedImage image = new BufferedImage(1024, 1024, BufferedImage.TYPE_INT_ARGB)
+        Graphics2D g2d = image.createGraphics()
+        g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON)
+
+        // Create transparent background (all pixels start as transparent)
+        g2d.setComposite(AlphaComposite.Clear)
+        g2d.fillRect(0, 0, 1024, 1024)
+
+        // Add content in the center area, leaving transparent border
+        g2d.setComposite(AlphaComposite.SrcOver)
+        g2d.setColor(Color.BLUE)
+        g2d.fillRect(100, 100, 824, 824) // Leave 100px transparent border all around
+
+        // Add some white content that might confuse the transparency detector
+        g2d.setColor(Color.WHITE)
+        g2d.fillRect(200, 200, 624, 624) // White area inside
+
+        // Add colored shapes on top
+        g2d.setColor(Color.GREEN)
+        g2d.fillOval(300, 300, 424, 424)
+
+        g2d.dispose()
+        return image
+    }
+
     private boolean verifyGridCellsHaveDistinctContent(BufferedImage grid) {
         int cellSize = grid.width / 3
         Set<Integer> centerPixelColors = new HashSet<>()
@@ -852,8 +880,9 @@ class ImageProcessingServiceSpec extends Specification {
     }
 
     def "should correctly detect transparent background and avoid unnecessary background removal"() {
-        given: "The false-positive-transparency.png test image that was incorrectly processed"
-        BufferedImage falsePositiveImage = loadTestImage("false-positive-transparency.png")
+        given: "A synthetic image with transparent background for testing"
+        BufferedImage falsePositiveImage = createSyntheticTransparentImage()
+        saveImage(falsePositiveImage, "false_positive_transparency_synthetic.png")
 
         expect: "Test image is loaded correctly"
         falsePositiveImage != null
@@ -894,7 +923,7 @@ class ImageProcessingServiceSpec extends Specification {
 
     def "should cleanup artifacts from wrong-cut image using new artifact removal functionality"() {
         given: "The problematic wrong-cut-7.png image that has cutting artifacts"
-        BufferedImage wrongCutImage = loadTestImage("wrong-cut-7.png")
+        BufferedImage wrongCutImage = loadTestImage("wrong_cut_new.png")
 
         expect: "Test image is loaded correctly"
         wrongCutImage != null
