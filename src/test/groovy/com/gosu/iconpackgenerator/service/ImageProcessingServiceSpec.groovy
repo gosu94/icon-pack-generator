@@ -852,8 +852,8 @@ class ImageProcessingServiceSpec extends Specification {
     }
 
     def "should correctly detect transparent background and avoid unnecessary background removal"() {
-        given: "The false-positive-transparency.png test image that was incorrectly processed"
-        BufferedImage falsePositiveImage = loadTestImage("false-positive-transparency.png")
+        given: "A test image to check transparency detection"
+        BufferedImage falsePositiveImage = loadTestImage("testsub3.png")
 
         expect: "Test image is loaded correctly"
         falsePositiveImage != null

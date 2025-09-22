@@ -17,6 +17,7 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+import org.springframework.core.env.Environment;
 
 import java.util.Arrays;
 
@@ -29,6 +30,7 @@ public class SecurityConfig {
     private final CustomOAuth2UserService customOAuth2UserService;
     private final CustomOidcUserService customOidcUserService;
     private final EmailPasswordAuthenticationProvider emailPasswordAuthenticationProvider;
+    private final Environment environment;
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
@@ -104,37 +106,64 @@ public class SecurityConfig {
             )
             .headers(headers -> headers
                 .contentSecurityPolicy(csp -> csp
-                    .policyDirectives("default-src 'self'; " +
-                        "script-src 'self' 'unsafe-inline' 'unsafe-eval' " +
-                            "https://js.stripe.com " +
-                            "https://m.stripe.network " +
-                            "'sha256-7PZaH7TzFg4JdT5xJguN7Och6VcMcP1LW4N3fQ936Fs=' " +
-                            "'sha256-e357n1PxCJ8d03/QCSKaHFmHF1JADyvSHdSfshxM494=' " +
-                            "'sha256-5DA+a07wxWmEka9IdoWjSPVHb17Cp5284/lJzfbl8KA=' " +
-                            "'sha256-/5Guo2nzv5n/w6ukZpOBZOtTJBJPSkJ6mhHpnBgm3Ls=' " +
-                            "'sha256-MqH8JJslY2fF2bGYY1rZlpCNrRCnWKRzrrDefixUJTI='; " +
-                        "style-src 'self' 'unsafe-inline' " +
-                            "https://js.stripe.com " +
-                            "https://fonts.googleapis.com; " +
-                        "font-src 'self' " +
-                            "https://fonts.gstatic.com; " +
-                        "img-src 'self' data: " +
-                            "https://js.stripe.com " +
-                            "https://q.stripe.com " +
-                            "https://b.stripecdn.com; " +
-                        "connect-src 'self' " +
-                            "https://api.stripe.com " +
-                            "https://m.stripe.network " +
-                            "https://q.stripe.com; " +
-                        "frame-src 'self' " +
-                            "https://js.stripe.com " +
-                            "https://hooks.stripe.com; " +
-                        "object-src 'none'; " +
-                        "base-uri 'self'")
+                    .policyDirectives(buildCSPDirectives())
                 )
             );
 
         return http.build();
+    }
+
+    private String buildCSPDirectives() {
+        // Check if we're in development environment
+        boolean isDevelopment = Arrays.asList(environment.getActiveProfiles()).contains("dev") ||
+                                Arrays.asList(environment.getActiveProfiles()).contains("local") ||
+                                environment.getProperty("server.port", "8080").equals("8080");
+        
+        if (isDevelopment) {
+            // Very permissive CSP for development to ensure React/Next.js works
+            return "default-src 'self' 'unsafe-inline' 'unsafe-eval' data: blob: " +
+                    "localhost:* 127.0.0.1:* ws: wss:; " +
+                    "script-src 'self' 'unsafe-inline' 'unsafe-eval' " +
+                    "localhost:* 127.0.0.1:* " +
+                    "https://js.stripe.com https://m.stripe.network " +
+                    "https://accounts.google.com https://apis.google.com; " +
+                    "style-src 'self' 'unsafe-inline' " +
+                    "localhost:* 127.0.0.1:* " +
+                    "https://fonts.googleapis.com https://js.stripe.com; " +
+                    "font-src 'self' data: " +
+                    "https://fonts.gstatic.com; " +
+                    "img-src 'self' data: blob: " +
+                    "localhost:* 127.0.0.1:* " +
+                    "https: data:; " +
+                    "connect-src 'self' " +
+                    "localhost:* 127.0.0.1:* ws://localhost:* wss://localhost:* " +
+                    "https://api.stripe.com https://m.stripe.network " +
+                    "https://accounts.google.com https://oauth2.googleapis.com; " +
+                    "frame-src 'self' " +
+                    "https://js.stripe.com https://hooks.stripe.com " +
+                    "https://accounts.google.com; " +
+                    "form-action 'self' " +
+                    "https://accounts.google.com https://oauth2.googleapis.com;";
+        } else {
+            // More restrictive CSP for production
+            return "default-src 'self'; " +
+                    "script-src 'self' 'unsafe-inline' " +
+                    "https://js.stripe.com https://m.stripe.network " +
+                    "https://accounts.google.com; " +
+                    "style-src 'self' 'unsafe-inline' " +
+                    "https://fonts.googleapis.com https://js.stripe.com; " +
+                    "font-src 'self' https://fonts.gstatic.com; " +
+                    "img-src 'self' data: https: blob:; " +
+                    "connect-src 'self' " +
+                    "https://api.stripe.com https://m.stripe.network " +
+                    "https://accounts.google.com https://oauth2.googleapis.com; " +
+                    "frame-src 'self' " +
+                    "https://js.stripe.com https://hooks.stripe.com " +
+                    "https://accounts.google.com; " +
+                    "form-action 'self' " +
+                    "https://accounts.google.com https://oauth2.googleapis.com; " +
+                    "object-src 'none'; base-uri 'self';";
+        }
     }
 
     @Bean
