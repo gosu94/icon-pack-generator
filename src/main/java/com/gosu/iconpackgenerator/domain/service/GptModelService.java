@@ -61,20 +61,25 @@ public class GptModelService implements AIModelService {
     
     private CompletableFuture<byte[]> generateGptImageAsync(String prompt, Long seed) {
         return CompletableFuture.supplyAsync(() -> {
-            // First attempt
-            Exception lastException = null;
-            
+            Exception lastException;
+
             try {
                 return attemptGptGeneration(prompt, seed, false);
             } catch (Exception e) {
                 lastException = e;
-                log.warn("First GPT generation attempt failed, checking if retry is warranted: {}", e.getMessage());
-                
-                if (errorMessageSanitizer.is422Error(e.getMessage())) {
-                    log.info("422 error detected, attempting retry with same parameters");
-                    
+                String errorMessage = e.getMessage();
+                log.warn("First GPT generation attempt failed, checking error type: {}", errorMessage);
+
+                // Handle 422 (content policy) errors - no retry
+                if (errorMessageSanitizer.is422Error(errorMessage)) {
+                    log.error("GPT generation failed with 422 error, likely content policy violation.", e);
+                    throw new FalAiException("Your request could not be processed as it may violate content policy. Please try a different prompt. You have been refunded for this attempt.", e);
+                }
+
+                // Handle 5xx and other temporary errors - retry once
+                if (isLikelyTemporaryFailure(errorMessage)) {
+                    log.info("Likely temporary failure detected, attempting retry with same parameters");
                     try {
-                        // Retry with identical parameters
                         return attemptGptGeneration(prompt, seed, true);
                     } catch (Exception retryException) {
                         log.error("Retry attempt also failed", retryException);
@@ -82,16 +87,14 @@ public class GptModelService implements AIModelService {
                     }
                 }
             }
-            
-            // Both attempts failed, throw sanitized error with better context
+
+            // All attempts failed or a non-retriable error occurred
             String sanitizedMessage = errorMessageSanitizer.sanitizeErrorMessage(lastException.getMessage(), "GPT");
-            
-            // Check if this looks like a temporary service issue
-            if (errorMessageSanitizer.is422Error(lastException.getMessage()) || 
-                isLikelyTemporaryFailure(lastException.getMessage())) {
+
+            if (isLikelyTemporaryFailure(lastException.getMessage())) {
                 sanitizedMessage = "Service is temporarily unavailable. " + sanitizedMessage;
             }
-            
+
             throw new FalAiException(sanitizedMessage, lastException);
         });
     }
@@ -172,19 +175,24 @@ public class GptModelService implements AIModelService {
     
     private CompletableFuture<byte[]> generateGptImageToImageAsync(String prompt, byte[] sourceImageData, Long seed) {
         return CompletableFuture.supplyAsync(() -> {
-            Exception lastException = null;
-            
+            Exception lastException;
+
             try {
                 return attemptGptImageToImageGeneration(prompt, sourceImageData, seed, false);
             } catch (Exception e) {
                 lastException = e;
-                log.warn("First GPT image-to-image attempt failed, checking if retry is warranted: {}", e.getMessage());
-                
-                if (errorMessageSanitizer.is422Error(e.getMessage())) {
-                    log.info("422 error detected, attempting image-to-image retry with same parameters");
-                    
+                String errorMessage = e.getMessage();
+                log.warn("First GPT image-to-image attempt failed, checking error type: {}", errorMessage);
+
+                // Handle 422 (content policy) errors - no retry
+                if (errorMessageSanitizer.is422Error(errorMessage)) {
+                    log.error("GPT image-to-image generation failed with 422 error, likely content policy violation.", e);
+                    throw new FalAiException("Your request could not be processed as it may violate content policy. Please try a different prompt. You have been refunded for this attempt.", e);
+                }
+                // Handle 5xx and other temporary errors - retry once
+                if (isLikelyTemporaryFailure(errorMessage)) {
+                    log.info("Likely temporary failure detected, attempting image-to-image retry with same parameters");
                     try {
-                        // Retry with identical parameters
                         return attemptGptImageToImageGeneration(prompt, sourceImageData, seed, true);
                     } catch (Exception retryException) {
                         log.error("Image-to-image retry attempt also failed", retryException);
@@ -192,16 +200,14 @@ public class GptModelService implements AIModelService {
                     }
                 }
             }
-            
-            // Both attempts failed, throw sanitized error with better context
+
+            // All attempts failed or a non-retriable error occurred
             String sanitizedMessage = errorMessageSanitizer.sanitizeErrorMessage(lastException.getMessage(), "GPT");
-            
-            // Check if this looks like a temporary service issue
-            if (errorMessageSanitizer.is422Error(lastException.getMessage()) || 
-                isLikelyTemporaryFailure(lastException.getMessage())) {
+
+            if (isLikelyTemporaryFailure(lastException.getMessage())) {
                 sanitizedMessage = "Service is temporarily unavailable. " + sanitizedMessage;
             }
-            
+
             throw new FalAiException(sanitizedMessage, lastException);
         });
     }

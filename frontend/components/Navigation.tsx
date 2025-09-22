@@ -261,7 +261,7 @@ const Navigation: React.FC<NavigationProps> = ({ useLoginPage = false }) => {
           {authState.authenticated ? (
             <>
               {/* Coin Balance Display - always visible for authenticated users */}
-              <div className="flex items-center space-x-3">
+              <div className="flex items-center space-x-1">
                 {/* Trial Coins - shown only if user has trial coins */}
                 {displayTrialCoins > 0 && (
                   <div className="flex items-center space-x-2 rounded-lg px-3 py-2">
