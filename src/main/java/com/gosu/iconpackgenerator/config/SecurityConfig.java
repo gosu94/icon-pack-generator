@@ -18,6 +18,7 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import org.springframework.core.env.Environment;
+import lombok.extern.slf4j.Slf4j;
 
 import java.util.Arrays;
 
@@ -25,6 +26,7 @@ import java.util.Arrays;
 @EnableWebSecurity
 @Profile("!test") // Only apply this security config outside of test profile
 @RequiredArgsConstructor
+@Slf4j
 public class SecurityConfig {
 
     private final CustomOAuth2UserService customOAuth2UserService;
@@ -119,9 +121,15 @@ public class SecurityConfig {
                                 Arrays.asList(environment.getActiveProfiles()).contains("local") ||
                                 environment.getProperty("server.port", "8080").equals("8080");
         
+        log.info("CSP Configuration - Environment profiles: {}, Server port: {}, isDevelopment: {}", 
+                Arrays.toString(environment.getActiveProfiles()), 
+                environment.getProperty("server.port", "8080"), 
+                isDevelopment);
+        
+        String cspPolicy;
         if (isDevelopment) {
             // Very permissive CSP for development to ensure React/Next.js works
-            return "default-src 'self' 'unsafe-inline' 'unsafe-eval' data: blob: " +
+            cspPolicy = "default-src 'self' 'unsafe-inline' 'unsafe-eval' data: blob: " +
                     "localhost:* 127.0.0.1:* ws: wss:; " +
                     "script-src 'self' 'unsafe-inline' 'unsafe-eval' " +
                     "localhost:* 127.0.0.1:* " +
@@ -145,11 +153,17 @@ public class SecurityConfig {
                     "form-action 'self' " +
                     "https://accounts.google.com https://oauth2.googleapis.com;";
         } else {
-            // More restrictive CSP for production
-            return "default-src 'self'; " +
-                    "script-src 'self' 'unsafe-inline' " +
+            // Production CSP - permissive enough for Next.js while maintaining security
+            cspPolicy = "default-src 'self'; " +
+                    "script-src 'self' 'unsafe-inline' 'unsafe-eval' " +
                     "https://js.stripe.com https://m.stripe.network " +
-                    "https://accounts.google.com; " +
+                    "https://accounts.google.com https://apis.google.com " +
+                    "'sha256-7PZaH7TzFg4JdT5xJguN7Och6VcMcP1LW4N3fQ936Fs=' " +
+                    "'sha256-e357n1PxCJ8d03/QCSKaHFmHF1JADyvSHdSfshxM494=' " +
+                    "'sha256-5DA+a07wxWmEka9IdoWjSPVHb17Cp5284/lJzfbl8KA=' " +
+                    "'sha256-/5Guo2nzv5n/w6ukZpOBZOtTJBJPSkJ6mhHpnBgm3Ls=' " +
+                    "'sha256-MqH8JJslY2fF2bGYY1rZlpCNrRCnWKRzrrDefixUJTI=' " +
+                    "'sha256-ZswfTY7H35rbv8WC7NXBoiC7WNu86vSzCDChNWwZZDM='; " +
                     "style-src 'self' 'unsafe-inline' " +
                     "https://fonts.googleapis.com https://js.stripe.com; " +
                     "font-src 'self' https://fonts.gstatic.com; " +
@@ -164,6 +178,11 @@ public class SecurityConfig {
                     "https://accounts.google.com https://oauth2.googleapis.com; " +
                     "object-src 'none'; base-uri 'self';";
         }
+        
+        log.info("Applied CSP Policy ({}): {}", 
+                isDevelopment ? "DEVELOPMENT" : "PRODUCTION", 
+                cspPolicy);
+        return cspPolicy;
     }
 
     @Bean
