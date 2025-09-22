@@ -118,8 +118,7 @@ public class SecurityConfig {
     private String buildCSPDirectives() {
         // Check if we're in development environment
         boolean isDevelopment = Arrays.asList(environment.getActiveProfiles()).contains("dev") ||
-                                Arrays.asList(environment.getActiveProfiles()).contains("local") ||
-                                environment.getProperty("server.port", "8080").equals("8080");
+                                Arrays.asList(environment.getActiveProfiles()).contains("local");
         
         log.info("CSP Configuration - Environment profiles: {}, Server port: {}, isDevelopment: {}", 
                 Arrays.toString(environment.getActiveProfiles()), 
