@@ -264,7 +264,7 @@ const Navigation: React.FC<NavigationProps> = ({ useLoginPage = false }) => {
               <div className="flex items-center space-x-3">
                 {/* Trial Coins - shown only if user has trial coins */}
                 {displayTrialCoins > 0 && (
-                  <div className="flex items-center space-x-2 bg-green-50 border border-green-200 rounded-lg px-3 py-2">
+                  <div className="flex items-center space-x-2 rounded-lg px-3 py-2">
                     <div className="w-5 h-5 bg-green-500 rounded-full flex items-center justify-center">
                       <span className="text-xs font-bold text-white">T</span>
                     </div>
@@ -275,7 +275,7 @@ const Navigation: React.FC<NavigationProps> = ({ useLoginPage = false }) => {
                 )}
                 
                 {/* Regular Coins */}
-                <div className="flex items-center space-x-2 bg-yellow-50 border border-yellow-200 rounded-lg px-3 py-2">
+                <div className="flex items-center space-x-2 rounded-lg px-3 py-2">
                   <Image
                     src="/images/coin.webp"
                     alt="Coins"
