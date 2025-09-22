@@ -34,6 +34,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.context.request.async.DeferredResult;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
+import jakarta.annotation.PreDestroy;
 
 import java.util.ArrayList;
 import java.util.Base64;
@@ -42,6 +43,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
 
 @Controller
 @RequiredArgsConstructor
@@ -62,6 +67,27 @@ public class IconGenerationController implements IconGenerationControllerAPI {
     private final CoinManagementService coinManagementService;
     private final ServiceFailureHandler serviceFailureHandler;
     private final IconPersistenceService iconPersistenceService;
+    
+    private final ScheduledExecutorService heartbeatScheduler = Executors.newScheduledThreadPool(5);
+    
+    /**
+     * Cleanup method to shutdown the heartbeat scheduler
+     */
+    @PreDestroy
+    public void cleanup() {
+        if (heartbeatScheduler != null && !heartbeatScheduler.isShutdown()) {
+            log.info("Shutting down SSE heartbeat scheduler");
+            heartbeatScheduler.shutdown();
+            try {
+                if (!heartbeatScheduler.awaitTermination(5, TimeUnit.SECONDS)) {
+                    heartbeatScheduler.shutdownNow();
+                }
+            } catch (InterruptedException e) {
+                heartbeatScheduler.shutdownNow();
+                Thread.currentThread().interrupt();
+            }
+        }
+    }
 
     @Override
     @ResponseBody
@@ -150,7 +176,7 @@ public class IconGenerationController implements IconGenerationControllerAPI {
     public SseEmitter connectToStream(@PathVariable String requestId) {
         log.info("Client connecting to stream for request: {}", requestId);
 
-        SseEmitter emitter = new SseEmitter(300_000L);
+        SseEmitter emitter = new SseEmitter(600_000L); // Increase to 10 minutes for long operations
         streamingStateStore.addEmitter(requestId, emitter);
 
         emitter.onCompletion(() -> {
@@ -175,6 +201,8 @@ public class IconGenerationController implements IconGenerationControllerAPI {
     }
 
     private void processStreamingGeneration(String requestId, IconGenerationRequest request, User user) {
+        ScheduledFuture<?> heartbeatTask = null;
+        
         try {
             if (!request.isValid()) {
                 throw new IllegalArgumentException("Either general description or reference image must be provided");
@@ -187,6 +215,20 @@ public class IconGenerationController implements IconGenerationControllerAPI {
             while (request.getIndividualDescriptions().size() < request.getIconCount()) {
                 request.getIndividualDescriptions().add("");
             }
+            
+            // Start heartbeat to keep connection alive during long generation
+            log.debug("Starting heartbeat for request: {}", requestId);
+            heartbeatTask = heartbeatScheduler.scheduleAtFixedRate(
+                () -> {
+                    if (!isConnectionActive(requestId)) {
+                        log.debug("Connection lost during generation for request: {}, stopping heartbeat", requestId);
+                        // Connection is lost, the heartbeat task will be canceled by the completion handler
+                    }
+                },
+                5, 5, TimeUnit.SECONDS // Send heartbeat every 5 seconds
+            );
+            
+            final ScheduledFuture<?> finalHeartbeatTask = heartbeatTask;
 
             iconGenerationService.generateIcons(request, requestId, update -> {
                 SseEmitter emitter = streamingStateStore.getEmitter(requestId);
@@ -195,18 +237,40 @@ public class IconGenerationController implements IconGenerationControllerAPI {
                         String jsonUpdate = objectMapper.writeValueAsString(update);
                         boolean sent = safeSendSseUpdate(emitter, requestId, update.getEventType(), jsonUpdate);
                         
-                        if (sent && "generation_complete".equals(update.getEventType())) {
-                            try {
-                                emitter.complete();
-                            } catch (Exception e) {
-                                log.debug("Error completing emitter for request: {} - {}", requestId, e.getMessage());
+                        if ("generation_complete".equals(update.getEventType())) {
+                            // Stop heartbeat before completion
+                            if (finalHeartbeatTask != null && !finalHeartbeatTask.isCancelled()) {
+                                finalHeartbeatTask.cancel(false);
+                            }
+                            
+                            if (sent) {
+                                // Test connection one more time before completing
+                                if (isConnectionActive(requestId)) {
+                                    try {
+                                        emitter.complete();
+                                        log.debug("Successfully completed SSE stream for request: {}", requestId);
+                                    } catch (Exception e) {
+                                        log.debug("Error completing emitter for request: {} - {}", requestId, e.getMessage());
+                                    }
+                                } else {
+                                    log.debug("Connection lost before completion for request: {}", requestId);
+                                }
                             }
                         }
                     } catch (Exception e) {
                         log.error("Error preparing SSE update for request: {}", requestId, e);
+                        // Stop heartbeat on error
+                        if (finalHeartbeatTask != null && !finalHeartbeatTask.isCancelled()) {
+                            finalHeartbeatTask.cancel(false);
+                        }
                     }
                 }
             }, user).whenComplete((response, error) -> {
+                // Ensure heartbeat is stopped
+                if (finalHeartbeatTask != null && !finalHeartbeatTask.isCancelled()) {
+                    finalHeartbeatTask.cancel(false);
+                }
+                
                 SseEmitter emitter = streamingStateStore.getEmitter(requestId);
                 if (emitter != null && error != null) {
                     log.error("Error in streaming generation for request: {}", requestId, error);
@@ -237,6 +301,12 @@ public class IconGenerationController implements IconGenerationControllerAPI {
 
         } catch (Exception e) {
             log.error("Error in processStreamingGeneration for request: {}", requestId, e);
+            
+            // Ensure heartbeat is stopped on exception
+            if (heartbeatTask != null && !heartbeatTask.isCancelled()) {
+                heartbeatTask.cancel(false);
+            }
+            
             SseEmitter emitter = streamingStateStore.getEmitter(requestId);
             if (emitter != null) {
                 emitter.completeWithError(e);
@@ -450,9 +520,11 @@ public class IconGenerationController implements IconGenerationControllerAPI {
             streamingStateStore.removeEmitter(requestId);
             return false;
         } catch (java.io.IOException e) {
-            if (e.getMessage() != null && e.getMessage().contains("Broken pipe")) {
+            if (e.getMessage() != null && (e.getMessage().contains("Broken pipe") || 
+                                         e.getMessage().contains("Connection reset") ||
+                                         e.getMessage().contains("Socket closed"))) {
                 // Client disconnected - this is expected behavior, not an error
-                log.debug("Client connection broken for SSE stream for request: {} - {}", requestId, e.getMessage());
+                log.debug("Client connection lost for SSE stream for request: {} - {}", requestId, e.getMessage());
                 streamingStateStore.removeEmitter(requestId);
                 return false;
             } else {
@@ -475,6 +547,33 @@ public class IconGenerationController implements IconGenerationControllerAPI {
         }
     }
 
+    /**
+     * Send a heartbeat message to keep the SSE connection alive
+     */
+    private boolean sendHeartbeat(String requestId) {
+        SseEmitter emitter = streamingStateStore.getEmitter(requestId);
+        if (emitter == null) {
+            return false;
+        }
+        
+        return safeSendSseUpdate(emitter, requestId, "heartbeat", 
+            "{\"timestamp\": " + System.currentTimeMillis() + ", \"status\": \"processing\"}");
+    }
+
+    /**
+     * Check if SSE connection is still active
+     */
+    private boolean isConnectionActive(String requestId) {
+        SseEmitter emitter = streamingStateStore.getEmitter(requestId);
+        if (emitter == null) {
+            log.debug("No emitter found for request: {}", requestId);
+            return false;
+        }
+        
+        // Send a lightweight heartbeat to test connection
+        // Only do this if we haven't sent one recently to avoid spam
+        return sendHeartbeat(requestId);
+    }
     
     /**
      * Updates the stored response with new icons from "Generate More Icons" request
