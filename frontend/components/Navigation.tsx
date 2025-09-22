@@ -347,15 +347,7 @@ const Navigation: React.FC<NavigationProps> = ({ useLoginPage = false }) => {
                         <ImageIcon className="w-4 h-4 text-gray-700" />
                         <span className="text-sm font-medium text-gray-700">Gallery</span>
                       </Link>
-                      <Link 
-                        href="/background-remover" 
-                        className="flex items-center space-x-3 px-4 py-3 hover:bg-gray-100"
-                        onClick={() => setIsMobileMenuOpen(false)}
-                      >
-                        <Paintbrush className="w-4 h-4 text-gray-700" />
-                        <span className="text-sm font-medium text-gray-700">Background Remover</span>
-                      </Link>
-                      <Link 
+                      <Link
                         href="/store" 
                         className="flex items-center space-x-3 px-4 py-3 hover:bg-gray-100"
                         onClick={() => setIsMobileMenuOpen(false)}

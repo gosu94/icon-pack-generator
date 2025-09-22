@@ -101,6 +101,37 @@ public class SecurityConfig {
                 .invalidateHttpSession(true)
                 .clearAuthentication(true)
                 .deleteCookies("JSESSIONID")
+            )
+            .headers(headers -> headers
+                .contentSecurityPolicy(csp -> csp
+                    .policyDirectives("default-src 'self'; " +
+                        "script-src 'self' 'unsafe-inline' 'unsafe-eval' " +
+                            "https://js.stripe.com " +
+                            "https://m.stripe.network " +
+                            "'sha256-7PZaH7TzFg4JdT5xJguN7Och6VcMcP1LW4N3fQ936Fs=' " +
+                            "'sha256-e357n1PxCJ8d03/QCSKaHFmHF1JADyvSHdSfshxM494=' " +
+                            "'sha256-5DA+a07wxWmEka9IdoWjSPVHb17Cp5284/lJzfbl8KA=' " +
+                            "'sha256-/5Guo2nzv5n/w6ukZpOBZOtTJBJPSkJ6mhHpnBgm3Ls=' " +
+                            "'sha256-MqH8JJslY2fF2bGYY1rZlpCNrRCnWKRzrrDefixUJTI='; " +
+                        "style-src 'self' 'unsafe-inline' " +
+                            "https://js.stripe.com " +
+                            "https://fonts.googleapis.com; " +
+                        "font-src 'self' " +
+                            "https://fonts.gstatic.com; " +
+                        "img-src 'self' data: " +
+                            "https://js.stripe.com " +
+                            "https://q.stripe.com " +
+                            "https://b.stripecdn.com; " +
+                        "connect-src 'self' " +
+                            "https://api.stripe.com " +
+                            "https://m.stripe.network " +
+                            "https://q.stripe.com; " +
+                        "frame-src 'self' " +
+                            "https://js.stripe.com " +
+                            "https://hooks.stripe.com; " +
+                        "object-src 'none'; " +
+                        "base-uri 'self'")
+                )
             );
 
         return http.build();
