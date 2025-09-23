@@ -357,7 +357,7 @@ public class IconGenerationController implements IconGenerationControllerAPI {
                 String prompt = promptGenerationService.generatePromptForReferenceImage(request.getIconDescriptions(), request.getGeneralDescription());
                 CompletableFuture<byte[]> generationFuture = getServiceAndGenerate(request.getServiceName(), prompt, originalImageData, request.getSeed());
                 byte[] newImageData = generationFuture.join();
-                List<String> base64Icons = imageProcessingService.cropIconsFromGrid(newImageData, 9, true, 0, true, true);
+                List<String> base64Icons = imageProcessingService.cropIconsFromGrid(newImageData, 9, true, 0, false, true);
                 List<IconGenerationResponse.GeneratedIcon> newIcons = createIconList(base64Icons, request);
 
                 try {

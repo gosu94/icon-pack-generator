@@ -86,7 +86,13 @@ public class ImageProcessingService {
                             log.warn("Could not read image to check for transparency, proceeding with background removal.");
                         }
                         log.info("Removing background from grid image before cropping icons");
+
+                        // Add timeout protection for background removal
+                        long backgroundRemovalStart = System.currentTimeMillis();
                         processedImageData = backgroundRemovalService.removeBackground(imageData);
+                        long backgroundRemovalTime = System.currentTimeMillis() - backgroundRemovalStart;
+
+                        log.info("Background removal completed in {} ms", backgroundRemovalTime);
 
                         if (processedImageData.length != imageData.length) {
                             log.info("Background removal changed image size from {} to {} bytes",
