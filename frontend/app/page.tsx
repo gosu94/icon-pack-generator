@@ -199,8 +199,8 @@ export default function LandingPage() {
                 <p className="mb-2">Download your icons in multiple formats and sizes:</p>
                 <ul className="list-disc list-inside space-y-1 text-sm">
                   <li><span className="font-semibold">SVG embeded</span></li>
-                  <li><span className="font-semibold">PNG:</span> 16, 32, 64, 128, 256, 512px</li>
-                  <li><span className="font-semibold">WebP:</span> 16, 32, 64, 128, 256, 512px</li>
+                  <li><span className="font-semibold">PNG:</span>32, 64, 128, 256, 512px</li>
+                  <li><span className="font-semibold">WebP:</span>32, 64, 128, 256, 512px</li>
                   <li><span className="font-semibold">ICO:</span> 16, 32, 48, 64, 128, 256px</li>
                 </ul>
               </div>
