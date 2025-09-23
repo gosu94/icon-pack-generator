@@ -245,7 +245,6 @@ const GeneratorForm: React.FC<GeneratorFormProps> = ({
                       ref={fileInputRef}
                       type="file"
                       accept="image/*"
-                      required={inputType === "image"}
                       onChange={handleImageSelect}
                       className="hidden"
                     />
