@@ -1,5 +1,6 @@
 package com.gosu.iconpackgenerator.user.service;
 
+import com.gosu.iconpackgenerator.singal.SignalMessageService;
 import com.gosu.iconpackgenerator.user.model.User;
 import com.gosu.iconpackgenerator.user.repository.UserRepository;
 import lombok.extern.slf4j.Slf4j;
@@ -22,9 +23,12 @@ import java.util.UUID;
 public class CustomOidcUserService extends OidcUserService {
 
     private final UserRepository userRepository;
+    private final SignalMessageService signalMessageService;
 
-    public CustomOidcUserService(UserRepository userRepository) {
+
+    public CustomOidcUserService(UserRepository userRepository, SignalMessageService signalMessageService) {
         this.userRepository = userRepository;
+        this.signalMessageService = signalMessageService;
     }
 
     @Override
@@ -81,7 +85,8 @@ public class CustomOidcUserService extends OidcUserService {
             createUserDirectoryStructure(user.getDirectoryPath());
             
             log.info("Created new user: {} (ID: {}) with 0 regular coins and 1 trial coin", email, user.getId());
-            
+            signalMessageService.sendSignalMessage("[IconPackGen] Creating new user for email " + email);
+
             return user;
         } catch (Exception e) {
             log.error("Failed to create new user for email: {}", email, e);

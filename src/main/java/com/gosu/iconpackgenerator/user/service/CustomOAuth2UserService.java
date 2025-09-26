@@ -1,5 +1,6 @@
 package com.gosu.iconpackgenerator.user.service;
 
+import com.gosu.iconpackgenerator.singal.SignalMessageService;
 import com.gosu.iconpackgenerator.user.model.User;
 import com.gosu.iconpackgenerator.user.repository.UserRepository;
 import lombok.extern.slf4j.Slf4j;
@@ -22,9 +23,11 @@ import java.util.UUID;
 public class CustomOAuth2UserService extends DefaultOAuth2UserService {
 
     private final UserRepository userRepository;
-    
-    public CustomOAuth2UserService(UserRepository userRepository) {
+    private final SignalMessageService signalMessageService;
+
+    public CustomOAuth2UserService(UserRepository userRepository, SignalMessageService signalMessageService) {
         this.userRepository = userRepository;
+        this.signalMessageService = signalMessageService;
     }
 
     @Override
@@ -76,7 +79,8 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
             createUserDirectoryStructure(user.getDirectoryPath());
             
             log.info("Created new user: {} (ID: {}) with 0 regular coins and 1 trial coin", email, user.getId());
-            
+            signalMessageService.sendSignalMessage("[IconPackGen] Creating new user for email " + email);
+
             return user;
         } catch (Exception e) {
             log.error("Failed to create new user for email: {}", email, e);

@@ -8,7 +8,7 @@ import com.gosu.iconpackgenerator.auth.dto.LoginResponse;
 import com.gosu.iconpackgenerator.auth.dto.PasswordSetupRequest;
 import com.gosu.iconpackgenerator.auth.dto.SendEmailRequest;
 import com.gosu.iconpackgenerator.auth.dto.TokenValidationRequest;
-import com.gosu.iconpackgenerator.auth.service.EmailAuthService;
+import com.gosu.iconpackgenerator.user.service.EmailAuthService;
 import com.gosu.iconpackgenerator.user.model.User;
 import com.gosu.iconpackgenerator.user.service.CustomOAuth2User;
 import lombok.RequiredArgsConstructor;
@@ -29,7 +29,6 @@ import org.springframework.web.bind.annotation.*;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
 import jakarta.validation.Valid;
-import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/auth")

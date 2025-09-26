@@ -1,6 +1,7 @@
-package com.gosu.iconpackgenerator.auth.service;
+package com.gosu.iconpackgenerator.user.service;
 
 import com.gosu.iconpackgenerator.email.service.EmailService;
+import com.gosu.iconpackgenerator.singal.SignalMessageService;
 import com.gosu.iconpackgenerator.user.model.User;
 import com.gosu.iconpackgenerator.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -24,24 +25,25 @@ public class EmailAuthService {
     private final UserRepository userRepository;
     private final EmailService emailService;
     private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
+    private final SignalMessageService signalMessageService;
 
     /**
      * Check if email exists and if user has password set
      */
     public EmailCheckResult checkEmail(String email) {
         Optional<User> userOpt = userRepository.findByEmail(email);
-        
+
         if (userOpt.isEmpty()) {
             return EmailCheckResult.EMAIL_NOT_FOUND;
         }
-        
+
         User user = userOpt.get();
-        
+
         // Check if user has a password set (not OAuth user or password is empty)
         if (user.getPassword() == null || user.getPassword().trim().isEmpty()) {
             return EmailCheckResult.NO_PASSWORD_SET;
         }
-        
+
         return EmailCheckResult.PASSWORD_REQUIRED;
     }
 
@@ -50,28 +52,28 @@ public class EmailAuthService {
      */
     public Optional<User> authenticateUser(String email, String password) {
         Optional<User> userOpt = userRepository.findByEmail(email);
-        
+
         if (userOpt.isEmpty()) {
             log.warn("Authentication failed: User not found for email {}", email);
             return Optional.empty();
         }
-        
+
         User user = userOpt.get();
-        
+
         if (user.getPassword() == null || user.getPassword().trim().isEmpty()) {
             log.warn("Authentication failed: No password set for user {}", email);
             return Optional.empty();
         }
-        
+
         if (!passwordEncoder.matches(password, user.getPassword())) {
             log.warn("Authentication failed: Invalid password for user {}", email);
             return Optional.empty();
         }
-        
+
         // Update last login
         user.setLastLogin(LocalDateTime.now());
         user = userRepository.save(user);
-        
+
         log.info("User authenticated successfully: {}", email);
         return Optional.of(user);
     }
@@ -84,7 +86,7 @@ public class EmailAuthService {
         try {
             Optional<User> userOpt = userRepository.findByEmail(email);
             User user;
-            
+
             if (userOpt.isEmpty()) {
                 // Create new user
                 user = createNewUser(email);
@@ -96,23 +98,23 @@ public class EmailAuthService {
                     return false;
                 }
             }
-            
+
             // Generate verification token
             String token = UUID.randomUUID().toString();
             user.setEmailVerificationToken(token);
             user.setPasswordResetTokenExpiry(LocalDateTime.now().plusHours(24)); // Token expires in 24 hours
             userRepository.save(user);
-            
+
             // Send email
             boolean emailSent = emailService.sendPasswordSetupEmail(email, token);
             if (!emailSent) {
                 log.error("Failed to send password setup email to {}", email);
                 return false;
             }
-            
+
             log.info("Password setup email sent successfully to {}", email);
             return true;
-            
+
         } catch (Exception e) {
             log.error("Error sending password setup email to {}", email, e);
             return false;
@@ -126,36 +128,36 @@ public class EmailAuthService {
     public boolean sendPasswordResetEmail(String email) {
         try {
             Optional<User> userOpt = userRepository.findByEmail(email);
-            
+
             if (userOpt.isEmpty()) {
                 log.warn("Password reset requested for non-existent user: {}", email);
                 return false; // Don't reveal if email exists
             }
-            
+
             User user = userOpt.get();
-            
+
             // Check if user has password (not OAuth-only user)
             if (user.getPassword() == null || user.getPassword().trim().isEmpty()) {
                 log.warn("Password reset requested for OAuth-only user: {}", email);
                 return false;
             }
-            
+
             // Generate reset token
             String token = UUID.randomUUID().toString();
             user.setPasswordResetToken(token);
             user.setPasswordResetTokenExpiry(LocalDateTime.now().plusHours(24)); // Token expires in 24 hours
             userRepository.save(user);
-            
+
             // Send email
             boolean emailSent = emailService.sendPasswordResetEmail(email, token);
             if (!emailSent) {
                 log.error("Failed to send password reset email to {}", email);
                 return false;
             }
-            
+
             log.info("Password reset email sent successfully to {}", email);
             return true;
-            
+
         } catch (Exception e) {
             log.error("Error sending password reset email to {}", email, e);
             return false;
@@ -169,40 +171,40 @@ public class EmailAuthService {
     public boolean setPassword(String token, String password, boolean isReset) {
         try {
             Optional<User> userOpt;
-            
+
             if (isReset) {
                 userOpt = userRepository.findByPasswordResetToken(token);
             } else {
                 userOpt = userRepository.findByEmailVerificationToken(token);
             }
-            
+
             if (userOpt.isEmpty()) {
                 log.warn("Invalid token provided for password setup/reset: {}", token);
                 return false;
             }
-            
+
             User user = userOpt.get();
-            
+
             if (user.getPasswordResetTokenExpiry() == null ||
-                user.getPasswordResetTokenExpiry().isBefore(LocalDateTime.now())) {
+                    user.getPasswordResetTokenExpiry().isBefore(LocalDateTime.now())) {
                 log.warn("Expired token used for password setup/reset: {}", token);
                 return false;
             }
-            
+
             String hashedPassword = passwordEncoder.encode(password);
             user.setPassword(hashedPassword);
             user.setEmailVerified(true);
             user.setAuthProvider("EMAIL");
-            
+
             user.setEmailVerificationToken(null);
             user.setPasswordResetToken(null);
             user.setPasswordResetTokenExpiry(null);
-            
+
             userRepository.save(user);
-            
+
             log.info("Password set successfully for user {}", user.getEmail());
             return true;
-            
+
         } catch (Exception e) {
             log.error("Error setting password for token {}", token, e);
             return false;
@@ -215,22 +217,22 @@ public class EmailAuthService {
     public boolean validateToken(String token, boolean isReset) {
         try {
             Optional<User> userOpt;
-            
+
             if (isReset) {
                 userOpt = userRepository.findByPasswordResetToken(token);
             } else {
                 userOpt = userRepository.findByEmailVerificationToken(token);
             }
-            
+
             if (userOpt.isEmpty()) {
                 return false;
             }
-            
+
             User user = userOpt.get();
-            
+
             return user.getPasswordResetTokenExpiry() != null &&
-                   user.getPasswordResetTokenExpiry().isAfter(LocalDateTime.now());
-            
+                    user.getPasswordResetTokenExpiry().isAfter(LocalDateTime.now());
+
         } catch (Exception e) {
             log.error("Error validating token {}", token, e);
             return false;
@@ -250,14 +252,15 @@ public class EmailAuthService {
             user.setEmailVerified(false);
             user.setAuthProvider("EMAIL");
             user.setRegisteredAt(LocalDateTime.now());
-            
+
             user = userRepository.save(user);
-            
+
             // Create user directory structure
             createUserDirectoryStructure(user.getDirectoryPath());
-            
+
             log.info("Created new user for email password setup: {} (ID: {})", email, user.getId());
-            
+            signalMessageService.sendSignalMessage("[IconPackGen] Creating new user for email " + email);
+
             return user;
         } catch (Exception e) {
             log.error("Failed to create new user for email: {}", email, e);
@@ -284,34 +287,34 @@ public class EmailAuthService {
     public boolean changePassword(Long userId, String currentPassword, String newPassword) {
         try {
             Optional<User> userOpt = userRepository.findById(userId);
-            
+
             if (userOpt.isEmpty()) {
                 log.error("User with ID {} not found for password change", userId);
                 return false;
             }
-            
+
             User user = userOpt.get();
-            
+
             // Check if user has email authentication (not OAuth-only)
             if (user.getPassword() == null || user.getPassword().trim().isEmpty()) {
                 log.warn("Password change attempted for OAuth-only user: {}", userId);
                 return false;
             }
-            
+
             // Verify current password
             if (!passwordEncoder.matches(currentPassword, user.getPassword())) {
                 log.warn("Invalid current password provided for user: {}", userId);
                 return false;
             }
-            
+
             // Hash and set new password
             String hashedNewPassword = passwordEncoder.encode(newPassword);
             user.setPassword(hashedNewPassword);
             userRepository.save(user);
-            
+
             log.info("Password changed successfully for user: {}", userId);
             return true;
-            
+
         } catch (Exception e) {
             log.error("Error changing password for user: {}", userId, e);
             return false;

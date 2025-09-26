@@ -1,6 +1,6 @@
 package com.gosu.iconpackgenerator.auth.provider;
 
-import com.gosu.iconpackgenerator.auth.service.EmailAuthService;
+import com.gosu.iconpackgenerator.user.service.EmailAuthService;
 import com.gosu.iconpackgenerator.user.model.User;
 import com.gosu.iconpackgenerator.user.service.CustomOAuth2User;
 import lombok.RequiredArgsConstructor;
