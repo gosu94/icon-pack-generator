@@ -21,6 +21,25 @@ import java.util.List;
 @Slf4j
 public class ImageProcessingService {
 
+    /**
+     * Helper class to track processing timing for performance analysis
+     */
+    private static class ProcessingTiming {
+        public long transparencyCheckMs = 0;
+        public long backgroundRemovalMs = 0;
+        public long solidFrameDetectionMs = 0;
+        public long diagnosticsMs = 0;
+        public long gridBoundsDetectionMs = 0;
+        public long artifactCleanupMs = 0;
+        public long iconCenteringMs = 0;
+        
+        public long getTotalMs() {
+            return transparencyCheckMs + backgroundRemovalMs + solidFrameDetectionMs + 
+                   diagnosticsMs + gridBoundsDetectionMs + artifactCleanupMs + iconCenteringMs;
+        }
+    }
+
+
     public static final int ICON_TARGET_SIZE = 300;
     private final BackgroundRemovalService backgroundRemovalService;
 
@@ -74,13 +93,21 @@ public class ImageProcessingService {
 
             log.info("Processing image data of size: {} bytes", imageData.length);
 
+            // Performance timing tracking
+            long totalStartTime = System.currentTimeMillis();
+            ProcessingTiming timing = new ProcessingTiming();
+
             // Optionally remove background from the entire grid image before processing
             byte[] processedImageData = imageData;
             if (removeBackground) {
                 try {
                     // Heuristic check to see if background is already transparent
+                    long transparencyCheckStart = System.currentTimeMillis();
                     BufferedImage imageToCheck = ImageIO.read(new ByteArrayInputStream(imageData));
-                    if (imageToCheck != null && hasTransparentBackground(imageToCheck)) {
+                    boolean hasTransparentBg = imageToCheck != null && hasTransparentBackground(imageToCheck);
+                    timing.transparencyCheckMs = System.currentTimeMillis() - transparencyCheckStart;
+                    
+                    if (hasTransparentBg) {
                         log.info("Image background appears to be already transparent. Skipping background removal.");
                     } else {
                         if (imageToCheck == null) {
@@ -91,9 +118,9 @@ public class ImageProcessingService {
                         // Add timeout protection for background removal
                         long backgroundRemovalStart = System.currentTimeMillis();
                         processedImageData = backgroundRemovalService.removeBackground(imageData);
-                        long backgroundRemovalTime = System.currentTimeMillis() - backgroundRemovalStart;
+                        timing.backgroundRemovalMs = System.currentTimeMillis() - backgroundRemovalStart;
 
-                        log.info("Background removal completed in {} ms", backgroundRemovalTime);
+                        log.info("Background removal completed in {} ms", timing.backgroundRemovalMs);
 
                         if (processedImageData.length != imageData.length) {
                             log.info("Background removal changed image size from {} to {} bytes",
@@ -102,7 +129,9 @@ public class ImageProcessingService {
                     }
                 } catch (IOException e) {
                     log.error("Error during transparency check, proceeding with background removal.", e);
+                    long backgroundRemovalStart = System.currentTimeMillis();
                     processedImageData = backgroundRemovalService.removeBackground(imageData);
+                    timing.backgroundRemovalMs = System.currentTimeMillis() - backgroundRemovalStart;
                 }
             } else {
                 log.debug("Background removal disabled - preserving original image for better content bounds detection");
@@ -131,19 +160,34 @@ public class ImageProcessingService {
 
             log.debug("Successfully parsed image: {}x{} pixels", originalImage.getWidth(), originalImage.getHeight());
 
+            // Check for and remove solid frame artifacts (common in image-to-image generation)
+            long frameDetectionStart = System.currentTimeMillis();
+            BufferedImage frameCleanedImage = detectAndRemoveSolidFrame(originalImage);
+            timing.solidFrameDetectionMs = System.currentTimeMillis() - frameDetectionStart;
+            
+            if (frameCleanedImage != originalImage) {
+                log.info("Detected and removed solid frame from image. New dimensions: {}x{}", 
+                        frameCleanedImage.getWidth(), frameCleanedImage.getHeight());
+                originalImage = frameCleanedImage;
+            }
+
             // Add image diagnostics
+            long diagnosticsStart = System.currentTimeMillis();
             performImageDiagnostics(originalImage, processedImageData.length);
+            timing.diagnosticsMs = System.currentTimeMillis() - diagnosticsStart;
 
             List<String> croppedIcons = new ArrayList<>();
 
             if (iconCount == 9) {
-                croppedIcons.addAll(cropGrid3x3(originalImage, centerIcons, targetSize, cleanupArtifacts));
+                croppedIcons.addAll(cropGrid3x3(originalImage, centerIcons, targetSize, cleanupArtifacts, timing));
             } else if (iconCount == 18) {
-                // For 18 icons, we'll need to generate two 3x3 grids
-                // For now, we'll crop first 9 from one grid
-                croppedIcons.addAll(cropGrid3x3(originalImage, centerIcons, targetSize, cleanupArtifacts));
+                croppedIcons.addAll(cropGrid3x3(originalImage, centerIcons, targetSize, cleanupArtifacts, timing));
                 // TODO: Handle second grid generation for 18 icons
             }
+
+            // Log comprehensive timing summary
+            long totalProcessingTime = System.currentTimeMillis() - totalStartTime;
+            logProcessingTimingSummary(timing, totalProcessingTime, iconCount, originalImage.getWidth(), originalImage.getHeight());
 
             log.debug("Successfully cropped {} icons from grid", croppedIcons.size());
             return croppedIcons;
@@ -194,6 +238,205 @@ public class ImageProcessingService {
         log.info("Transparency check: {} non-transparent pixels out of {} samples on the border (ratio: {}).", nonTransparentCount, samples, String.format("%.2f", nonTransparentRatio));
 
         return nonTransparentRatio < 0.10;
+    }
+
+    /**
+     * Detect and remove thin solid frames that sometimes appear around generated images.
+     * These frames (typically 1-3px thick) can be any color and interfere with proper grid detection and centering.
+     *
+     * @param image The image to analyze and potentially clean
+     * @return The original image if no frame detected, or a cropped image with the frame removed
+     */
+    private BufferedImage detectAndRemoveSolidFrame(BufferedImage image) {
+        if (image == null) {
+            return image;
+        }
+
+        int width = image.getWidth();
+        int height = image.getHeight();
+
+        // Don't process very small images
+        if (width < 50 || height < 50) {
+            log.debug("Image too small for solid frame detection: {}x{}", width, height);
+            return image;
+        }
+
+        log.debug("Analyzing image for solid frame artifacts: {}x{}", width, height);
+
+        // Detect frame thickness from each edge
+        int topFrameThickness = detectFrameThickness(image, "top");
+        int bottomFrameThickness = detectFrameThickness(image, "bottom");
+        int leftFrameThickness = detectFrameThickness(image, "left");
+        int rightFrameThickness = detectFrameThickness(image, "right");
+
+        // Check if we have a consistent frame on all edges
+        int maxFrameThickness = Math.max(Math.max(topFrameThickness, bottomFrameThickness),
+                Math.max(leftFrameThickness, rightFrameThickness));
+
+        if (maxFrameThickness == 0) {
+            log.debug("No solid frame detected");
+            return image;
+        }
+
+        // Validate that the frame is reasonably consistent and not too thick
+        int minFrameThickness = Math.min(Math.min(topFrameThickness, bottomFrameThickness),
+                Math.min(leftFrameThickness, rightFrameThickness));
+
+        // Frame should be present on most edges and be reasonably thin (1-5 pixels max)
+        if (maxFrameThickness > 5 || (maxFrameThickness - minFrameThickness) > 2) {
+            log.debug("Inconsistent or too thick frame detected: top={}, bottom={}, left={}, right={} - skipping removal",
+                    topFrameThickness, bottomFrameThickness, leftFrameThickness, rightFrameThickness);
+            return image;
+        }
+
+        // Use the most conservative (smallest) frame thickness for cropping
+        int cropAmount = minFrameThickness;
+        if (cropAmount == 0) {
+            cropAmount = 1; // Remove at least 1px if we detected any frame
+        }
+
+        log.info("Detected solid frame with thickness: top={}, bottom={}, left={}, right={} - removing {}px from each edge",
+                topFrameThickness, bottomFrameThickness, leftFrameThickness, rightFrameThickness, cropAmount);
+
+        // Crop the frame
+        int newX = cropAmount;
+        int newY = cropAmount;
+        int newWidth = width - (2 * cropAmount);
+        int newHeight = height - (2 * cropAmount);
+
+        // Ensure we don't crop too much
+        if (newWidth <= 10 || newHeight <= 10) {
+            log.warn("Solid frame crop would make image too small ({}x{} -> {}x{}) - skipping removal",
+                    width, height, newWidth, newHeight);
+            return image;
+        }
+
+        try {
+            BufferedImage croppedImage = image.getSubimage(newX, newY, newWidth, newHeight);
+            log.info("Successfully removed solid frame. Image dimensions: {}x{} -> {}x{}",
+                    width, height, newWidth, newHeight);
+            return croppedImage;
+        } catch (Exception e) {
+            log.error("Error cropping solid frame", e);
+            return image; // Return original on error
+        }
+    }
+
+    /**
+     * Detect the thickness of a solid frame on a specific edge of the image
+     *
+     * @param image The image to analyze
+     * @param edge  The edge to analyze: "top", "bottom", "left", or "right"
+     * @return The thickness of the solid frame in pixels, or 0 if no frame detected
+     */
+    private int detectFrameThickness(BufferedImage image, String edge) {
+        int width = image.getWidth();
+        int height = image.getHeight();
+        int maxThickness = Math.min(5, Math.min(width, height) / 10); // Max 5px or 10% of smallest dimension
+
+        for (int thickness = 1; thickness <= maxThickness; thickness++) {
+            int sampleCount = 0;
+            int solidPixelCount = 0;
+
+            // Sample pixels along the edge at the given thickness
+            switch (edge.toLowerCase()) {
+                case "top":
+                    if (thickness >= height) break;
+                    for (int x = 0; x < width; x += Math.max(1, width / 50)) { // Sample ~50 points
+                        int rgb = image.getRGB(x, thickness - 1); // 0-indexed
+                        sampleCount++;
+                        if (isSolidFramePixel(rgb)) {
+                            solidPixelCount++;
+                        }
+                    }
+                    break;
+
+                case "bottom":
+                    if (thickness >= height) break;
+                    for (int x = 0; x < width; x += Math.max(1, width / 50)) {
+                        int rgb = image.getRGB(x, height - thickness);
+                        sampleCount++;
+                        if (isSolidFramePixel(rgb)) {
+                            solidPixelCount++;
+                        }
+                    }
+                    break;
+
+                case "left":
+                    if (thickness >= width) break;
+                    for (int y = 0; y < height; y += Math.max(1, height / 50)) {
+                        int rgb = image.getRGB(thickness - 1, y); // 0-indexed
+                        sampleCount++;
+                        if (isSolidFramePixel(rgb)) {
+                            solidPixelCount++;
+                        }
+                    }
+                    break;
+
+                case "right":
+                    if (thickness >= width) break;
+                    for (int y = 0; y < height; y += Math.max(1, height / 50)) {
+                        int rgb = image.getRGB(width - thickness, y);
+                        sampleCount++;
+                        if (isSolidFramePixel(rgb)) {
+                            solidPixelCount++;
+                        }
+                    }
+                    break;
+
+                default:
+                    return 0;
+            }
+
+            // Check if this line is predominantly solid (non-transparent)
+            double solidRatio = sampleCount > 0 ? (double) solidPixelCount / sampleCount : 0.0;
+            
+            if (solidRatio >= 0.8) { // 80% of pixels should be solid (non-transparent)
+                log.debug("Detected solid frame on {} edge at thickness {}: {}/{} samples are solid ({}%)",
+                        edge, thickness, solidPixelCount, sampleCount, String.format("%.1f", solidRatio * 100));
+                continue; // This thickness level is part of the frame
+            } else {
+                // This thickness level is not predominantly solid, so frame ends at previous thickness
+                int frameThickness = thickness - 1;
+                if (frameThickness > 0) {
+                    log.debug("Solid frame on {} edge detected with thickness: {} pixels", edge, frameThickness);
+                }
+                return frameThickness;
+            }
+        }
+
+        // If we've checked all thickness levels and they're all solid, return the max
+        log.debug("Solid frame on {} edge extends to maximum checked thickness: {} pixels", edge, maxThickness);
+        return maxThickness;
+    }
+
+    /**
+     * Check if a pixel is solid (non-transparent) and could be part of a frame
+     * This method detects any solid color that could form a frame, regardless of the actual color
+     *
+     * @param rgb The RGB value of the pixel
+     * @return true if the pixel appears to be part of a solid frame
+     */
+    private boolean isSolidFramePixel(int rgb) {
+        int alpha = (rgb >> 24) & 0xFF;
+        
+        // Consider pixels with low to moderate opacity as potentially solid frame pixels
+        // Use a lower threshold to catch subtle frames that might be very light gray or semi-transparent
+        // Alpha > 10 catches anything that's not almost completely transparent
+        if (alpha <= 10) {
+            return false; // Skip nearly transparent pixels
+        }
+        
+        // For subtle frame detection, also consider very light colors that are not pure white/transparent
+        // This helps catch light grey frames that might have been generated by AI models
+        int red = (rgb >> 16) & 0xFF;
+        int green = (rgb >> 8) & 0xFF;
+        int blue = rgb & 0xFF;
+        
+        // Skip pure white pixels (they're typically background)
+        boolean isPureWhite = red >= 250 && green >= 250 && blue >= 250;
+        
+        return !isPureWhite;
     }
 
     /**
@@ -1231,7 +1474,7 @@ public class ImageProcessingService {
         return boundaries;
     }
 
-    private List<String> cropGrid3x3(BufferedImage originalImage, boolean centerIcons, int targetSize, boolean cleanupArtifacts) throws IOException {
+    private List<String> cropGrid3x3(BufferedImage originalImage, boolean centerIcons, int targetSize, boolean cleanupArtifacts, ProcessingTiming timing) throws IOException {
         List<String> icons = new ArrayList<>();
 
         int width = originalImage.getWidth();
@@ -1239,7 +1482,9 @@ public class ImageProcessingService {
 
         log.debug("Starting intelligent 3x3 grid cropping for image {}x{}", width, height);
 
+        long gridBoundsStart = System.currentTimeMillis();
         GridBounds gridBounds = detectGridBounds(originalImage);
+        timing.gridBoundsDetectionMs = System.currentTimeMillis() - gridBoundsStart;
 
         // Determine if we should skip artifact cleanup due to perfect transparency
         boolean shouldSkipCleanup = gridBounds.hasPerfectTransparency();
@@ -1259,12 +1504,15 @@ public class ImageProcessingService {
 
                 // Optionally cleanup artifacts from neighboring icons
                 // Skip cleanup if we have perfect transparent grid lines (no artifacts expected)
+                long artifactCleanupStart = System.currentTimeMillis();
                 if (cleanupArtifacts && !shouldSkipCleanup) {
                     croppedIcon = cleanupIconArtifacts(croppedIcon, row, col);
                     log.debug("Cleaned up artifacts for icon at position [{},{}]", row, col);
                 }
+                timing.artifactCleanupMs += System.currentTimeMillis() - artifactCleanupStart;
 
                 // Optionally center the icon
+                long centeringStart = System.currentTimeMillis();
                 if (centerIcons) {
                     int size = targetSize > 0 ? targetSize : Math.max(iconRect.width, iconRect.height);
                     croppedIcon = centerIcon(croppedIcon, size);
@@ -1273,6 +1521,7 @@ public class ImageProcessingService {
                     log.debug("Cropped icon at position [{},{}] with size {}x{}",
                             row, col, iconRect.width, iconRect.height);
                 }
+                timing.iconCenteringMs += System.currentTimeMillis() - centeringStart;
 
                 String base64Icon = bufferedImageToBase64(croppedIcon);
                 icons.add(base64Icon);
@@ -1280,6 +1529,51 @@ public class ImageProcessingService {
         }
 
         return icons;
+    }
+
+    /**
+     * Log a comprehensive summary of processing timing for performance analysis
+     */
+    private void logProcessingTimingSummary(ProcessingTiming timing, long totalProcessingTime, int iconCount, int imageWidth, int imageHeight) {
+        log.info("🚀 IMAGE PROCESSING PERFORMANCE SUMMARY 🚀");
+        log.info("┌─────────────────────────────────────────────────────────────");
+        log.info("│ Image: {}x{} pixels, Processing {} icons", imageWidth, imageHeight, iconCount);
+        log.info("├─────────────────────────────────────────────────────────────");
+        log.info("│ ⏱️  TIMING BREAKDOWN:");
+        log.info(String.format("│   • Transparency Check:     %6d ms  (%5.1f%%)", 
+                timing.transparencyCheckMs, getPercentage(timing.transparencyCheckMs, totalProcessingTime)));
+        log.info(String.format("│   • Background Removal:     %6d ms  (%5.1f%%)", 
+                timing.backgroundRemovalMs, getPercentage(timing.backgroundRemovalMs, totalProcessingTime)));
+        log.info(String.format("│   • Solid Frame Detection:  %6d ms  (%5.1f%%)", 
+                timing.solidFrameDetectionMs, getPercentage(timing.solidFrameDetectionMs, totalProcessingTime)));
+        log.info(String.format("│   • Image Diagnostics:      %6d ms  (%5.1f%%)", 
+                timing.diagnosticsMs, getPercentage(timing.diagnosticsMs, totalProcessingTime)));
+        log.info(String.format("│   • Grid Bounds Detection:  %6d ms  (%5.1f%%)", 
+                timing.gridBoundsDetectionMs, getPercentage(timing.gridBoundsDetectionMs, totalProcessingTime)));
+        log.info(String.format("│   • Artifact Cleanup:       %6d ms  (%5.1f%%)", 
+                timing.artifactCleanupMs, getPercentage(timing.artifactCleanupMs, totalProcessingTime)));
+        log.info(String.format("│   • Icon Centering:         %6d ms  (%5.1f%%)", 
+                timing.iconCenteringMs, getPercentage(timing.iconCenteringMs, totalProcessingTime)));
+        log.info("├─────────────────────────────────────────────────────────────");
+        log.info(String.format("│   🎯 MEASURED TOTAL:         %6d ms  (%5.1f%%)", 
+                timing.getTotalMs(), getPercentage(timing.getTotalMs(), totalProcessingTime)));
+        log.info(String.format("│   ⚡ ACTUAL TOTAL:           %6d ms  (100.0%%)", totalProcessingTime));
+        log.info(String.format("│   📊 OVERHEAD:               %6d ms  (%5.1f%%)", 
+                totalProcessingTime - timing.getTotalMs(), 
+                getPercentage(totalProcessingTime - timing.getTotalMs(), totalProcessingTime)));
+        log.info("├─────────────────────────────────────────────────────────────");
+        log.info("│ 📈 PERFORMANCE METRICS:");
+        log.info(String.format("│   • Processing rate:        %6.1f ms/icon", (double)totalProcessingTime / iconCount));
+        log.info(String.format("│   • Pixels processed:       %6d MP/s", 
+                Math.round((imageWidth * imageHeight / 1_000_000.0) / (totalProcessingTime / 1000.0))));
+        log.info("└─────────────────────────────────────────────────────────────");
+    }
+
+    /**
+     * Calculate percentage for timing display
+     */
+    private double getPercentage(long value, long total) {
+        return total > 0 ? (double) value * 100.0 / total : 0.0;
     }
 
     /**

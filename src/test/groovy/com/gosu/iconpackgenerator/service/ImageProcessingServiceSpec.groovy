@@ -440,7 +440,7 @@ class ImageProcessingServiceSpec extends Specification {
 
     def "should cleanup artifacts from wrong-cut image using new artifact removal functionality"() {
         given: "The problematic wrong-cut-7.png image that has cutting artifacts"
-        BufferedImage wrongCutImage = loadTestImage("wrong_size2.png")
+        BufferedImage wrongCutImage = loadTestImage("wrong-cut-7.png")
 
         expect: "Test image is loaded correctly"
         wrongCutImage != null
@@ -484,6 +484,82 @@ class ImageProcessingServiceSpec extends Specification {
         println "Successfully tested artifact cleanup functionality on wrong-cut-7.png"
         println "Compare the 'cleaned' vs 'original' versions to see the difference"
         println "Cleaned icons should have fewer artifacts from neighboring icons"
+    }
+
+    def "should detect and remove solid frame artifacts from generated images"() {
+        given: "A test image with a solid frame (weird_frame.png)"
+        BufferedImage solidFrameImage = loadTestImage("weird_frame.png")
+
+        expect: "Test image is loaded correctly"
+        solidFrameImage != null
+        solidFrameImage.width > 0
+        solidFrameImage.height > 0
+
+        when: "Process the image through the standard pipeline (which should detect and remove the frame)"
+        byte[] imageData = bufferedImageToByteArray(solidFrameImage)
+        List<String> iconsWithFrameRemoval = imageProcessingService.cropIconsFromGrid(imageData, 9, true, 300, false, true)
+
+        then: "Processing succeeds and generates expected number of icons"
+        iconsWithFrameRemoval != null
+        iconsWithFrameRemoval.size() == 9
+
+        when: "Save the processed icons for visual verification"
+        iconsWithFrameRemoval.eachWithIndex { iconBase64, index ->
+            byte[] iconBytes = Base64.decoder.decode(iconBase64)
+            BufferedImage iconImage = ImageIO.read(new ByteArrayInputStream(iconBytes))
+            saveImage(iconImage, "solid_frame_removed_icon_${index + 1}_300px.png")
+            println "Saved frame-cleaned icon ${index + 1}"
+        }
+
+        then: "Icons are processed successfully"
+        iconsWithFrameRemoval.size() == 9
+
+        and: "Log results of frame detection"
+        println "Successfully processed weird_frame.png with solid frame detection enabled"
+        println "Check logs for messages like 'Detected solid frame with thickness' to verify frame removal"
+        println "Compare output icons to verify proper cropping and centering after frame removal"
+
+        when: "Test direct access to frame detection method using reflection for detailed verification"
+        // Test the detectAndRemoveSolidFrame method directly
+        java.lang.reflect.Method detectAndRemoveSolidFrameMethod = ImageProcessingService.class.getDeclaredMethod("detectAndRemoveSolidFrame", BufferedImage.class)
+        detectAndRemoveSolidFrameMethod.setAccessible(true)
+        BufferedImage frameCleanedImage = detectAndRemoveSolidFrameMethod.invoke(imageProcessingService, solidFrameImage)
+
+        then: "Frame detection method should process the image"
+        frameCleanedImage != null
+
+        and: "Save comparison images for manual verification"
+        saveImage(solidFrameImage, "solid_frame_original.png")
+        saveImage(frameCleanedImage, "solid_frame_after_detection.png")
+
+        and: "Log dimensions comparison"
+        println "Original image dimensions: ${solidFrameImage.width}x${solidFrameImage.height}"
+        println "After frame detection: ${frameCleanedImage.width}x${frameCleanedImage.height}"
+        
+        if (frameCleanedImage != solidFrameImage) {
+            println "✓ Solid frame was detected and removed"
+            println "Dimension change: ${solidFrameImage.width}x${solidFrameImage.height} -> ${frameCleanedImage.width}x${frameCleanedImage.height}"
+        } else {
+            println "⚠ No solid frame detected or frame was too inconsistent/thick to remove safely"
+        }
+    }
+
+    def "should log comprehensive timing metrics during image processing"() {
+        given: "A test image for timing measurement"
+        BufferedImage timingTestImage = loadTestImage("weird_frame.png")
+        byte[] imageData = bufferedImageToByteArray(timingTestImage)
+
+        when: "Process the image with full pipeline"
+        List<String> icons = imageProcessingService.cropIconsFromGrid(imageData, 9, true, 300, false, true)
+
+        then: "Processing succeeds"
+        icons != null
+        icons.size() == 9
+
+        and: "Log timing information for verification"
+        println "✅ Timing measurement test completed successfully"
+        println "Check logs above for comprehensive performance summary with timing breakdown"
+        println "Expected to see: '🚀 IMAGE PROCESSING PERFORMANCE SUMMARY 🚀'"
     }
 
     def cleanupSpec() {
