@@ -21,6 +21,7 @@ import java.util.List;
 @Slf4j
 public class ImageProcessingService {
 
+    public static final int ICON_TARGET_SIZE = 300;
     private final BackgroundRemovalService backgroundRemovalService;
 
     /**
@@ -31,7 +32,7 @@ public class ImageProcessingService {
      * @return List of cropped icon images as base64 strings
      */
     public List<String> cropIconsFromGrid(byte[] imageData, int iconCount, boolean removeBackground) {
-        return cropIconsFromGrid(imageData, iconCount, true, 0, removeBackground, true);
+        return cropIconsFromGrid(imageData, iconCount, true, ICON_TARGET_SIZE, removeBackground, true);
     }
 
     /**

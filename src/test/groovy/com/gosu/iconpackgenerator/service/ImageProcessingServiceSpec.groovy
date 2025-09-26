@@ -440,7 +440,7 @@ class ImageProcessingServiceSpec extends Specification {
 
     def "should cleanup artifacts from wrong-cut image using new artifact removal functionality"() {
         given: "The problematic wrong-cut-7.png image that has cutting artifacts"
-        BufferedImage wrongCutImage = loadTestImage("different_sizes.png")
+        BufferedImage wrongCutImage = loadTestImage("wrong_size2.png")
 
         expect: "Test image is loaded correctly"
         wrongCutImage != null
@@ -449,10 +449,10 @@ class ImageProcessingServiceSpec extends Specification {
 
         when: "Process the image with artifact cleanup enabled"
         byte[] imageData = bufferedImageToByteArray(wrongCutImage)
-        List<String> iconsWithCleanup = imageProcessingService.cropIconsFromGrid(imageData, 9, true, 256, false, true)
+        List<String> iconsWithCleanup = imageProcessingService.cropIconsFromGrid(imageData, 9, true, 300, false, true)
 
         and: "Process the same image without artifact cleanup for comparison"
-        List<String> iconsWithoutCleanup = imageProcessingService.cropIconsFromGrid(imageData, 9, true, 256, false, false)
+        List<String> iconsWithoutCleanup = imageProcessingService.cropIconsFromGrid(imageData, 9, true, 300, false, false)
 
         then: "Both processing attempts succeed"
         iconsWithCleanup != null
