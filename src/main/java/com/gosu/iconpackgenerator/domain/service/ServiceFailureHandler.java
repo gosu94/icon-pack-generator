@@ -83,12 +83,6 @@ public class ServiceFailureHandler {
                         break;
                     }
                     
-                    // Check if this failure is due to temporary unavailability
-                    if (!isTemporaryServiceFailure(result.getMessage())) {
-                        // This is a non-temporary failure (e.g., invalid parameters), don't refund
-                        allEnabledServicesFailed = false;
-                        break;
-                    }
                 }
             }
             if (!allEnabledServicesFailed) {

@@ -1,5 +1,6 @@
 package com.gosu.iconpackgenerator.domain.service;
 
+import com.gosu.iconpackgenerator.singal.SignalMessageService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -20,6 +21,8 @@ import java.util.List;
 @RequiredArgsConstructor
 @Slf4j
 public class ImageProcessingService {
+
+    private final SignalMessageService signalMessageService;
 
     /**
      * Helper class to track processing timing for performance analysis
@@ -114,6 +117,7 @@ public class ImageProcessingService {
                             log.warn("Could not read image to check for transparency, proceeding with background removal.");
                         }
                         log.info("Removing background from grid image before cropping icons");
+                        signalMessageService.sendSignalMessage("[IconPackGen] Background removal detected");
 
                         // Add timeout protection for background removal
                         long backgroundRemovalStart = System.currentTimeMillis();
