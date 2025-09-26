@@ -95,16 +95,14 @@ export default function LandingPage() {
               {/* Video Section - 3/4 width */}
               <div className="lg:w-3/4 relative bg-gradient-to-br from-blue-600 to-purple-600 p-8 flex items-center justify-center min-h-[400px]">
                 <div className="relative w-full h-full flex items-center justify-center">
-                  {/* Placeholder for video - you can replace with actual video */}
-                  <div className="relative w-full max-w-2xl aspect-video bg-black/20 rounded-2xl flex items-center justify-center backdrop-blur-sm border border-white/20">
-                    <button className="group flex items-center justify-center w-20 h-20 bg-white/20 hover:bg-white/30 rounded-full transition-all duration-300 hover:scale-110">
-                      <Play className="w-8 h-8 text-white ml-1 group-hover:scale-110 transition-transform" />
-                    </button>
+                  <div className="relative w-full max-w-2xl aspect-video bg-black/20 rounded-2xl flex items-center justify-center backdrop-blur-sm border border-white/20 overflow-hidden">
+                    <iframe
+                      src="https://player.vimeo.com/video/1122340216?badge=0&amp;autopause=0&amp;player_id=0&amp;app_id=58479"
+                      allow="autoplay; fullscreen; picture-in-picture; clipboard-write"
+                      className="w-full h-full"
+                      title="Icon Pack Generator Promo Video"
+                    ></iframe>
                   </div>
-                  {/* Decorative elements */}
-                  <div className="absolute top-4 left-4 w-12 h-12 bg-white/10 rounded-full blur-xl"></div>
-                  <div className="absolute bottom-8 right-8 w-16 h-16 bg-purple-300/20 rounded-full blur-2xl"></div>
-                  <div className="absolute top-1/2 left-8 w-8 h-8 bg-blue-300/30 rounded-full blur-lg"></div>
                 </div>
               </div>
               
@@ -376,7 +374,7 @@ export default function LandingPage() {
           </div>
         </div>
       )}
-      
+
       <Footer />
     </div>
   );
