@@ -95,7 +95,7 @@ export default function LandingPage() {
           <div className="bg-white/80 backdrop-blur-md rounded-3xl shadow-2xl border border-purple-200/50 overflow-hidden">
             <div className="flex flex-col lg:flex-row">
               {/* Video Section - 3/4 width */}
-              <div className="lg:w-3/4 relative bg-gradient-to-br from-blue-600 to-purple-600 p-8 flex items-center justify-center min-h-[400px]">
+              <div className="lg:w-3/4 relative bg-gradient-to-br from-blue-600 to-purple-600 p-6 md:p-8 flex items-center justify-center min-h-[280px] md:min-h-[400px]">
                 <div className="relative w-full h-full flex items-center justify-center">
                   <div className="relative w-full max-w-2xl aspect-video bg-black/20 rounded-2xl flex items-center justify-center backdrop-blur-sm border border-white/20 overflow-hidden">
                     <iframe
@@ -109,7 +109,7 @@ export default function LandingPage() {
               </div>
               
               {/* Caption Section - 1/4 width */}
-              <div className="lg:w-1/4 p-8 flex flex-col justify-center bg-gradient-to-br from-white/50 to-purple-50/50">
+              <div className="lg:w-1/4 p-6 md:p-8 flex flex-col justify-center bg-gradient-to-br from-white/50 to-purple-50/50">
                 <div className="space-y-6">
                   <div className="flex items-center space-x-2">
                     <Sparkles className="w-6 h-6 text-purple-600" />
