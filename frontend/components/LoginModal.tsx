@@ -27,6 +27,7 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, isVisible, onClose, onS
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(false);
   const [authError, setAuthError] = useState('');
   const [isEmailLoading, setIsEmailLoading] = useState(false);
   const [isPasswordLoading, setIsPasswordLoading] = useState(false);
@@ -40,6 +41,7 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, isVisible, onClose, onS
       setEmail('');
       setPassword('');
       setShowPassword(false);
+      setRememberMe(false);
       setAuthError('');
       setEmailExists(false);
     }, 300);
@@ -121,7 +123,7 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, isVisible, onClose, onS
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email, password, rememberMe }),
         credentials: 'include',
       });
 
@@ -348,6 +350,20 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, isVisible, onClose, onS
                       )}
                     </button>
                   </div>
+                </div>
+
+                <div className="flex items-center">
+                  <input
+                    id="remember-me-modal"
+                    type="checkbox"
+                    checked={rememberMe}
+                    onChange={(e) => setRememberMe(e.target.checked)}
+                    className="h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-300 rounded"
+                    disabled={isPasswordLoading}
+                  />
+                  <label htmlFor="remember-me-modal" className="ml-2 block text-sm text-gray-700">
+                    Keep me signed in
+                  </label>
                 </div>
 
                 <button

@@ -152,6 +152,9 @@ app:
   file-storage:
     base-path: ${FILE_STORAGE_PATH:static/user-icons}
   base-url: ${APP_BASE_URL:http://localhost:8080}
+  security:
+    remember-me:
+      key: ${REMEMBER_ME_SECRET_KEY:defaultRememberMeSecretKey123}
 
 sendgrid:
   api-key: ${SENDGRID_API_KEY:your-sendgrid-api-key-here}

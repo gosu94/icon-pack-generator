@@ -3,7 +3,9 @@ package com.gosu.iconpackgenerator.config;
 import com.gosu.iconpackgenerator.auth.provider.EmailPasswordAuthenticationProvider;
 import com.gosu.iconpackgenerator.user.service.CustomOAuth2UserService;
 import com.gosu.iconpackgenerator.user.service.CustomOidcUserService;
+import com.gosu.iconpackgenerator.user.service.CustomUserDetailsService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
@@ -14,11 +16,15 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.rememberme.JdbcTokenRepositoryImpl;
+import org.springframework.security.web.authentication.rememberme.PersistentTokenRepository;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import org.springframework.core.env.Environment;
 import lombok.extern.slf4j.Slf4j;
+
+import javax.sql.DataSource;
 
 import java.util.Arrays;
 
@@ -33,6 +39,11 @@ public class SecurityConfig {
     private final CustomOidcUserService customOidcUserService;
     private final EmailPasswordAuthenticationProvider emailPasswordAuthenticationProvider;
     private final Environment environment;
+    private final DataSource dataSource;
+    private final CustomUserDetailsService customUserDetailsService;
+
+    @Value("${app.security.remember-me.key:defaultRememberMeSecretKey123}")
+    private String rememberMeKey;
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
@@ -82,6 +93,17 @@ public class SecurityConfig {
                 .loginPage("/login")
                 .permitAll()
             )
+            // Remember Me configuration - handles AUTOMATIC AUTHENTICATION on subsequent visits
+            // Note: Token CREATION is handled manually in AuthController for REST API login
+            // This configuration provides the infrastructure for automatic login when users return
+            .rememberMe(remember -> remember
+                .tokenRepository(persistentTokenRepository())
+                .tokenValiditySeconds(30 * 24 * 60 * 60) // 30 days
+                .key(rememberMeKey) // Use configurable secret key from environment
+                .userDetailsService(customUserDetailsService)
+                .rememberMeParameter("remember-me") // HTML form parameter name
+                .rememberMeCookieName("remember-me") // Cookie name
+            )
             .exceptionHandling(exceptions -> exceptions
                 .authenticationEntryPoint((request, response, authException) -> {
                     // For API requests, return 401
@@ -104,7 +126,7 @@ public class SecurityConfig {
                 .logoutSuccessUrl("/")
                 .invalidateHttpSession(true)
                 .clearAuthentication(true)
-                .deleteCookies("JSESSIONID")
+                .deleteCookies("JSESSIONID", "remember-me")
             )
             .headers(headers -> headers
                 .contentSecurityPolicy(csp -> csp
@@ -157,6 +179,7 @@ public class SecurityConfig {
             cspPolicy = "default-src 'self' 'unsafe-inline' 'unsafe-eval' data: blob: https: " +
                     "https://js.stripe.com https://m.stripe.network " +
                     "https://accounts.google.com https://apis.google.com; " +
+                    "img-src 'self' data: blob: https:; " +
                     "object-src 'none';";
         }
         
@@ -188,4 +211,12 @@ public class SecurityConfig {
     public AuthenticationManager authenticationManager() {
         return new ProviderManager(emailPasswordAuthenticationProvider);
     }
+
+    @Bean
+    public PersistentTokenRepository persistentTokenRepository() {
+        JdbcTokenRepositoryImpl tokenRepository = new JdbcTokenRepositoryImpl();
+        tokenRepository.setDataSource(dataSource);
+        return tokenRepository;
+    }
+
 }
