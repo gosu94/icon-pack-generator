@@ -3,6 +3,7 @@ package com.gosu.iconpackgenerator.feedback.controller;
 import com.gosu.iconpackgenerator.feedback.dto.FeedbackDto;
 import com.gosu.iconpackgenerator.feedback.model.Feedback;
 import com.gosu.iconpackgenerator.feedback.repository.FeedbackRepository;
+import com.gosu.iconpackgenerator.singal.SignalMessageService;
 import com.gosu.iconpackgenerator.user.model.User;
 import com.gosu.iconpackgenerator.user.service.CustomOAuth2User;
 import lombok.RequiredArgsConstructor;
@@ -20,6 +21,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class FeedbackController {
 
     private final FeedbackRepository feedbackRepository;
+    private final SignalMessageService signalMessageService;
 
     @PostMapping
     public ResponseEntity<Void> submitFeedback(@RequestBody FeedbackDto feedbackDto, @AuthenticationPrincipal OAuth2User principal) {
@@ -33,6 +35,7 @@ public class FeedbackController {
         feedback.setUser(user);
 
         feedbackRepository.save(feedback);
+        signalMessageService.sendSignalMessage("[IconPackGen] Feedback submitted: " + feedbackDto.getFeedback());
 
         return ResponseEntity.ok().build();
     }
