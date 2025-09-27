@@ -121,7 +121,7 @@ export default function LandingPage() {
                   </h1>
                   
                   <p className="text-slate-600 leading-relaxed">
-                    Transform your ideas into professional icon packs using cutting-edge AI technology. Generate, customize, and export high-quality icons for your projects.
+                    Transform your ideas into professional icon packs using cutting-edge AI technology. Generate, and export high-quality icons for your projects.
                   </p>
                   
                   <div className="flex flex-col space-y-3">
@@ -199,8 +199,8 @@ export default function LandingPage() {
                 <p className="mb-2">Download your icons in multiple formats and sizes:</p>
                 <ul className="list-disc list-inside space-y-1 text-sm">
                   <li><span className="font-semibold">SVG embeded</span></li>
-                  <li><span className="font-semibold">PNG:</span>32, 64, 128, 256, 512px</li>
-                  <li><span className="font-semibold">WebP:</span>32, 64, 128, 256, 512px</li>
+                  <li><span className="font-semibold">PNG:</span> 32, 64, 128, 256, 512px</li>
+                  <li><span className="font-semibold">WebP:</span> 32, 64, 128, 256, 512px</li>
                   <li><span className="font-semibold">ICO:</span> 16, 32, 48, 64, 128, 256px</li>
                 </ul>
               </div>
@@ -303,7 +303,7 @@ export default function LandingPage() {
                 Ready to Create Amazing Icons?
               </h2>
               <p className="text-xl mb-8 text-blue-100">
-                Join thousands of designers and developers who trust our AI-powered icon generator
+                Join designers and developers who trust our AI-powered icon generator
               </p>
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
                 <button 
