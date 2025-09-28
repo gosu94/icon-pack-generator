@@ -11,7 +11,8 @@ import {
   Settings, 
   User, 
   Shield,
-  ArrowLeft
+  ArrowLeft,
+  ExternalLink
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import Navigation from '../../components/Navigation';
@@ -32,12 +33,12 @@ function SettingsContent() {
 
   // Redirect if not authenticated
   useEffect(() => {
-    if (!authState.authenticated) {
+    if (authState.authenticated === false) {
       router.push('/');
     }
   }, [authState.authenticated, router]);
 
-  if (!authState.authenticated) {
+  if (!authState.authenticated || !authState.user) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-purple-50 to-blue-50 flex items-center justify-center p-4">
         <div className="bg-white rounded-3xl shadow-2xl border border-purple-200/50 p-8 w-full max-w-md">
@@ -126,11 +127,47 @@ function SettingsContent() {
 
   const passwordStrength = getPasswordStrength(newPassword);
 
-  // Check if user has email authentication (not OAuth-only)
-  const canChangePassword = authState.user && 
-    // This is a simple check - in reality, we'd need to check if user has a password set
-    // For now, we'll assume if they're authenticated and not explicitly OAuth-only, they can change password
-    true; // We'll let the backend handle the actual validation
+  // Check if user has email authentication (not OAuth)
+  const canChangePassword = (authState.user as any)?.authProvider === 'EMAIL';
+  const authProvider = (authState.user as any)?.authProvider;
+
+  // Get provider display name and management URL
+  const getProviderInfo = (provider: string) => {
+    switch (provider) {
+      case 'GOOGLE':
+        return {
+          name: 'Google',
+          url: 'https://myaccount.google.com/security',
+          icon: '🔐'
+        };
+      case 'FACEBOOK':
+        return {
+          name: 'Facebook',
+          url: 'https://www.facebook.com/settings?tab=security',
+          icon: '🔐'
+        };
+      case 'GITHUB':
+        return {
+          name: 'GitHub',
+          url: 'https://github.com/settings/security',
+          icon: '🔐'
+        };
+      case 'TWITTER':
+        return {
+          name: 'Twitter/X',
+          url: 'https://twitter.com/settings/password',
+          icon: '🔐'
+        };
+      default:
+        return {
+          name: provider.toLowerCase(),
+          url: null,
+          icon: '🔐'
+        };
+    }
+  };
+
+  const providerInfo = getProviderInfo(authProvider || '');
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 to-blue-50">
@@ -189,6 +226,13 @@ function SettingsContent() {
                     <span className="text-sm text-gray-600">Email Address</span>
                     <p className="font-medium text-gray-900">{authState.user?.email}</p>
                   </div>
+                  <div>
+                    <span className="text-sm text-gray-600">Authentication Provider</span>
+                    <div className="flex items-center space-x-2">
+                      <span className="text-lg">{providerInfo.icon}</span>
+                      <p className="font-medium text-gray-900">{providerInfo.name}</p>
+                    </div>
+                  </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <span className="text-sm text-gray-600">Regular Coins</span>
@@ -204,17 +248,42 @@ function SettingsContent() {
 
               {/* Change Password Section */}
               <div>
-                <h2 className="text-xl font-semibold text-gray-900 mb-4">Change Password</h2>
+                <h2 className="text-xl font-semibold text-gray-900 mb-4">Password Management</h2>
                 
                 {!canChangePassword ? (
-                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                    <div className="flex items-center">
-                      <AlertCircle className="w-5 h-5 text-blue-600 mr-2" />
-                      <div>
-                        <p className="text-sm text-blue-800 font-medium">OAuth Account</p>
-                        <p className="text-sm text-blue-700">
-                          You signed in with Google. Password changes are managed through your Google account.
+                  <div className="bg-blue-50 border border-blue-200 rounded-xl p-6">
+                    <div className="flex items-start space-x-3">
+                      <div className="flex-shrink-0">
+                        <AlertCircle className="w-6 h-6 text-blue-600" />
+                      </div>
+                      <div className="flex-grow">
+                        <h3 className="text-lg font-medium text-blue-900 mb-2">
+                          OAuth Authentication Account
+                        </h3>
+                        <p className="text-blue-800 mb-4">
+                          You signed in with {providerInfo.name}. Password changes must be managed through your {providerInfo.name} account for security reasons.
                         </p>
+
+                        {providerInfo.url && (
+                          <a
+                            href={providerInfo.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors duration-200"
+                          >
+                            <span>Manage {providerInfo.name} Security</span>
+                            <ExternalLink className="w-4 h-4 ml-2" />
+                          </a>
+                        )}
+
+                        <div className="mt-4 p-4 bg-blue-100 rounded-lg">
+                          <h4 className="text-sm font-medium text-blue-900 mb-2">Why can't I change my password here?</h4>
+                          <ul className="text-sm text-blue-800 space-y-1">
+                            <li>• Your account is secured through {providerInfo.name}</li>
+                            <li>• This ensures better security and prevents password conflicts</li>
+                            <li>• All password changes must be done through {providerInfo.name}'s security settings</li>
+                          </ul>
+                        </div>
                       </div>
                     </div>
                   </div>
