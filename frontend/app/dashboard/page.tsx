@@ -64,6 +64,8 @@ export default function Page() {
 
   // Recovery state for SSE disconnections
   const [pendingRequestId, setPendingRequestId] = useState<string | null>(null);
+  const currentEventSourceRef = useRef<EventSource | null>(null);
+  const isRecoveredRef = useRef<boolean>(false);
 
   // Animation state
   const [animatingIcons, setAnimatingIcons] = useState<{
@@ -98,6 +100,16 @@ export default function Page() {
       });
     };
   }, [animationTimers]);
+
+  // Cleanup SSE connection on unmount
+  useEffect(() => {
+    return () => {
+      if (currentEventSourceRef.current) {
+        currentEventSourceRef.current.close();
+        currentEventSourceRef.current = null;
+      }
+    };
+  }, []);
 
   // Page visibility listener for generation recovery
   useEffect(() => {
@@ -272,6 +284,11 @@ export default function Page() {
       const statusResult = await checkGenerationStatus(requestId);
       
       if (statusResult.status === "completed" && statusResult.data) {
+        // Close any existing SSE connection since we're recovering completed results
+        if (currentEventSourceRef.current) {
+          currentEventSourceRef.current.close();
+          currentEventSourceRef.current = null;
+        }
  
         // Restore the original request data
         setCurrentRequest(request);
@@ -344,11 +361,14 @@ export default function Page() {
             });
           }, 300);
           
-          // Clear the saved state since we've recovered successfully
-          clearGenerationState();
-          
-          // Update authentication status
-          checkAuthenticationStatus();
+        // Mark as recovered to prevent SSE errors from showing
+        isRecoveredRef.current = true;
+        
+        // Clear the saved state since we've recovered successfully
+        clearGenerationState();
+        
+        // Update authentication status
+        checkAuthenticationStatus();
         }
       } else if (statusResult.status === "in_progress") {
         // Keep the saved state, user can check again later
@@ -437,6 +457,9 @@ export default function Page() {
     setStreamingResults({});
     setShowResultsPanes(false);
     setOverallProgress(0);
+    
+    // Reset recovery flag for new generation
+    isRecoveredRef.current = false;
     if (overallProgressTimerRef.current) {
       clearInterval(overallProgressTimerRef.current);
     }
@@ -503,7 +526,15 @@ export default function Page() {
       saveGenerationState(requestId, formData);
       
       initializeStreamingResults(enabledServices);
+      
+      // Close any existing EventSource before creating a new one
+      if (currentEventSourceRef.current) {
+        currentEventSourceRef.current.close();
+      }
+      
       const eventSource = new EventSource(`/stream/${requestId}`);
+      currentEventSourceRef.current = eventSource;
+      
       eventSource.addEventListener("service_update", (event) => {
         try {
           handleServiceUpdate(JSON.parse(event.data));
@@ -515,38 +546,58 @@ export default function Page() {
         try {
           handleGenerationComplete(JSON.parse(event.data));
           eventSource.close();
+          currentEventSourceRef.current = null;
         } catch (error) {
           console.error("Error parsing completion update:", error);
           eventSource.close();
+          currentEventSourceRef.current = null;
         }
       });
       eventSource.addEventListener("generation_error", (event) => {
         try {
           const update = JSON.parse(event.data);
-          setErrorMessage(update.message || "Generation failed");
-          setUiState("error");
-          setIsGenerating(false);
-          if (overallProgressTimerRef.current)
-            clearInterval(overallProgressTimerRef.current);
+          // Only show error if we haven't already recovered successfully
+          if (!isRecoveredRef.current) {
+            setErrorMessage(update.message || "Generation failed");
+            setUiState("error");
+            setIsGenerating(false);
+            if (overallProgressTimerRef.current)
+              clearInterval(overallProgressTimerRef.current);
+          }
           eventSource.close();
+          currentEventSourceRef.current = null;
         } catch (error) {
           console.error("Error parsing error update:", error);
-          setErrorMessage("Generation failed with unknown error");
-          setUiState("error");
-          setIsGenerating(false);
-          if (overallProgressTimerRef.current)
-            clearInterval(overallProgressTimerRef.current);
+          // Only show error if we haven't already recovered successfully
+          if (!isRecoveredRef.current) {
+            setErrorMessage("Generation failed with unknown error");
+            setUiState("error");
+            setIsGenerating(false);
+            if (overallProgressTimerRef.current)
+              clearInterval(overallProgressTimerRef.current);
+          }
           eventSource.close();
+          currentEventSourceRef.current = null;
         }
       });
       eventSource.onerror = (error) => {
         console.error("EventSource error:", error);
-        setErrorMessage("Connection error. Please try again.");
-        setUiState("error");
-        setIsGenerating(false);
-        if (overallProgressTimerRef.current)
-          clearInterval(overallProgressTimerRef.current);
+        // Only show connection error if we haven't already recovered successfully
+        if (!isRecoveredRef.current) {
+          setTimeout(() => {
+            // Double-check we haven't recovered in the meantime
+            if (!isRecoveredRef.current) {
+              setErrorMessage("Connection error. Please try again.");
+              setUiState("error");
+              setIsGenerating(false);
+              if (overallProgressTimerRef.current)
+                clearInterval(overallProgressTimerRef.current);
+            }
+          }, 100); // Small delay to ensure any concurrent recovery completes
+        }
+        
         eventSource.close();
+        currentEventSourceRef.current = null;
       };
     } catch (error) {
       console.error("❌ Error starting generation:", error);
@@ -757,6 +808,14 @@ export default function Page() {
       
       // Clear the pending generation state since it completed successfully
       clearGenerationState();
+      
+      // Clear EventSource reference since generation completed
+      if (currentEventSourceRef.current) {
+        currentEventSourceRef.current = null;
+      }
+      
+      // Mark as completed to prevent any delayed SSE errors
+      isRecoveredRef.current = true;
       
       // Refresh coins after successful generation
       setTimeout(() => {
