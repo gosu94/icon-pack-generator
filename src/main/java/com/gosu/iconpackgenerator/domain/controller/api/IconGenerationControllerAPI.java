@@ -43,4 +43,9 @@ public interface IconGenerationControllerAPI {
     @PostMapping("/generate-more")
     @ResponseBody
     DeferredResult<MoreIconsResponse> generateMoreIcons(@RequestBody MoreIconsRequest request, @AuthenticationPrincipal OAuth2User principal);
+
+    @Operation(summary = "Check generation status", description = "Checks if a generation request has completed and returns the results if available.")
+    @GetMapping("/status/{requestId}")
+    @ResponseBody
+    ResponseEntity<Map<String, Object>> checkGenerationStatus(@PathVariable String requestId, @AuthenticationPrincipal OAuth2User principal);
 }

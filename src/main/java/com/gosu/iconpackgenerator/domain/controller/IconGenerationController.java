@@ -642,6 +642,49 @@ public class IconGenerationController implements IconGenerationControllerAPI {
             // The icons have already been generated and persisted successfully
         }
     }
+
+    @Override
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> checkGenerationStatus(@PathVariable String requestId, @AuthenticationPrincipal OAuth2User principal) {
+        if (!(principal instanceof CustomOAuth2User customUser)) {
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("status", "error");
+            errorResponse.put("message", "User not authenticated");
+            return ResponseEntity.status(401).body(errorResponse);
+        }
+
+        User user = customUser.getUser();
+        log.info("Checking generation status for request: {} by user: {}", requestId, user.getEmail());
+
+        Map<String, Object> response = new HashMap<>();
+
+        // Check if generation has completed by looking for stored response
+        IconGenerationResponse storedResponse = streamingStateStore.getResponse(requestId);
+        if (storedResponse != null) {
+            response.put("status", "completed");
+            response.put("message", "Generation completed");
+            response.put("data", storedResponse);
+            log.info("Found completed generation for request: {}", requestId);
+            return ResponseEntity.ok(response);
+        }
+
+        // Check if request is still in progress
+        IconGenerationRequest activeRequest = streamingStateStore.getRequest(requestId);
+        SseEmitter activeEmitter = streamingStateStore.getEmitter(requestId);
+        
+        if (activeRequest != null || activeEmitter != null) {
+            response.put("status", "in_progress");
+            response.put("message", "Generation is still in progress");
+            log.info("Generation still in progress for request: {}", requestId);
+            return ResponseEntity.ok(response);
+        }
+
+        // Request not found
+        response.put("status", "not_found");
+        response.put("message", "Generation request not found or expired");
+        log.info("Generation request not found: {}", requestId);
+        return ResponseEntity.status(404).body(response);
+    }
     
     
 }

@@ -62,6 +62,9 @@ export default function Page() {
     [key: string]: string[];
   }>({});
 
+  // Recovery state for SSE disconnections
+  const [pendingRequestId, setPendingRequestId] = useState<string | null>(null);
+
   // Animation state
   const [animatingIcons, setAnimatingIcons] = useState<{
     [key: string]: number;
@@ -95,6 +98,33 @@ export default function Page() {
       });
     };
   }, [animationTimers]);
+
+  // Page visibility listener for generation recovery
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        // User returned to page, check for pending generations
+        handleGenerationRecovery();
+      }
+    };
+
+    const handleFocus = () => {
+      // Also check when window gets focus (for cases where visibility API might not work)
+      handleGenerationRecovery();
+    };
+
+    // Check immediately on mount in case user refreshed during generation
+    handleGenerationRecovery();
+
+    // Listen for page visibility changes
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('focus', handleFocus);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('focus', handleFocus);
+    };
+  }, []);
 
   const startIconAnimation = (serviceId: string, iconCount: number) => {
     if (animationTimers[serviceId]) {
@@ -164,6 +194,171 @@ export default function Page() {
       imagen: "Imagen 4",
     };
     return serviceNames[serviceId] || serviceId;
+  };
+
+  // localStorage utilities for generation state persistence
+  const saveGenerationState = (requestId: string, request: any) => {
+    try {
+      const generationState = {
+        requestId,
+        request,
+        timestamp: Date.now(),
+      };
+      localStorage.setItem('pendingGeneration', JSON.stringify(generationState));
+      setPendingRequestId(requestId);
+    } catch (error) {
+      console.warn('Failed to save generation state to localStorage:', error);
+    }
+  };
+
+  const getGenerationState = () => {
+    try {
+      const storedState = localStorage.getItem('pendingGeneration');
+      if (storedState) {
+        const parsed = JSON.parse(storedState);
+        // Only return state if it's less than 2 hours old
+        if (Date.now() - parsed.timestamp < 2 * 60 * 60 * 1000) {
+          return parsed;
+        } else {
+          // Clean up old state
+          localStorage.removeItem('pendingGeneration');
+        }
+      }
+    } catch (error) {
+      console.warn('Failed to get generation state from localStorage:', error);
+    }
+    return null;
+  };
+
+  const clearGenerationState = () => {
+    try {
+      localStorage.removeItem('pendingGeneration');
+      setPendingRequestId(null);
+    } catch (error) {
+      console.warn('Failed to clear generation state from localStorage:', error);
+    }
+  };
+
+  // Check generation status using the new endpoint
+  const checkGenerationStatus = async (requestId: string): Promise<any> => {
+    try {
+      const response = await fetch(`/status/${requestId}`, {
+        method: "GET",
+        credentials: "include",
+      });
+      
+      if (!response.ok) {
+        if (response.status === 404) {
+          return { status: "not_found" };
+        }
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      return await response.json();
+    } catch (error) {
+      console.error("Error checking generation status:", error);
+      return { status: "error", message: "Failed to check status" };
+    }
+  };
+
+  // Recovery function to handle completed generations after SSE disconnect
+  const handleGenerationRecovery = async () => {
+    const savedState = getGenerationState();
+    if (!savedState) return;
+
+    const { requestId, request } = savedState;
+
+    try {
+      const statusResult = await checkGenerationStatus(requestId);
+      
+      if (statusResult.status === "completed" && statusResult.data) {
+ 
+        // Restore the original request data
+        setCurrentRequest(request);
+        
+        // Process the completed response similar to handleGenerationComplete
+        const completedResponse = statusResult.data;
+        
+        // Extract icons and set up state as if generation just completed
+        if (completedResponse.icons && completedResponse.icons.length > 0) {
+          setCurrentIcons(completedResponse.icons);
+          setCurrentResponse(completedResponse);
+          
+          // Build streaming results from the completed response
+          // Infer which services were enabled by checking which results exist
+          const updatedStreamingResults: any = {};
+          
+          // Map completed results to streaming format
+          const serviceMapping = {
+            falAiResults: "flux",
+            recraftResults: "recraft", 
+            photonResults: "photon",
+            gptResults: "gpt",
+            imagenResults: "imagen"
+          };
+          
+          // Build enabled services map from actual response data
+          const inferredEnabledServices: { [key: string]: boolean } = {};
+          
+          Object.entries(serviceMapping).forEach(([responseKey, serviceId]) => {
+            const serviceResults = completedResponse[responseKey];
+            if (serviceResults && Array.isArray(serviceResults)) {
+              // Service is enabled if it has results and they're not all "disabled"
+              const hasEnabledResults = serviceResults.some((result: any) => result.status !== "disabled");
+              if (hasEnabledResults) {
+                inferredEnabledServices[serviceId] = true;
+                
+                serviceResults.forEach((result: any) => {
+                  if (result.status !== "disabled") {
+                    const uniqueId = `${serviceId}-gen${result.generationIndex || 1}`;
+                    updatedStreamingResults[uniqueId] = {
+                      icons: result.icons || [],
+                      generationTimeMs: result.generationTimeMs || 0,
+                      status: result.status,
+                      message: result.message,
+                      generationIndex: result.generationIndex || 1,
+                      originalGridImageBase64: result.originalGridImageBase64,
+                    };
+                  }
+                });
+              }
+            }
+          });
+          
+          setStreamingResults(updatedStreamingResults);
+          
+          // Set UI to results state
+          setUiState("results");
+          setIsGenerating(false);
+          setShowResultsPanes(true);
+          setOverallProgress(100);
+          
+          // Start animations
+          setTimeout(() => {
+            Object.entries(updatedStreamingResults).forEach(([serviceId, result]) => {
+              if (result && typeof result === 'object' && 'status' in result && 'icons' in result) {
+                if (result.status === "success" && Array.isArray(result.icons) && result.icons.length > 0) {
+                  startIconAnimation(serviceId, result.icons.length);
+                }
+              }
+            });
+          }, 300);
+          
+          // Clear the saved state since we've recovered successfully
+          clearGenerationState();
+          
+          // Update authentication status
+          checkAuthenticationStatus();
+        }
+      } else if (statusResult.status === "in_progress") {
+        // Keep the saved state, user can check again later
+      } else {
+        // Clear the outdated saved state
+        clearGenerationState();
+      }
+    } catch (error) {
+      console.error("Error during generation recovery:", error);
+    }
   };
 
   const calculateTimeRemaining = () => {
@@ -303,6 +498,10 @@ export default function Page() {
       }
       const data = await response.json();
       const { requestId, enabledServices } = data;
+      
+      // Save generation state for recovery (without internal server config)
+      saveGenerationState(requestId, formData);
+      
       initializeStreamingResults(enabledServices);
       const eventSource = new EventSource(`/stream/${requestId}`);
       eventSource.addEventListener("service_update", (event) => {
@@ -555,6 +754,10 @@ export default function Page() {
       
       setUiState("results");
       setIsGenerating(false);
+      
+      // Clear the pending generation state since it completed successfully
+      clearGenerationState();
+      
       // Refresh coins after successful generation
       setTimeout(() => {
         checkAuthenticationStatus();
