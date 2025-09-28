@@ -60,10 +60,10 @@ server:
     connection-timeout: 300000
   servlet:
     session:
-      timeout: 30m
+      timeout: 2h
       cookie:
         http-only: true
-        secure: false # Set to true in production with HTTPS
+        secure: true # Set to true in production with HTTPS
         max-age: 1800s
 
 ai:
