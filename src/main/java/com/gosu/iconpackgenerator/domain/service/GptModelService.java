@@ -271,7 +271,7 @@ public class GptModelService implements AIModelService {
         try {
             // GPT Image likely returns images in the 'images' array (following fal.ai pattern)
             JsonNode imagesNode = result.path("images");
-            if (imagesNode.isArray() && imagesNode.size() > 0) {
+            if (imagesNode.isArray() && !imagesNode.isEmpty()) {
                 JsonNode firstImage = imagesNode.get(0);
                 String imageUrl = firstImage.path("url").asText();
 
@@ -323,7 +323,7 @@ public class GptModelService implements AIModelService {
         try {
             // OpenAI API returns images in the 'data' array
             JsonNode dataNode = response.path("data");
-            if (dataNode.isArray() && dataNode.size() > 0) {
+            if (dataNode.isArray() && !dataNode.isEmpty()) {
                 JsonNode firstImage = dataNode.get(0);
                 
                 // gpt-image-1 always returns base64 images directly in b64_json field

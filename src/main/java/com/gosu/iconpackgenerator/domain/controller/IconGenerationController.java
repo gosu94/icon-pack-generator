@@ -22,6 +22,7 @@ import com.gosu.iconpackgenerator.domain.service.RecraftModelService;
 import com.gosu.iconpackgenerator.domain.service.ServiceFailureHandler;
 import com.gosu.iconpackgenerator.user.model.User;
 import com.gosu.iconpackgenerator.user.service.CustomOAuth2User;
+import jakarta.annotation.PreDestroy;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -34,7 +35,6 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.context.request.async.DeferredResult;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
-import jakarta.annotation.PreDestroy;
 
 import java.util.ArrayList;
 import java.util.Base64;
@@ -67,9 +67,9 @@ public class IconGenerationController implements IconGenerationControllerAPI {
     private final CoinManagementService coinManagementService;
     private final ServiceFailureHandler serviceFailureHandler;
     private final IconPersistenceService iconPersistenceService;
-    
+
     private final ScheduledExecutorService heartbeatScheduler = Executors.newScheduledThreadPool(5);
-    
+
     /**
      * Cleanup method to shutdown the heartbeat scheduler
      */
@@ -202,7 +202,7 @@ public class IconGenerationController implements IconGenerationControllerAPI {
 
     private void processStreamingGeneration(String requestId, IconGenerationRequest request, User user) {
         ScheduledFuture<?> heartbeatTask = null;
-        
+
         try {
             if (!request.isValid()) {
                 throw new IllegalArgumentException("Either general description or reference image must be provided");
@@ -215,19 +215,19 @@ public class IconGenerationController implements IconGenerationControllerAPI {
             while (request.getIndividualDescriptions().size() < request.getIconCount()) {
                 request.getIndividualDescriptions().add("");
             }
-            
+
             // Start heartbeat to keep connection alive during long generation
             log.debug("Starting heartbeat for request: {}", requestId);
             heartbeatTask = heartbeatScheduler.scheduleAtFixedRate(
-                () -> {
-                    if (!isConnectionActive(requestId)) {
-                        log.debug("Connection lost during generation for request: {}, stopping heartbeat", requestId);
-                        // Connection is lost, the heartbeat task will be canceled by the completion handler
-                    }
-                },
-                5, 5, TimeUnit.SECONDS // Send heartbeat every 5 seconds
+                    () -> {
+                        if (!isConnectionActive(requestId)) {
+                            log.debug("Connection lost during generation for request: {}, stopping heartbeat", requestId);
+                            // Connection is lost, the heartbeat task will be canceled by the completion handler
+                        }
+                    },
+                    5, 5, TimeUnit.SECONDS // Send heartbeat every 5 seconds
             );
-            
+
             final ScheduledFuture<?> finalHeartbeatTask = heartbeatTask;
 
             iconGenerationService.generateIcons(request, requestId, update -> {
@@ -236,13 +236,13 @@ public class IconGenerationController implements IconGenerationControllerAPI {
                     try {
                         String jsonUpdate = objectMapper.writeValueAsString(update);
                         boolean sent = safeSendSseUpdate(emitter, requestId, update.getEventType(), jsonUpdate);
-                        
+
                         if ("generation_complete".equals(update.getEventType())) {
                             // Stop heartbeat before completion
                             if (finalHeartbeatTask != null && !finalHeartbeatTask.isCancelled()) {
                                 finalHeartbeatTask.cancel(false);
                             }
-                            
+
                             if (sent) {
                                 // Test connection one more time before completing
                                 if (isConnectionActive(requestId)) {
@@ -270,7 +270,7 @@ public class IconGenerationController implements IconGenerationControllerAPI {
                 if (finalHeartbeatTask != null && !finalHeartbeatTask.isCancelled()) {
                     finalHeartbeatTask.cancel(false);
                 }
-                
+
                 SseEmitter emitter = streamingStateStore.getEmitter(requestId);
                 if (emitter != null && error != null) {
                     log.error("Error in streaming generation for request: {}", requestId, error);
@@ -283,7 +283,7 @@ public class IconGenerationController implements IconGenerationControllerAPI {
 
                         String jsonUpdate = objectMapper.writeValueAsString(errorUpdate);
                         boolean sent = safeSendSseUpdate(emitter, requestId, "generation_error", jsonUpdate);
-                        
+
                         if (sent) {
                             try {
                                 emitter.completeWithError(error);
@@ -301,12 +301,12 @@ public class IconGenerationController implements IconGenerationControllerAPI {
 
         } catch (Exception e) {
             log.error("Error in processStreamingGeneration for request: {}", requestId, e);
-            
+
             // Ensure heartbeat is stopped on exception
             if (heartbeatTask != null && !heartbeatTask.isCancelled()) {
                 heartbeatTask.cancel(false);
             }
-            
+
             SseEmitter emitter = streamingStateStore.getEmitter(requestId);
             if (emitter != null) {
                 emitter.completeWithError(e);
@@ -340,11 +340,11 @@ public class IconGenerationController implements IconGenerationControllerAPI {
             if (!coinResult.isSuccess()) {
                 return createErrorResponse(request, coinResult.getErrorMessage(), startTime);
             }
-            
+
             final boolean usedTrialCoin = coinResult.isUsedTrialCoins();
 
             try {
-                
+
                 if (request.getServiceName() == null || request.getServiceName().trim().isEmpty()) {
                     return createErrorResponse(request, "Service name is required", startTime);
                 }
@@ -361,14 +361,14 @@ public class IconGenerationController implements IconGenerationControllerAPI {
                 List<IconGenerationResponse.GeneratedIcon> newIcons = createIconList(base64Icons, request);
 
                 try {
-                    iconPersistenceService.persistMoreIcons(request.getOriginalRequestId(), newIcons, user, 
-                                                           request.getServiceName(), request.getGeneralDescription(), 
-                                                           request.getGenerationIndex());
+                    iconPersistenceService.persistMoreIcons(request.getOriginalRequestId(), newIcons, user,
+                            request.getServiceName(), request.getGeneralDescription(),
+                            request.getGenerationIndex());
                     log.info("Successfully persisted {} more icons for request {}", newIcons.size(), request.getOriginalRequestId());
                 } catch (Exception e) {
                     log.error("Error persisting more icons for request {}", request.getOriginalRequestId(), e);
                 }
-                
+
                 // Update the stored response with new icons for export functionality
                 try {
                     updateStoredResponseWithMoreIcons(request, newIcons);
@@ -392,16 +392,16 @@ public class IconGenerationController implements IconGenerationControllerAPI {
 
             } catch (Exception e) {
                 log.error("Error generating more icons for service: {}", request.getServiceName(), e);
-                
+
                 // Check if this is a temporary service failure and refund coins if needed
                 String errorMessage = e.getMessage();
-                ServiceFailureHandler.FailureAnalysisResult failureAnalysis = 
-                    serviceFailureHandler.analyzeSingleServiceFailure(errorMessage, request.getServiceName());
-                
+                ServiceFailureHandler.FailureAnalysisResult failureAnalysis =
+                        serviceFailureHandler.analyzeSingleServiceFailure(errorMessage, request.getServiceName());
+
                 if (failureAnalysis.shouldRefund()) {
                     try {
                         coinManagementService.refundCoins(user, 1, usedTrialCoin);
-                        log.info("Refunded {} coin to user {} due to temporary service unavailability for more icons generation", 
+                        log.info("Refunded {} coin to user {} due to temporary service unavailability for more icons generation",
                                 usedTrialCoin ? "trial" : "regular", user.getEmail());
                         return createErrorResponse(request, failureAnalysis.getRefundMessage(), startTime);
                     } catch (Exception refundException) {
@@ -409,7 +409,7 @@ public class IconGenerationController implements IconGenerationControllerAPI {
                         // Fall through to original error response if refund fails
                     }
                 }
-                
+
                 return createErrorResponse(request, "Failed to generate more icons: " + errorMessage, startTime);
             }
         }).whenComplete((result, throwable) -> {
@@ -508,7 +508,7 @@ public class IconGenerationController implements IconGenerationControllerAPI {
         if (emitter == null) {
             return false;
         }
-        
+
         try {
             emitter.send(SseEmitter.event()
                     .name(eventName)
@@ -520,9 +520,9 @@ public class IconGenerationController implements IconGenerationControllerAPI {
             streamingStateStore.removeEmitter(requestId);
             return false;
         } catch (java.io.IOException e) {
-            if (e.getMessage() != null && (e.getMessage().contains("Broken pipe") || 
-                                         e.getMessage().contains("Connection reset") ||
-                                         e.getMessage().contains("Socket closed"))) {
+            if (e.getMessage() != null && (e.getMessage().contains("Broken pipe") ||
+                    e.getMessage().contains("Connection reset") ||
+                    e.getMessage().contains("Socket closed"))) {
                 // Client disconnected - this is expected behavior, not an error
                 log.debug("Client connection lost for SSE stream for request: {} - {}", requestId, e.getMessage());
                 streamingStateStore.removeEmitter(requestId);
@@ -555,9 +555,9 @@ public class IconGenerationController implements IconGenerationControllerAPI {
         if (emitter == null) {
             return false;
         }
-        
-        return safeSendSseUpdate(emitter, requestId, "heartbeat", 
-            "{\"timestamp\": " + System.currentTimeMillis() + ", \"status\": \"processing\"}");
+
+        return safeSendSseUpdate(emitter, requestId, "heartbeat",
+                "{\"timestamp\": " + System.currentTimeMillis() + ", \"status\": \"processing\"}");
     }
 
     /**
@@ -569,12 +569,12 @@ public class IconGenerationController implements IconGenerationControllerAPI {
             log.debug("No emitter found for request: {}", requestId);
             return false;
         }
-        
+
         // Send a lightweight heartbeat to test connection
         // Only do this if we haven't sent one recently to avoid spam
         return sendHeartbeat(requestId);
     }
-    
+
     /**
      * Updates the stored response with new icons from "Generate More Icons" request
      */
@@ -586,7 +586,7 @@ public class IconGenerationController implements IconGenerationControllerAPI {
                 log.warn("No existing response found for request {}, cannot update with more icons", request.getOriginalRequestId());
                 return;
             }
-            
+
             // Get the appropriate service results list based on service name
             List<IconGenerationResponse.ServiceResults> serviceResults = switch (request.getServiceName().toLowerCase()) {
                 case "flux" -> existingResponse.getFalAiResults();
@@ -596,12 +596,12 @@ public class IconGenerationController implements IconGenerationControllerAPI {
                 case "imagen" -> existingResponse.getImagenResults();
                 default -> null;
             };
-            
+
             if (serviceResults == null) {
                 log.warn("No service results found for service {} in request {}", request.getServiceName(), request.getOriginalRequestId());
                 return;
             }
-            
+
             // Find or create a ServiceResults entry for this generation index
             IconGenerationResponse.ServiceResults targetResult = null;
             for (IconGenerationResponse.ServiceResults result : serviceResults) {
@@ -610,14 +610,14 @@ public class IconGenerationController implements IconGenerationControllerAPI {
                     break;
                 }
             }
-            
+
             if (targetResult != null) {
                 // Add new icons to existing generation index
                 if (targetResult.getIcons() == null) {
                     targetResult.setIcons(new ArrayList<>());
                 }
                 targetResult.getIcons().addAll(newIcons);
-                log.info("Added {} new icons to existing generation {} for service {}", 
+                log.info("Added {} new icons to existing generation {} for service {}",
                         newIcons.size(), request.getGenerationIndex(), request.getServiceName());
             } else {
                 // Create new ServiceResults for this generation index (this shouldn't normally happen)
@@ -627,15 +627,15 @@ public class IconGenerationController implements IconGenerationControllerAPI {
                 newResult.setIcons(new ArrayList<>(newIcons));
                 newResult.setGenerationIndex(request.getGenerationIndex());
                 serviceResults.add(newResult);
-                log.info("Created new generation {} entry with {} icons for service {}", 
+                log.info("Created new generation {} entry with {} icons for service {}",
                         request.getGenerationIndex(), newIcons.size(), request.getServiceName());
             }
-            
+
             // Update the stored response
             streamingStateStore.addResponse(request.getOriginalRequestId(), existingResponse);
-            log.info("Successfully updated stored response for request {} with {} more icons", 
+            log.info("Successfully updated stored response for request {} with {} more icons",
                     request.getOriginalRequestId(), newIcons.size());
-            
+
         } catch (Exception e) {
             log.error("Error updating stored response with more icons for request {}", request.getOriginalRequestId(), e);
             // Don't rethrow - updating stored response is not critical for the core functionality
@@ -671,7 +671,7 @@ public class IconGenerationController implements IconGenerationControllerAPI {
         // Check if request is still in progress
         IconGenerationRequest activeRequest = streamingStateStore.getRequest(requestId);
         SseEmitter activeEmitter = streamingStateStore.getEmitter(requestId);
-        
+
         if (activeRequest != null || activeEmitter != null) {
             response.put("status", "in_progress");
             response.put("message", "Generation is still in progress");
@@ -685,6 +685,6 @@ public class IconGenerationController implements IconGenerationControllerAPI {
         log.info("Generation request not found: {}", requestId);
         return ResponseEntity.status(404).body(response);
     }
-    
-    
+
+
 }

@@ -2,8 +2,7 @@
 
 import React, { useState, useEffect, Suspense } from 'react';
 import { useRouter } from 'next/navigation';
-import Image from 'next/image';
-import { 
+import {
   Eye, 
   EyeOff, 
   CheckCircle, 
@@ -14,7 +13,7 @@ import {
   ArrowLeft,
   ExternalLink
 } from 'lucide-react';
-import { useAuth } from '../../context/AuthContext';
+import { useAuth } from '@/context/AuthContext';
 import Navigation from '../../components/Navigation';
 
 function SettingsContent() {
@@ -33,7 +32,7 @@ function SettingsContent() {
 
   // Redirect if not authenticated
   useEffect(() => {
-    if (authState.authenticated === false) {
+    if (!authState.authenticated) {
       router.push('/');
     }
   }, [authState.authenticated, router]);

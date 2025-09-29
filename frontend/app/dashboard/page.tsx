@@ -7,13 +7,13 @@ import {
   StreamingResults,
   GenerationResponse,
   UIState,
-} from "../../lib/types";
+} from "@/lib/types";
 import Navigation from "../../components/Navigation";
 import GeneratorForm from "../../components/GeneratorForm";
 import ResultsDisplay from "../../components/ResultsDisplay";
 import ExportModal from "../../components/ExportModal";
 import ProgressModal from "../../components/ProgressModal";
-import { useAuth } from "../../context/AuthContext";
+import { useAuth } from "@/context/AuthContext";
 
 export default function Page() {
   const { authState, checkAuthenticationStatus } = useAuth();

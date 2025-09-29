@@ -21,7 +21,6 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.stream.Collectors;
 
 @RestController
@@ -32,31 +31,30 @@ public class UserController {
 
     private final GeneratedIconRepository generatedIconRepository;
     private final UserRepository userRepository;
-    private final UserService userService;
 
     @GetMapping("/auth/check")
     public ResponseEntity<Map<String, Object>> checkAuthenticationStatus(@AuthenticationPrincipal OAuth2User principal) {
         Map<String, Object> response = new HashMap<>();
-        
+
         if (principal instanceof CustomOAuth2User customUser) {
             Long userId = customUser.getUserId();
             User user = userRepository.findById(userId).orElse(customUser.getUser());
-            
+
             response.put("authenticated", true);
             response.put("user", Map.of(
-                "email", customUser.getEmail(),
-                "id", customUser.getUserId(),
-                "coins", user.getCoins() != null ? user.getCoins() : 0, // Use fresh data from DB
-                "trialCoins", user.getTrialCoins() != null ? user.getTrialCoins() : 0, // Include trial coins
-                "authProvider", user.getAuthProvider() != null ? user.getAuthProvider() : ""
+                    "email", customUser.getEmail(),
+                    "id", customUser.getUserId(),
+                    "coins", user.getCoins() != null ? user.getCoins() : 0, // Use fresh data from DB
+                    "trialCoins", user.getTrialCoins() != null ? user.getTrialCoins() : 0, // Include trial coins
+                    "authProvider", user.getAuthProvider() != null ? user.getAuthProvider() : ""
             ));
         } else {
             response.put("authenticated", false);
         }
-        
+
         return ResponseEntity.ok(response);
     }
-    
+
     @PostMapping("/auth/logout")
     public ResponseEntity<Map<String, String>> logout() {
         Map<String, String> response = new HashMap<>();
@@ -86,7 +84,7 @@ public class UserController {
 
         return ResponseEntity.ok(iconDtos);
     }
-    
+
     @GetMapping("/user/coins")
     public ResponseEntity<Integer> getUserCoins(@AuthenticationPrincipal OAuth2User principal) {
         if (!(principal instanceof CustomOAuth2User customUser)) {
@@ -96,7 +94,7 @@ public class UserController {
         User user = customUser.getUser();
         return ResponseEntity.ok(user.getCoins());
     }
-    
+
     @GetMapping("/user/trial-coins")
     public ResponseEntity<Integer> getUserTrialCoins(@AuthenticationPrincipal OAuth2User principal) {
         if (!(principal instanceof CustomOAuth2User customUser)) {

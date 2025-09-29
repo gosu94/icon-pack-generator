@@ -26,7 +26,6 @@ import java.util.List;
 public class GalleryController implements GalleryControllerAPI {
 
     private final GeneratedIconRepository generatedIconRepository;
-    private final DataInitializationService dataInitializationService;
     private final GridCompositionService gridCompositionService;
 
     @Override
