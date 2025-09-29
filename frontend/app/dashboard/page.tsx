@@ -85,6 +85,40 @@ export default function Page() {
     setIndividualDescriptions(new Array(9).fill(""));
   }, []);
 
+  // Handle generate more mode from gallery
+  useEffect(() => {
+    const generateMoreMode = sessionStorage.getItem("generateMoreMode");
+    const gridImageUrl = sessionStorage.getItem("generatedGridImage");
+    
+    if (generateMoreMode === "true" && gridImageUrl) {
+      // Switch to image tab
+      setInputType("image");
+      
+      // Convert the blob URL to a File object and set it as reference image
+      fetch(gridImageUrl)
+        .then((response) => response.blob())
+        .then((blob) => {
+          const file = new File([blob], "grid-composition.png", { 
+            type: "image/png",
+            lastModified: Date.now()
+          });
+          
+          setReferenceImage(file);
+          setImagePreview(gridImageUrl);
+          
+          // Clean up sessionStorage
+          sessionStorage.removeItem("generateMoreMode");
+          sessionStorage.removeItem("generatedGridImage");
+        })
+        .catch((error) => {
+          console.error("Error setting up grid image:", error);
+          // Clean up on error
+          sessionStorage.removeItem("generateMoreMode");
+          sessionStorage.removeItem("generatedGridImage");
+        });
+    }
+  }, []);
+
   useEffect(() => {
     return () => {
       if (overallProgressTimerRef.current) {
@@ -466,9 +500,9 @@ export default function Page() {
     Object.keys(animationTimers).forEach((serviceId) => {
       clearIconAnimation(serviceId);
     });
-    let duration = 35000;
+    let duration = 40000;
     if (inputType === "image") {
-      duration = 60000;
+      duration = 70000;
     }
     setTotalDuration(duration);
     const increment = 100 / (duration / 100);

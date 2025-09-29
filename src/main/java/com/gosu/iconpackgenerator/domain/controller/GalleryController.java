@@ -4,6 +4,7 @@ import com.gosu.iconpackgenerator.domain.controller.api.GalleryControllerAPI;
 import com.gosu.iconpackgenerator.domain.entity.GeneratedIcon;
 import com.gosu.iconpackgenerator.domain.repository.GeneratedIconRepository;
 import com.gosu.iconpackgenerator.domain.service.DataInitializationService;
+import com.gosu.iconpackgenerator.domain.service.GridCompositionService;
 import com.gosu.iconpackgenerator.user.model.User;
 import com.gosu.iconpackgenerator.user.service.CustomOAuth2User;
 import lombok.RequiredArgsConstructor;
@@ -12,10 +13,10 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.stereotype.Controller;
-import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.ResponseBody;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.HashMap;
+import java.util.Map;
 
 import java.util.List;
 
@@ -26,6 +27,7 @@ public class GalleryController implements GalleryControllerAPI {
 
     private final GeneratedIconRepository generatedIconRepository;
     private final DataInitializationService dataInitializationService;
+    private final GridCompositionService gridCompositionService;
 
     @Override
     @GetMapping("/api/gallery/icons")
@@ -137,6 +139,78 @@ public class GalleryController implements GalleryControllerAPI {
         } catch (Exception e) {
             log.error("Error deleting icons for request: {}", requestId, e);
             return ResponseEntity.status(500).build();
+        }
+    }
+
+    /**
+     * Creates a 3x3 grid composition from first 9 icons of a specific request and icon type
+     * This is used by the "Generate more" functionality
+     */
+    @PostMapping("/api/gallery/compose-grid")
+    @ResponseBody
+    public ResponseEntity<Map<String, String>> composeGrid(
+            @RequestBody Map<String, Object> request,
+            @AuthenticationPrincipal OAuth2User principal) {
+        try {
+            if (!(principal instanceof CustomOAuth2User customUser)) {
+                return ResponseEntity.status(401).build();
+            }
+
+            User user = customUser.getUser();
+            String requestId = (String) request.get("requestId");
+            String iconType = (String) request.get("iconType");
+
+            if (requestId == null || iconType == null) {
+                return ResponseEntity.badRequest().build();
+            }
+
+            if (!"original".equals(iconType) && !"variation".equals(iconType)) {
+                return ResponseEntity.badRequest().build();
+            }
+
+            // Get icons for this request and type
+            List<GeneratedIcon> icons = generatedIconRepository.findByRequestIdAndIconType(requestId, iconType);
+            
+            if (icons.isEmpty()) {
+                return ResponseEntity.notFound().build();
+            }
+
+            // Check if user owns these icons (security check)
+            boolean userOwnsIcons = icons.stream().allMatch(icon -> 
+                icon.getUser().getId().equals(user.getId()));
+            
+            if (!userOwnsIcons) {
+                return ResponseEntity.status(403).build(); // Forbidden
+            }
+
+            // Take first 9 icons and extract their file paths
+            List<String> iconPaths = icons.stream()
+                    .limit(9)
+                    .map(GeneratedIcon::getFilePath)
+                    .toList();
+
+            if (iconPaths.size() < 9) {
+                Map<String, String> errorResponse = new HashMap<>();
+                errorResponse.put("error", "Need at least 9 icons to create a grid");
+                return ResponseEntity.badRequest().body(errorResponse);
+            }
+
+            // Create the grid composition
+            String gridImageBase64 = gridCompositionService.composeGrid(iconPaths);
+
+            // Return the base64 image
+            Map<String, String> response = new HashMap<>();
+            response.put("gridImageBase64", gridImageBase64);
+            response.put("status", "success");
+
+            return ResponseEntity.ok(response);
+
+        } catch (Exception e) {
+            log.error("Error creating grid composition", e);
+            Map<String, String> errorResponse = new HashMap<>();
+            errorResponse.put("error", "Failed to create grid composition");
+            errorResponse.put("status", "error");
+            return ResponseEntity.status(500).body(errorResponse);
         }
     }
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import Navigation from "../../components/Navigation";
 import ExportModal from "../../components/ExportModal";
 import ProgressModal from "../../components/ProgressModal";
@@ -19,6 +20,7 @@ interface Icon {
 type GroupedIcons = Record<string, { original: Icon[]; variation: Icon[] }>;
 
 export default function GalleryPage() {
+  const router = useRouter();
   const [groupedIcons, setGroupedIcons] = useState<GroupedIcons>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -80,6 +82,53 @@ export default function GalleryPage() {
   const openExportModal = (icons: Icon[]) => {
     setIconsToExport(icons);
     setShowExportModal(true);
+  };
+
+  const handleGenerateMore = async (iconType: string) => {
+    if (!selectedRequest) return;
+    
+    try {
+      // Call the backend to create the grid composition
+      const response = await fetch("/api/gallery/compose-grid", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          requestId: selectedRequest,
+          iconType: iconType,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      
+      if (data.status === "success" && data.gridImageBase64) {
+        // Convert base64 to blob and create URL
+        const binaryString = atob(data.gridImageBase64);
+        const bytes = new Uint8Array(binaryString.length);
+        for (let i = 0; i < binaryString.length; i++) {
+          bytes[i] = binaryString.charCodeAt(i);
+        }
+        const blob = new Blob([bytes], { type: "image/png" });
+        
+        // Store the grid image data in sessionStorage for the dashboard to use
+        const gridImageUrl = URL.createObjectURL(blob);
+        sessionStorage.setItem("generatedGridImage", gridImageUrl);
+        sessionStorage.setItem("generateMoreMode", "true");
+        
+        // Navigate to dashboard
+        router.push("/dashboard");
+      } else {
+        console.error("Failed to create grid:", data.error);
+        alert("Failed to create grid composition. Please try again.");
+      }
+    } catch (error) {
+      console.error("Error creating grid composition:", error);
+      alert("Failed to create grid composition. Please try again.");
+    }
   };
 
   const confirmGalleryExport = (formats: string[]) => {
@@ -214,14 +263,22 @@ export default function GalleryPage() {
                       <h3 className="text-xl font-semibold text-slate-700">
                         Original Icons
                       </h3>
-                      <button
-                        onClick={() =>
-                          openExportModal(selectedIconGroup.original)
-                        }
-                        className="px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200"
-                      >
-                        Export Originals ({selectedIconGroup.original.length})
-                      </button>
+                      <div className="flex gap-3">
+                        <button
+                          onClick={() => handleGenerateMore("original")}
+                          className="px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200"
+                        >
+                          Generate More
+                        </button>
+                        <button
+                          onClick={() =>
+                            openExportModal(selectedIconGroup.original)
+                          }
+                          className="px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200"
+                        >
+                          Export Originals ({selectedIconGroup.original.length})
+                        </button>
+                      </div>
                     </div>
                     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
                       {selectedIconGroup.original.map((icon, index) => (
@@ -246,14 +303,22 @@ export default function GalleryPage() {
                       <h3 className="text-xl font-semibold text-slate-700">
                         Variations
                       </h3>
-                      <button
-                        onClick={() =>
-                          openExportModal(selectedIconGroup.variation)
-                        }
-                        className="px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200"
-                      >
-                        Export Variations ({selectedIconGroup.variation.length})
-                      </button>
+                      <div className="flex gap-3">
+                        <button
+                          onClick={() => handleGenerateMore("variation")}
+                          className="px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200"
+                        >
+                          Generate More
+                        </button>
+                        <button
+                          onClick={() =>
+                            openExportModal(selectedIconGroup.variation)
+                          }
+                          className="px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200"
+                        >
+                          Export Variations ({selectedIconGroup.variation.length})
+                        </button>
+                      </div>
                     </div>
                     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
                       {selectedIconGroup.variation.map((icon, index) => (
