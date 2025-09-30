@@ -6,8 +6,8 @@ services:
       - POSTGRES_DB=icon_pack_generator
       - POSTGRES_USER=${POSTGRES_USER:-iconpack}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-iconpack123}
-    ports:
-      - "5432:5432"
+    #ports:
+    #  - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./init-db:/docker-entrypoint-initdb.d
