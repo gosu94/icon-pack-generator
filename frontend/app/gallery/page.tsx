@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Navigation from "../../components/Navigation";
 import ExportModal from "../../components/ExportModal";
 import ProgressModal from "../../components/ProgressModal";
+import { Download, Sparkles } from "lucide-react";
 
 // Local Icon type for the gallery page, matching the backend DTO
 interface Icon {
@@ -248,12 +249,15 @@ export default function GalleryPage() {
                         ...selectedIconGroup.variation,
                       ])
                     }
-                    className="px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200"
+                    className="px-2 sm:px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 flex items-center justify-center gap-2"
                   >
-                    Export All (
-                    {selectedIconGroup.original.length +
-                      selectedIconGroup.variation.length}{" "}
-                    icons)
+                    <Download className="w-4 h-4" />
+                    <span className="hidden sm:inline">
+                      Export All (
+                      {selectedIconGroup.original.length +
+                        selectedIconGroup.variation.length}{" "}
+                      icons)
+                    </span>
                   </button>
                 </div>
 
@@ -266,17 +270,21 @@ export default function GalleryPage() {
                       <div className="flex gap-3">
                         <button
                           onClick={() => handleGenerateMore("original")}
-                          className="px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200"
+                          className="px-2 sm:px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 flex items-center justify-center gap-2"
                         >
-                          Generate More
+                          <Sparkles className="w-4 h-4" />
+                          <span className="hidden sm:inline">Generate More</span>
                         </button>
                         <button
                           onClick={() =>
                             openExportModal(selectedIconGroup.original)
                           }
-                          className="px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200"
+                          className="px-2 sm:px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 flex items-center justify-center gap-2"
                         >
-                          Export Originals ({selectedIconGroup.original.length})
+                          <Download className="w-4 h-4" />
+                          <span className="hidden sm:inline">
+                            Export Originals ({selectedIconGroup.original.length})
+                          </span>
                         </button>
                       </div>
                     </div>
@@ -306,17 +314,21 @@ export default function GalleryPage() {
                       <div className="flex gap-3">
                         <button
                           onClick={() => handleGenerateMore("variation")}
-                          className="px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200"
+                          className="px-2 sm:px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 flex items-center justify-center gap-2"
                         >
-                          Generate More
+                          <Sparkles className="w-4 h-4" />
+                          <span className="hidden sm:inline">Generate More</span>
                         </button>
                         <button
                           onClick={() =>
                             openExportModal(selectedIconGroup.variation)
                           }
-                          className="px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200"
+                          className="px-2 sm:px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 flex items-center justify-center gap-2"
                         >
-                          Export Variations ({selectedIconGroup.variation.length})
+                          <Download className="w-4 h-4" />
+                          <span className="hidden sm:inline">
+                            Export Variations ({selectedIconGroup.variation.length})
+                          </span>
                         </button>
                       </div>
                     </div>
