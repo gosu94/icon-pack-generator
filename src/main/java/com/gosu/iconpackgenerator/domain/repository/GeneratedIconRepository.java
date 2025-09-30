@@ -27,6 +27,8 @@ public interface GeneratedIconRepository extends JpaRepository<GeneratedIcon, Lo
     @Query("SELECT COUNT(g) FROM GeneratedIcon g WHERE g.user = :user AND g.createdAt >= :since")
     Long countByUserAndCreatedAtAfter(@Param("user") User user, @Param("since") LocalDateTime since);
     
+    Long countByUser(User user);
+    
     List<GeneratedIcon> findByUserAndIconType(User user, String iconType);
     
     List<GeneratedIcon> findByUserAndIconTypeOrderByCreatedAtDesc(User user, String iconType);

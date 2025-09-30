@@ -13,6 +13,7 @@ import {
     User,
     Sparkles,
     Menu,
+    ShieldCheck,
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import LoginModal from "./LoginModal";
@@ -156,6 +157,11 @@ const Navigation: React.FC<NavigationProps> = ({ useLoginPage = false }) => {
                 <Link href="/settings" className="p-2 hover:bg-gray-100 rounded-lg">
                   <Settings className="w-5 h-5 text-gray-700" />
                 </Link>
+                {authState.authenticated && authState.user?.isAdmin && (
+                  <Link href="/control-panel" className="p-2 hover:bg-purple-100 rounded-lg" title="Admin Control Panel">
+                    <ShieldCheck className="w-5 h-5 text-purple-600" />
+                  </Link>
+                )}
                 <button
                   onClick={handleLogout}
                   className="p-2 hover:bg-gray-100 rounded-lg"
@@ -219,6 +225,19 @@ const Navigation: React.FC<NavigationProps> = ({ useLoginPage = false }) => {
                         <Settings className="w-4 h-4 text-gray-700" />
                         <span className="text-sm font-medium text-gray-700">Settings</span>
                       </Link>
+                      {authState.authenticated && authState.user?.isAdmin && (
+                        <>
+                          <div className="border-t border-gray-100 my-2"></div>
+                          <Link 
+                            href="/control-panel"
+                            className="flex items-center space-x-3 px-4 py-3 hover:bg-purple-100"
+                            onClick={() => setIsMobileMenuOpen(false)}
+                          >
+                            <ShieldCheck className="w-4 h-4 text-purple-600" />
+                            <span className="text-sm font-medium text-purple-600">Admin Panel</span>
+                          </Link>
+                        </>
+                      )}
                       <div className="border-t border-gray-100 my-2"></div>
                       <button
                         onClick={() => {

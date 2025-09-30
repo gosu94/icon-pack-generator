@@ -1,5 +1,6 @@
 package com.gosu.iconpackgenerator.user.controller;
 
+import com.gosu.iconpackgenerator.admin.service.AdminService;
 import com.gosu.iconpackgenerator.domain.dto.IconDto;
 import com.gosu.iconpackgenerator.domain.entity.GeneratedIcon;
 import com.gosu.iconpackgenerator.domain.repository.GeneratedIconRepository;
@@ -31,6 +32,7 @@ public class UserController {
 
     private final GeneratedIconRepository generatedIconRepository;
     private final UserRepository userRepository;
+    private final AdminService adminService;
 
     @GetMapping("/auth/check")
     public ResponseEntity<Map<String, Object>> checkAuthenticationStatus(@AuthenticationPrincipal OAuth2User principal) {
@@ -46,7 +48,8 @@ public class UserController {
                     "id", customUser.getUserId(),
                     "coins", user.getCoins() != null ? user.getCoins() : 0, // Use fresh data from DB
                     "trialCoins", user.getTrialCoins() != null ? user.getTrialCoins() : 0, // Include trial coins
-                    "authProvider", user.getAuthProvider() != null ? user.getAuthProvider() : ""
+                    "authProvider", user.getAuthProvider() != null ? user.getAuthProvider() : "",
+                    "isAdmin", adminService.isAdmin(user) // Include admin status
             ));
         } else {
             response.put("authenticated", false);

@@ -155,6 +155,8 @@ app:
   security:
     remember-me:
       key: ${REMEMBER_ME_SECRET_KEY:defaultRememberMeSecretKey123}
+  admin:
+    email: ${ADMIN_EMAIL:}
 
 sendgrid:
   api-key: ${SENDGRID_API_KEY:your-sendgrid-api-key-here}

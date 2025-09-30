@@ -1,5 +1,6 @@
 package com.gosu.iconpackgenerator.config;
 
+import com.gosu.iconpackgenerator.admin.filter.AdminAuthorizationFilter;
 import com.gosu.iconpackgenerator.auth.provider.EmailPasswordAuthenticationProvider;
 import com.gosu.iconpackgenerator.user.service.CustomOAuth2UserService;
 import com.gosu.iconpackgenerator.user.service.CustomOidcUserService;
@@ -16,6 +17,7 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.web.authentication.rememberme.JdbcTokenRepositoryImpl;
 import org.springframework.security.web.authentication.rememberme.PersistentTokenRepository;
 import org.springframework.web.cors.CorsConfiguration;
@@ -41,6 +43,7 @@ public class SecurityConfig {
     private final Environment environment;
     private final DataSource dataSource;
     private final CustomUserDetailsService customUserDetailsService;
+    private final AdminAuthorizationFilter adminAuthorizationFilter;
 
     @Value("${app.security.remember-me.key:defaultRememberMeSecretKey123}")
     private String rememberMeKey;
@@ -50,6 +53,7 @@ public class SecurityConfig {
         http
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
             .csrf(csrf -> csrf.disable())
+            .addFilterBefore(adminAuthorizationFilter, UsernamePasswordAuthenticationFilter.class)
             .sessionManagement(session -> session
                 .sessionCreationPolicy(SessionCreationPolicy.ALWAYS)
                 .maximumSessions(1)
@@ -73,8 +77,10 @@ public class SecurityConfig {
                 .requestMatchers("/gallery/**", "/gallery").authenticated()
                 .requestMatchers("/store/**", "/store").authenticated()
                 .requestMatchers("/feedback/**", "/feedback").authenticated()
+                .requestMatchers("/control-panel/**", "/control-panel").authenticated()
                 // Protected API endpoints - require authentication
                 .requestMatchers("/api/user/**", "/api/icons/**", "/api/gallery/**").authenticated()
+                .requestMatchers("/api/admin/**").authenticated()
                 .requestMatchers("/generate-stream", "/stream/**", "/generate-more").authenticated()
                 .requestMatchers("/export", "/export-gallery").authenticated()
                 // All other requests (including home page) - public

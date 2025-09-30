@@ -7,6 +7,7 @@ interface AuthUser {
   id: number;
   coins: number;
   trialCoins: number;
+  isAdmin?: boolean;
 }
 
 interface AuthState {
