@@ -182,20 +182,21 @@ public class GalleryController implements GalleryControllerAPI {
                 return ResponseEntity.status(403).build(); // Forbidden
             }
 
-            // Take first 9 icons and extract their file paths
+            // We need 9 icons for a 3x3 grid. If we have fewer, we'll repeat them to fill the grid.
+            // If we have more, the first 9 will be used.
             List<String> iconPaths = icons.stream()
-                    .limit(9)
                     .map(GeneratedIcon::getFilePath)
                     .toList();
 
-            if (iconPaths.size() < 9) {
-                Map<String, String> errorResponse = new HashMap<>();
-                errorResponse.put("error", "Need at least 9 icons to create a grid");
-                return ResponseEntity.badRequest().body(errorResponse);
+            List<String> gridIconPaths = new java.util.ArrayList<>();
+            if (!iconPaths.isEmpty()) {
+                for (int i = 0; i < 9; i++) {
+                    gridIconPaths.add(iconPaths.get(i % iconPaths.size()));
+                }
             }
 
             // Create the grid composition
-            String gridImageBase64 = gridCompositionService.composeGrid(iconPaths);
+            String gridImageBase64 = gridCompositionService.composeGrid(gridIconPaths);
 
             // Return the base64 image
             Map<String, String> response = new HashMap<>();
