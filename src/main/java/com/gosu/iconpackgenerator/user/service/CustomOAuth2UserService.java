@@ -4,6 +4,7 @@ import com.gosu.iconpackgenerator.singal.SignalMessageService;
 import com.gosu.iconpackgenerator.user.model.User;
 import com.gosu.iconpackgenerator.user.repository.UserRepository;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Profile;
 import org.springframework.security.oauth2.client.userinfo.DefaultOAuth2UserService;
 import org.springframework.security.oauth2.client.userinfo.OAuth2UserRequest;
@@ -24,6 +25,9 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
 
     private final UserRepository userRepository;
     private final SignalMessageService signalMessageService;
+
+    @Value("${app.file-storage.base-path}")
+    private String baseStoragePath;
 
     public CustomOAuth2UserService(UserRepository userRepository, SignalMessageService signalMessageService) {
         this.userRepository = userRepository;
@@ -90,10 +94,10 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
 
     private void createUserDirectoryStructure(String userDirectoryPath) {
         try {
-            String baseStoragePath = "static/user-icons";
             Path userPath = Paths.get(baseStoragePath, userDirectoryPath);
             if (!Files.exists(userPath)) {
                 Files.createDirectories(userPath);
+                log.info("Created user directory: {}", userPath.toAbsolutePath());
             }
         } catch (Exception e) {
             log.error("Error creating user directory for: {}", userDirectoryPath, e);
