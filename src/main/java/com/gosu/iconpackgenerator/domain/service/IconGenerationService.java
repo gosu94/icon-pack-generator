@@ -4,6 +4,12 @@ import com.gosu.iconpackgenerator.config.AIServicesConfig;
 import com.gosu.iconpackgenerator.domain.dto.IconGenerationRequest;
 import com.gosu.iconpackgenerator.domain.dto.IconGenerationResponse;
 import com.gosu.iconpackgenerator.domain.dto.ServiceProgressUpdate;
+import com.gosu.iconpackgenerator.domain.service.ai.AIModelService;
+import com.gosu.iconpackgenerator.domain.service.ai.BananaModelService;
+import com.gosu.iconpackgenerator.domain.service.ai.FluxModelService;
+import com.gosu.iconpackgenerator.domain.service.ai.GptModelService;
+import com.gosu.iconpackgenerator.domain.service.ai.PhotonModelService;
+import com.gosu.iconpackgenerator.domain.service.ai.RecraftModelService;
 import com.gosu.iconpackgenerator.exception.FalAiException;
 import com.gosu.iconpackgenerator.user.model.User;
 import com.gosu.iconpackgenerator.util.ErrorMessageSanitizer;
@@ -28,7 +34,7 @@ public class IconGenerationService {
     private final RecraftModelService recraftModelService;
     private final PhotonModelService photonModelService;
     private final GptModelService gptModelService;
-    private final ImagenModelService imagenModelService;
+    private final BananaModelService bananaModelService;
     private final ImageProcessingService imageProcessingService;
     private final PromptGenerationService promptGenerationService;
     private final AIServicesConfig aiServicesConfig;
@@ -62,7 +68,7 @@ public class IconGenerationService {
         if (aiServicesConfig.isRecraftEnabled()) enabledServices.add("Recraft");
         if (aiServicesConfig.isPhotonEnabled()) enabledServices.add("Photon");
         if (aiServicesConfig.isGptEnabled()) enabledServices.add("GPT");
-        if (aiServicesConfig.isImagenEnabled()) enabledServices.add("Imagen");
+        if (aiServicesConfig.isBananaEnabled()) enabledServices.add("Banana");
 
         // Generate or use provided seed for consistent results across services
         Long seed = request.getSeed() != null ? request.getSeed() : generateRandomSeed();
@@ -96,10 +102,10 @@ public class IconGenerationService {
                     progressCallback.onUpdate(ServiceProgressUpdate.serviceStarted(requestId, "gpt", 2));
             }
 
-            if (aiServicesConfig.isImagenEnabled()) {
-                progressCallback.onUpdate(ServiceProgressUpdate.serviceStarted(requestId, "imagen", 1));
+            if (aiServicesConfig.isBananaEnabled()) {
+                progressCallback.onUpdate(ServiceProgressUpdate.serviceStarted(requestId, "banana", 1));
                 if (request.getGenerationsPerService() > 1)
-                    progressCallback.onUpdate(ServiceProgressUpdate.serviceStarted(requestId, "imagen", 2));
+                    progressCallback.onUpdate(ServiceProgressUpdate.serviceStarted(requestId, "banana", 2));
             }
         }
 
@@ -124,25 +130,25 @@ public class IconGenerationService {
                         generateMultipleGenerationsWithService(request, requestId, gptModelService, "gpt", seed, progressCallback) :
                         CompletableFuture.completedFuture(List.of(createDisabledServiceResult("gpt")));
 
-        CompletableFuture<List<IconGenerationResponse.ServiceResults>> imagenFuture =
-                aiServicesConfig.isImagenEnabled() ?
-                        generateMultipleGenerationsWithService(request, requestId, imagenModelService, "imagen", seed, progressCallback) :
-                        CompletableFuture.completedFuture(List.of(createDisabledServiceResult("imagen")));
+        CompletableFuture<List<IconGenerationResponse.ServiceResults>> bananaFuture =
+                aiServicesConfig.isBananaEnabled() ?
+                        generateMultipleGenerationsWithService(request, requestId, bananaModelService, "banana", seed, progressCallback) :
+                        CompletableFuture.completedFuture(List.of(createDisabledServiceResult("banana")));
 
-        return CompletableFuture.allOf(falAiFuture, recraftFuture, photonFuture, gptFuture, imagenFuture)
+        return CompletableFuture.allOf(falAiFuture, recraftFuture, photonFuture, gptFuture, bananaFuture)
                 .thenApply(v -> {
                     List<IconGenerationResponse.ServiceResults> falAiResults = falAiFuture.join();
                     List<IconGenerationResponse.ServiceResults> recraftResults = recraftFuture.join();
                     List<IconGenerationResponse.ServiceResults> photonResults = photonFuture.join();
                     List<IconGenerationResponse.ServiceResults> gptResults = gptFuture.join();
-                    List<IconGenerationResponse.ServiceResults> imagenResults = imagenFuture.join();
+                    List<IconGenerationResponse.ServiceResults> bananaResults = bananaFuture.join();
 
-                    IconGenerationResponse finalResponse = createCombinedResponse(requestId, falAiResults, recraftResults, photonResults, gptResults, imagenResults, seed);
+                    IconGenerationResponse finalResponse = createCombinedResponse(requestId, falAiResults, recraftResults, photonResults, gptResults, bananaResults, seed);
 
                     // Check if all enabled services failed due to temporary unavailability and refund coins if needed
                     if ("error".equals(finalResponse.getStatus())) {
                         ServiceFailureHandler.FailureAnalysisResult failureAnalysis =
-                                serviceFailureHandler.analyzeServiceFailures(falAiResults, recraftResults, photonResults, gptResults, imagenResults);
+                                serviceFailureHandler.analyzeServiceFailures(falAiResults, recraftResults, photonResults, gptResults, bananaResults);
 
                         if (failureAnalysis.shouldRefund()) {
                             try {
@@ -491,7 +497,7 @@ public class IconGenerationService {
                                                           List<IconGenerationResponse.ServiceResults> recraftResults,
                                                           List<IconGenerationResponse.ServiceResults> photonResults,
                                                           List<IconGenerationResponse.ServiceResults> gptResults,
-                                                          List<IconGenerationResponse.ServiceResults> imagenResults, Long seed) {
+                                                          List<IconGenerationResponse.ServiceResults> bananaResults, Long seed) {
 
         IconGenerationResponse response = new IconGenerationResponse();
         response.setRequestId(requestId);
@@ -499,7 +505,7 @@ public class IconGenerationService {
         response.setRecraftResults(recraftResults);
         response.setPhotonResults(photonResults);
         response.setGptResults(gptResults);
-        response.setImagenResults(imagenResults);
+        response.setBananaResults(bananaResults);
         response.setSeed(seed);
 
         // Combine all icons from all generations for backward compatibility
@@ -510,7 +516,7 @@ public class IconGenerationService {
         addIconsFromServiceResults(allIcons, recraftResults);
         addIconsFromServiceResults(allIcons, photonResults);
         addIconsFromServiceResults(allIcons, gptResults);
-        addIconsFromServiceResults(allIcons, imagenResults);
+        addIconsFromServiceResults(allIcons, bananaResults);
 
         response.setIcons(allIcons);
 
@@ -526,11 +532,11 @@ public class IconGenerationService {
         successCount += countSuccessfulGenerations(recraftResults, "Recraft", successfulServices, enabledServices);
         successCount += countSuccessfulGenerations(photonResults, "Photon", successfulServices, enabledServices);
         successCount += countSuccessfulGenerations(gptResults, "GPT", successfulServices, enabledServices);
-        successCount += countSuccessfulGenerations(imagenResults, "Imagen", successfulServices, enabledServices);
+        successCount += countSuccessfulGenerations(bananaResults, "Banana", successfulServices, enabledServices);
 
         // Count enabled services (those that have at least one non-disabled result)
         enabledCount = enabledServices.size();
-        totalGenerationsCount = falAiResults.size() + recraftResults.size() + photonResults.size() + gptResults.size() + imagenResults.size();
+        totalGenerationsCount = falAiResults.size() + recraftResults.size() + photonResults.size() + gptResults.size() + bananaResults.size();
 
         if (enabledCount == 0) {
             response.setStatus("error");
@@ -603,7 +609,7 @@ public class IconGenerationService {
         response.setRecraftResults(errorList);
         response.setPhotonResults(errorList);
         response.setGptResults(errorList);
-        response.setImagenResults(errorList);
+        response.setBananaResults(errorList);
 
         return response;
     }
@@ -656,10 +662,10 @@ public class IconGenerationService {
 
     private boolean supportsImageToImage(AIModelService aiService) {
         // Check if the service supports image-to-image generation
-        // PhotonModelService and ImagenModelService delegate to other services for image-to-image
+        // PhotonModelService and BananaModelService support or delegate image-to-image
         return aiService instanceof FluxModelService || aiService instanceof RecraftModelService ||
                 aiService instanceof PhotonModelService || aiService instanceof GptModelService ||
-                aiService instanceof ImagenModelService;
+                aiService instanceof BananaModelService;
     }
 
     private CompletableFuture<byte[]> generateImageToImageWithService(AIModelService aiService, String prompt, byte[] sourceImageData, Long seed) {
@@ -702,12 +708,12 @@ public class IconGenerationService {
                             }
                             return result;
                         });
-            } else if (aiService instanceof ImagenModelService) {
-                log.info("Using ImagenModelService generateImageToImage (delegates to GPT) for image-to-image");
-                return ((ImagenModelService) aiService).generateImageToImage(prompt, sourceImageData, seed)
+            } else if (aiService instanceof BananaModelService) {
+                log.info("Using BananaModelService generateImageToImage for image-to-image");
+                return ((BananaModelService) aiService).generateImageToImage(prompt, sourceImageData, seed)
                         .handle((result, throwable) -> {
                             if (throwable != null) {
-                                log.error("ImagenModelService image-to-image failed", throwable);
+                                log.error("BananaModelService image-to-image failed", throwable);
                             }
                             return result;
                         });
@@ -734,8 +740,8 @@ public class IconGenerationService {
             return ((PhotonModelService) aiService).generateImage(prompt, seed);
         } else if (aiService instanceof GptModelService) {
             return ((GptModelService) aiService).generateImage(prompt, seed);
-        } else if (aiService instanceof ImagenModelService) {
-            return ((ImagenModelService) aiService).generateImage(prompt, seed);
+        } else if (aiService instanceof BananaModelService) {
+            return ((BananaModelService) aiService).generateImage(prompt, seed);
         } else {
             // Fallback to basic generateImage method for unknown service types
             return aiService.generateImage(prompt);

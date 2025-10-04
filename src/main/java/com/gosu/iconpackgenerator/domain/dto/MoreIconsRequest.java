@@ -13,7 +13,7 @@ public class MoreIconsRequest {
     private String originalRequestId;
     
     /**
-     * The service to use for generation (flux, recraft, photon, gpt, imagen)
+     * The service to use for generation (flux, recraft, photon, gpt, banana)
      */
     private String serviceName;
     

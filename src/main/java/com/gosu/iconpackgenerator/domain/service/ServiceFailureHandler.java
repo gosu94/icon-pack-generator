@@ -55,7 +55,7 @@ public class ServiceFailureHandler {
      * @param recraftResults Results from Recraft service
      * @param photonResults Results from Photon service
      * @param gptResults Results from GPT service
-     * @param imagenResults Results from Imagen service
+     * @param bananaResults Results from Banana service
      * @return FailureAnalysisResult indicating whether refund is needed
      */
     public FailureAnalysisResult analyzeServiceFailures(
@@ -63,10 +63,10 @@ public class ServiceFailureHandler {
             List<IconGenerationResponse.ServiceResults> recraftResults,
             List<IconGenerationResponse.ServiceResults> photonResults,
             List<IconGenerationResponse.ServiceResults> gptResults,
-            List<IconGenerationResponse.ServiceResults> imagenResults) {
+            List<IconGenerationResponse.ServiceResults> bananaResults) {
         
         List<List<IconGenerationResponse.ServiceResults>> allServiceResults = List.of(
-                falAiResults, recraftResults, photonResults, gptResults, imagenResults
+                falAiResults, recraftResults, photonResults, gptResults, bananaResults
         );
         
         boolean hasEnabledService = false;

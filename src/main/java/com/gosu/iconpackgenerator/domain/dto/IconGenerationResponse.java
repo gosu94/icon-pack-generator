@@ -15,7 +15,7 @@ public class IconGenerationResponse {
     private List<ServiceResults> recraftResults;
     private List<ServiceResults> photonResults;
     private List<ServiceResults> gptResults;
-    private List<ServiceResults> imagenResults;
+    private List<ServiceResults> bananaResults;
     
     /**
      * The seed used for generation. Can be reused for consistent results in related requests.
@@ -28,7 +28,7 @@ public class IconGenerationResponse {
         private String base64Data;
         private String description;
         private int gridPosition;
-        private String serviceSource; // "flux", "recraft", "photon", "gpt", or "imagen"
+        private String serviceSource; // "flux", "recraft", "photon", "gpt", or "banana"
     }
     
     @Data
@@ -45,5 +45,21 @@ public class IconGenerationResponse {
          * Used for image-to-image generation of missing icons.
          */
         private String originalGridImageBase64;
+    }
+    
+    /**
+     * @deprecated Use getBananaResults() instead
+     */
+    @Deprecated
+    public List<ServiceResults> getImagenResults() {
+        return bananaResults;
+    }
+    
+    /**
+     * @deprecated Use setBananaResults() instead
+     */
+    @Deprecated
+    public void setImagenResults(List<ServiceResults> results) {
+        this.bananaResults = results;
     }
 }

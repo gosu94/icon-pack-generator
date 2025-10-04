@@ -237,7 +237,7 @@ export default function Page() {
       recraft: "Recraft V3",
       photon: "Luma Photon",
       gpt: "GPT Image",
-      imagen: "Imagen 4",
+      banana: "Nano Banana",
     };
     return serviceNames[serviceId] || serviceId;
   };
@@ -345,7 +345,7 @@ export default function Page() {
             recraftResults: "recraft", 
             photonResults: "photon",
             gptResults: "gpt",
-            imagenResults: "imagen"
+            bananaResults: "banana"
           };
           
           // Build enabled services map from actual response data
@@ -656,7 +656,7 @@ export default function Page() {
       { id: "recraft", name: "Recraft V3" },
       { id: "photon", name: "Luma Photon" },
       { id: "gpt", name: "" },
-      { id: "imagen", name: "Imagen 4" },
+      { id: "banana", name: "Nano Banana" },
     ];
 
     const enabledServicesList = allServices.filter(
@@ -742,7 +742,7 @@ export default function Page() {
           recraftResults: [] as ServiceResult[],
           photonResults: [] as ServiceResult[],
           gptResults: [] as ServiceResult[],
-          imagenResults: [] as ServiceResult[],
+          bananaResults: [] as ServiceResult[],
         };
         
         Object.entries(updatedStreamingResults).forEach(([serviceKey, result]) => {
@@ -760,8 +760,8 @@ export default function Page() {
             case "gpt":
               groupedResults.gptResults.push(result);
               break;
-            case "imagen":
-              groupedResults.imagenResults.push(result);
+            case "banana":
+              groupedResults.bananaResults.push(result);
               break;
           }
         });
@@ -808,7 +808,7 @@ export default function Page() {
           recraftResults: [] as ServiceResult[],
           photonResults: [] as ServiceResult[],
           gptResults: [] as ServiceResult[],
-          imagenResults: [] as ServiceResult[],
+          bananaResults: [] as ServiceResult[],
         };
         Object.entries(latestStreamingResults).forEach(([serviceKey, result]) => {
           const baseServiceId = serviceKey.replace(/-gen\d+$/, "");
@@ -825,8 +825,8 @@ export default function Page() {
             case "gpt":
               groupedResults.gptResults.push(result);
               break;
-            case "imagen":
-              groupedResults.imagenResults.push(result);
+            case "banana":
+              groupedResults.bananaResults.push(result);
               break;
           }
         });
@@ -1122,8 +1122,8 @@ export default function Page() {
       case "gpt":
         resultsArray = currentResponse.gptResults;
         break;
-      case "imagen":
-        resultsArray = currentResponse.imagenResults;
+      case "banana":
+        resultsArray = currentResponse.bananaResults;
         break;
       default:
         return null;

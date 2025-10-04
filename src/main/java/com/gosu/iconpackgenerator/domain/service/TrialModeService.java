@@ -41,8 +41,8 @@ public class TrialModeService {
         if (response.getGptResults() != null) {
             response.getGptResults().forEach(this::limitServiceIcons);
         }
-        if (response.getImagenResults() != null) {
-            response.getImagenResults().forEach(this::limitServiceIcons);
+        if (response.getBananaResults() != null) {
+            response.getBananaResults().forEach(this::limitServiceIcons);
         }
         
         // Rebuild the combined icons list after limiting individual services
@@ -51,7 +51,7 @@ public class TrialModeService {
         addIconsFromServiceResults(allIcons, response.getRecraftResults());
         addIconsFromServiceResults(allIcons, response.getPhotonResults());
         addIconsFromServiceResults(allIcons, response.getGptResults());
-        addIconsFromServiceResults(allIcons, response.getImagenResults());
+        addIconsFromServiceResults(allIcons, response.getBananaResults());
         response.setIcons(allIcons);
         
         // Add trial indicator to the overall response

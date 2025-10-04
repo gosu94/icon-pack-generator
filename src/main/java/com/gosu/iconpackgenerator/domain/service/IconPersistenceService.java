@@ -45,7 +45,7 @@ public class IconPersistenceService {
             allServiceResults.addAll(response.getRecraftResults());
             allServiceResults.addAll(response.getPhotonResults());
             allServiceResults.addAll(response.getGptResults());
-            allServiceResults.addAll(response.getImagenResults());
+            allServiceResults.addAll(response.getBananaResults());
             
             // Save individual icons
             for (IconGenerationResponse.GeneratedIcon icon : response.getIcons()) {

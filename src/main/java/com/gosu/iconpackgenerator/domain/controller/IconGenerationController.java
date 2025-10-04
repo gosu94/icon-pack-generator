@@ -10,15 +10,15 @@ import com.gosu.iconpackgenerator.domain.dto.MoreIconsRequest;
 import com.gosu.iconpackgenerator.domain.dto.MoreIconsResponse;
 import com.gosu.iconpackgenerator.domain.dto.ServiceProgressUpdate;
 import com.gosu.iconpackgenerator.domain.service.CoinManagementService;
-import com.gosu.iconpackgenerator.domain.service.FluxModelService;
-import com.gosu.iconpackgenerator.domain.service.GptModelService;
+import com.gosu.iconpackgenerator.domain.service.ai.BananaModelService;
+import com.gosu.iconpackgenerator.domain.service.ai.FluxModelService;
+import com.gosu.iconpackgenerator.domain.service.ai.GptModelService;
 import com.gosu.iconpackgenerator.domain.service.IconGenerationService;
 import com.gosu.iconpackgenerator.domain.service.IconPersistenceService;
 import com.gosu.iconpackgenerator.domain.service.ImageProcessingService;
-import com.gosu.iconpackgenerator.domain.service.ImagenModelService;
-import com.gosu.iconpackgenerator.domain.service.PhotonModelService;
+import com.gosu.iconpackgenerator.domain.service.ai.PhotonModelService;
 import com.gosu.iconpackgenerator.domain.service.PromptGenerationService;
-import com.gosu.iconpackgenerator.domain.service.RecraftModelService;
+import com.gosu.iconpackgenerator.domain.service.ai.RecraftModelService;
 import com.gosu.iconpackgenerator.domain.service.ServiceFailureHandler;
 import com.gosu.iconpackgenerator.user.model.User;
 import com.gosu.iconpackgenerator.user.service.CustomOAuth2User;
@@ -56,7 +56,7 @@ public class IconGenerationController implements IconGenerationControllerAPI {
     private final IconGenerationService iconGenerationService;
     private final FluxModelService fluxModelService;
     private final RecraftModelService recraftModelService;
-    private final ImagenModelService imagenModelService;
+    private final BananaModelService bananaModelService;
     private final PhotonModelService photonModelService;
     private final GptModelService gptModelService;
     private final PromptGenerationService promptGenerationService;
@@ -165,7 +165,7 @@ public class IconGenerationController implements IconGenerationControllerAPI {
         enabledServices.put("recraft", aiServicesConfig.isRecraftEnabled());
         enabledServices.put("photon", aiServicesConfig.isPhotonEnabled());
         enabledServices.put("gpt", aiServicesConfig.isGptEnabled());
-        enabledServices.put("imagen", aiServicesConfig.isImagenEnabled());
+        enabledServices.put("banana", aiServicesConfig.isBananaEnabled());
         response.put("enabledServices", enabledServices);
 
         return ResponseEntity.ok(response);
@@ -457,11 +457,12 @@ public class IconGenerationController implements IconGenerationControllerAPI {
                 }
                 return gptModelService.generateImageToImage(prompt, originalImageData, 0L);
 
-            case "imagen":
-                if (!aiServicesConfig.isImagenEnabled()) {
-                    throw new RuntimeException("Imagen service is disabled");
+            case "banana":
+            case "imagen": // Keep backward compatibility
+                if (!aiServicesConfig.isBananaEnabled()) {
+                    throw new RuntimeException("Banana service is disabled");
                 }
-                return imagenModelService.generateImageToImage(prompt, originalImageData, seed);
+                return bananaModelService.generateImageToImage(prompt, originalImageData, seed);
 
             default:
                 throw new RuntimeException("Unknown service: " + serviceName);
@@ -593,7 +594,7 @@ public class IconGenerationController implements IconGenerationControllerAPI {
                 case "recraft" -> existingResponse.getRecraftResults();
                 case "photon" -> existingResponse.getPhotonResults();
                 case "gpt" -> existingResponse.getGptResults();
-                case "imagen" -> existingResponse.getImagenResults();
+                case "banana", "imagen" -> existingResponse.getBananaResults(); // Keep backward compatibility with "imagen"
                 default -> null;
             };
 

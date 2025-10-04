@@ -1,4 +1,4 @@
-package com.gosu.iconpackgenerator.domain.service;
+package com.gosu.iconpackgenerator.domain.service.ai;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;

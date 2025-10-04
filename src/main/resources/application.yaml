@@ -76,7 +76,7 @@ ai:
       enabled: false
     gpt:
       enabled: true
-    imagen:
+    banana:
       enabled: false
 
 fal:

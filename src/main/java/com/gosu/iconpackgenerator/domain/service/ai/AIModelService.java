@@ -1,4 +1,4 @@
-package com.gosu.iconpackgenerator.domain.service;
+package com.gosu.iconpackgenerator.domain.service.ai;
 
 import java.util.concurrent.CompletableFuture;
 

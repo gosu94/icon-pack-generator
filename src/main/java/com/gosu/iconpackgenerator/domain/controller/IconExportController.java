@@ -58,7 +58,7 @@ public class IconExportController implements IconExportControllerAPI {
                 case "recraft" -> generationResponse.getRecraftResults();
                 case "photon" -> generationResponse.getPhotonResults();
                 case "gpt" -> generationResponse.getGptResults();
-                case "imagen" -> generationResponse.getImagenResults();
+                case "banana", "imagen" -> generationResponse.getBananaResults(); // Keep backward compatibility with "imagen"
                 default -> null;
             };
 

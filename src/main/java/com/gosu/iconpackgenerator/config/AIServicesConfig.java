@@ -13,7 +13,7 @@ public class AIServicesConfig {
     private ServiceEnabled recraft = new ServiceEnabled();
     private ServiceEnabled photon = new ServiceEnabled();
     private ServiceEnabled gpt = new ServiceEnabled();
-    private ServiceEnabled imagen = new ServiceEnabled();
+    private ServiceEnabled banana = new ServiceEnabled();
     
     @Data
     public static class ServiceEnabled {
@@ -36,7 +36,12 @@ public class AIServicesConfig {
         return gpt.isEnabled();
     }
     
+    public boolean isBananaEnabled() {
+        return banana.isEnabled();
+    }
+    
+    @Deprecated
     public boolean isImagenEnabled() {
-        return imagen.isEnabled();
+        return banana.isEnabled(); // Backward compatibility
     }
 }
