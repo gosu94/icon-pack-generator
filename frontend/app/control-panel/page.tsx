@@ -38,6 +38,10 @@ export default function ControlPanelPage() {
   const [userIcons, setUserIcons] = useState<UserIcon[]>([]);
   const [loadingIcons, setLoadingIcons] = useState(false);
   const [showIconsModal, setShowIconsModal] = useState(false);
+  const [showSetCoinsModal, setShowSetCoinsModal] = useState(false);
+  const [userForCoins, setUserForCoins] = useState<UserAdminData | null>(null);
+  const [coins, setCoins] = useState(0);
+  const [trialCoins, setTrialCoins] = useState(0);
 
   useEffect(() => {
     // Check if user is admin
@@ -114,6 +118,51 @@ export default function ControlPanelPage() {
     setUserIcons([]);
   };
 
+  const handleOpenSetCoinsModal = (user: UserAdminData) => {
+    setUserForCoins(user);
+    setCoins(user.coins);
+    setTrialCoins(user.trialCoins);
+    setShowSetCoinsModal(true);
+  };
+
+  const handleCloseSetCoinsModal = () => {
+    setShowSetCoinsModal(false);
+    setUserForCoins(null);
+    setCoins(0);
+    setTrialCoins(0);
+  };
+
+  const handleSaveCoins = async () => {
+    if (!userForCoins) return;
+
+    try {
+      const response = await fetch(`/api/admin/users/${userForCoins.id}/coins`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+        body: JSON.stringify({
+          coins: Number(coins),
+          trialCoins: Number(trialCoins),
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response
+          .json()
+          .catch(() => ({ message: "Failed to update coins" }));
+        throw new Error(errorData.message || "Failed to update coins");
+      }
+
+      handleCloseSetCoinsModal();
+      await fetchUsers(); // Refresh user list
+    } catch (err: any) {
+      console.error(err.message);
+      alert(`Error: ${err.message}`);
+    }
+  };
+
   const formatDate = (dateString: string | null) => {
     if (!dateString) return "Never";
     const date = new Date(dateString);
@@ -181,6 +230,9 @@ export default function ControlPanelPage() {
                   <th className="px-6 py-3 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">
                     Provider
                   </th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">
+                    Actions
+                  </th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-slate-100">
@@ -221,6 +273,14 @@ export default function ControlPanelPage() {
                         {user.authProvider}
                       </span>
                     </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                      <button
+                        onClick={() => handleOpenSetCoinsModal(user)}
+                        className="text-indigo-600 hover:text-indigo-900"
+                      >
+                        Set Coins
+                      </button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -236,6 +296,71 @@ export default function ControlPanelPage() {
           </p>
         </div>
       </div>
+
+      {/* Set Coins Modal */}
+      {showSetCoinsModal && userForCoins && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-md w-full">
+            <div className="flex items-center justify-between p-6 border-b border-slate-200">
+              <h2 className="text-2xl font-bold text-slate-800">
+                Set Coins for {userForCoins.email}
+              </h2>
+              <button
+                onClick={handleCloseSetCoinsModal}
+                className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
+              >
+                <X className="w-6 h-6 text-slate-600" />
+              </button>
+            </div>
+            <div className="p-6">
+              <div className="mb-4">
+                <label
+                  htmlFor="trialCoins"
+                  className="block text-sm font-medium text-slate-700"
+                >
+                  Trial Coins
+                </label>
+                <input
+                  type="number"
+                  id="trialCoins"
+                  value={trialCoins}
+                  onChange={(e) => setTrialCoins(Number(e.target.value))}
+                  className="mt-1 block w-full px-3 py-2 bg-white border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                />
+              </div>
+              <div className="mb-4">
+                <label
+                  htmlFor="coins"
+                  className="block text-sm font-medium text-slate-700"
+                >
+                  Coins
+                </label>
+                <input
+                  type="number"
+                  id="coins"
+                  value={coins}
+                  onChange={(e) => setCoins(Number(e.target.value))}
+                  className="mt-1 block w-full px-3 py-2 bg-white border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                />
+              </div>
+            </div>
+            <div className="flex justify-end p-6 border-t border-slate-200">
+              <button
+                onClick={handleCloseSetCoinsModal}
+                className="px-4 py-2 bg-slate-200 text-slate-700 rounded-lg hover:bg-slate-300 transition-colors mr-2"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSaveCoins}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                Save
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Icons Modal */}
       {showIconsModal && (

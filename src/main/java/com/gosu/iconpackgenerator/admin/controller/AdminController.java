@@ -15,6 +15,8 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -126,5 +128,43 @@ public class AdminController {
 
         log.info("Admin user {} retrieved {} icons for user {}", adminUser.getEmail(), iconDtos.size(), targetUser.getEmail());
         return ResponseEntity.ok(iconDtos);
+    }
+
+    /**
+     * Update coins for a specific user (admin only)
+     */
+    @PostMapping("/users/{userId}/coins")
+    public ResponseEntity<?> updateUserCoins(@PathVariable Long userId, @RequestBody Map<String, Integer> payload, @AuthenticationPrincipal OAuth2User principal) {
+        if (!(principal instanceof CustomOAuth2User customUser)) {
+            return ResponseEntity.status(401).body(Map.of("error", "Unauthorized"));
+        }
+
+        User adminUser = customUser.getUser();
+        if (!adminService.isAdmin(adminUser)) {
+            log.warn("Non-admin user {} attempted to update coins", adminUser.getEmail());
+            return ResponseEntity.status(403).body(Map.of("error", "Forbidden - Admin access required"));
+        }
+
+        User targetUser = userRepository.findById(userId)
+                .orElse(null);
+
+        if (targetUser == null) {
+            return ResponseEntity.status(404).body(Map.of("error", "User not found"));
+        }
+
+        Integer coins = payload.get("coins");
+        Integer trialCoins = payload.get("trialCoins");
+
+        if (coins != null) {
+            targetUser.setCoins(coins);
+        }
+        if (trialCoins != null) {
+            targetUser.setTrialCoins(trialCoins);
+        }
+
+        userRepository.save(targetUser);
+
+        log.info("Admin user {} updated coins for user {}. New values: coins={}, trialCoins={}", adminUser.getEmail(), targetUser.getEmail(), targetUser.getCoins(), targetUser.getTrialCoins());
+        return ResponseEntity.ok(Map.of("message", "Coins updated successfully"));
     }
 }
