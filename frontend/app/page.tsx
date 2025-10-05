@@ -89,20 +89,6 @@ export default function LandingPage() {
         <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50/30">
             <Navigation/>
 
-            {/* Product Hunt Banner */}
-            <section
-                className="bg-gradient-to-r from-blue-600 to-purple-600 text-white py-1 text-center text-sm">
-                <a
-                    href="https://www.producthunt.com/products/icon-pack-generator-2?launch=icon-pack-generator-2"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center justify-center space-x-2 hover:underline"
-                >
-                    <span>Find us on ProductHunt</span>
-                    <Rocket className="w-4 h-4"/>
-                </a>
-            </section>
-
             {/* Hero Section with Video Card */}
             <section className="px-6 py-12">
                 <div className="max-w-7xl mx-auto">
