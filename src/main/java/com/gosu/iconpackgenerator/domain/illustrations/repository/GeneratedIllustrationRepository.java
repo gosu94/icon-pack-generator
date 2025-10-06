@@ -14,6 +14,8 @@ public interface GeneratedIllustrationRepository extends JpaRepository<Generated
     
     List<GeneratedIllustration> findByRequestId(String requestId);
     
+    List<GeneratedIllustration> findByRequestIdAndIllustrationType(String requestId, String illustrationType);
+    
     Page<GeneratedIllustration> findByUserOrderByCreatedAtDesc(User user, Pageable pageable);
 
     List<GeneratedIllustration> findByUserOrderByCreatedAtDesc(User user);

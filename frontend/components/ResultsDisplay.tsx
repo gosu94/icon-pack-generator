@@ -138,7 +138,7 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
               className={
                 mode === "icons"
                   ? "grid gap-4 grid-cols-[repeat(auto-fit,minmax(140px,1fr))]"
-                  : "flex flex-col gap-6 items-center"
+                  : "grid grid-cols-1 sm:grid-cols-2 gap-6"
               } 
               data-oid=".ge-1o5"
             >
@@ -147,18 +147,19 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
                   key={iconIndex}
                   className={`relative group transform ${getIconAnimationClass(result.serviceId, iconIndex)} ${mode === "icons" ? "hover:scale-105 hover:z-20 flex justify-center" : "hover:scale-105 transition-transform duration-200"}`}
                   data-oid="m76b0.p"
-                  style={mode === "illustrations" ? { width: "500px", height: "400px" } : {}}
                 >
-                  <img
-                    src={`data:image/png;base64,${icon.base64Data}`}
-                    alt={mode === "icons" ? `Generated Icon ${iconIndex + 1}` : `Generated Illustration ${iconIndex + 1}`}
-                    className={
-                      mode === "icons"
-                        ? "w-full h-auto max-w-[128px] rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-shadow duration-200"
-                        : "w-full h-full object-contain rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-shadow duration-200"
-                    }
-                    data-oid="3jhfiim"
-                  />
+                  <div className={mode === "illustrations" ? "aspect-[5/4] w-full" : ""}>
+                    <img
+                      src={`data:image/png;base64,${icon.base64Data}`}
+                      alt={mode === "icons" ? `Generated Icon ${iconIndex + 1}` : `Generated Illustration ${iconIndex + 1}`}
+                      className={
+                        mode === "icons"
+                          ? "w-full h-auto max-w-[128px] rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-shadow duration-200"
+                          : "w-full h-full object-contain rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-shadow duration-200"
+                      }
+                      data-oid="3jhfiim"
+                    />
+                  </div>
                   <div
                     className={`absolute inset-0 bg-gradient-to-r from-blue-400 to-purple-500 rounded-lg transition-opacity duration-700 ${animatingIcons[result.serviceId] > iconIndex ? "opacity-0" : "opacity-20"}`}
                     data-oid="bit9s0x"

@@ -19,26 +19,31 @@ interface Icon {
 }
 
 interface Illustration {
-  id: string;
-  prompt: string;
+  id: number;
   imageUrl: string;
+  description: string;
+  requestId: string;
+  illustrationType: string;
+  theme: string;
 }
 
 type GroupedIcons = Record<string, { original: Icon[]; variation: Icon[] }>;
+type GroupedIllustrations = Record<string, { original: Illustration[]; variation: Illustration[] }>;
 
 export default function GalleryPage() {
   const router = useRouter();
   const [groupedIcons, setGroupedIcons] = useState<GroupedIcons>({});
+  const [groupedIllustrations, setGroupedIllustrations] = useState<GroupedIllustrations>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedRequest, setSelectedRequest] = useState<string | null>(null);
   const [galleryType, setGalleryType] = useState<string | null>(null);
-  const [illustrations, setIllustrations] = useState<Illustration[]>([]);
 
   // Export state
   const [showExportModal, setShowExportModal] = useState(false);
   const [showProgressModal, setShowProgressModal] = useState(false);
   const [iconsToExport, setIconsToExport] = useState<Icon[]>([]);
+  const [illustrationsToExport, setIllustrationsToExport] = useState<Illustration[]>([]);
 
   const [exportProgress, setExportProgress] = useState({
     step: 1,
@@ -90,7 +95,20 @@ export default function GalleryPage() {
           throw new Error("Failed to fetch illustrations");
         }
         const data: Illustration[] = await response.json();
-        setIllustrations(data);
+
+        const grouped = data.reduce((acc, illustration) => {
+          if (!acc[illustration.requestId]) {
+            acc[illustration.requestId] = { original: [], variation: [] };
+          }
+          if (illustration.illustrationType === "original") {
+            acc[illustration.requestId].original.push(illustration);
+          } else if (illustration.illustrationType === "variation") {
+            acc[illustration.requestId].variation.push(illustration);
+          }
+          return acc;
+        }, {} as GroupedIllustrations);
+
+        setGroupedIllustrations(grouped);
       } catch (err: any) {
         setError(err.message);
       } finally {
@@ -117,6 +135,13 @@ export default function GalleryPage() {
 
   const openExportModal = (icons: Icon[]) => {
     setIconsToExport(icons);
+    setIllustrationsToExport([]);
+    setShowExportModal(true);
+  };
+
+  const openIllustrationExportModal = (illustrations: Illustration[]) => {
+    setIllustrationsToExport(illustrations);
+    setIconsToExport([]);
     setShowExportModal(true);
   };
 
@@ -154,6 +179,7 @@ export default function GalleryPage() {
         const gridImageUrl = URL.createObjectURL(blob);
         sessionStorage.setItem("generatedGridImage", gridImageUrl);
         sessionStorage.setItem("generateMoreMode", "true");
+        sessionStorage.setItem("generationMode", "icons");
 
         // Navigate to dashboard
         router.push("/dashboard");
@@ -167,7 +193,55 @@ export default function GalleryPage() {
     }
   };
 
-  const confirmGalleryExport = (formats: string[]) => {
+  const handleGenerateMoreIllustrations = async (illustrationType: string) => {
+    if (!selectedRequest) return;
+
+    try {
+      // Call the backend to create the 2x2 grid composition for illustrations
+      const response = await fetch("/api/gallery/compose-illustration-grid", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          requestId: selectedRequest,
+          illustrationType: illustrationType,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+
+      if (data.status === "success" && data.gridImageBase64) {
+        // Convert base64 to blob and create URL
+        const binaryString = atob(data.gridImageBase64);
+        const bytes = new Uint8Array(binaryString.length);
+        for (let i = 0; i < binaryString.length; i++) {
+          bytes[i] = binaryString.charCodeAt(i);
+        }
+        const blob = new Blob([bytes], { type: "image/png" });
+
+        // Store the grid image data in sessionStorage for the dashboard to use
+        const gridImageUrl = URL.createObjectURL(blob);
+        sessionStorage.setItem("generatedGridImage", gridImageUrl);
+        sessionStorage.setItem("generateMoreMode", "true");
+        sessionStorage.setItem("generationMode", "illustrations");
+
+        // Navigate to dashboard
+        router.push("/dashboard");
+      } else {
+        console.error("Failed to create illustration grid:", data.error);
+        alert("Failed to create illustration grid composition. Please try again.");
+      }
+    } catch (error) {
+      console.error("Error creating illustration grid composition:", error);
+      alert("Failed to create illustration grid composition. Please try again.");
+    }
+  };
+
+  const confirmGalleryExport = (formats: string[], sizes?: number[]) => {
     if (iconsToExport.length > 0) {
       const iconFilePaths = iconsToExport.map((icon) => icon.imageUrl);
       const fileName = `icon-pack-gallery-${new Date().getTime()}.zip`;
@@ -176,12 +250,23 @@ export default function GalleryPage() {
         formats,
       };
       setShowExportModal(false);
-      downloadZip(exportData, fileName);
+      downloadZip(exportData, fileName, "/api/export-gallery");
+    } else if (illustrationsToExport.length > 0) {
+      const illustrationFilePaths = illustrationsToExport.map((illustration) => illustration.imageUrl);
+      const fileName = `illustration-pack-gallery-${new Date().getTime()}.zip`;
+      const exportData = {
+        illustrationFilePaths,
+        formats,
+        sizes,
+      };
+      setShowExportModal(false);
+      downloadZip(exportData, fileName, "/api/illustrations/export-gallery");
     }
   };
 
-  const downloadZip = async (exportData: any, fileName: string) => {
+  const downloadZip = async (exportData: any, fileName: string, endpoint: string) => {
     setShowProgressModal(true);
+    const itemType = endpoint.includes("illustration") ? "illustrations" : "icons";
     setExportProgress({
       step: 1,
       message: "Preparing export request...",
@@ -191,12 +276,12 @@ export default function GalleryPage() {
       setTimeout(() => {
         setExportProgress({
           step: 2,
-          message: "Converting icons to multiple formats and sizes...",
+          message: `Converting ${itemType} to multiple formats and sizes...`,
           percent: 50,
         });
       }, 500);
 
-      const response = await fetch("/api/export-gallery", {
+      const response = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -231,9 +316,9 @@ export default function GalleryPage() {
         document.body.removeChild(a);
       }, 1000);
     } catch (error) {
-      console.error("Error exporting icons:", error);
+      console.error(`Error exporting ${itemType}:`, error);
       setShowProgressModal(false);
-      alert("Failed to export icons. Please try again.");
+      alert(`Failed to export ${itemType}. Please try again.`);
     }
   };
 
@@ -285,7 +370,7 @@ export default function GalleryPage() {
                     setGalleryType(null);
                     setSelectedRequest(null);
                     setGroupedIcons({});
-                    setIllustrations([]);
+                    setGroupedIllustrations({});
                     setError(null);
                   }}
                   className="mb-8 inline-flex items-center gap-2 rounded-md bg-slate-100 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-200 transition-colors"
@@ -516,35 +601,216 @@ export default function GalleryPage() {
                 )}
 
                 {!error && galleryType === "illustrations" && (
-                  <div>
-                    <h1 className="text-3xl font-bold mb-8 text-slate-800">
-                      Illustration Gallery
-                    </h1>
-                    {illustrations.length > 0 ? (
-                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 gap-4">
-                        {illustrations.map((illustration, index) => (
-                          <div
-                            key={index}
-                            className="border rounded-lg p-2 bg-white shadow-sm"
+                  <>
+                    {selectedRequest && groupedIllustrations[selectedRequest] ? (
+                      <div>
+                        <button
+                          onClick={handleBackToGallery}
+                          className="mb-8 inline-flex items-center gap-2 rounded-md bg-purple-50 px-4 py-2 text-sm font-medium text-purple-600 hover:bg-purple-100 transition-colors"
+                        >
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            width="16"
+                            height="16"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
                           >
-                            <img
-                              src={illustration.imageUrl}
-                              alt={
-                                illustration.prompt || "Generated Illustration"
-                              }
-                              className="w-full h-auto object-cover rounded-md"
-                            />
+                            <path d="M19 12H5m7 7l-7-7 7-7" />
+                          </svg>
+                          Back to Gallery
+                        </button>
+
+                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6">
+                          <h1 className="text-3xl font-bold text-slate-800 mb-4 sm:mb-0">
+                            {groupedIllustrations[selectedRequest].original[0]?.theme ||
+                              groupedIllustrations[selectedRequest].variation[0]?.theme ||
+                              `Request: ${selectedRequest}`}
+                          </h1>
+                          <button
+                            onClick={() =>
+                              openIllustrationExportModal([
+                                ...groupedIllustrations[selectedRequest].original,
+                                ...groupedIllustrations[selectedRequest].variation,
+                              ])
+                            }
+                            className="px-2 sm:px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 flex items-center justify-center gap-2"
+                          >
+                            <Download className="w-4 h-4" />
+                            <span className="hidden sm:inline">
+                              Export All (
+                              {groupedIllustrations[selectedRequest].original.length +
+                                groupedIllustrations[selectedRequest].variation.length}{" "}
+                              illustrations)
+                            </span>
+                          </button>
+                        </div>
+
+                        {groupedIllustrations[selectedRequest].original.length > 0 && (
+                          <div className="mb-8 p-4 rounded-lg border border-slate-200/80 bg-white/50 shadow-lg shadow-slate-200/50">
+                            <div className="flex items-center justify-between mb-4">
+                              <h3 className="text-xl font-semibold text-slate-700">
+                                Original Illustrations
+                              </h3>
+                              <div className="flex gap-3">
+                                <button
+                                  onClick={() => handleGenerateMoreIllustrations("original")}
+                                  className="px-2 sm:px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 flex items-center justify-center gap-2"
+                                >
+                                  <Sparkles className="w-4 h-4" />
+                                  <span className="hidden sm:inline">
+                                    Generate More
+                                  </span>
+                                </button>
+                                <button
+                                  onClick={() =>
+                                    openIllustrationExportModal(
+                                      groupedIllustrations[selectedRequest].original
+                                    )
+                                  }
+                                  className="px-2 sm:px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 flex items-center justify-center gap-2"
+                                >
+                                  <Download className="w-4 h-4" />
+                                  <span className="hidden sm:inline">
+                                    Export Originals (
+                                    {groupedIllustrations[selectedRequest].original.length})
+                                  </span>
+                                </button>
+                              </div>
+                            </div>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-6">
+                              {groupedIllustrations[selectedRequest].original.map(
+                                (illustration, index) => (
+                                  <div
+                                    key={index}
+                                    className="border rounded-lg p-2 bg-white shadow-sm aspect-[5/4]"
+                                  >
+                                    <img
+                                      src={illustration.imageUrl}
+                                      alt={illustration.description || "Generated Illustration"}
+                                      className="w-full h-full object-contain rounded-md"
+                                    />
+                                  </div>
+                                )
+                              )}
+                            </div>
                           </div>
-                        ))}
+                        )}
+
+                        {groupedIllustrations[selectedRequest].variation.length > 0 && (
+                          <div className="p-4 rounded-lg border border-slate-200/80 bg-white/50 shadow-lg shadow-slate-200/50">
+                            <div className="flex items-center justify-between mb-4">
+                              <h3 className="text-xl font-semibold text-slate-700">
+                                Variations
+                              </h3>
+                              <div className="flex gap-3">
+                                <button
+                                  onClick={() =>
+                                    handleGenerateMoreIllustrations("variation")
+                                  }
+                                  className="px-2 sm:px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 flex items-center justify-center gap-2"
+                                >
+                                  <Sparkles className="w-4 h-4" />
+                                  <span className="hidden sm:inline">
+                                    Generate More
+                                  </span>
+                                </button>
+                                <button
+                                  onClick={() =>
+                                    openIllustrationExportModal(
+                                      groupedIllustrations[selectedRequest].variation
+                                    )
+                                  }
+                                  className="px-2 sm:px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 flex items-center justify-center gap-2"
+                                >
+                                  <Download className="w-4 h-4" />
+                                  <span className="hidden sm:inline">
+                                    Export Variations (
+                                    {groupedIllustrations[selectedRequest].variation.length})
+                                  </span>
+                                </button>
+                              </div>
+                            </div>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-6">
+                              {groupedIllustrations[selectedRequest].variation.map(
+                                (illustration, index) => (
+                                  <div
+                                    key={index}
+                                    className="border rounded-lg p-2 bg-white shadow-sm aspect-[5/4]"
+                                  >
+                                    <img
+                                      src={illustration.imageUrl}
+                                      alt={illustration.description || "Generated Illustration"}
+                                      className="w-full h-full object-contain rounded-md"
+                                    />
+                                  </div>
+                                )
+                              )}
+                            </div>
+                          </div>
+                        )}
                       </div>
                     ) : (
-                      <div className="text-center py-16 border-2 border-dashed border-slate-300 rounded-lg">
-                        <p className="text-slate-500">
-                          You don't have any illustrations yet.
-                        </p>
+                      <div>
+                        <h1 className="text-3xl font-bold mb-8 text-slate-800">
+                          Illustration Gallery
+                        </h1>
+                        {Object.keys(groupedIllustrations).length > 0 ? (
+                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            {Object.entries(groupedIllustrations).map(
+                              ([requestId, illustrationTypes]) => {
+                                const getRequestPreview = () => {
+                                  if (illustrationTypes.original.length > 0)
+                                    return illustrationTypes.original[0].imageUrl;
+                                  if (illustrationTypes.variation.length > 0)
+                                    return illustrationTypes.variation[0].imageUrl;
+                                  return "";
+                                };
+                                const theme =
+                                  illustrationTypes.original[0]?.theme ||
+                                  illustrationTypes.variation[0]?.theme;
+
+                                return (
+                                  <div
+                                    key={requestId}
+                                    onClick={() => handleSelectRequest(requestId)}
+                                    className="group cursor-pointer rounded-lg border border-purple-200 bg-white/50 shadow-lg shadow-slate-200/50 p-3 transition-all duration-300 hover:border-purple-400 hover:shadow-purple-200/50 flex items-center"
+                                  >
+                                    <div className="w-1/3 aspect-[5/4] overflow-hidden rounded-md bg-slate-100 flex-shrink-0">
+                                      <img
+                                        src={getRequestPreview()}
+                                        alt="Request Preview"
+                                        className="w-full h-full object-contain transition-transform duration-300 group-hover:scale-105"
+                                      />
+                                    </div>
+                                    <div className="w-2/3 pl-4">
+                                      <h2 className="text-base font-bold text-slate-800 truncate">
+                                        {theme || `Request: ${requestId}`}
+                                      </h2>
+                                      <p className="text-sm text-slate-500 mt-1">
+                                        {illustrationTypes.original.length +
+                                          illustrationTypes.variation.length}{" "}
+                                        illustrations
+                                      </p>
+                                    </div>
+                                  </div>
+                                );
+                              }
+                            )}
+                          </div>
+                        ) : (
+                          <div className="text-center py-16 border-2 border-dashed border-slate-300 rounded-lg">
+                            <p className="text-slate-500">
+                              You don't have any illustrations yet.
+                            </p>
+                          </div>
+                        )}
                       </div>
                     )}
-                  </div>
+                  </>
                 )}
               </>
             )}
@@ -555,8 +821,8 @@ export default function GalleryPage() {
         show={showExportModal}
         onClose={() => setShowExportModal(false)}
         onConfirm={confirmGalleryExport}
-        iconCount={iconsToExport.length}
-        mode={"icons"}
+        iconCount={iconsToExport.length > 0 ? iconsToExport.length : illustrationsToExport.length}
+        mode={iconsToExport.length > 0 ? "icons" : "illustrations"}
       />
 
       <ProgressModal show={showProgressModal} progress={exportProgress} />

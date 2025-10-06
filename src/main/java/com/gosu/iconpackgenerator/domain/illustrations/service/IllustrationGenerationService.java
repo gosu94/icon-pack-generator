@@ -26,6 +26,7 @@ public class IllustrationGenerationService {
     private final IllustrationPromptGenerationService illustrationPromptGenerationService;
     private final CoinManagementService coinManagementService;
     private final IllustrationPersistenceService illustrationPersistenceService;
+    private final IllustrationTrialModeService illustrationTrialModeService;
     
     public interface ProgressUpdateCallback {
         void onUpdate(ServiceProgressUpdate update);
@@ -76,20 +77,26 @@ public class IllustrationGenerationService {
         return bananaFuture.thenApply(bananaResults -> {
             IllustrationGenerationResponse finalResponse = createCombinedResponse(requestId, bananaResults, seed);
             
+            // Apply trial mode limitations if using trial coins
+            if (isTrialMode && "success".equals(finalResponse.getStatus())) {
+                log.info("Applying trial mode limitations to illustration response for request {}", requestId);
+                illustrationTrialModeService.applyTrialLimitations(finalResponse);
+            }
+            
             // Persist generated illustrations to database and file system
             if ("success".equals(finalResponse.getStatus())) {
                 try {
                     illustrationPersistenceService.persistGeneratedIllustrations(
                             requestId, request, finalResponse, user);
-                    log.info("Successfully persisted {} illustrations for request {}", 
-                            finalResponse.getIllustrations().size(), requestId);
+                    log.info("Successfully persisted {} illustrations for request {} (trial mode: {})", 
+                            finalResponse.getIllustrations().size(), requestId, isTrialMode);
                 } catch (Exception e) {
                     log.error("Error persisting illustrations for request {}", requestId, e);
                     // Don't fail the entire request if persistence fails
                 }
             }
             
-            // Send final completion update
+            // Send final completion update with limited illustrations
             if (progressCallback != null) {
                 progressCallback.onUpdate(ServiceProgressUpdate.allCompleteWithIcons(
                     requestId, finalResponse.getMessage(), convertToIconList(finalResponse.getIllustrations())));

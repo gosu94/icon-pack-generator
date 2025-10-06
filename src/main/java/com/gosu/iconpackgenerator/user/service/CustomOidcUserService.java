@@ -29,6 +29,9 @@ public class CustomOidcUserService extends OidcUserService {
     @Value("${app.file-storage.base-path}")
     private String baseStoragePath;
 
+    @Value("${app.illustrations-storage.base-path}")
+    private String illustrationStorageBasePath;
+
     public CustomOidcUserService(UserRepository userRepository, SignalMessageService signalMessageService) {
         this.userRepository = userRepository;
         this.signalMessageService = signalMessageService;
@@ -99,10 +102,15 @@ public class CustomOidcUserService extends OidcUserService {
 
     private void createUserDirectoryStructure(String userDirectoryPath) {
         try {
-            Path userPath = Paths.get(baseStoragePath, userDirectoryPath);
-            if (!Files.exists(userPath)) {
-                Files.createDirectories(userPath);
-                log.info("Created user directory: {}", userPath.toAbsolutePath());
+            Path userIconsPath = Paths.get(baseStoragePath, userDirectoryPath);
+            Path userIllustrationsPath = Paths.get(illustrationStorageBasePath, userDirectoryPath);
+            if (!Files.exists(userIconsPath)) {
+                Files.createDirectories(userIconsPath);
+                log.info("Created user directory: {}", userIconsPath.toAbsolutePath());
+            }
+            if (!Files.exists(userIllustrationsPath)) {
+                Files.createDirectories(userIllustrationsPath);
+                log.info("Created user directory: {}", userIllustrationsPath.toAbsolutePath());
             }
         } catch (Exception e) {
             log.error("Error creating user directory for: {}", userDirectoryPath, e);

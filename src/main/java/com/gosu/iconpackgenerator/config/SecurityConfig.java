@@ -82,7 +82,7 @@ public class SecurityConfig {
                 .requestMatchers("/api/user/**", "/api/icons/**", "/api/gallery/**").authenticated()
                 .requestMatchers("/api/admin/**").authenticated()
                 .requestMatchers("/generate-stream", "/stream/**", "/generate-more").authenticated()
-                .requestMatchers("/export", "/export-gallery").authenticated()
+                .requestMatchers("/export", "/export-gallery", "/export-gallery-illustrations").authenticated()
                 // All other requests (including home page) - public
                 .anyRequest().permitAll()
             )

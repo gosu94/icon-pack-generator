@@ -67,7 +67,22 @@ public class IllustrationPromptGenerationService {
                         .append(nonEmptyDescriptions.get(i))
                         .append("; ");
                 }
+                
+                // If less than 4 descriptions provided, instruct to fill remaining with theme-matching content
+                int descriptionsProvided = nonEmptyDescriptions.size();
+                if (descriptionsProvided < 4) {
+                    individualPrompts.append("\nFor positions ")
+                        .append(descriptionsProvided + 1)
+                        .append(" through 4, create additional illustrations that match the theme '")
+                        .append(generalDescription)
+                        .append("' and complement the specified illustrations above. ");
+                }
             }
+        }
+        
+        // If no individual descriptions, emphasize creating 4 distinct illustrations
+        if (individualPrompts.length() == 0) {
+            individualPrompts.append("Create 4 distinct but cohesive illustrations, all matching the theme. ");
         }
         
         String prompt = String.format(TEXT_TO_IMAGE_PROMPT_TEMPLATE, 
@@ -97,7 +112,25 @@ public class IllustrationPromptGenerationService {
                         .append(nonEmptyDescriptions.get(i))
                         .append("; ");
                 }
+                
+                // If less than 4 descriptions provided, instruct to fill remaining with theme-matching content
+                int descriptionsProvided = nonEmptyDescriptions.size();
+                if (descriptionsProvided < 4) {
+                    String theme = (generalDescription != null && !generalDescription.trim().isEmpty()) 
+                        ? generalDescription 
+                        : "the reference style";
+                    individualPrompts.append("\nFor positions ")
+                        .append(descriptionsProvided + 1)
+                        .append(" through 4, create additional illustrations that match ")
+                        .append(theme)
+                        .append(" and complement the specified illustrations above. ");
+                }
             }
+        }
+        
+        // If no individual descriptions, emphasize creating 4 distinct illustrations
+        if (individualPrompts.length() == 0) {
+            individualPrompts.append("Create 4 distinct but cohesive illustrations in the same style as the reference. ");
         }
         
         String theme = (generalDescription != null && !generalDescription.trim().isEmpty()) 

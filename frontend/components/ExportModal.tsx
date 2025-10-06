@@ -31,19 +31,13 @@ const ExportModal: React.FC<ExportModalProps> = ({
         }
   );
 
-  const [sizes, setSizes] = useState({
-    small: true,  // 250px
-    medium: true, // 500px
-    large: true,  // 1000px
-  });
+  
 
   const handleFormatChange = (format: keyof typeof formats) => {
     setFormats((prev) => ({ ...prev, [format]: !prev[format] }));
   };
 
-  const handleSizeChange = (size: keyof typeof sizes) => {
-    setSizes((prev) => ({ ...prev, [size]: !prev[size] }));
-  };
+  
 
   const handleConfirm = () => {
     const selectedFormats = Object.entries(formats)
@@ -51,10 +45,7 @@ const ExportModal: React.FC<ExportModalProps> = ({
       .map(([format]) => format);
 
     if (mode === "illustrations") {
-      const selectedSizes: number[] = [];
-      if (sizes.small) selectedSizes.push(250);
-      if (sizes.medium) selectedSizes.push(500);
-      if (sizes.large) selectedSizes.push(1000);
+      const selectedSizes = [250, 500, 1000];
       onConfirm(selectedFormats, selectedSizes);
     } else {
       onConfirm(selectedFormats);
@@ -67,7 +58,7 @@ const ExportModal: React.FC<ExportModalProps> = ({
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-white rounded-lg p-6 w-full max-w-md">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-medium text-gray-900">Export Icon Pack</h3>
+          <h3 className="text-lg font-medium text-gray-900">Export {mode === "icons" ? "Icon" : "Illustration"} Pack</h3>
           <button
             onClick={onClose}
             className="text-gray-400 hover:text-gray-600"
@@ -90,7 +81,7 @@ const ExportModal: React.FC<ExportModalProps> = ({
         
         <div className="space-y-4">
           <p className="text-gray-600 text-sm">
-            Select the formats {mode === "illustrations" ? "and sizes " : ""}you need for your {mode === "icons" ? "icon" : "illustration"} pack.
+            Select the formats you need for your {mode === "icons" ? "icon" : "illustration"} pack.
           </p>
           
           <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg p-4 border border-blue-100">
@@ -130,46 +121,7 @@ const ExportModal: React.FC<ExportModalProps> = ({
                   </div>
                 </div>
 
-                {mode === "illustrations" && (
-                  <div className="pt-4 border-t border-blue-200">
-                    <p className="text-sm font-semibold text-blue-900 mb-3">
-                      Choose sizes (5:4 ratio)
-                    </p>
-                    
-                    <div className="grid grid-cols-1 gap-3">
-                      <div className="flex items-center space-x-2">
-                        <Switch
-                          id="small"
-                          checked={sizes.small}
-                          onCheckedChange={() => handleSizeChange("small")}
-                        />
-                        <label htmlFor="small" className="text-sm font-medium text-gray-700 cursor-pointer">
-                          Small (250×200px)
-                        </label>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <Switch
-                          id="medium"
-                          checked={sizes.medium}
-                          onCheckedChange={() => handleSizeChange("medium")}
-                        />
-                        <label htmlFor="medium" className="text-sm font-medium text-gray-700 cursor-pointer">
-                          Medium (500×400px)
-                        </label>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <Switch
-                          id="large"
-                          checked={sizes.large}
-                          onCheckedChange={() => handleSizeChange("large")}
-                        />
-                        <label htmlFor="large" className="text-sm font-medium text-gray-700 cursor-pointer">
-                          Large (1000×800px)
-                        </label>
-                      </div>
-                    </div>
-                  </div>
-                )}
+                
               </div>
             </div>
           </div>

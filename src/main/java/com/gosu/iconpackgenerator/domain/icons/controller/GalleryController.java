@@ -233,4 +233,78 @@ public class GalleryController implements GalleryControllerAPI {
             return ResponseEntity.status(500).body(errorResponse);
         }
     }
+
+    /**
+     * Creates a 2x2 grid composition from first 4 illustrations of a specific request and illustration type
+     * This is used by the "Generate more" functionality for illustrations
+     */
+    @PostMapping("/api/gallery/compose-illustration-grid")
+    @ResponseBody
+    public ResponseEntity<Map<String, String>> composeIllustrationGrid(
+            @RequestBody Map<String, Object> request,
+            @AuthenticationPrincipal OAuth2User principal) {
+        try {
+            if (!(principal instanceof CustomOAuth2User customUser)) {
+                return ResponseEntity.status(401).build();
+            }
+
+            User user = customUser.getUser();
+            String requestId = (String) request.get("requestId");
+            String illustrationType = (String) request.get("illustrationType");
+
+            if (requestId == null || illustrationType == null) {
+                return ResponseEntity.badRequest().build();
+            }
+
+            if (!"original".equals(illustrationType) && !"variation".equals(illustrationType)) {
+                return ResponseEntity.badRequest().build();
+            }
+
+            // Get illustrations for this request and type
+            List<GeneratedIllustration> illustrations = generatedIllustrationRepository
+                    .findByRequestIdAndIllustrationType(requestId, illustrationType);
+            
+            if (illustrations.isEmpty()) {
+                return ResponseEntity.notFound().build();
+            }
+
+            // Check if user owns these illustrations (security check)
+            boolean userOwnsIllustrations = illustrations.stream().allMatch(illustration -> 
+                illustration.getUser().getId().equals(user.getId()));
+            
+            if (!userOwnsIllustrations) {
+                return ResponseEntity.status(403).build(); // Forbidden
+            }
+
+            // We need 4 illustrations for a 2x2 grid. If we have fewer, we'll repeat them to fill the grid.
+            // If we have more, the first 4 will be used.
+            List<String> illustrationPaths = illustrations.stream()
+                    .map(GeneratedIllustration::getFilePath)
+                    .toList();
+
+            List<String> gridIllustrationPaths = new java.util.ArrayList<>();
+            if (!illustrationPaths.isEmpty()) {
+                for (int i = 0; i < 4; i++) {
+                    gridIllustrationPaths.add(illustrationPaths.get(i % illustrationPaths.size()));
+                }
+            }
+
+            // Create the 2x2 grid composition for illustrations
+            String gridImageBase64 = gridCompositionService.composeIllustrationGrid(gridIllustrationPaths);
+
+            // Return the base64 image
+            Map<String, String> response = new HashMap<>();
+            response.put("gridImageBase64", gridImageBase64);
+            response.put("status", "success");
+
+            return ResponseEntity.ok(response);
+
+        } catch (Exception e) {
+            log.error("Error creating illustration grid composition", e);
+            Map<String, String> errorResponse = new HashMap<>();
+            errorResponse.put("error", "Failed to create illustration grid composition");
+            errorResponse.put("status", "error");
+            return ResponseEntity.status(500).body(errorResponse);
+        }
+    }
 }
