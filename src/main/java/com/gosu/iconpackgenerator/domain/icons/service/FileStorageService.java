@@ -17,7 +17,7 @@ public class FileStorageService {
     @Value("${app.file-storage.base-path}")
     private String baseStoragePath;
     
-    @Value("${app.file-storage.illustrations-path:static/user-illustrations}")
+    @Value("${app.illustrations-storage.base-path:static/user-illustrations}")
     private String illustrationsBasePath;
     
     /**

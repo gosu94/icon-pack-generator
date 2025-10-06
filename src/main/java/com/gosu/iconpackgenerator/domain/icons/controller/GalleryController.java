@@ -4,6 +4,8 @@ import com.gosu.iconpackgenerator.domain.icons.controller.api.GalleryControllerA
 import com.gosu.iconpackgenerator.domain.icons.entity.GeneratedIcon;
 import com.gosu.iconpackgenerator.domain.icons.repository.GeneratedIconRepository;
 import com.gosu.iconpackgenerator.domain.icons.service.GridCompositionService;
+import com.gosu.iconpackgenerator.domain.illustrations.entity.GeneratedIllustration;
+import com.gosu.iconpackgenerator.domain.illustrations.repository.GeneratedIllustrationRepository;
 import com.gosu.iconpackgenerator.user.model.User;
 import com.gosu.iconpackgenerator.user.service.CustomOAuth2User;
 import lombok.RequiredArgsConstructor;
@@ -25,6 +27,7 @@ import java.util.List;
 public class GalleryController implements GalleryControllerAPI {
 
     private final GeneratedIconRepository generatedIconRepository;
+    private final GeneratedIllustrationRepository generatedIllustrationRepository;
     private final GridCompositionService gridCompositionService;
 
     @Override
@@ -41,6 +44,24 @@ public class GalleryController implements GalleryControllerAPI {
             return ResponseEntity.ok(icons);
         } catch (Exception e) {
             log.error("Error retrieving user icons", e);
+            return ResponseEntity.status(500).build();
+        }
+    }
+
+    @Override
+    @GetMapping("/api/gallery/illustrations")
+    @ResponseBody
+    public ResponseEntity<List<GeneratedIllustration>> getUserIllustrations(@AuthenticationPrincipal OAuth2User principal) {
+        try {
+            if (!(principal instanceof CustomOAuth2User customUser)) {
+                return ResponseEntity.status(401).build();
+            }
+
+            User user = customUser.getUser();
+            List<GeneratedIllustration> illustrations = generatedIllustrationRepository.findByUserOrderByCreatedAtDesc(user);
+            return ResponseEntity.ok(illustrations);
+        } catch (Exception e) {
+            log.error("Error retrieving user illustrations", e);
             return ResponseEntity.status(500).build();
         }
     }

@@ -1,5 +1,6 @@
 package com.gosu.iconpackgenerator.domain.illustrations.entity;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
 import com.gosu.iconpackgenerator.user.model.User;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -28,6 +29,7 @@ public class GeneratedIllustration {
     
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
+    @JsonBackReference
     private User user;
     
     @Column(name = "file_name", nullable = false)
@@ -63,5 +65,9 @@ public class GeneratedIllustration {
     
     @Column(name = "illustration_type")
     private String illustrationType; // "original" or "variation"
+
+    public String getImageUrl() {
+        return this.filePath;
+    }
 }
 

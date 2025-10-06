@@ -53,12 +53,11 @@ public class IllustrationImageProcessingService {
             log.info("Processing illustration image data of size: {} bytes", imageData.length);
             long totalStartTime = System.currentTimeMillis();
             
-            // MANDATORY background removal for illustrations
-            log.info("Removing background from illustration grid image (mandatory step)");
-            byte[] processedImageData = backgroundRemovalService.removeBackground(imageData);
-            log.info("Background removal completed");
+//            log.info("Removing background from illustration grid image (mandatory step)");
+//            byte[] processedImageData = backgroundRemovalService.removeBackground(imageData);
+//            log.info("Background removal completed");
             
-            BufferedImage originalImage = ImageIO.read(new ByteArrayInputStream(processedImageData));
+            BufferedImage originalImage = ImageIO.read(new ByteArrayInputStream(imageData));
             
             if (originalImage == null) {
                 log.error("Failed to parse image data - ImageIO.read() returned null");

@@ -14,7 +14,7 @@ public class IllustrationPromptGenerationService {
     
     private static final String TEXT_TO_IMAGE_PROMPT_TEMPLATE = "Create a 2x2 arrangement of illustrations in a consistent style. \n" +
             "Each illustration should be contained within its own square area of equal size, with equal spacing between them. \n" +
-            "Use a transparent grid/division between the illustrations so they can be easily cropped out later.\n" +
+            "Use a white grid/division between the illustrations so they can be easily cropped out later.\n" +
             "\n" +
             "General theme: %s \n" +
             "%s" +
@@ -23,7 +23,7 @@ public class IllustrationPromptGenerationService {
             "- All illustrations should share the same style, color palette, and overall visual feel.  \n" +
             "- No text, labels, numbers, or captions anywhere in the image.  \n" +
             "- Ensure each illustration fits well within its square area with appropriate padding.  \n" +
-            "- The grid divisions should be clear enough to separate the illustrations, but not styled (no borders, no decorative lines — just transparent separation).  \n" +
+            "- The grid divisions should be clear enough to separate the illustrations, but not styled (no borders, no decorative lines — just white separation).  \n" +
             "\n" +
             "Final output: A clean 2x2 layout of 4 illustrations, ready for cropping. \n";
 
@@ -40,7 +40,7 @@ public class IllustrationPromptGenerationService {
                 "- Keep the same consistent color palette and professional look.  \n" +
                 "- No text, labels, numbers, or captions.  \n" +
                 "- Background should be white or transparent unless the theme requires otherwise.  \n" +
-                "- Include subtle transparent grid/division between illustrations so they can be cropped out individually.  \n" +
+                "- Include subtle white grid/division between illustrations so they can be cropped out individually.  \n" +
                 "- Ensure each illustration is clearly distinguishable and fits cleanly within its square area with appropriate padding.  \n" +
                 "\n" +
                 "Final output: A new 2x2 layout of 4 illustrations that look like part of the same series as the reference image. ";

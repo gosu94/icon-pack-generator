@@ -18,6 +18,12 @@ interface Icon {
   theme: string;
 }
 
+interface Illustration {
+  id: string;
+  prompt: string;
+  imageUrl: string;
+}
+
 type GroupedIcons = Record<string, { original: Icon[]; variation: Icon[] }>;
 
 export default function GalleryPage() {
@@ -26,12 +32,14 @@ export default function GalleryPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedRequest, setSelectedRequest] = useState<string | null>(null);
+  const [galleryType, setGalleryType] = useState<string | null>(null);
+  const [illustrations, setIllustrations] = useState<Illustration[]>([]);
 
   // Export state
   const [showExportModal, setShowExportModal] = useState(false);
   const [showProgressModal, setShowProgressModal] = useState(false);
   const [iconsToExport, setIconsToExport] = useState<Icon[]>([]);
-  
+
   const [exportProgress, setExportProgress] = useState({
     step: 1,
     message: "",
@@ -40,6 +48,8 @@ export default function GalleryPage() {
 
   useEffect(() => {
     const fetchIcons = async () => {
+      setLoading(true);
+      setError(null);
       try {
         const response = await fetch("/api/user/icons", {
           credentials: "include",
@@ -69,8 +79,33 @@ export default function GalleryPage() {
       }
     };
 
-    fetchIcons();
-  }, []);
+    const fetchIllustrations = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const response = await fetch("/api/gallery/illustrations", {
+          credentials: "include",
+        });
+        if (!response.ok) {
+          throw new Error("Failed to fetch illustrations");
+        }
+        const data: Illustration[] = await response.json();
+        setIllustrations(data);
+      } catch (err: any) {
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (galleryType === "icons") {
+      fetchIcons();
+    } else if (galleryType === "illustrations") {
+      fetchIllustrations();
+    } else {
+      setLoading(false);
+    }
+  }, [galleryType]);
 
   const handleSelectRequest = (requestId: string) => {
     setSelectedRequest(requestId);
@@ -87,7 +122,7 @@ export default function GalleryPage() {
 
   const handleGenerateMore = async (iconType: string) => {
     if (!selectedRequest) return;
-    
+
     try {
       // Call the backend to create the grid composition
       const response = await fetch("/api/gallery/compose-grid", {
@@ -105,7 +140,7 @@ export default function GalleryPage() {
       }
 
       const data = await response.json();
-      
+
       if (data.status === "success" && data.gridImageBase64) {
         // Convert base64 to blob and create URL
         const binaryString = atob(data.gridImageBase64);
@@ -114,12 +149,12 @@ export default function GalleryPage() {
           bytes[i] = binaryString.charCodeAt(i);
         }
         const blob = new Blob([bytes], { type: "image/png" });
-        
+
         // Store the grid image data in sessionStorage for the dashboard to use
         const gridImageUrl = URL.createObjectURL(blob);
         sessionStorage.setItem("generatedGridImage", gridImageUrl);
         sessionStorage.setItem("generateMoreMode", "true");
-        
+
         // Navigate to dashboard
         router.push("/dashboard");
       } else {
@@ -211,14 +246,49 @@ export default function GalleryPage() {
       <Navigation useLoginPage={true} />
       <div className="container mx-auto px-4 py-8">
         {loading && <p>Loading...</p>}
-        {error && <p className="text-red-500">{error}</p>}
-        {!loading && !error && (
+        {!loading && (
           <>
-            {selectedIconGroup && selectedRequest ? (
+            {!galleryType ? (
               <div>
+                <h1 className="text-3xl font-bold mb-8 text-slate-800 text-center">
+                  Gallery
+                </h1>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-3xl mx-auto">
+                  <div
+                    onClick={() => setGalleryType("icons")}
+                    className="group cursor-pointer rounded-xl border border-slate-200 bg-white p-6 transition-all duration-300 hover:border-purple-300 hover:shadow-lg hover:shadow-purple-100"
+                  >
+                    <h2 className="text-2xl font-bold text-slate-800 text-center">
+                      Icons
+                    </h2>
+                    <p className="text-slate-500 mt-2 text-center">
+                      Browse your generated icon packs.
+                    </p>
+                  </div>
+                  <div
+                    onClick={() => setGalleryType("illustrations")}
+                    className="group cursor-pointer rounded-xl border border-slate-200 bg-white p-6 transition-all duration-300 hover:border-blue-300 hover:shadow-lg hover:shadow-blue-100"
+                  >
+                    <h2 className="text-2xl font-bold text-slate-800 text-center">
+                      Illustrations
+                    </h2>
+                    <p className="text-slate-500 mt-2 text-center">
+                      Browse your generated illustrations.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <>
                 <button
-                  onClick={handleBackToGallery}
-                  className="mb-8 inline-flex items-center gap-2 rounded-md bg-purple-50 px-4 py-2 text-sm font-medium text-purple-600 hover:bg-purple-100 transition-colors"
+                  onClick={() => {
+                    setGalleryType(null);
+                    setSelectedRequest(null);
+                    setGroupedIcons({});
+                    setIllustrations([]);
+                    setError(null);
+                  }}
+                  className="mb-8 inline-flex items-center gap-2 rounded-md bg-slate-100 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-200 transition-colors"
                 >
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
@@ -233,170 +303,250 @@ export default function GalleryPage() {
                   >
                     <path d="M19 12H5m7 7l-7-7 7-7" />
                   </svg>
-                  Back to Gallery
+                  Back to Gallery Selection
                 </button>
 
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6">
-                  <h1 className="text-3xl font-bold text-slate-800 mb-4 sm:mb-0">
-                    {selectedIconGroup.original[0]?.theme ||
-                      selectedIconGroup.variation[0]?.theme ||
-                      `Request: ${selectedRequest}`}
-                  </h1>
-                  <button
-                    onClick={() =>
-                      openExportModal([
-                        ...selectedIconGroup.original,
-                        ...selectedIconGroup.variation,
-                      ])
-                    }
-                    className="px-2 sm:px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 flex items-center justify-center gap-2"
-                  >
-                    <Download className="w-4 h-4" />
-                    <span className="hidden sm:inline">
-                      Export All (
-                      {selectedIconGroup.original.length +
-                        selectedIconGroup.variation.length}{" "}
-                      icons)
-                    </span>
-                  </button>
-                </div>
+                {error && <p className="text-red-500">{error}</p>}
 
-                {selectedIconGroup.original.length > 0 && (
-                  <div className="mb-8 p-4 rounded-lg border border-slate-200/80 bg-white/50 shadow-lg shadow-slate-200/50">
-                    <div className="flex items-center justify-between mb-4">
-                      <h3 className="text-xl font-semibold text-slate-700">
-                        Original Icons
-                      </h3>
-                      <div className="flex gap-3">
+                {!error && galleryType === "icons" && (
+                  <>
+                    {selectedIconGroup && selectedRequest ? (
+                      <div>
                         <button
-                          onClick={() => handleGenerateMore("original")}
-                          className="px-2 sm:px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 flex items-center justify-center gap-2"
+                          onClick={handleBackToGallery}
+                          className="mb-8 inline-flex items-center gap-2 rounded-md bg-purple-50 px-4 py-2 text-sm font-medium text-purple-600 hover:bg-purple-100 transition-colors"
                         >
-                          <Sparkles className="w-4 h-4" />
-                          <span className="hidden sm:inline">Generate More</span>
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            width="16"
+                            height="16"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          >
+                            <path d="M19 12H5m7 7l-7-7 7-7" />
+                          </svg>
+                          Back to Gallery
                         </button>
-                        <button
-                          onClick={() =>
-                            openExportModal(selectedIconGroup.original)
-                          }
-                          className="px-2 sm:px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 flex items-center justify-center gap-2"
-                        >
-                          <Download className="w-4 h-4" />
-                          <span className="hidden sm:inline">
-                            Export Originals ({selectedIconGroup.original.length})
-                          </span>
-                        </button>
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
-                      {selectedIconGroup.original.map((icon, index) => (
-                        <div
-                          key={index}
-                          className="border rounded-lg p-2 bg-white shadow-sm"
-                        >
-                          <img
-                            src={icon.imageUrl}
-                            alt={icon.description || "Generated Icon"}
-                            className="w-full h-auto object-cover rounded-md"
-                          />
+
+                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6">
+                          <h1 className="text-3xl font-bold text-slate-800 mb-4 sm:mb-0">
+                            {selectedIconGroup.original[0]?.theme ||
+                              selectedIconGroup.variation[0]?.theme ||
+                              `Request: ${selectedRequest}`}
+                          </h1>
+                          <button
+                            onClick={() =>
+                              openExportModal([
+                                ...selectedIconGroup.original,
+                                ...selectedIconGroup.variation,
+                              ])
+                            }
+                            className="px-2 sm:px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 flex items-center justify-center gap-2"
+                          >
+                            <Download className="w-4 h-4" />
+                            <span className="hidden sm:inline">
+                              Export All (
+                              {selectedIconGroup.original.length +
+                                selectedIconGroup.variation.length}{" "}
+                              icons)
+                            </span>
+                          </button>
                         </div>
-                      ))}
-                    </div>
-                  </div>
+
+                        {selectedIconGroup.original.length > 0 && (
+                          <div className="mb-8 p-4 rounded-lg border border-slate-200/80 bg-white/50 shadow-lg shadow-slate-200/50">
+                            <div className="flex items-center justify-between mb-4">
+                              <h3 className="text-xl font-semibold text-slate-700">
+                                Original Icons
+                              </h3>
+                              <div className="flex gap-3">
+                                <button
+                                  onClick={() => handleGenerateMore("original")}
+                                  className="px-2 sm:px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 flex items-center justify-center gap-2"
+                                >
+                                  <Sparkles className="w-4 h-4" />
+                                  <span className="hidden sm:inline">
+                                    Generate More
+                                  </span>
+                                </button>
+                                <button
+                                  onClick={() =>
+                                    openExportModal(
+                                      selectedIconGroup.original
+                                    )
+                                  }
+                                  className="px-2 sm:px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 flex items-center justify-center gap-2"
+                                >
+                                  <Download className="w-4 h-4" />
+                                  <span className="hidden sm:inline">
+                                    Export Originals (
+                                    {selectedIconGroup.original.length})
+                                  </span>
+                                </button>
+                              </div>
+                            </div>
+                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                              {selectedIconGroup.original.map(
+                                (icon, index) => (
+                                  <div
+                                    key={index}
+                                    className="border rounded-lg p-2 bg-white shadow-sm"
+                                  >
+                                    <img
+                                      src={icon.imageUrl}
+                                      alt={icon.description || "Generated Icon"}
+                                      className="w-full h-auto object-cover rounded-md"
+                                    />
+                                  </div>
+                                )
+                              )}
+                            </div>
+                          </div>
+                        )}
+
+                        {selectedIconGroup.variation.length > 0 && (
+                          <div className="p-4 rounded-lg border border-slate-200/80 bg-white/50 shadow-lg shadow-slate-200/50">
+                            <div className="flex items-center justify-between mb-4">
+                              <h3 className="text-xl font-semibold text-slate-700">
+                                Variations
+                              </h3>
+                              <div className="flex gap-3">
+                                <button
+                                  onClick={() =>
+                                    handleGenerateMore("variation")
+                                  }
+                                  className="px-2 sm:px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 flex items-center justify-center gap-2"
+                                >
+                                  <Sparkles className="w-4 h-4" />
+                                  <span className="hidden sm:inline">
+                                    Generate More
+                                  </span>
+                                </button>
+                                <button
+                                  onClick={() =>
+                                    openExportModal(
+                                      selectedIconGroup.variation
+                                    )
+                                  }
+                                  className="px-2 sm:px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 flex items-center justify-center gap-2"
+                                >
+                                  <Download className="w-4 h-4" />
+                                  <span className="hidden sm:inline">
+                                    Export Variations (
+                                    {selectedIconGroup.variation.length})
+                                  </span>
+                                </button>
+                              </div>
+                            </div>
+                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                              {selectedIconGroup.variation.map(
+                                (icon, index) => (
+                                  <div
+                                    key={index}
+                                    className="border rounded-lg p-2 bg-white shadow-sm"
+                                  >
+                                    <img
+                                      src={icon.imageUrl}
+                                      alt={
+                                        icon.description || "Generated Icon"
+                                      }
+                                      className="w-full h-auto object-cover rounded-md"
+                                    />
+                                  </div>
+                                )
+                              )}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <div>
+                        <h1 className="text-3xl font-bold mb-8 text-slate-800">
+                          Icon Pack Gallery
+                        </h1>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                          {Object.entries(groupedIcons).map(
+                            ([requestId, iconTypes]) => {
+                              const getRequestPreview = () => {
+                                if (iconTypes.original.length > 0)
+                                  return iconTypes.original[0].imageUrl;
+                                if (iconTypes.variation.length > 0)
+                                  return iconTypes.variation[0].imageUrl;
+                                return "";
+                              };
+                              const theme =
+                                iconTypes.original[0]?.theme ||
+                                iconTypes.variation[0]?.theme;
+
+                              return (
+                                <div
+                                  key={requestId}
+                                  onClick={() => handleSelectRequest(requestId)}
+                                  className="group cursor-pointer rounded-lg border border-purple-200 bg-white/50 shadow-lg shadow-slate-200/50 p-3 transition-all duration-300 hover:border-purple-400 hover:shadow-purple-200/50 flex items-center"
+                                >
+                                  <div className="w-1/3 aspect-square overflow-hidden rounded-md bg-slate-100 flex-shrink-0">
+                                    <img
+                                      src={getRequestPreview()}
+                                      alt="Request Preview"
+                                      className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                                    />
+                                  </div>
+                                  <div className="w-2/3 pl-4">
+                                    <h2 className="text-base font-bold text-slate-800 truncate">
+                                      {theme || `Request: ${requestId}`}
+                                    </h2>
+                                    <p className="text-sm text-slate-500 mt-1">
+                                      {iconTypes.original.length +
+                                        iconTypes.variation.length}{" "}
+                                      icons
+                                    </p>
+                                  </div>
+                                </div>
+                              );
+                            }
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </>
                 )}
 
-                {selectedIconGroup.variation.length > 0 && (
-                  <div className="p-4 rounded-lg border border-slate-200/80 bg-white/50 shadow-lg shadow-slate-200/50">
-                    <div className="flex items-center justify-between mb-4">
-                      <h3 className="text-xl font-semibold text-slate-700">
-                        Variations
-                      </h3>
-                      <div className="flex gap-3">
-                        <button
-                          onClick={() => handleGenerateMore("variation")}
-                          className="px-2 sm:px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 flex items-center justify-center gap-2"
-                        >
-                          <Sparkles className="w-4 h-4" />
-                          <span className="hidden sm:inline">Generate More</span>
-                        </button>
-                        <button
-                          onClick={() =>
-                            openExportModal(selectedIconGroup.variation)
-                          }
-                          className="px-2 sm:px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 flex items-center justify-center gap-2"
-                        >
-                          <Download className="w-4 h-4" />
-                          <span className="hidden sm:inline">
-                            Export Variations ({selectedIconGroup.variation.length})
-                          </span>
-                        </button>
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
-                      {selectedIconGroup.variation.map((icon, index) => (
-                        <div
-                          key={index}
-                          className="border rounded-lg p-2 bg-white shadow-sm"
-                        >
-                          <img
-                            src={icon.imageUrl}
-                            alt={icon.description || "Generated Icon"}
-                            className="w-full h-auto object-cover rounded-md"
-                          />
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            ) : (
-              <div>
-                <h1 className="text-3xl font-bold mb-8 text-slate-800">
-                  Icon Pack Gallery
-                </h1>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {Object.entries(groupedIcons).map(
-                    ([requestId, iconTypes]) => {
-                      const getRequestPreview = () => {
-                        if (iconTypes.original.length > 0)
-                          return iconTypes.original[0].imageUrl;
-                        if (iconTypes.variation.length > 0)
-                          return iconTypes.variation[0].imageUrl;
-                        return "";
-                      };
-                      const theme =
-                        iconTypes.original[0]?.theme ||
-                        iconTypes.variation[0]?.theme;
-
-                      return (
-                        <div
-                          key={requestId}
-                          onClick={() => handleSelectRequest(requestId)}
-                          className="group cursor-pointer rounded-lg border border-purple-200 bg-white/50 shadow-lg shadow-slate-200/50 p-3 transition-all duration-300 hover:border-purple-400 hover:shadow-purple-200/50 flex items-center"
-                        >
-                          <div className="w-1/3 aspect-square overflow-hidden rounded-md bg-slate-100 flex-shrink-0">
+                {!error && galleryType === "illustrations" && (
+                  <div>
+                    <h1 className="text-3xl font-bold mb-8 text-slate-800">
+                      Illustration Gallery
+                    </h1>
+                    {illustrations.length > 0 ? (
+                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 gap-4">
+                        {illustrations.map((illustration, index) => (
+                          <div
+                            key={index}
+                            className="border rounded-lg p-2 bg-white shadow-sm"
+                          >
                             <img
-                              src={getRequestPreview()}
-                              alt="Request Preview"
-                              className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                              src={illustration.imageUrl}
+                              alt={
+                                illustration.prompt || "Generated Illustration"
+                              }
+                              className="w-full h-auto object-cover rounded-md"
                             />
                           </div>
-                          <div className="w-2/3 pl-4">
-                            <h2 className="text-base font-bold text-slate-800 truncate">
-                              {theme || `Request: ${requestId}`}
-                            </h2>
-                            <p className="text-sm text-slate-500 mt-1">
-                              {iconTypes.original.length +
-                                iconTypes.variation.length}{" "}
-                              icons
-                            </p>
-                          </div>
-                        </div>
-                      );
-                    },
-                  )}
-                </div>
-              </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-center py-16 border-2 border-dashed border-slate-300 rounded-lg">
+                        <p className="text-slate-500">
+                          You don't have any illustrations yet.
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </>
             )}
           </>
         )}

@@ -24,7 +24,10 @@ public class WebConfig implements WebMvcConfigurer {
     private String outputDir;
     
     @Value("${app.file-storage.base-path}")
-    private String fileStorageBasePath;
+    private String iconStorageBasePath;
+
+    @Value("${app.illustrations-storage.base-path}")
+    private String illustrationStorageBasePath;
 
     @Override
     public void addResourceHandlers(ResourceHandlerRegistry registry) {
@@ -52,10 +55,17 @@ public class WebConfig implements WebMvcConfigurer {
                 .addResourceLocations("classpath:/META-INF/resources/webjars/swagger-ui/");
 
         // Serve user-generated icons from the file storage directory
-        Path userIconsPath = Paths.get(fileStorageBasePath);
+        Path userIconsPath = Paths.get(iconStorageBasePath);
         String userIconsResourceLocation = userIconsPath.toUri().toString();
         registry.addResourceHandler("/user-icons/**")
                 .addResourceLocations(userIconsResourceLocation)
+                .setCachePeriod(3600); // Cache for 1 hour
+
+        // Serve user-generated illustrations from the file storage directory
+        Path userIllustrationsPath = Paths.get(illustrationStorageBasePath);
+        String userIllustrationsResourceLocation = userIllustrationsPath.toUri().toString();
+        registry.addResourceHandler("/user-illustrations/**")
+                .addResourceLocations(userIllustrationsResourceLocation)
                 .setCachePeriod(3600); // Cache for 1 hour
 
         // Handle SPA routing - serve index.html for all routes that don't match API endpoints

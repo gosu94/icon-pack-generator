@@ -66,4 +66,8 @@ public class GeneratedIcon {
     
     @Column(name = "icon_type")
     private String iconType; // "original" or "variation"
+
+    public String getImageUrl() {
+        return this.filePath;
+    }
 }
