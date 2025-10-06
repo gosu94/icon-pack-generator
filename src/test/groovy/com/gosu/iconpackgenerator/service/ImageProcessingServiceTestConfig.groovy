@@ -1,34 +1,14 @@
 package com.gosu.iconpackgenerator.service
 
-import com.gosu.iconpackgenerator.domain.icons.service.BackgroundRemovalService
-import com.gosu.iconpackgenerator.domain.icons.service.ImageProcessingService
 import org.springframework.boot.test.context.TestConfiguration
-import org.springframework.context.annotation.Bean
-import org.springframework.context.annotation.Primary
 
 /**
  * Test configuration for ImageProcessingService tests.
- * Only loads the necessary beans to avoid Spring Boot context loading issues.
+ * The actual beans are created by Spring Boot auto-configuration.
+ * Test properties in application-test.properties disable external dependencies.
  */
 @TestConfiguration
 class ImageProcessingServiceTestConfig {
-
-    @Bean
-    @Primary
-    BackgroundRemovalService backgroundRemovalService() {
-        // Create a simple test implementation that returns input unchanged
-        return new BackgroundRemovalService() {
-            @Override
-            byte[] removeBackground(byte[] imageData) {
-                // Return the input unchanged for test purposes
-                return imageData
-            }
-        }
-    }
-
-    @Bean
-    @Primary
-    ImageProcessingService imageProcessingService(BackgroundRemovalService backgroundRemovalService) {
-        return new ImageProcessingService(backgroundRemovalService)
-    }
+    // Empty configuration - rely on Spring Boot auto-configuration
+    // with test properties that disable external services
 }

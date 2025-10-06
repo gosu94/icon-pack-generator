@@ -1,5 +1,6 @@
 package com.gosu.iconpackgenerator.service
 
+import com.gosu.iconpackgenerator.config.TestSecurityConfig
 import com.gosu.iconpackgenerator.domain.icons.service.ImageProcessingService
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
@@ -22,7 +23,7 @@ import java.nio.file.Paths
 
 @SpringBootTest(classes = [IconPackGeneratorApplication])
 @ActiveProfiles("test")
-@ContextConfiguration(classes = [ImageProcessingServiceTestConfig, com.gosu.iconpackgenerator.config.TestSecurityConfig])
+@ContextConfiguration(classes = [ImageProcessingServiceTestConfig, TestSecurityConfig])
 @Stepwise
 class ImageProcessingServiceSpec extends Specification {
 

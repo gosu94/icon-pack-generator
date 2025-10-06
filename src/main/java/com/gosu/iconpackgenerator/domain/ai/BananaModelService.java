@@ -104,7 +104,7 @@ public class BananaModelService implements AIModelService {
         input.put("prompt", prompt);
         input.put("num_images", 1); // Generate 1 image
         input.put("output_format", "png"); // Use PNG for better quality icons
-        input.put("aspect_ratio", "1:1"); // Square aspect ratio for icons
+        input.put("aspect_ratio", "4:3"); // Square aspect ratio for icons
         
         log.debug("Banana text-to-image input parameters: {}", input);
         return input;
@@ -188,7 +188,7 @@ public class BananaModelService implements AIModelService {
         input.put("image_urls", List.of(imageDataUri)); // Banana expects a list of image URLs/data URIs
         input.put("num_images", 1); // Generate 1 image
         input.put("output_format", "png"); // Use PNG for better quality icons
-        input.put("aspect_ratio", "1:1"); // Square aspect ratio for icons
+        input.put("aspect_ratio", "4:3"); // Square aspect ratio for icons
         
         log.debug("Banana image-to-image input parameters: {}", input);
         return input;
