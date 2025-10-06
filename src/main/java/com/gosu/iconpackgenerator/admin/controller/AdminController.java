@@ -2,9 +2,9 @@ package com.gosu.iconpackgenerator.admin.controller;
 
 import com.gosu.iconpackgenerator.admin.dto.UserAdminDto;
 import com.gosu.iconpackgenerator.admin.service.AdminService;
-import com.gosu.iconpackgenerator.domain.dto.IconDto;
-import com.gosu.iconpackgenerator.domain.entity.GeneratedIcon;
-import com.gosu.iconpackgenerator.domain.repository.GeneratedIconRepository;
+import com.gosu.iconpackgenerator.domain.icons.dto.IconDto;
+import com.gosu.iconpackgenerator.domain.icons.entity.GeneratedIcon;
+import com.gosu.iconpackgenerator.domain.icons.repository.GeneratedIconRepository;
 import com.gosu.iconpackgenerator.user.model.User;
 import com.gosu.iconpackgenerator.user.repository.UserRepository;
 import com.gosu.iconpackgenerator.user.service.CustomOAuth2User;

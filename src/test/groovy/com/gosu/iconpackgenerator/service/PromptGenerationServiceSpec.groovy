@@ -1,6 +1,6 @@
 package com.gosu.iconpackgenerator.service
 
-import com.gosu.iconpackgenerator.domain.service.PromptGenerationService
+import com.gosu.iconpackgenerator.domain.icons.service.PromptGenerationService
 import spock.lang.Specification
 
 class PromptGenerationServiceSpec extends Specification {

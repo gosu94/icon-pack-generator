@@ -1,6 +1,6 @@
 package com.gosu.iconpackgenerator.service
 
-import com.gosu.iconpackgenerator.domain.service.ImageProcessingService
+import com.gosu.iconpackgenerator.domain.icons.service.ImageProcessingService
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.test.context.ActiveProfiles

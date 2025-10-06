@@ -1,6 +1,6 @@
 package com.gosu.iconpackgenerator.user.model;
 
-import com.gosu.iconpackgenerator.domain.entity.GeneratedIcon;
+import com.gosu.iconpackgenerator.domain.icons.entity.GeneratedIcon;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;

@@ -1,7 +1,7 @@
 package com.gosu.iconpackgenerator.config;
 
 import ai.fal.client.FalClient;
-import com.gosu.iconpackgenerator.domain.model.AIModelConfig;
+import com.gosu.iconpackgenerator.domain.icons.model.AIModelConfig;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Bean;
