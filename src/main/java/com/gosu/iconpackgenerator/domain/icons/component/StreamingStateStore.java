@@ -13,17 +13,23 @@ import java.util.concurrent.ConcurrentHashMap;
 @ApplicationScope
 public class StreamingStateStore {
 
-    private final Map<String, IconGenerationRequest> streamingRequests = new ConcurrentHashMap<>();
+    private final Map<String, Object> streamingRequests = new ConcurrentHashMap<>();
     private final Map<String, SseEmitter> activeEmitters = new ConcurrentHashMap<>();
-    private final Map<String, IconGenerationResponse> generationResults = new ConcurrentHashMap<>();
+    private final Map<String, Object> generationResults = new ConcurrentHashMap<>();
 
     // Methods for streamingRequests
-    public void addRequest(String requestId, IconGenerationRequest request) {
+    public void addRequest(String requestId, Object request) {
         streamingRequests.put(requestId, request);
     }
 
-    public IconGenerationRequest getRequest(String requestId) {
-        return streamingRequests.get(requestId);
+    @SuppressWarnings("unchecked")
+    public <T> T getRequest(String requestId) {
+        return (T) streamingRequests.get(requestId);
+    }
+    
+    // Legacy method for backward compatibility
+    public IconGenerationRequest getIconRequest(String requestId) {
+        return (IconGenerationRequest) streamingRequests.get(requestId);
     }
 
     public void removeRequest(String requestId) {
@@ -44,12 +50,18 @@ public class StreamingStateStore {
     }
 
     // Methods for generationResults
-    public void addResponse(String requestId, IconGenerationResponse response) {
+    public void addResponse(String requestId, Object response) {
         generationResults.put(requestId, response);
     }
 
-    public IconGenerationResponse getResponse(String requestId) {
-        return generationResults.get(requestId);
+    @SuppressWarnings("unchecked")
+    public <T> T getResponse(String requestId) {
+        return (T) generationResults.get(requestId);
+    }
+    
+    // Legacy method for backward compatibility
+    public IconGenerationResponse getIconResponse(String requestId) {
+        return (IconGenerationResponse) generationResults.get(requestId);
     }
 
     public void removeResponse(String requestId) {

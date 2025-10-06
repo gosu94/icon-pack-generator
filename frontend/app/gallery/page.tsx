@@ -406,6 +406,7 @@ export default function GalleryPage() {
         onClose={() => setShowExportModal(false)}
         onConfirm={confirmGalleryExport}
         iconCount={iconsToExport.length}
+        mode={"icons"}
       />
 
       <ProgressModal show={showProgressModal} progress={exportProgress} />

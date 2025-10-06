@@ -7,6 +7,7 @@ import {
   StreamingResults,
   GenerationResponse,
   UIState,
+  GenerationMode,
 } from "@/lib/types";
 import Navigation from "../../components/Navigation";
 import GeneratorForm from "../../components/GeneratorForm";
@@ -17,6 +18,9 @@ import { useAuth } from "@/context/AuthContext";
 
 export default function Page() {
   const { authState, checkAuthenticationStatus } = useAuth();
+
+  // Mode state
+  const [mode, setMode] = useState<GenerationMode>("icons");
 
   // Form state
   const [inputType, setInputType] = useState("text");
@@ -82,8 +86,9 @@ export default function Page() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    setIndividualDescriptions(new Array(9).fill(""));
-  }, []);
+    const count = mode === "illustrations" ? 4 : 9;
+    setIndividualDescriptions(new Array(count).fill(""));
+  }, [mode]);
 
   // Handle generate more mode from gallery
   useEffect(() => {
@@ -518,13 +523,19 @@ export default function Page() {
         return newProgress;
       });
     }, 100);
-    const formData: any = {
-            iconCount: 9,
-      generationsPerService: generateVariations ? 2 : 1,
-      individualDescriptions: individualDescriptions.filter((desc) =>
-        desc.trim(),
-      ),
-    };
+    const count = mode === "illustrations" ? 4 : 9;
+    const formData: any = mode === "illustrations" 
+      ? {
+          illustrationCount: count,
+          generationsPerService: generateVariations ? 2 : 1,
+          individualDescriptions: individualDescriptions.filter((desc) => desc.trim()),
+        }
+      : {
+          iconCount: count,
+          generationsPerService: generateVariations ? 2 : 1,
+          individualDescriptions: individualDescriptions.filter((desc) => desc.trim()),
+        };
+        
     if (inputType === "text") {
       formData.generalDescription = generalDescription.trim();
     } else if (inputType === "image" && referenceImage) {
@@ -542,7 +553,10 @@ export default function Page() {
     }
     setCurrentRequest({ ...formData });
     try {
-      const response = await fetch("/generate-stream", {
+      const endpoint = mode === "illustrations" 
+        ? "/api/illustrations/generate/stream/start"
+        : "/generate-stream";
+      const response = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -566,7 +580,10 @@ export default function Page() {
         currentEventSourceRef.current.close();
       }
       
-      const eventSource = new EventSource(`/stream/${requestId}`);
+      const streamEndpoint = mode === "illustrations"
+        ? `/api/illustrations/generate/stream/${requestId}`
+        : `/stream/${requestId}`;
+      const eventSource = new EventSource(streamEndpoint);
       currentEventSourceRef.current = eventSource;
       
       eventSource.addEventListener("service_update", (event) => {
@@ -869,15 +886,17 @@ export default function Page() {
     setShowExportModal(true);
   };
 
-  const confirmExport = (formats: string[]) => {
+  const confirmExport = (formats: string[], sizes?: number[]) => {
     if (exportContext) {
       const { requestId, serviceName, generationIndex } = exportContext;
-      const fileName = `icon-pack-${requestId}-${serviceName}-gen${generationIndex}.zip`;
+      const packType = mode === "icons" ? "icon" : "illustration";
+      const fileName = `${packType}-pack-${requestId}-${serviceName}-gen${generationIndex}.zip`;
       const exportData = {
         requestId: requestId,
         serviceName: serviceName,
         generationIndex: generationIndex,
         formats: formats,
+        sizes: sizes,
       };
       setShowExportModal(false);
       downloadZip(exportData, fileName);
@@ -886,6 +905,7 @@ export default function Page() {
 
   const downloadZip = async (exportData: any, fileName: string) => {
     setShowProgressModal(true);
+    const itemType = mode === "icons" ? "icons" : "illustrations";
     setExportProgress({
       step: 1,
       message: "Preparing export request...",
@@ -895,11 +915,12 @@ export default function Page() {
       setTimeout(() => {
         setExportProgress({
           step: 2,
-          message: "Converting icons to multiple formats and sizes...",
+          message: `Converting ${itemType} to multiple formats and sizes...`,
           percent: 50,
         });
       }, 500);
-      const response = await fetch("/export", {
+      const endpoint = mode === "icons" ? "/export" : "/api/illustrations/export";
+      const response = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -929,12 +950,12 @@ export default function Page() {
         a.click();
         window.URL.revokeObjectURL(url);
         document.body.removeChild(a);
-        // Icon pack downloaded successfully
+        // Pack downloaded successfully
       }, 1000);
     } catch (error) {
-      console.error("Error exporting icons:", error);
+      console.error(`Error exporting ${itemType}:`, error);
       setShowProgressModal(false);
-      setErrorMessage("Failed to export icons. Please try again.");
+      setErrorMessage(`Failed to export ${itemType}. Please try again.`);
       setUiState("error");
     }
   };
@@ -1103,6 +1124,151 @@ export default function Page() {
     }
   };
 
+  const generateMoreIllustrations = async (
+    serviceId: string,
+    serviceName: string,
+    generationIndex: number,
+  ) => {
+    // Check if user has enough coins (regular coins or trial coins)
+    if (authState.user) {
+      const regularCoins = authState.user.coins || 0;
+      const trialCoins = authState.user.trialCoins || 0;
+      
+      if (regularCoins < 1 && trialCoins === 0) {
+        setErrorMessage("Insufficient coins. You need 1 coin to generate more illustrations.");
+        setUiState("error");
+        return;
+      }
+    }
+
+    const uniqueId = `${serviceId}-gen${generationIndex}`;
+    const descriptions = moreIconsDescriptions[uniqueId] || [];
+    const serviceResults = getServiceResults(serviceId, generationIndex);
+    if (!serviceResults?.originalGridImageBase64) {
+      setErrorMessage("Original image not found for this service");
+      setUiState("error");
+      return;
+    }
+
+    setIsGenerating(true);
+    setOverallProgress(0);
+    if (overallProgressTimerRef.current) {
+      clearInterval(overallProgressTimerRef.current);
+    }
+
+    let duration = 35000; // Default duration
+    setTotalDuration(duration);
+    const increment = 100 / (duration / 100);
+    overallProgressTimerRef.current = setInterval(() => {
+      setOverallProgress((prev) => {
+        const newProgress = prev + increment;
+        if (newProgress >= 100) {
+          if (overallProgressTimerRef.current) {
+            clearInterval(overallProgressTimerRef.current);
+          }
+          return 100;
+        }
+        return newProgress;
+      });
+    }, 100);
+
+    // Show progress for the specific generation
+    setStreamingResults((prev) => ({
+      ...prev,
+      [uniqueId]: {
+        ...prev[uniqueId],
+        status: "started",
+        message: "Generating more illustrations...",
+      },
+    }));
+
+    const moreIllustrationsRequest = {
+      originalRequestId: currentResponse?.requestId,
+      serviceName: serviceId,
+      originalImageBase64: serviceResults.originalGridImageBase64,
+      generalDescription: currentRequest?.generalDescription,
+      illustrationDescriptions: descriptions,
+      seed: serviceResults.seed,
+      generationIndex: generationIndex,
+    };
+
+    try {
+      const response = await fetch("/api/illustrations/generate/more", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(moreIllustrationsRequest),
+      });
+      if (!response.ok)
+        throw new Error(`HTTP error! status: ${response.status}`);
+      const data = await response.json();
+
+      if (data.status === "success") {
+        // Update current icons list
+        setCurrentIcons((prev) => prev.concat(data.newIllustrations));
+
+        // Update streaming results
+        const previousIconCount =
+          streamingResults[uniqueId]?.icons?.length || 0;
+        setStreamingResults((prev) => ({
+          ...prev,
+          [uniqueId]: {
+            ...prev[uniqueId],
+            status: "success",
+            message: "More illustrations generated successfully",
+            icons: [...(prev[uniqueId]?.icons || []), ...data.newIllustrations],
+          },
+        }));
+
+        // Animate new illustrations
+        setTimeout(() => {
+          setAnimatingIcons((prev) => ({
+            ...prev,
+            [uniqueId]: previousIconCount,
+          }));
+          for (let i = 0; i < data.newIllustrations.length; i++) {
+            setTimeout(() => {
+              setAnimatingIcons((prev) => ({
+                ...prev,
+                [uniqueId]: previousIconCount + i + 1,
+              }));
+            }, i * 150);
+          }
+        }, 200);
+
+        hideMoreIconsForm(uniqueId);
+        // Refresh coins after successful more illustrations generation
+        checkAuthenticationStatus();
+      } else {
+        // Show error in streaming results
+        setStreamingResults((prev) => ({
+          ...prev,
+          [uniqueId]: {
+            ...prev[uniqueId],
+            status: "error",
+            message: data.message || "Failed to generate more illustrations",
+          },
+        }));
+      }
+    } catch (error) {
+      console.error("Error generating more illustrations:", error);
+      setStreamingResults((prev) => ({
+        ...prev,
+        [uniqueId]: {
+          ...prev[uniqueId],
+          status: "error",
+          message: "Failed to generate more illustrations. Please try again.",
+        },
+      }));
+    } finally {
+      setIsGenerating(false);
+      if (overallProgressTimerRef.current) {
+        clearInterval(overallProgressTimerRef.current);
+      }
+      setOverallProgress(100); // Ensure progress is complete
+    }
+  };
+
   const getServiceResults = (
     serviceId: string,
     generationIndex: number,
@@ -1141,6 +1307,8 @@ export default function Page() {
       <Navigation useLoginPage={true} />
       <div className="flex flex-col lg:flex-row lg:h-screen">
         <GeneratorForm
+          mode={mode}
+          setMode={setMode}
           inputType={inputType}
           setInputType={setInputType}
           generateVariations={generateVariations}
@@ -1161,6 +1329,7 @@ export default function Page() {
         />
 
         <ResultsDisplay
+          mode={mode}
           uiState={uiState}
           generateVariations={generateVariations}
           isGenerating={isGenerating}
@@ -1177,6 +1346,7 @@ export default function Page() {
           showMoreIconsForm={showMoreIconsForm}
           hideMoreIconsForm={hideMoreIconsForm}
           generateMoreIcons={generateMoreIcons}
+          generateMoreIllustrations={generateMoreIllustrations}
           moreIconsDescriptions={moreIconsDescriptions}
           setMoreIconsDescriptions={setMoreIconsDescriptions}
           getServiceDisplayName={getServiceDisplayName}
@@ -1194,6 +1364,7 @@ export default function Page() {
               ]?.icons?.length || 0
             : 0
         }
+        mode={mode}
       />
 
       <ProgressModal show={showProgressModal} progress={exportProgress} />

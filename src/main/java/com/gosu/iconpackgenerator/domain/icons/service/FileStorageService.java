@@ -17,6 +17,9 @@ public class FileStorageService {
     @Value("${app.file-storage.base-path}")
     private String baseStoragePath;
     
+    @Value("${app.file-storage.illustrations-path:static/user-illustrations}")
+    private String illustrationsBasePath;
+    
     /**
      * Save a base64 icon to the file system
      * @param userDirectoryPath The user's directory path (e.g., "default-user")
@@ -131,5 +134,123 @@ public class FileStorageService {
             return Files.readAllBytes(filePath);
         }
         throw new IOException("File not found: " + filePath.toString());
+    }
+    
+    // ========== Illustration-specific methods ==========
+    
+    /**
+     * Save a base64 illustration to the file system
+     * @param userDirectoryPath The user's directory path (e.g., "default-user")
+     * @param requestId The request ID to group illustrations
+     * @param illustrationType The illustration type ("original" or "variation")
+     * @param fileName The file name (should include extension)
+     * @param base64Data The base64 encoded image data
+     * @return The full file path where the illustration was saved
+     */
+    public String saveIllustration(String userDirectoryPath, String requestId, String illustrationType, 
+                                   String fileName, String base64Data) {
+        try {
+            // Create the full directory path: illustrationsBasePath/userDirectoryPath/requestId/illustrationType
+            Path directoryPath = Paths.get(illustrationsBasePath, userDirectoryPath, requestId, illustrationType);
+            
+            // Create directories if they don't exist
+            if (!Files.exists(directoryPath)) {
+                Files.createDirectories(directoryPath);
+                log.debug("Created illustration directory: {}", directoryPath.toAbsolutePath());
+            }
+            
+            // Create the full file path
+            Path filePath = directoryPath.resolve(fileName);
+            
+            // Decode base64 and save to file
+            byte[] imageBytes = Base64.getDecoder().decode(base64Data);
+            Files.write(filePath, imageBytes);
+            
+            log.debug("Saved illustration to: {}", filePath.toAbsolutePath());
+            
+            // Return relative path from static resources root for web serving
+            return getRelativeIllustrationWebPath(userDirectoryPath, requestId, illustrationType, fileName);
+            
+        } catch (IOException e) {
+            log.error("Error saving illustration to file system", e);
+            throw new RuntimeException("Failed to save illustration: " + fileName, e);
+        }
+    }
+    
+    /**
+     * Generate filename for an illustration
+     * @param illustrationId The illustration ID
+     * @param gridPosition The position in the grid (0-3 for 2x2)
+     * @return The formatted filename
+     */
+    public String generateIllustrationFileName(String illustrationId, int gridPosition) {
+        return String.format("illustration_%s_%d.png", illustrationId.substring(0, 8), gridPosition);
+    }
+    
+    /**
+     * Get the relative web path for serving illustration files
+     */
+    private String getRelativeIllustrationWebPath(String userDirectoryPath, String requestId, 
+                                                   String illustrationType, String fileName) {
+        // The web path should be /user-illustrations/userDirectoryPath/requestId/illustrationType/fileName
+        return String.format("/user-illustrations/%s/%s/%s/%s", 
+                           userDirectoryPath, requestId, illustrationType, fileName);
+    }
+    
+    /**
+     * Get the file size of a saved illustration
+     */
+    public long getIllustrationFileSize(String userDirectoryPath, String requestId, 
+                                       String illustrationType, String fileName) {
+        try {
+            Path filePath = Paths.get(illustrationsBasePath, userDirectoryPath, requestId, illustrationType, fileName);
+            if (Files.exists(filePath)) {
+                return Files.size(filePath);
+            }
+        } catch (IOException e) {
+            log.error("Error getting file size for illustration: {}", fileName, e);
+        }
+        return 0L;
+    }
+    
+    /**
+     * Read illustration from file system
+     */
+    public byte[] readIllustration(String relativeWebPath) throws IOException {
+        String pathInsideUserIllustrations;
+        if (relativeWebPath.startsWith("/user-illustrations/")) {
+            pathInsideUserIllustrations = relativeWebPath.substring("/user-illustrations/".length());
+        } else {
+            pathInsideUserIllustrations = relativeWebPath;
+        }
+
+        Path filePath = Paths.get(illustrationsBasePath).resolve(pathInsideUserIllustrations);
+        if (Files.exists(filePath)) {
+            return Files.readAllBytes(filePath);
+        }
+        throw new IOException("Illustration file not found: " + filePath.toString());
+    }
+    
+    /**
+     * Delete all illustration files for a specific request
+     */
+    public void deleteIllustrationRequestFiles(String userDirectoryPath, String requestId) {
+        try {
+            Path requestPath = Paths.get(illustrationsBasePath, userDirectoryPath, requestId);
+            if (Files.exists(requestPath)) {
+                Files.walk(requestPath)
+                        .sorted((path1, path2) -> path2.compareTo(path1))
+                        .forEach(path -> {
+                            try {
+                                Files.delete(path);
+                            } catch (IOException e) {
+                                log.error("Error deleting illustration file: {}", path, e);
+                            }
+                        });
+                log.info("Deleted all illustration files for request: {}", requestId);
+            }
+        } catch (IOException e) {
+            log.error("Error deleting illustration request files for: {}", requestId, e);
+        }
     }
 }

@@ -1,8 +1,11 @@
 import React, { useState, useEffect } from "react";
 import Image from "next/image";
 import { useAuth } from "../context/AuthContext";
+import { GenerationMode } from "@/lib/types";
 
 interface GeneratorFormProps {
+  mode: GenerationMode;
+  setMode: (value: GenerationMode) => void;
   inputType: string;
   setInputType: (value: string) => void;
   generateVariations: boolean;
@@ -23,6 +26,8 @@ interface GeneratorFormProps {
 }
 
 const GeneratorForm: React.FC<GeneratorFormProps> = ({
+  mode,
+  setMode,
   inputType,
   setInputType,
   generateVariations,
@@ -103,7 +108,9 @@ const GeneratorForm: React.FC<GeneratorFormProps> = ({
   };
 
   const renderIconFields = () => {
-    const count = 9;
+    const count = mode === "illustrations" ? 4 : 9;
+    const label = mode === "illustrations" ? "Illustration" : "Icon";
+    
     if (isNaN(count)) return null;
 
     const fields = [];
@@ -112,7 +119,7 @@ const GeneratorForm: React.FC<GeneratorFormProps> = ({
         <input
           key={i}
           type="text"
-          placeholder={`Icon ${i + 1} description (optional)`}
+          placeholder={`${label} ${i + 1} description (optional)`}
           value={individualDescriptions[i] || ""}
           onChange={(e) => {
             const newDescriptions = [...individualDescriptions];
@@ -124,7 +131,7 @@ const GeneratorForm: React.FC<GeneratorFormProps> = ({
       );
     }
     return (
-      <div className="grid grid-cols-3 gap-3">
+      <div className={mode === "illustrations" ? "grid grid-cols-2 gap-3" : "grid grid-cols-3 gap-3"}>
         {fields}
       </div>
     );
@@ -139,10 +146,36 @@ const GeneratorForm: React.FC<GeneratorFormProps> = ({
           className="absolute inset-0 rounded-3xl bg-gradient-to-br from-white/30 to-transparent pointer-events-none"
         ></div>
         <div className="relative z-10">
+          {/* Mode Tabs */}
+          <div className="flex items-center space-x-2 mb-6">
+            <button
+              type="button"
+              onClick={() => setMode("icons")}
+              className={`flex-1 px-4 py-3 rounded-lg text-sm font-semibold transition-all duration-200 ${
+                mode === "icons"
+                  ? "bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-md"
+                  : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+              }`}
+            >
+              Icons
+            </button>
+            <button
+              type="button"
+              onClick={() => setMode("illustrations")}
+              className={`flex-1 px-4 py-3 rounded-lg text-sm font-semibold transition-all duration-200 ${
+                mode === "illustrations"
+                  ? "bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-md"
+                  : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+              }`}
+            >
+              Illustrations
+            </button>
+          </div>
+
           <h2
             className="text-2xl font-bold text-slate-900 mb-8"
           >
-            Icon Pack Generator
+            {mode === "icons" ? "Icon Pack Generator" : "Illustration Generator"}
           </h2>
 
           <form
@@ -294,7 +327,7 @@ const GeneratorForm: React.FC<GeneratorFormProps> = ({
               <label
                 className="block text-lg font-semibold text-slate-900 mb-4"
               >
-                Individual Icon Descriptions (Optional)
+                Individual {mode === "icons" ? "Icon" : "Illustration"} Descriptions (Optional)
               </label>
               {renderIconFields()}
             </div>
@@ -397,7 +430,9 @@ const GeneratorForm: React.FC<GeneratorFormProps> = ({
               ) : (
                 <div className="flex items-center justify-center space-x-2">
                   <span>
-                    {isAuthenticated ? "Generate Icons" : "Sign in to Generate"}
+                    {isAuthenticated 
+                      ? (mode === "icons" ? "Generate Icons" : "Generate Illustrations")
+                      : "Sign in to Generate"}
                   </span>
                   {isAuthenticated && authState.user && (
                     <span className="flex items-center space-x-1 rounded-full bg-white/20 px-2 py-0.5 text-xs font-semibold">

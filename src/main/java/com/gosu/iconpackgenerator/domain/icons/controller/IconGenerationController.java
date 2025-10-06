@@ -660,7 +660,16 @@ public class IconGenerationController implements IconGenerationControllerAPI {
         Map<String, Object> response = new HashMap<>();
 
         // Check if generation has completed by looking for stored response
-        IconGenerationResponse storedResponse = streamingStateStore.getResponse(requestId);
+        // Note: Handle both icon and illustration responses
+        IconGenerationResponse storedResponse = null;
+        try {
+            storedResponse = streamingStateStore.getResponse(requestId);
+        } catch (ClassCastException e) {
+            // Response exists but is of different type (illustration vs icon)
+            // Return not found for this controller since it's not an icon response
+            log.debug("Response {} exists but is of different type (illustration)", requestId);
+        }
+        
         if (storedResponse != null) {
             response.put("status", "completed");
             response.put("message", "Generation completed");
@@ -670,7 +679,16 @@ public class IconGenerationController implements IconGenerationControllerAPI {
         }
 
         // Check if request is still in progress
-        IconGenerationRequest activeRequest = streamingStateStore.getRequest(requestId);
+        // Note: We need to handle both icon and illustration requests in the same store
+        Object activeRequest = null;
+        try {
+            activeRequest = streamingStateStore.getRequest(requestId);
+        } catch (ClassCastException e) {
+            // Request exists but is of different type (illustration vs icon)
+            // This is expected when checking status across different generation types
+            log.debug("Request {} exists but is of different type", requestId);
+        }
+        
         SseEmitter activeEmitter = streamingStateStore.getEmitter(requestId);
 
         if (activeRequest != null || activeEmitter != null) {

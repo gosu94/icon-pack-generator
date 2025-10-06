@@ -28,3 +28,5 @@ export interface GenerationResponse {
 }
 
 export type UIState = "initial" | "streaming" | "error" | "results";
+
+export type GenerationMode = "icons" | "illustrations";

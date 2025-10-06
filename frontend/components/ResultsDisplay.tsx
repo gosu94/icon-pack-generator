@@ -1,8 +1,9 @@
 import React from "react";
 import Image from "next/image";
-import { UIState, ServiceResult, GenerationResponse } from "../lib/types";
+import { UIState, ServiceResult, GenerationResponse, GenerationMode } from "../lib/types";
 
 interface ResultsDisplayProps {
+  mode: GenerationMode;
   uiState: UIState;
   generateVariations: boolean;
   isGenerating: boolean;
@@ -27,6 +28,11 @@ interface ResultsDisplayProps {
     serviceName: string,
     generationIndex: number,
   ) => void;
+  generateMoreIllustrations: (
+    serviceId: string,
+    serviceName: string,
+    generationIndex: number,
+  ) => void;
   moreIconsDescriptions: { [key: string]: string[] };
   setMoreIconsDescriptions: React.Dispatch<
     React.SetStateAction<{ [key: string]: string[] }>
@@ -36,6 +42,7 @@ interface ResultsDisplayProps {
 }
 
 const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
+  mode,
   uiState,
   generateVariations,
   isGenerating,
@@ -52,6 +59,7 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
   showMoreIconsForm,
   hideMoreIconsForm,
   generateMoreIcons,
+  generateMoreIllustrations,
   moreIconsDescriptions,
   setMoreIconsDescriptions,
   getServiceDisplayName,
@@ -126,17 +134,29 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
           </div>
 
           {showResultsPanes && result.icons && result.icons.length > 0 && (
-            <div className="grid gap-4 grid-cols-[repeat(auto-fit,minmax(140px,1fr))]" data-oid=".ge-1o5">
+            <div 
+              className={
+                mode === "icons"
+                  ? "grid gap-4 grid-cols-[repeat(auto-fit,minmax(140px,1fr))]"
+                  : "flex flex-col gap-6 items-center"
+              } 
+              data-oid=".ge-1o5"
+            >
               {result.icons.map((icon, iconIndex) => (
                 <div
                   key={iconIndex}
-                  className={`relative group transform ${getIconAnimationClass(result.serviceId, iconIndex)} hover:scale-105 hover:z-20 flex justify-center`}
+                  className={`relative group transform ${getIconAnimationClass(result.serviceId, iconIndex)} ${mode === "icons" ? "hover:scale-105 hover:z-20 flex justify-center" : "hover:scale-105 transition-transform duration-200"}`}
                   data-oid="m76b0.p"
+                  style={mode === "illustrations" ? { width: "500px", height: "400px" } : {}}
                 >
                   <img
                     src={`data:image/png;base64,${icon.base64Data}`}
-                    alt={`Generated Icon ${iconIndex + 1}`}
-                    className="w-full h-auto max-w-[128px] rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-shadow duration-200"
+                    alt={mode === "icons" ? `Generated Icon ${iconIndex + 1}` : `Generated Illustration ${iconIndex + 1}`}
+                    className={
+                      mode === "icons"
+                        ? "w-full h-auto max-w-[128px] rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-shadow duration-200"
+                        : "w-full h-full object-contain rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-shadow duration-200"
+                    }
                     data-oid="3jhfiim"
                   />
                   <div
@@ -182,22 +202,24 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
               {moreIconsVisible[result.serviceId] && (
                 <div className="space-y-4" data-oid="vyc4_1h">
                   <p className="text-xs text-slate-500" data-oid="83178c6">
-                    Describe up to 9 new icons (leave empty for creative
-                    variations):
+                    {mode === "icons" 
+                      ? "Describe up to 9 new icons (leave empty for creative variations):"
+                      : "Describe up to 4 new illustrations (leave empty for creative variations):"}
                   </p>
-                  <div className="grid grid-cols-3 gap-3" data-oid="05:gpsz">
-                    {Array.from({ length: 9 }, (_, i) => (
+                  <div className={mode === "icons" ? "grid grid-cols-3 gap-3" : "grid grid-cols-2 gap-3"} data-oid="05:gpsz">
+                    {Array.from({ length: mode === "icons" ? 9 : 4 }, (_, i) => (
                       <input
                         key={i}
                         type="text"
-                        placeholder={`Icon ${i + 1}`}
+                        placeholder={mode === "icons" ? `Icon ${i + 1}` : `Illustration ${i + 1}`}
                         value={
                           moreIconsDescriptions[result.serviceId]?.[i] || ""
                         }
                         onChange={(e) => {
+                          const count = mode === "icons" ? 9 : 4;
                           const newDescriptions = [
                             ...(moreIconsDescriptions[result.serviceId] ||
-                              new Array(9).fill("")),
+                              new Array(count).fill("")),
                           ];
                           newDescriptions[i] = e.target.value;
                           setMoreIconsDescriptions((prev) => ({
@@ -212,13 +234,21 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
                   </div>
                   <div className="flex space-x-3 pt-2" data-oid="5:ovvgt">
                     <button
-                      onClick={() =>
-                        generateMoreIcons(
-                          baseServiceId,
-                          serviceName,
-                          result.generationIndex,
-                        )
-                      }
+                      onClick={() => {
+                        if (mode === "icons") {
+                          generateMoreIcons(
+                            baseServiceId,
+                            serviceName,
+                            result.generationIndex,
+                          );
+                        } else {
+                          generateMoreIllustrations(
+                            baseServiceId,
+                            serviceName,
+                            result.generationIndex,
+                          );
+                        }
+                      }}
                       disabled={isGenerating}
                       className={`w-full py-3 px-5 rounded-xl text-white font-semibold ${isGenerating ? "bg-slate-400 cursor-not-allowed" : "bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 transform hover:scale-105 shadow-lg hover:shadow-xl"} transition-all duration-200`}
                       data-oid="xku30oy"
@@ -236,7 +266,7 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
                         </div>
                       ) : (
                         <div className="flex items-center justify-center space-x-2">
-                          <span>Generate 9 More Icons</span>
+                          <span>{mode === "icons" ? "Generate 9 More Icons" : "Generate 4 More Illustrations"}</span>
                           <span className="flex items-center space-x-1 rounded-full bg-white/20 px-2 py-0.5 text-xs font-semibold">
                             <Image src="/images/coin.webp" alt="Coins" width={16} height={16} />
                             <span>1</span>
@@ -300,7 +330,7 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
                 className="text-2xl font-bold text-slate-900"
                 data-oid="rn9b4_h"
               >
-                Your Icons
+                {mode === "icons" ? "Your Icons" : "Your Illustrations"}
               </h2>
             </div>
             <div className="flex-1 overflow-y-auto" data-oid="fr-8:os">
