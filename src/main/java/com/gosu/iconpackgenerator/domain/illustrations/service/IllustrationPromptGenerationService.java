@@ -10,11 +10,9 @@ import java.util.stream.Collectors;
 @Slf4j
 public class IllustrationPromptGenerationService {
     
-    // TODO: Replace these placeholder prompts with actual prompts provided by the user
-    
     private static final String TEXT_TO_IMAGE_PROMPT_TEMPLATE = "Create a 2x2 arrangement of illustrations in a consistent style. \n" +
             "Each illustration should be contained within its own square area of equal size, with equal spacing between them. \n" +
-            "Use a white grid/division between the illustrations so they can be easily cropped out later.\n" +
+            "Use a fully white grid/division between the illustrations so they can be easily cropped out later.\n" +
             "\n" +
             "General theme: %s \n" +
             "%s" +

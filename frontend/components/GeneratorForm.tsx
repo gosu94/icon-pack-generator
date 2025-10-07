@@ -166,7 +166,7 @@ const GeneratorForm: React.FC<GeneratorFormProps> = ({
               type="button"
               onClick={() => setMode("illustrations")}
               disabled={isGenerating}
-              className={`flex-1 px-4 py-3 rounded-lg text-sm font-semibold transition-all duration-200 ${
+              className={`relative overflow-hidden flex-1 px-4 py-3 rounded-lg text-sm font-semibold transition-all duration-200 ${
                 mode === "illustrations"
                   ? "bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-md"
                   : isGenerating
@@ -175,6 +175,9 @@ const GeneratorForm: React.FC<GeneratorFormProps> = ({
               }`}
             >
               Illustrations
+              <div className="absolute top-1.5 right-[-20px] transform rotate-45 bg-green-200 text-green-800 text-xs font-bold px-5">
+                New
+              </div>
             </button>
           </div>
 

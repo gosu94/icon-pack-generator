@@ -146,6 +146,52 @@ export default function LandingPage() {
                 </div>
             </section>
 
+            {/* New Illustration Feature Section */}
+            <section className="px-6 py-12">
+                <div className="max-w-7xl mx-auto">
+                    <div
+                        className="bg-white/80 backdrop-blur-md rounded-3xl shadow-2xl border border-pink-200/50 overflow-hidden">
+                        <div className="flex flex-col lg:flex-row">
+                            {/* Caption Section */}
+                            <div
+                                className="lg:w-1/3 p-6 md:p-8 flex flex-col justify-center bg-gradient-to-br from-white/50 to-pink-50/50">
+                                <div className="space-y-6">
+                                    <div className="flex items-center space-x-2">
+                                        <Sparkles className="w-6 h-6 text-pink-600"/>
+                                        <span
+                                            className="text-sm font-semibold text-pink-600 uppercase tracking-wide">New Feature</span>
+                                    </div>
+
+                                    <h2 className="text-3xl font-bold text-slate-900 leading-tight">
+                                        New Feature - Illustrations
+                                    </h2>
+
+                                    <p className="text-slate-600 leading-relaxed">
+                                        Unleash your creativity with our new illustration generator. Create visually consistent, high-quality illustrations for your marketing materials, websites, and applications. Describe your vision and let our AI bring it to life.
+                                    </p>
+
+                                </div>
+                            </div>
+                            {/* Video Section */}
+                            <div
+                                className="lg:w-2/3 relative bg-gradient-to-br from-purple-600 to-pink-600 p-6 md:p-8 flex items-center justify-center min-h-[280px] md:min-h-[400px]">
+                                <div className="relative w-full h-full flex items-center justify-center">
+                                    <div
+                                        className="relative w-full max-w-2xl aspect-video bg-black/20 rounded-2xl flex items-center justify-center backdrop-blur-sm border border-white/20 overflow-hidden">
+                                        <iframe
+                                            src="https://player.vimeo.com/video/1125205255?badge=0&amp;autopause=0&amp;player_id=0&amp;app_id=58479"
+                                            allow="autoplay; fullscreen; picture-in-picture; clipboard-write"
+                                            className="w-full h-full"
+                                            title="Illustration Generator Feature Video"
+                                        ></iframe>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
             {/* Features Section */}
             <section className="px-6 py-16">
                 <div className="max-w-7xl mx-auto">
@@ -194,14 +240,14 @@ export default function LandingPage() {
                             </div>
                             <h3 className="text-xl font-bold text-slate-900 mb-4">Try for Free</h3>
                             <p className="text-slate-600 leading-relaxed">
-                                Get started instantly with a free trial coin! Generate 5 professional icons at no cost
+                                Get started instantly with a free trial coin! Generate 5 professional icons or 2 illustrations at no cost
                                 and experience our AI-powered creation process.
                             </p>
                             <div className="mt-4 flex items-center space-x-2 text-sm text-green-600 font-semibold">
                                 <div className="w-4 h-4 bg-green-500 rounded-full flex items-center justify-center">
                                     <span className="text-white text-xs font-bold">T</span>
                                 </div>
-                                <span>1 Trial Coin = 5 Icons</span>
+                                <span>1 Trial Coin = 5 Icons (out of 9) / 2 illustrations (out of 4)</span>
                             </div>
                         </div>
 

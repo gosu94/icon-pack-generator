@@ -60,11 +60,12 @@ server:
     connection-timeout: 300000
   servlet:
     session:
-      timeout: 2h
+      timeout: 4h
       cookie:
         http-only: true
         secure: true # Set to true in production with HTTPS
-        max-age: 1800s
+        # max-age not set - cookie persists as long as browser is open
+        # Session will be refreshed on each request (Spring default behavior)
 
 ai:
   services:
