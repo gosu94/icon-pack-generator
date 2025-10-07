@@ -151,9 +151,12 @@ const GeneratorForm: React.FC<GeneratorFormProps> = ({
             <button
               type="button"
               onClick={() => setMode("icons")}
+              disabled={isGenerating}
               className={`flex-1 px-4 py-3 rounded-lg text-sm font-semibold transition-all duration-200 ${
                 mode === "icons"
                   ? "bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-md"
+                  : isGenerating
+                  ? "bg-gray-100 text-gray-400 cursor-not-allowed"
                   : "bg-gray-100 text-gray-600 hover:bg-gray-200"
               }`}
             >
@@ -162,9 +165,12 @@ const GeneratorForm: React.FC<GeneratorFormProps> = ({
             <button
               type="button"
               onClick={() => setMode("illustrations")}
+              disabled={isGenerating}
               className={`flex-1 px-4 py-3 rounded-lg text-sm font-semibold transition-all duration-200 ${
                 mode === "illustrations"
                   ? "bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-md"
+                  : isGenerating
+                  ? "bg-gray-100 text-gray-400 cursor-not-allowed"
                   : "bg-gray-100 text-gray-600 hover:bg-gray-200"
               }`}
             >

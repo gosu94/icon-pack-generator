@@ -105,7 +105,19 @@ public class IllustrationGenerationService {
             return finalResponse;
         }).exceptionally(error -> {
             log.error("Error generating illustrations for request {}", requestId, error);
-            return createErrorResponse(requestId, "Failed to generate illustrations: " + error.getMessage());
+            
+            // Refund coins on error
+            try {
+                coinManagementService.refundCoins(user, cost, isTrialMode);
+                log.info("Refunded {} coin(s) to user {} due to illustration generation error",
+                        cost, user.getEmail());
+            } catch (Exception refundException) {
+                log.error("Failed to refund coins to user {}", user.getEmail(), refundException);
+            }
+            
+            // Sanitize error message for user display
+            String sanitizedError = sanitizeErrorMessage(error);
+            return createErrorResponse(requestId, sanitizedError);
         });
     }
     
@@ -191,11 +203,15 @@ public class IllustrationGenerationService {
             .exceptionally(error -> {
                 long generationTime = System.currentTimeMillis() - startTime;
                 log.error("Error generating illustrations with Banana", error);
+                
+                // Sanitize error message
+                String sanitizedError = sanitizeErrorMessage(error);
+                
                 IllustrationGenerationResponse.ServiceResults result = 
                     new IllustrationGenerationResponse.ServiceResults();
                 result.setServiceName("banana");
                 result.setStatus("error");
-                result.setMessage("Failed to generate illustrations: " + error.getMessage());
+                result.setMessage(sanitizedError);
                 result.setIllustrations(new ArrayList<>());
                 result.setGenerationTimeMs(generationTime);
                 return result;
@@ -423,6 +439,55 @@ public class IllustrationGenerationService {
      */
     private long generateRandomSeed() {
         return System.currentTimeMillis() + (long) (Math.random() * 1000);
+    }
+    
+    /**
+     * Sanitize error messages for user display, especially for content policy violations
+     */
+    private String sanitizeErrorMessage(Throwable error) {
+        String errorMessage = error.getMessage() != null ? error.getMessage() : error.toString();
+        
+        // Check for HTTP error codes indicating content policy violations
+        if (errorMessage.contains("413") || errorMessage.toLowerCase().contains("request entity too large")) {
+            return "Request failed due to content size limits. Please try with a simpler description or smaller reference image.";
+        }
+        
+        if (errorMessage.contains("400") && (errorMessage.toLowerCase().contains("policy") || 
+                errorMessage.toLowerCase().contains("content") || 
+                errorMessage.toLowerCase().contains("unsafe"))) {
+            return "Request rejected due to content policy. Please ensure your descriptions comply with AI service content guidelines.";
+        }
+        
+        if (errorMessage.contains("403") || errorMessage.toLowerCase().contains("forbidden")) {
+            return "Request rejected by AI service. Please try again with different content.";
+        }
+        
+        if (errorMessage.contains("429") || errorMessage.toLowerCase().contains("rate limit")) {
+            return "Service is temporarily busy. Please try again in a few moments.";
+        }
+        
+        // Generic FalAi errors
+        if (errorMessage.contains("FalAiException")) {
+            // Extract just the meaningful part after the exception type
+            int colonIndex = errorMessage.lastIndexOf(":");
+            if (colonIndex > 0 && colonIndex < errorMessage.length() - 1) {
+                String extractedMessage = errorMessage.substring(colonIndex + 1).trim();
+                
+                // Check if extracted message mentions content policy
+                if (extractedMessage.toLowerCase().contains("policy") || 
+                    extractedMessage.toLowerCase().contains("content") ||
+                    extractedMessage.toLowerCase().contains("unsafe")) {
+                    return "Request rejected due to content policy. Please ensure your descriptions comply with AI service guidelines.";
+                }
+                
+                // Return sanitized extracted message
+                return "Generation failed: " + extractedMessage;
+            }
+            return "Generation failed due to AI service error. Please try again.";
+        }
+        
+        // Default case: return a generic error message without technical details
+        return "Failed to generate illustrations. Please try again or contact support if the issue persists.";
     }
 }
 

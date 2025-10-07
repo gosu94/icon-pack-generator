@@ -253,11 +253,15 @@ public class IllustrationGenerationController implements IllustrationGenerationC
                 if (emitter != null && error != null) {
                     log.error("Error in streaming illustration generation for request: {}", requestId, error);
                     try {
+                        // Sanitize error message for user display
+                        String sanitizedError = sanitizeErrorMessage(
+                            error instanceof Exception ? (Exception) error : new Exception(error));
+                        
                         ServiceProgressUpdate errorUpdate = new ServiceProgressUpdate();
                         errorUpdate.setRequestId(requestId);
                         errorUpdate.setEventType("generation_error");
                         errorUpdate.setStatus("error");
-                        errorUpdate.setMessage("Generation failed: " + error.getMessage());
+                        errorUpdate.setMessage(sanitizedError);
                         
                         String jsonUpdate = objectMapper.writeValueAsString(errorUpdate);
                         boolean sent = safeSendSseUpdate(emitter, requestId, "generation_error", jsonUpdate);
@@ -450,9 +454,15 @@ public class IllustrationGenerationController implements IllustrationGenerationC
                         request.getIllustrationDescriptions(), 
                         request.getGeneralDescription());
                 
+                // Use a varied seed to ensure different results each time
+                // Add a random component to avoid generating identical illustrations
+                Long variedSeed = request.getSeed() != null ? 
+                        request.getSeed() + System.currentTimeMillis() % 10000 : 
+                        null;
+                
                 // Generate new illustrations using banana service
                 CompletableFuture<byte[]> generationFuture = bananaModelService.generateImageToImage(
-                        prompt, originalImageData, request.getSeed());
+                        prompt, originalImageData, variedSeed);
                 byte[] newImageData = generationFuture.join();
                 
                 // Crop illustrations from 2x2 grid
@@ -513,13 +523,20 @@ public class IllustrationGenerationController implements IllustrationGenerationC
                             user.getEmail(), refundException);
                 }
 
-                return createErrorResponse(request, "Failed to generate more illustrations: " + e.getMessage(), startTime);
+                // Sanitize error message for user display
+                String sanitizedError = sanitizeErrorMessage(e);
+                return createErrorResponse(request, sanitizedError, startTime);
             }
         }).whenComplete((response, throwable) -> {
             if (throwable != null) {
                 log.error("Error in more illustrations generation future", throwable);
+                
+                // Sanitize error message
+                String sanitizedError = sanitizeErrorMessage(
+                    throwable instanceof Exception ? (Exception) throwable : new Exception(throwable));
+                    
                 deferredResult.setResult(createErrorResponse(request, 
-                        "Unexpected error: " + throwable.getMessage(), System.currentTimeMillis()));
+                        sanitizedError, System.currentTimeMillis()));
             } else {
                 deferredResult.setResult(response);
             }
@@ -574,36 +591,103 @@ public class IllustrationGenerationController implements IllustrationGenerationC
                 return;
             }
 
-            // Add to main illustrations list
-            if (storedResponse.getIllustrations() == null) {
-                storedResponse.setIllustrations(new ArrayList<>());
-            }
-            storedResponse.getIllustrations().addAll(newIllustrations);
-
-            // Add to banana results
-            if (storedResponse.getBananaResults() == null) {
-                storedResponse.setBananaResults(new ArrayList<>());
-            }
-
-            // Create new service result for the more illustrations
-            IllustrationGenerationResponse.ServiceResults newServiceResult = 
-                    new IllustrationGenerationResponse.ServiceResults();
-            newServiceResult.setServiceName("banana");
-            newServiceResult.setStatus("success");
-            newServiceResult.setMessage("More illustrations generated successfully");
-            newServiceResult.setIllustrations(newIllustrations);
-            newServiceResult.setGenerationIndex(request.getGenerationIndex());
+            // Illustrations only use Banana service
+            List<IllustrationGenerationResponse.ServiceResults> serviceResults = storedResponse.getBananaResults();
             
-            storedResponse.getBananaResults().add(newServiceResult);
+            if (serviceResults == null) {
+                log.warn("No banana results found in request {}", request.getOriginalRequestId());
+                return;
+            }
 
-            // Update the store
+            // Find the existing ServiceResults entry for this generation index
+            IllustrationGenerationResponse.ServiceResults targetResult = null;
+            for (IllustrationGenerationResponse.ServiceResults result : serviceResults) {
+                if (result.getGenerationIndex() == request.getGenerationIndex()) {
+                    targetResult = result;
+                    break;
+                }
+            }
+
+            if (targetResult != null) {
+                // Add new illustrations to existing generation index
+                if (targetResult.getIllustrations() == null) {
+                    targetResult.setIllustrations(new ArrayList<>());
+                }
+                targetResult.getIllustrations().addAll(newIllustrations);
+                log.info("Added {} new illustrations to existing generation {} for service {}",
+                        newIllustrations.size(), request.getGenerationIndex(), request.getServiceName());
+            } else {
+                // Create new ServiceResults for this generation index (shouldn't normally happen)
+                IllustrationGenerationResponse.ServiceResults newResult = new IllustrationGenerationResponse.ServiceResults();
+                newResult.setServiceName(request.getServiceName());
+                newResult.setStatus("success");
+                newResult.setMessage("More illustrations generated successfully");
+                newResult.setIllustrations(new ArrayList<>(newIllustrations));
+                newResult.setGenerationIndex(request.getGenerationIndex());
+                serviceResults.add(newResult);
+                log.info("Created new generation {} entry with {} illustrations for service {}",
+                        request.getGenerationIndex(), newIllustrations.size(), request.getServiceName());
+            }
+
+            // Update the stored response
             streamingStateStore.addResponse(request.getOriginalRequestId(), storedResponse);
-            log.info("Updated stored response with {} more illustrations", newIllustrations.size());
+            log.info("Successfully updated stored response for request {} with {} more illustrations",
+                    request.getOriginalRequestId(), newIllustrations.size());
 
         } catch (Exception e) {
-            log.error("Error updating stored response with more illustrations", e);
-            throw e;
+            log.error("Error updating stored response with more illustrations for request {}", request.getOriginalRequestId(), e);
+            // Don't rethrow - updating stored response is not critical for the core functionality
+            // The illustrations have already been generated and persisted successfully
         }
+    }
+    
+    /**
+     * Sanitize error messages for user display, especially for content policy violations
+     */
+    private String sanitizeErrorMessage(Exception e) {
+        String errorMessage = e.getMessage() != null ? e.getMessage() : e.toString();
+        
+        // Check for HTTP error codes indicating content policy violations
+        if (errorMessage.contains("413") || errorMessage.toLowerCase().contains("request entity too large")) {
+            return "Request failed due to content size limits. Please try with a simpler description or smaller reference image.";
+        }
+        
+        if (errorMessage.contains("400") && (errorMessage.toLowerCase().contains("policy") || 
+                errorMessage.toLowerCase().contains("content") || 
+                errorMessage.toLowerCase().contains("unsafe"))) {
+            return "Request rejected due to content policy. Please ensure your descriptions comply with AI service content guidelines.";
+        }
+        
+        if (errorMessage.contains("403") || errorMessage.toLowerCase().contains("forbidden")) {
+            return "Request rejected by AI service. Please try again with different content.";
+        }
+        
+        if (errorMessage.contains("429") || errorMessage.toLowerCase().contains("rate limit")) {
+            return "Service is temporarily busy. Please try again in a few moments.";
+        }
+        
+        // Generic FalAi errors
+        if (errorMessage.contains("FalAiException")) {
+            // Extract just the meaningful part after the exception type
+            int colonIndex = errorMessage.lastIndexOf(":");
+            if (colonIndex > 0 && colonIndex < errorMessage.length() - 1) {
+                String extractedMessage = errorMessage.substring(colonIndex + 1).trim();
+                
+                // Check if extracted message mentions content policy
+                if (extractedMessage.toLowerCase().contains("policy") || 
+                    extractedMessage.toLowerCase().contains("content") ||
+                    extractedMessage.toLowerCase().contains("unsafe")) {
+                    return "Request rejected due to content policy. Please ensure your descriptions comply with AI service guidelines.";
+                }
+                
+                // Return sanitized extracted message
+                return "Generation failed: " + extractedMessage;
+            }
+            return "Generation failed due to AI service error. Please try again.";
+        }
+        
+        // Default case: return a generic error message without technical details
+        return "Failed to generate illustrations. Please try again or contact support if the issue persists.";
     }
 }
 

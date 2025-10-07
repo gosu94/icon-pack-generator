@@ -88,14 +88,41 @@ export default function Page() {
   useEffect(() => {
     const count = mode === "illustrations" ? 4 : 9;
     setIndividualDescriptions(new Array(count).fill(""));
+    
+    // Reset output panes when switching modes
+    setCurrentIcons([]);
+    setCurrentRequest(null);
+    setCurrentResponse(null);
+    setStreamingResults({});
+    setUiState("initial");
+    setErrorMessage("");
+    setShowResultsPanes(false);
+    setMoreIconsVisible({});
+    setMoreIconsDescriptions({});
+    setAnimatingIcons({});
+    setOverallProgress(0);
+    
+    // Clear any animation timers
+    Object.values(animationTimers).forEach((timers) => {
+      timers.forEach((timer) => clearTimeout(timer));
+    });
+    setAnimationTimers({});
   }, [mode]);
 
   // Handle generate more mode from gallery
   useEffect(() => {
     const generateMoreMode = sessionStorage.getItem("generateMoreMode");
     const gridImageUrl = sessionStorage.getItem("generatedGridImage");
+    const generationMode = sessionStorage.getItem("generationMode");
     
     if (generateMoreMode === "true" && gridImageUrl) {
+      // Switch to the correct mode (icons or illustrations)
+      if (generationMode === "illustrations") {
+        setMode("illustrations");
+      } else if (generationMode === "icons") {
+        setMode("icons");
+      }
+      
       // Switch to image tab
       setInputType("image");
       
@@ -114,12 +141,14 @@ export default function Page() {
           // Clean up sessionStorage
           sessionStorage.removeItem("generateMoreMode");
           sessionStorage.removeItem("generatedGridImage");
+          sessionStorage.removeItem("generationMode");
         })
         .catch((error) => {
           console.error("Error setting up grid image:", error);
           // Clean up on error
           sessionStorage.removeItem("generateMoreMode");
           sessionStorage.removeItem("generatedGridImage");
+          sessionStorage.removeItem("generationMode");
         });
     }
   }, []);
@@ -963,18 +992,20 @@ export default function Page() {
   // Removed toast functions - now using progress UI instead of alerts
 
   const showMoreIconsForm = (uniqueId: string) => {
+    const count = mode === "illustrations" ? 4 : 9;
     setMoreIconsVisible((prev) => ({ ...prev, [uniqueId]: true }));
     setMoreIconsDescriptions((prev) => ({
       ...prev,
-      [uniqueId]: new Array(9).fill(""),
+      [uniqueId]: new Array(count).fill(""),
     }));
   };
 
   const hideMoreIconsForm = (uniqueId: string) => {
+    const count = mode === "illustrations" ? 4 : 9;
     setMoreIconsVisible((prev) => ({ ...prev, [uniqueId]: false }));
     setMoreIconsDescriptions((prev) => ({
       ...prev,
-      [uniqueId]: new Array(9).fill(""),
+      [uniqueId]: new Array(count).fill(""),
     }));
   };
 
