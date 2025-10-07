@@ -92,9 +92,13 @@ public class BananaModelService implements AIModelService {
                 
                 return extractImageFromResult(jsonResult);
                 
+            } catch (ai.fal.client.exception.FalException e) {
+                log.error("Banana API error with code: {}", e.getMessage());
+                String userFriendlyMessage = sanitizeBananaError(e);
+                throw new FalAiException(userFriendlyMessage, e);
             } catch (Exception e) {
                 log.error("Error calling Banana API", e);
-                throw new FalAiException("Failed to generate image with Nano Banana: " + e.getMessage(), e);
+                throw new FalAiException("Failed to generate image with Nano Banana. Please try again or use a different prompt.", e);
             }
         });
     }
@@ -175,9 +179,13 @@ public class BananaModelService implements AIModelService {
                 
                 return extractImageFromResult(jsonResult);
                 
+            } catch (ai.fal.client.exception.FalException e) {
+                log.error("Banana image-to-image API error with code: {}", e.getMessage());
+                String userFriendlyMessage = sanitizeBananaError(e);
+                throw new FalAiException(userFriendlyMessage, e);
             } catch (Exception e) {
                 log.error("Error calling Banana image-to-image API", e);
-                throw new FalAiException("Failed to generate image-to-image with Nano Banana: " + e.getMessage(), e);
+                throw new FalAiException("Failed to generate image with Nano Banana. The reference image may be invalid. Please try a different image.", e);
             }
         });
     }
@@ -303,6 +311,32 @@ public class BananaModelService implements AIModelService {
             log.error("Failed to download image from Banana URL: {}", imageUrl, e);
             throw new FalAiException("Failed to download image from Nano Banana URL: " + imageUrl, e);
         }
+    }
+    
+    /**
+     * Sanitize Banana/Fal.ai API errors into user-friendly messages
+     */
+    private String sanitizeBananaError(ai.fal.client.exception.FalException e) {
+        String errorMessage = e.getMessage();
+        
+        // Extract error code if available
+        if (errorMessage.contains("422")) {
+            return "Unable to process the request. The image or prompt may be invalid. Please try:\n" +
+                   "- Using a different reference image\n" +
+                   "- Modifying your prompt\n" +
+                   "- Ensuring the image is a standard format (PNG, JPEG)";
+        } else if (errorMessage.contains("400")) {
+            return "Invalid request. Please check your input and try again.";
+        } else if (errorMessage.contains("401") || errorMessage.contains("403")) {
+            return "Authentication error with the AI service. Please contact support.";
+        } else if (errorMessage.contains("429")) {
+            return "Too many requests. Please wait a moment and try again.";
+        } else if (errorMessage.contains("500") || errorMessage.contains("503")) {
+            return "The AI service is temporarily unavailable. Please try again in a few moments.";
+        }
+        
+        // Generic fallback
+        return "Failed to generate with Nano Banana. Please try again or use a different prompt/image.";
     }
     
     @Override
