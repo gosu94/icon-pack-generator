@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Switch } from "@/components/ui/switch";
 import { GenerationMode } from "../lib/types";
 
@@ -31,7 +31,21 @@ const ExportModal: React.FC<ExportModalProps> = ({
         }
   );
 
-  
+  useEffect(() => {
+    setFormats(
+      mode === "icons"
+        ? {
+            svg: true,
+            png: true,
+            ico: true,
+            webp: true,
+          }
+        : {
+            png: true,
+            webp: true,
+          }
+    );
+  }, [mode]);
 
   const handleFormatChange = (format: keyof typeof formats) => {
     setFormats((prev) => ({ ...prev, [format]: !prev[format] }));
@@ -45,7 +59,7 @@ const ExportModal: React.FC<ExportModalProps> = ({
       .map(([format]) => format);
 
     if (mode === "illustrations") {
-      const selectedSizes = [250, 500, 1000];
+      const selectedSizes = [500];
       onConfirm(selectedFormats, selectedSizes);
     } else {
       onConfirm(selectedFormats);

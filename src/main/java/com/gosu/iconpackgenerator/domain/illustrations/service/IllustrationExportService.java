@@ -35,7 +35,7 @@ public class IllustrationExportService {
         
         List<Integer> sizes = exportRequest.getSizes() != null && !exportRequest.getSizes().isEmpty()
                 ? exportRequest.getSizes()
-                : List.of(250, 500, 1000);
+                : List.of(500);
         
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         

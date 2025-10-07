@@ -686,7 +686,7 @@ export default function GalleryPage() {
                                 (illustration, index) => (
                                   <div
                                     key={index}
-                                    className="border rounded-lg p-2 bg-white shadow-sm aspect-[5/4]"
+                                    className="border rounded-lg p-2 bg-white shadow-sm aspect-[5/4] max-w-[450px] mx-auto"
                                   >
                                     <img
                                       src={illustration.imageUrl}
@@ -739,7 +739,7 @@ export default function GalleryPage() {
                                 (illustration, index) => (
                                   <div
                                     key={index}
-                                    className="border rounded-lg p-2 bg-white shadow-sm aspect-[5/4]"
+                                    className="border rounded-lg p-2 bg-white shadow-sm aspect-[5/4] max-w-[450px] mx-auto"
                                   >
                                     <img
                                       src={illustration.imageUrl}

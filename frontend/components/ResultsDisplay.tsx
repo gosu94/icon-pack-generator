@@ -148,7 +148,7 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
                   className={`relative group transform ${getIconAnimationClass(result.serviceId, iconIndex)} ${mode === "icons" ? "hover:scale-105 hover:z-20 flex justify-center" : "hover:scale-105 transition-transform duration-200"}`}
                   data-oid="m76b0.p"
                 >
-                  <div className={mode === "illustrations" ? "aspect-[5/4] w-full" : ""}>
+                  <div className={mode === "illustrations" ? "aspect-[5/4] w-full max-w-[450px]" : ""}>
                     <img
                       src={`data:image/png;base64,${icon.base64Data}`}
                       alt={mode === "icons" ? `Generated Icon ${iconIndex + 1}` : `Generated Illustration ${iconIndex + 1}`}

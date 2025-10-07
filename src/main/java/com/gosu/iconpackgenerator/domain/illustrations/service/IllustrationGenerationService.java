@@ -294,6 +294,7 @@ public class IllustrationGenerationService {
             illustration.setBase64Data(base64Illustrations.get(i));
             illustration.setDescription("");
             illustration.setGridPosition(i);
+            illustration.setServiceSource("banana");
             illustrations.add(illustration);
         }
         
@@ -410,6 +411,7 @@ public class IllustrationGenerationService {
             icon.setBase64Data(illustration.getBase64Data());
             icon.setDescription(illustration.getDescription());
             icon.setGridPosition(illustration.getGridPosition());
+            icon.setServiceSource(illustration.getServiceSource());
             icons.add(icon);
         }
         
