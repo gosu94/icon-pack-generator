@@ -38,7 +38,7 @@ public class IllustrationPromptGenerationService {
                 "- Keep the same consistent color palette and professional look.  \n" +
                 "- No text, labels, numbers, or captions.  \n" +
                 "- Background should be white or transparent unless the theme requires otherwise.  \n" +
-                "- Include subtle white grid/division between illustrations so they can be cropped out individually.  \n" +
+                "- The grid divisions should be clear enough to separate the illustrations, but not styled (no borders, no decorative lines — just white separation).  \n" +
                 "- Ensure each illustration is clearly distinguishable and fits cleanly within its square area with appropriate padding.  \n" +
                 "\n" +
                 "Final output: A new 2x2 layout of 4 illustrations that look like part of the same series as the reference image. ";
