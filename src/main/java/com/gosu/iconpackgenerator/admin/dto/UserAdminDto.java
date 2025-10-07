@@ -16,6 +16,7 @@ public class UserAdminDto {
     private Integer coins;
     private Integer trialCoins;
     private Long generatedIconsCount;
+    private Long generatedIllustrationsCount;
     private LocalDateTime registeredAt;
     private String authProvider;
     private Boolean isActive;

@@ -5,6 +5,9 @@ import com.gosu.iconpackgenerator.admin.service.AdminService;
 import com.gosu.iconpackgenerator.domain.icons.dto.IconDto;
 import com.gosu.iconpackgenerator.domain.icons.entity.GeneratedIcon;
 import com.gosu.iconpackgenerator.domain.icons.repository.GeneratedIconRepository;
+import com.gosu.iconpackgenerator.domain.illustrations.dto.IllustrationDto;
+import com.gosu.iconpackgenerator.domain.illustrations.entity.GeneratedIllustration;
+import com.gosu.iconpackgenerator.domain.illustrations.repository.GeneratedIllustrationRepository;
 import com.gosu.iconpackgenerator.user.model.User;
 import com.gosu.iconpackgenerator.user.repository.UserRepository;
 import com.gosu.iconpackgenerator.user.service.CustomOAuth2User;
@@ -34,6 +37,7 @@ public class AdminController {
     private final AdminService adminService;
     private final UserRepository userRepository;
     private final GeneratedIconRepository generatedIconRepository;
+    private final GeneratedIllustrationRepository generatedIllustrationRepository;
 
     /**
      * Check if current user is admin
@@ -74,6 +78,7 @@ public class AdminController {
         List<UserAdminDto> userDtos = users.stream()
                 .map(u -> {
                     Long iconCount = generatedIconRepository.countByUser(u);
+                    Long illustrationCount = generatedIllustrationRepository.countByUser(u);
                     return new UserAdminDto(
                             u.getId(),
                             u.getEmail(),
@@ -81,6 +86,7 @@ public class AdminController {
                             u.getCoins() != null ? u.getCoins() : 0,
                             u.getTrialCoins() != null ? u.getTrialCoins() : 0,
                             iconCount,
+                            illustrationCount,
                             u.getRegisteredAt(),
                             u.getAuthProvider(),
                             u.getIsActive()
@@ -128,6 +134,42 @@ public class AdminController {
 
         log.info("Admin user {} retrieved {} icons for user {}", adminUser.getEmail(), iconDtos.size(), targetUser.getEmail());
         return ResponseEntity.ok(iconDtos);
+    }
+
+    /**
+     * Get illustrations for a specific user (admin only)
+     */
+    @GetMapping("/users/{userId}/illustrations")
+    public ResponseEntity<?> getUserIllustrations(@PathVariable Long userId, @AuthenticationPrincipal OAuth2User principal) {
+        if (!(principal instanceof CustomOAuth2User customUser)) {
+            return ResponseEntity.status(401).body(Map.of("error", "Unauthorized"));
+        }
+
+        User adminUser = customUser.getUser();
+        if (!adminService.isAdmin(adminUser)) {
+            log.warn("Non-admin user {} attempted to access admin endpoint", adminUser.getEmail());
+            return ResponseEntity.status(403).body(Map.of("error", "Forbidden - Admin access required"));
+        }
+
+        User targetUser = userRepository.findById(userId)
+                .orElse(null);
+
+        if (targetUser == null) {
+            return ResponseEntity.status(404).body(Map.of("error", "User not found"));
+        }
+
+        List<GeneratedIllustration> illustrations = generatedIllustrationRepository.findByUserOrderByCreatedAtDesc(targetUser);
+        List<IllustrationDto> illustrationDtos = illustrations.stream()
+                .map(illustration -> new IllustrationDto(
+                        illustration.getFilePath(),
+                        illustration.getDescription(),
+                        illustration.getIllustrationType(),
+                        illustration.getRequestId()
+                ))
+                .collect(Collectors.toList());
+
+        log.info("Admin user {} retrieved {} illustrations for user {}", adminUser.getEmail(), illustrationDtos.size(), targetUser.getEmail());
+        return ResponseEntity.ok(illustrationDtos);
     }
 
     /**

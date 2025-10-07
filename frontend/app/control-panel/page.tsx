@@ -13,6 +13,7 @@ interface UserAdminData {
   coins: number;
   trialCoins: number;
   generatedIconsCount: number;
+  generatedIllustrationsCount: number;
   registeredAt: string;
   authProvider: string;
   isActive: boolean;
@@ -28,6 +29,13 @@ interface UserIcon {
   theme: string;
 }
 
+interface UserIllustration {
+  imageUrl: string;
+  description: string;
+  serviceSource: string;
+  requestId: string;
+}
+
 export default function ControlPanelPage() {
   const router = useRouter();
   const { authState } = useAuth();
@@ -36,8 +44,13 @@ export default function ControlPanelPage() {
   const [error, setError] = useState<string | null>(null);
   const [selectedUser, setSelectedUser] = useState<UserAdminData | null>(null);
   const [userIcons, setUserIcons] = useState<UserIcon[]>([]);
+  const [userIllustrations, setUserIllustrations] = useState<UserIllustration[]>(
+    []
+  );
   const [loadingIcons, setLoadingIcons] = useState(false);
+  const [loadingIllustrations, setLoadingIllustrations] = useState(false);
   const [showIconsModal, setShowIconsModal] = useState(false);
+  const [showIllustrationsModal, setShowIllustrationsModal] = useState(false);
   const [showSetCoinsModal, setShowSetCoinsModal] = useState(false);
   const [userForCoins, setUserForCoins] = useState<UserAdminData | null>(null);
   const [coins, setCoins] = useState(0);
@@ -106,16 +119,49 @@ export default function ControlPanelPage() {
     }
   };
 
+  const fetchUserIllustrations = async (userId: number) => {
+    setLoadingIllustrations(true);
+    try {
+      const response = await fetch(`/api/admin/users/${userId}/illustrations`, {
+        credentials: "include",
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch user illustrations");
+      }
+
+      const data: UserIllustration[] = await response.json();
+      setUserIllustrations(data);
+    } catch (err: any) {
+      console.error("Error fetching user illustrations:", err);
+      setUserIllustrations([]);
+    } finally {
+      setLoadingIllustrations(false);
+    }
+  };
+
   const handleViewIcons = async (user: UserAdminData) => {
     setSelectedUser(user);
     setShowIconsModal(true);
     await fetchUserIcons(user.id);
   };
 
+  const handleViewIllustrations = async (user: UserAdminData) => {
+    setSelectedUser(user);
+    setShowIllustrationsModal(true);
+    await fetchUserIllustrations(user.id);
+  };
+
   const closeIconsModal = () => {
     setShowIconsModal(false);
     setSelectedUser(null);
     setUserIcons([]);
+  };
+
+  const closeIllustrationsModal = () => {
+    setShowIllustrationsModal(false);
+    setSelectedUser(null);
+    setUserIllustrations([]);
   };
 
   const handleOpenSetCoinsModal = (user: UserAdminData) => {
@@ -225,6 +271,9 @@ export default function ControlPanelPage() {
                     Generated Icons
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">
+                    Generated Illustrations
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">
                     Registered
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">
@@ -265,6 +314,14 @@ export default function ControlPanelPage() {
                         View ({user.generatedIconsCount})
                       </button>
                     </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm">
+                      <button
+                        onClick={() => handleViewIllustrations(user)}
+                        className="inline-flex items-center px-3 py-1 rounded-md text-sm font-medium bg-gradient-to-r from-green-600 to-teal-600 text-white hover:from-green-700 hover:to-teal-700 transition-all duration-200"
+                      >
+                        View ({user.generatedIllustrationsCount})
+                      </button>
+                    </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600">
                       {formatDate(user.registeredAt)}
                     </td>
@@ -293,6 +350,13 @@ export default function ControlPanelPage() {
           <p>
             Total Icons Generated:{" "}
             {users.reduce((sum, user) => sum + user.generatedIconsCount, 0)}
+          </p>
+          <p>
+            Total Illustrations Generated:{" "}
+            {users.reduce(
+              (sum, user) => sum + user.generatedIllustrationsCount,
+              0
+            )}
           </p>
         </div>
       </div>
@@ -419,6 +483,74 @@ export default function ControlPanelPage() {
             <div className="flex justify-end p-6 border-t border-slate-200">
               <button
                 onClick={closeIconsModal}
+                className="px-4 py-2 bg-slate-200 text-slate-700 rounded-lg hover:bg-slate-300 transition-colors"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Illustrations Modal */}
+      {showIllustrationsModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-6xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+            <div className="flex items-center justify-between p-6 border-b border-slate-200">
+              <div>
+                <h2 className="text-2xl font-bold text-slate-800">
+                  Illustrations for {selectedUser?.email}
+                </h2>
+                <p className="text-sm text-slate-600 mt-1">
+                  Total: {userIllustrations.length} illustrations
+                </p>
+              </div>
+              <button
+                onClick={closeIllustrationsModal}
+                className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
+              >
+                <X className="w-6 h-6 text-slate-600" />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-6">
+              {loadingIllustrations ? (
+                <div className="flex items-center justify-center py-12">
+                  <p className="text-slate-600">Loading illustrations...</p>
+                </div>
+              ) : userIllustrations.length === 0 ? (
+                <div className="flex items-center justify-center py-12">
+                  <p className="text-slate-600">
+                    No illustrations found for this user
+                  </p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                  {userIllustrations.map((illustration, index) => (
+                    <div
+                      key={index}
+                      className="border rounded-lg p-2 bg-white shadow-sm hover:shadow-md transition-shadow"
+                    >
+                      <img
+                        src={illustration.imageUrl}
+                        alt={illustration.description || "Generated Illustration"}
+                        className="w-full h-auto object-cover rounded-md"
+                      />
+                      <div className="mt-2 text-xs text-slate-600 truncate">
+                        {illustration.description}
+                      </div>
+                      <div className="mt-1 text-xs text-slate-400 truncate">
+                        {illustration.serviceSource}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="flex justify-end p-6 border-t border-slate-200">
+              <button
+                onClick={closeIllustrationsModal}
                 className="px-4 py-2 bg-slate-200 text-slate-700 rounded-lg hover:bg-slate-300 transition-colors"
               >
                 Close
