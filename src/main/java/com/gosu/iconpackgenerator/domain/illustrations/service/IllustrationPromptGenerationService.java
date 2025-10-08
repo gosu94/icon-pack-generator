@@ -20,6 +20,7 @@ public class IllustrationPromptGenerationService {
             "Style guidelines:  \n" +
             "- All illustrations should share the same style, color palette, and overall visual feel.  \n" +
             "- No text, labels, numbers, or captions anywhere in the image.  \n" +
+            "- Only color outside illustrations should be white \n" +
             "- Ensure each illustration fits well within its square area with appropriate padding.  \n" +
             "- The divisions should be clear enough to separate the illustrations, but not styled (no borders, no decorative lines — just white separation).  \n" +
             "\n" +
@@ -37,7 +38,7 @@ public class IllustrationPromptGenerationService {
                 "- Replicate the visual style of the reference image as closely as possible (line weight, shading, depth, and highlights).  \n" +
                 "- Keep the same consistent color palette and professional look.  \n" +
                 "- No text, labels, numbers, or captions.  \n" +
-                "- Background should be white unless the theme requires otherwise.  \n" +
+                "- Only color outside illustrations should be white \n" +
                 "- The divisions should be clear enough to separate the illustrations, but not styled (no borders, no decorative lines — just white separation).  \n" +
                 "- Ensure each illustration is clearly distinguishable and fits cleanly within its square area with appropriate padding.  \n" +
                 "\n" +
