@@ -189,59 +189,55 @@ public class GridCompositionService {
     public String composeIllustrationGrid(List<String> illustrationFilePaths) {
         try {
             log.info("Creating 2x2 grid from {} illustrations", illustrationFilePaths.size());
-            
+
             // Take only first 4 illustrations if more are provided
             List<String> illustrationsToUse = illustrationFilePaths.subList(0, Math.min(4, illustrationFilePaths.size()));
-            
+
             if (illustrationsToUse.size() < 4) {
                 throw new IllegalArgumentException("Need at least 4 illustrations to create a 2x2 grid");
             }
-            
+
             // Calculate total grid dimensions for 2x2 grid with 4:3 aspect ratio per cell
             int totalWidth = ILLUSTRATION_GRID_SIZE * ILLUSTRATION_WIDTH + (ILLUSTRATION_GRID_SIZE - 1) * LINE_WIDTH;
             int totalHeight = ILLUSTRATION_GRID_SIZE * ILLUSTRATION_HEIGHT + (ILLUSTRATION_GRID_SIZE - 1) * LINE_WIDTH;
-            
+
             // Create the grid image with transparency
             BufferedImage gridImage = new BufferedImage(totalWidth, totalHeight, BufferedImage.TYPE_INT_ARGB);
             Graphics2D g2d = gridImage.createGraphics();
-            
+
             // Enable antialiasing for better quality
             g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
             g2d.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
-            
-            // Fill with transparent background
-            g2d.setComposite(AlphaComposite.Clear);
+
+            // Fill with white background
+            g2d.setColor(Color.WHITE);
             g2d.fillRect(0, 0, totalWidth, totalHeight);
-            g2d.setComposite(AlphaComposite.SrcOver);
-            
+
             // Place illustrations in 2x2 grid
             for (int i = 0; i < 4; i++) {
                 int row = i / ILLUSTRATION_GRID_SIZE;
                 int col = i % ILLUSTRATION_GRID_SIZE;
-                
+
                 int x = col * (ILLUSTRATION_WIDTH + LINE_WIDTH);
                 int y = row * (ILLUSTRATION_HEIGHT + LINE_WIDTH);
-                
+
                 try {
                     // Load and resize illustration
                     BufferedImage illustrationImage = loadAndResizeIllustration(illustrationsToUse.get(i));
                     g2d.drawImage(illustrationImage, x, y, null);
-                    
+
                 } catch (Exception e) {
                     log.warn("Failed to load illustration {}: {}", illustrationsToUse.get(i), e.getMessage());
                     // Draw placeholder for missing illustration
                     drawIllustrationPlaceholder(g2d, x, y);
                 }
             }
-            
-            // Draw grid lines for 2x2 layout
-            drawIllustrationGridLines(g2d, totalWidth, totalHeight);
-            
+
             g2d.dispose();
-            
+
             // Convert to base64
             return bufferedImageToBase64(gridImage);
-            
+
         } catch (Exception e) {
             log.error("Error creating illustration grid composition", e);
             throw new RuntimeException("Failed to create illustration grid composition", e);
@@ -312,21 +308,6 @@ public class GridCompositionService {
         g2d.drawString(text, textX, textY);
     }
     
-    /**
-     * Draw semi-transparent grid lines for 2x2 illustration grid
-     */
-    private void drawIllustrationGridLines(Graphics2D g2d, int totalWidth, int totalHeight) {
-        g2d.setColor(GRID_LINE_COLOR);
-        g2d.setStroke(new BasicStroke(LINE_WIDTH));
-        
-        // Draw vertical line (only 1 for 2x2 grid)
-        int x = (ILLUSTRATION_WIDTH + LINE_WIDTH) - LINE_WIDTH / 2;
-        g2d.drawLine(x, 0, x, totalHeight);
-        
-        // Draw horizontal line (only 1 for 2x2 grid)
-        int y = (ILLUSTRATION_HEIGHT + LINE_WIDTH) - LINE_WIDTH / 2;
-        g2d.drawLine(0, y, totalWidth, y);
-    }
     
     /**
      * Convert BufferedImage to base64 PNG string
