@@ -1,7 +1,6 @@
 package com.gosu.iconpackgenerator.domain.illustrations.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.gosu.iconpackgenerator.domain.ai.BananaModelService;
 import com.gosu.iconpackgenerator.domain.icons.component.StreamingStateStore;
 import com.gosu.iconpackgenerator.domain.icons.dto.ServiceProgressUpdate;
 import com.gosu.iconpackgenerator.domain.icons.service.CoinManagementService;
@@ -11,7 +10,6 @@ import com.gosu.iconpackgenerator.domain.illustrations.dto.IllustrationGeneratio
 import com.gosu.iconpackgenerator.domain.illustrations.dto.MoreIllustrationsRequest;
 import com.gosu.iconpackgenerator.domain.illustrations.dto.MoreIllustrationsResponse;
 import com.gosu.iconpackgenerator.domain.illustrations.service.IllustrationGenerationService;
-import com.gosu.iconpackgenerator.domain.illustrations.service.IllustrationImageProcessingService;
 import com.gosu.iconpackgenerator.domain.illustrations.service.IllustrationPersistenceService;
 import com.gosu.iconpackgenerator.domain.illustrations.service.IllustrationPromptGenerationService;
 import com.gosu.iconpackgenerator.user.model.User;
@@ -50,8 +48,6 @@ public class IllustrationGenerationController implements IllustrationGenerationC
     private final IllustrationGenerationService illustrationGenerationService;
     private final ObjectMapper objectMapper;
     private final StreamingStateStore streamingStateStore;
-    private final BananaModelService bananaModelService;
-    private final IllustrationImageProcessingService illustrationImageProcessingService;
     private final IllustrationPromptGenerationService illustrationPromptGenerationService;
     private final IllustrationPersistenceService illustrationPersistenceService;
     private final CoinManagementService coinManagementService;
@@ -460,17 +456,12 @@ public class IllustrationGenerationController implements IllustrationGenerationC
                         request.getSeed() + System.currentTimeMillis() % 10000 : 
                         null;
                 
-                // Generate new illustrations using banana service
-                CompletableFuture<byte[]> generationFuture = bananaModelService.generateImageToImage(
-                        prompt, originalImageData, variedSeed);
-                byte[] newImageData = generationFuture.join();
+                // Generate new illustrations using the service (includes upscaling)
+                CompletableFuture<List<IllustrationGenerationResponse.GeneratedIllustration>> generationFuture = 
+                        illustrationGenerationService.generateMoreIllustrationsFromImage(
+                                originalImageData, prompt, variedSeed, request.getIllustrationDescriptions());
                 
-                // Crop illustrations from 2x2 grid
-                List<String> base64Illustrations = 
-                        illustrationImageProcessingService.cropIllustrationsFromGrid(newImageData);
-                
-                List<IllustrationGenerationResponse.GeneratedIllustration> newIllustrations = 
-                        createIllustrationList(base64Illustrations, request);
+                List<IllustrationGenerationResponse.GeneratedIllustration> newIllustrations = generationFuture.join();
 
                 // Persist the new illustrations
                 try {
@@ -543,30 +534,6 @@ public class IllustrationGenerationController implements IllustrationGenerationC
         });
 
         return deferredResult;
-    }
-    
-    private List<IllustrationGenerationResponse.GeneratedIllustration> createIllustrationList(
-            List<String> base64Illustrations, MoreIllustrationsRequest request) {
-        List<IllustrationGenerationResponse.GeneratedIllustration> illustrations = new ArrayList<>();
-        
-        for (int i = 0; i < base64Illustrations.size() && i < 4; i++) {
-            IllustrationGenerationResponse.GeneratedIllustration illustration = 
-                    new IllustrationGenerationResponse.GeneratedIllustration();
-            illustration.setId(UUID.randomUUID().toString());
-            illustration.setBase64Data(base64Illustrations.get(i));
-            illustration.setServiceSource("banana");
-            illustration.setGridPosition(i);
-            
-            if (request.getIllustrationDescriptions() != null && i < request.getIllustrationDescriptions().size()) {
-                illustration.setDescription(request.getIllustrationDescriptions().get(i));
-            } else {
-                illustration.setDescription("");
-            }
-            
-            illustrations.add(illustration);
-        }
-        
-        return illustrations;
     }
     
     private MoreIllustrationsResponse createErrorResponse(

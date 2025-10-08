@@ -241,25 +241,27 @@ public class IllustrationGenerationService {
     private CompletableFuture<IllustrationGenerationResult> generateWithTextPrompt(
             IllustrationGenerationRequest request, Long seed,
             ProgressUpdateCallback progressCallback, String requestId, int generationIndex) {
-        
+
         String prompt = illustrationPromptGenerationService.generatePromptFor2x2Grid(
-            request.getGeneralDescription(),
-            request.getIndividualDescriptions()
+                request.getGeneralDescription(),
+                request.getIndividualDescriptions()
         );
-        
+
         return bananaModelService.generateImage(prompt, seed)
-            .thenCompose(imageData -> {
-                log.info("Upscaling illustration image before processing (factor: 2)");
-                
-                // Upscale the image by 2x before processing
-                return seedVrUpscaleService.upscaleImage(imageData, 2.0f)
-                    .thenApply(upscaledImageData -> {
-                        log.info("Upscaling completed, processing upscaled image");
-                        List<String> base64Illustrations = 
-                            illustrationImageProcessingService.cropIllustrationsFromGrid(upscaledImageData);
-                        return createIllustrationListWithOriginalImage(base64Illustrations, imageData, request);
-                    });
-            });
+                .thenCompose(imageData -> {
+                    log.info("Upscaling illustration image before processing (factor: 2)");
+
+                    long upscaleStart = System.currentTimeMillis();
+                    // Upscale the image by 2x before processing
+                    return seedVrUpscaleService.upscaleImage(imageData, 2.0f)
+                            .thenApply(upscaledImageData -> {
+                                long upscaleDuration = System.currentTimeMillis() - upscaleStart;
+                                log.info("Upscaling completed in {}ms, processing upscaled image", upscaleDuration);
+                                List<String> base64Illustrations =
+                                        illustrationImageProcessingService.cropIllustrationsFromGrid(upscaledImageData, upscaleDuration);
+                                return createIllustrationListWithOriginalImage(base64Illustrations, imageData, request);
+                            });
+                });
     }
     
     /**
@@ -268,27 +270,73 @@ public class IllustrationGenerationService {
     private CompletableFuture<IllustrationGenerationResult> generateWithReferenceImage(
             IllustrationGenerationRequest request, Long seed,
             ProgressUpdateCallback progressCallback, String requestId, int generationIndex) {
-        
+
         String prompt = illustrationPromptGenerationService.generatePromptForReferenceImage(
-            request.getIndividualDescriptions(),
-            request.getGeneralDescription()
+                request.getIndividualDescriptions(),
+                request.getGeneralDescription()
         );
-        
+
         byte[] referenceImageData = Base64.getDecoder().decode(request.getReferenceImageBase64());
-        
+
         return bananaModelService.generateImageToImage(prompt, referenceImageData, seed)
-            .thenCompose(imageData -> {
-                log.info("Upscaling illustration image before processing (factor: 2)");
-                
-                // Upscale the image by 2x before processing
-                return seedVrUpscaleService.upscaleImage(imageData, 2.0f)
-                    .thenApply(upscaledImageData -> {
-                        log.info("Upscaling completed, processing upscaled image");
-                        List<String> base64Illustrations = 
-                            illustrationImageProcessingService.cropIllustrationsFromGrid(upscaledImageData);
-                        return createIllustrationListWithOriginalImage(base64Illustrations, imageData, request);
-                    });
-            });
+                .thenCompose(imageData -> {
+                    log.info("Upscaling illustration image before processing (factor: 2)");
+
+                    long upscaleStart = System.currentTimeMillis();
+                    // Upscale the image by 2x before processing
+                    return seedVrUpscaleService.upscaleImage(imageData, 2.0f)
+                            .thenApply(upscaledImageData -> {
+                                long upscaleDuration = System.currentTimeMillis() - upscaleStart;
+                                log.info("Upscaling completed in {}ms, processing upscaled image", upscaleDuration);
+                                List<String> base64Illustrations =
+                                        illustrationImageProcessingService.cropIllustrationsFromGrid(upscaledImageData, upscaleDuration);
+                                return createIllustrationListWithOriginalImage(base64Illustrations, imageData, request);
+                            });
+                });
+    }
+    
+    /**
+     * Generate more illustrations from an original grid image with upscaling
+     * This is used for the "Generate More" functionality
+     */
+    public CompletableFuture<List<IllustrationGenerationResponse.GeneratedIllustration>> generateMoreIllustrationsFromImage(
+            byte[] originalImageData, String prompt, Long seed, List<String> descriptions) {
+
+        return bananaModelService.generateImageToImage(prompt, originalImageData, seed)
+                .thenCompose(imageData -> {
+                    log.info("Upscaling more illustrations image before processing (factor: 2)");
+
+                    long upscaleStart = System.currentTimeMillis();
+                    // Upscale the image by 2x before processing
+                    return seedVrUpscaleService.upscaleImage(imageData, 2.0f)
+                            .thenApply(upscaledImageData -> {
+                                long upscaleDuration = System.currentTimeMillis() - upscaleStart;
+                                log.info("Upscaling completed, processing upscaled more illustrations in {}ms", upscaleDuration);
+                                List<String> base64Illustrations =
+                                        illustrationImageProcessingService.cropIllustrationsFromGrid(upscaledImageData, upscaleDuration);
+
+                                // Convert to GeneratedIllustration objects
+                                List<IllustrationGenerationResponse.GeneratedIllustration> illustrations = new ArrayList<>();
+                                for (int i = 0; i < base64Illustrations.size() && i < 4; i++) {
+                                    IllustrationGenerationResponse.GeneratedIllustration illustration =
+                                            new IllustrationGenerationResponse.GeneratedIllustration();
+                                    illustration.setId(UUID.randomUUID().toString());
+                                    illustration.setBase64Data(base64Illustrations.get(i));
+                                    illustration.setServiceSource("banana");
+                                    illustration.setGridPosition(i);
+
+                                    if (descriptions != null && i < descriptions.size()) {
+                                        illustration.setDescription(descriptions.get(i));
+                                    } else {
+                                        illustration.setDescription("");
+                                    }
+
+                                    illustrations.add(illustration);
+                                }
+
+                                return illustrations;
+                            });
+                });
     }
     
     /**
