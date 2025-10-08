@@ -59,7 +59,7 @@ const ExportModal: React.FC<ExportModalProps> = ({
       .map(([format]) => format);
 
     if (mode === "illustrations") {
-      const selectedSizes = [500];
+      const selectedSizes = [1024];
       onConfirm(selectedFormats, selectedSizes);
     } else {
       onConfirm(selectedFormats);

@@ -13,7 +13,7 @@ public class ServiceProgressUpdate {
     
     private String requestId;
     private String serviceName; // "flux", "recraft", "photon", "gpt", "banana"
-    private String status; // "started", "success", "error", "complete"
+    private String status; // "started", "upscaling", "success", "error", "complete"
     private String message;
     private List<IconGenerationResponse.GeneratedIcon> icons;
     private String originalGridImageBase64;
@@ -25,6 +25,11 @@ public class ServiceProgressUpdate {
     public static ServiceProgressUpdate serviceStarted(String requestId, String serviceName, int generationIndex) {
         return new ServiceProgressUpdate(requestId, serviceName, "started", 
                 "Generation started", null, null, null, "service_update", generationIndex);
+    }
+    
+    public static ServiceProgressUpdate serviceUpscaling(String requestId, String serviceName, int generationIndex) {
+        return new ServiceProgressUpdate(requestId, serviceName, "upscaling", 
+                "Upscaling...", null, null, null, "service_update", generationIndex);
     }
     
     public static ServiceProgressUpdate serviceCompleted(String requestId, String serviceName, 

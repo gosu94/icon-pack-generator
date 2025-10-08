@@ -1,6 +1,7 @@
 package com.gosu.iconpackgenerator.domain.illustrations.service;
 
 import com.gosu.iconpackgenerator.domain.ai.BananaModelService;
+import com.gosu.iconpackgenerator.domain.ai.SeedVrUpscaleService;
 import com.gosu.iconpackgenerator.domain.icons.dto.ServiceProgressUpdate;
 import com.gosu.iconpackgenerator.domain.icons.service.CoinManagementService;
 import com.gosu.iconpackgenerator.domain.illustrations.dto.IllustrationGenerationRequest;
@@ -22,6 +23,7 @@ import java.util.concurrent.CompletableFuture;
 public class IllustrationGenerationService {
     
     private final BananaModelService bananaModelService;
+    private final SeedVrUpscaleService seedVrUpscaleService;
     private final IllustrationImageProcessingService illustrationImageProcessingService;
     private final IllustrationPromptGenerationService illustrationPromptGenerationService;
     private final CoinManagementService coinManagementService;
@@ -145,7 +147,7 @@ public class IllustrationGenerationService {
             }
             
             CompletableFuture<IllustrationGenerationResponse.ServiceResults> generationFuture = 
-                generateIllustrationsWithBanana(modifiedRequest, requestId, generationSeed)
+                generateIllustrationsWithBanana(modifiedRequest, requestId, generationSeed, progressCallback, generationIndex)
                     .thenApply(result -> {
                         result.setGenerationIndex(generationIndex);
                         return result;
@@ -183,11 +185,12 @@ public class IllustrationGenerationService {
      */
     private CompletableFuture<IllustrationGenerationResponse.ServiceResults> 
             generateIllustrationsWithBanana(
-                IllustrationGenerationRequest request, String requestId, Long seed) {
+                IllustrationGenerationRequest request, String requestId, Long seed,
+                ProgressUpdateCallback progressCallback, int generationIndex) {
         
         long startTime = System.currentTimeMillis();
         
-        return generateIllustrationsInternal(request, seed)
+        return generateIllustrationsInternal(request, seed, progressCallback, requestId, generationIndex)
             .thenApply(illustrationResult -> {
                 long generationTime = System.currentTimeMillis() - startTime;
                 IllustrationGenerationResponse.ServiceResults result = 
@@ -222,12 +225,13 @@ public class IllustrationGenerationService {
      * Internal illustration generation logic
      */
     private CompletableFuture<IllustrationGenerationResult> generateIllustrationsInternal(
-            IllustrationGenerationRequest request, Long seed) {
+            IllustrationGenerationRequest request, Long seed, 
+            ProgressUpdateCallback progressCallback, String requestId, int generationIndex) {
         
         if (request.hasReferenceImage()) {
-            return generateWithReferenceImage(request, seed);
+            return generateWithReferenceImage(request, seed, progressCallback, requestId, generationIndex);
         } else {
-            return generateWithTextPrompt(request, seed);
+            return generateWithTextPrompt(request, seed, progressCallback, requestId, generationIndex);
         }
     }
     
@@ -235,7 +239,8 @@ public class IllustrationGenerationService {
      * Generate illustrations from text prompt
      */
     private CompletableFuture<IllustrationGenerationResult> generateWithTextPrompt(
-            IllustrationGenerationRequest request, Long seed) {
+            IllustrationGenerationRequest request, Long seed,
+            ProgressUpdateCallback progressCallback, String requestId, int generationIndex) {
         
         String prompt = illustrationPromptGenerationService.generatePromptFor2x2Grid(
             request.getGeneralDescription(),
@@ -243,10 +248,17 @@ public class IllustrationGenerationService {
         );
         
         return bananaModelService.generateImage(prompt, seed)
-            .thenApply(imageData -> {
-                List<String> base64Illustrations = 
-                    illustrationImageProcessingService.cropIllustrationsFromGrid(imageData);
-                return createIllustrationListWithOriginalImage(base64Illustrations, imageData, request);
+            .thenCompose(imageData -> {
+                log.info("Upscaling illustration image before processing (factor: 2)");
+                
+                // Upscale the image by 2x before processing
+                return seedVrUpscaleService.upscaleImage(imageData, 2.0f)
+                    .thenApply(upscaledImageData -> {
+                        log.info("Upscaling completed, processing upscaled image");
+                        List<String> base64Illustrations = 
+                            illustrationImageProcessingService.cropIllustrationsFromGrid(upscaledImageData);
+                        return createIllustrationListWithOriginalImage(base64Illustrations, imageData, request);
+                    });
             });
     }
     
@@ -254,7 +266,8 @@ public class IllustrationGenerationService {
      * Generate illustrations from reference image
      */
     private CompletableFuture<IllustrationGenerationResult> generateWithReferenceImage(
-            IllustrationGenerationRequest request, Long seed) {
+            IllustrationGenerationRequest request, Long seed,
+            ProgressUpdateCallback progressCallback, String requestId, int generationIndex) {
         
         String prompt = illustrationPromptGenerationService.generatePromptForReferenceImage(
             request.getIndividualDescriptions(),
@@ -264,10 +277,17 @@ public class IllustrationGenerationService {
         byte[] referenceImageData = Base64.getDecoder().decode(request.getReferenceImageBase64());
         
         return bananaModelService.generateImageToImage(prompt, referenceImageData, seed)
-            .thenApply(imageData -> {
-                List<String> base64Illustrations = 
-                    illustrationImageProcessingService.cropIllustrationsFromGrid(imageData);
-                return createIllustrationListWithOriginalImage(base64Illustrations, imageData, request);
+            .thenCompose(imageData -> {
+                log.info("Upscaling illustration image before processing (factor: 2)");
+                
+                // Upscale the image by 2x before processing
+                return seedVrUpscaleService.upscaleImage(imageData, 2.0f)
+                    .thenApply(upscaledImageData -> {
+                        log.info("Upscaling completed, processing upscaled image");
+                        List<String> base64Illustrations = 
+                            illustrationImageProcessingService.cropIllustrationsFromGrid(upscaledImageData);
+                        return createIllustrationListWithOriginalImage(base64Illustrations, imageData, request);
+                    });
             });
     }
     

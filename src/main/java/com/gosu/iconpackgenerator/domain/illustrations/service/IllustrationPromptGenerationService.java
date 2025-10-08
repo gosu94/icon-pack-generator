@@ -28,7 +28,7 @@ public class IllustrationPromptGenerationService {
     private static final String IMAGE_TO_IMAGE_PROMPT_TEMPLATE = 
         "Using the provided reference image as a style guide, create a new 2x2 arrangement of illustrations. \n" +
                 "The new image should match the same overall style, color palette, shading, and general theme as the reference. \n" +
-                "Maintain the same 2x2 layout: four square areas of equal size, arranged left to right, top to bottom, with equal spacing.  \n" +
+                "Maintain the same 2x2 layout: four square areas of equal size, arranged left to right, top to bottom, with equal white spacing.  \n" +
                 "\n" +
                 "General theme: %s \n" +
                 "%s" +
