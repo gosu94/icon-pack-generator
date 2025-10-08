@@ -45,7 +45,7 @@ public class IllustrationPromptGenerationService {
                 "Final output: A new 2x2 layout of 4 illustrations that look like part of the same series as the reference image. ";
     
     public static final String SECOND_GENERATION_VARIATION = 
-        " with a slightly different artistic style variation";
+        " use professional color palette and artistic design";
     
     /**
      * Generate prompt for 2x2 grid of illustrations based on text description
