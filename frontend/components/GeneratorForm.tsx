@@ -168,7 +168,7 @@ const GeneratorForm: React.FC<GeneratorFormProps> = ({
               disabled={isGenerating}
               className={`relative overflow-hidden flex-1 px-4 py-3 rounded-lg text-sm font-semibold transition-all duration-200 ${
                 mode === "illustrations"
-                  ? "bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-md"
+                  ? "bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-md"
                   : isGenerating
                   ? "bg-gray-100 text-gray-400 cursor-not-allowed"
                   : "bg-gray-100 text-gray-600 hover:bg-gray-200"
@@ -424,6 +424,8 @@ const GeneratorForm: React.FC<GeneratorFormProps> = ({
               className={`w-full py-4 px-6 rounded-2xl text-white font-semibold ${
                 isGenerating || !isAuthenticated
                   ? "bg-slate-400 cursor-not-allowed"
+                  : mode === "illustrations"
+                  ? "bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 transform hover:scale-[1.02] shadow-lg hover:shadow-xl"
                   : "bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 transform hover:scale-[1.02] shadow-lg hover:shadow-xl"
               } transition-all duration-200`}
             >

@@ -365,31 +365,53 @@ export default function GalleryPage() {
               </div>
             ) : (
               <>
-                <button
-                  onClick={() => {
-                    setGalleryType(null);
-                    setSelectedRequest(null);
-                    setGroupedIcons({});
-                    setGroupedIllustrations({});
-                    setError(null);
-                  }}
-                  className="mb-8 inline-flex items-center gap-2 rounded-md bg-slate-100 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-200 transition-colors"
-                >
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="16"
-                    height="16"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
+                {selectedRequest ? (
+                  <button
+                    onClick={handleBackToGallery}
+                    className="mb-8 inline-flex items-center gap-2 rounded-md bg-purple-50 px-4 py-2 text-sm font-medium text-purple-600 hover:bg-purple-100 transition-colors"
                   >
-                    <path d="M19 12H5m7 7l-7-7 7-7" />
-                  </svg>
-                  Back to Gallery Selection
-                </button>
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="16"
+                      height="16"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <path d="M19 12H5m7 7l-7-7 7-7" />
+                    </svg>
+                    Back to Gallery
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => {
+                      setGalleryType(null);
+                      setSelectedRequest(null);
+                      setGroupedIcons({});
+                      setGroupedIllustrations({});
+                      setError(null);
+                    }}
+                    className="mb-8 inline-flex items-center gap-2 rounded-md bg-slate-100 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-200 transition-colors"
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="16"
+                      height="16"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <path d="M19 12H5m7 7l-7-7 7-7" />
+                    </svg>
+                    Back to Gallery Selection
+                  </button>
+                )}
 
                 {error && <p className="text-red-500">{error}</p>}
 
@@ -397,25 +419,6 @@ export default function GalleryPage() {
                   <>
                     {selectedIconGroup && selectedRequest ? (
                       <div>
-                        <button
-                          onClick={handleBackToGallery}
-                          className="mb-8 inline-flex items-center gap-2 rounded-md bg-purple-50 px-4 py-2 text-sm font-medium text-purple-600 hover:bg-purple-100 transition-colors"
-                        >
-                          <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            width="16"
-                            height="16"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          >
-                            <path d="M19 12H5m7 7l-7-7 7-7" />
-                          </svg>
-                          Back to Gallery
-                        </button>
 
                         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6">
                           <h1 className="text-3xl font-bold text-slate-800 mb-4 sm:mb-0">
@@ -430,7 +433,7 @@ export default function GalleryPage() {
                                 ...selectedIconGroup.variation,
                               ])
                             }
-                            className="px-2 sm:px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 flex items-center justify-center gap-2"
+                            className="px-2 sm:px-4 py-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 flex items-center justify-center gap-2"
                           >
                             <Download className="w-4 h-4" />
                             <span className="hidden sm:inline">
@@ -454,9 +457,6 @@ export default function GalleryPage() {
                                   className="px-2 sm:px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 flex items-center justify-center gap-2"
                                 >
                                   <Sparkles className="w-4 h-4" />
-                                  <span className="hidden sm:inline">
-                                    Generate More
-                                  </span>
                                 </button>
                                 <button
                                   onClick={() =>
@@ -467,10 +467,6 @@ export default function GalleryPage() {
                                   className="px-2 sm:px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 flex items-center justify-center gap-2"
                                 >
                                   <Download className="w-4 h-4" />
-                                  <span className="hidden sm:inline">
-                                    Export Originals (
-                                    {selectedIconGroup.original.length})
-                                  </span>
                                 </button>
                               </div>
                             </div>
@@ -507,9 +503,6 @@ export default function GalleryPage() {
                                   className="px-2 sm:px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 flex items-center justify-center gap-2"
                                 >
                                   <Sparkles className="w-4 h-4" />
-                                  <span className="hidden sm:inline">
-                                    Generate More
-                                  </span>
                                 </button>
                                 <button
                                   onClick={() =>
@@ -520,10 +513,6 @@ export default function GalleryPage() {
                                   className="px-2 sm:px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 flex items-center justify-center gap-2"
                                 >
                                   <Download className="w-4 h-4" />
-                                  <span className="hidden sm:inline">
-                                    Export Variations (
-                                    {selectedIconGroup.variation.length})
-                                  </span>
                                 </button>
                               </div>
                             </div>
@@ -604,25 +593,6 @@ export default function GalleryPage() {
                   <>
                     {selectedRequest && groupedIllustrations[selectedRequest] ? (
                       <div>
-                        <button
-                          onClick={handleBackToGallery}
-                          className="mb-8 inline-flex items-center gap-2 rounded-md bg-purple-50 px-4 py-2 text-sm font-medium text-purple-600 hover:bg-purple-100 transition-colors"
-                        >
-                          <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            width="16"
-                            height="16"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          >
-                            <path d="M19 12H5m7 7l-7-7 7-7" />
-                          </svg>
-                          Back to Gallery
-                        </button>
 
                         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6">
                           <h1 className="text-3xl font-bold text-slate-800 mb-4 sm:mb-0">
@@ -637,7 +607,7 @@ export default function GalleryPage() {
                                 ...groupedIllustrations[selectedRequest].variation,
                               ])
                             }
-                            className="px-2 sm:px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 flex items-center justify-center gap-2"
+                            className="px-2 sm:px-4 py-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 flex items-center justify-center gap-2"
                           >
                             <Download className="w-4 h-4" />
                             <span className="hidden sm:inline">
@@ -661,9 +631,6 @@ export default function GalleryPage() {
                                   className="px-2 sm:px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 flex items-center justify-center gap-2"
                                 >
                                   <Sparkles className="w-4 h-4" />
-                                  <span className="hidden sm:inline">
-                                    Generate More
-                                  </span>
                                 </button>
                                 <button
                                   onClick={() =>
@@ -674,10 +641,6 @@ export default function GalleryPage() {
                                   className="px-2 sm:px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 flex items-center justify-center gap-2"
                                 >
                                   <Download className="w-4 h-4" />
-                                  <span className="hidden sm:inline">
-                                    Export Originals (
-                                    {groupedIllustrations[selectedRequest].original.length})
-                                  </span>
                                 </button>
                               </div>
                             </div>
@@ -714,9 +677,6 @@ export default function GalleryPage() {
                                   className="px-2 sm:px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 flex items-center justify-center gap-2"
                                 >
                                   <Sparkles className="w-4 h-4" />
-                                  <span className="hidden sm:inline">
-                                    Generate More
-                                  </span>
                                 </button>
                                 <button
                                   onClick={() =>
@@ -727,10 +687,6 @@ export default function GalleryPage() {
                                   className="px-2 sm:px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 flex items-center justify-center gap-2"
                                 >
                                   <Download className="w-4 h-4" />
-                                  <span className="hidden sm:inline">
-                                    Export Variations (
-                                    {groupedIllustrations[selectedRequest].variation.length})
-                                  </span>
                                 </button>
                               </div>
                             </div>
