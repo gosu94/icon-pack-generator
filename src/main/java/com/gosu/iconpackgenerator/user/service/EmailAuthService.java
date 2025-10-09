@@ -175,7 +175,7 @@ public class EmailAuthService {
      * Verify token and set password
      */
     @Transactional
-    public boolean setPassword(String token, String password, boolean isReset) {
+    public User setPassword(String token, String password, boolean isReset) {
         try {
             Optional<User> userOpt;
 
@@ -187,7 +187,7 @@ public class EmailAuthService {
 
             if (userOpt.isEmpty()) {
                 log.warn("Invalid token provided for password setup/reset: {}", token);
-                return false;
+                return null;
             }
 
             User user = userOpt.get();
@@ -195,7 +195,7 @@ public class EmailAuthService {
             if (user.getPasswordResetTokenExpiry() == null ||
                     user.getPasswordResetTokenExpiry().isBefore(LocalDateTime.now())) {
                 log.warn("Expired token used for password setup/reset: {}", token);
-                return false;
+                return null;
             }
 
             String hashedPassword = passwordEncoder.encode(password);
@@ -210,11 +210,11 @@ public class EmailAuthService {
             userRepository.save(user);
 
             log.info("Password set successfully for user {}", user.getEmail());
-            return true;
+            return user;
 
         } catch (Exception e) {
             log.error("Error setting password for token {}", token, e);
-            return false;
+            return null;
         }
     }
 

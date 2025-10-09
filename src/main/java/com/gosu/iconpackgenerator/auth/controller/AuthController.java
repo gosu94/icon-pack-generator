@@ -188,23 +188,60 @@ public class AuthController {
     }
 
     @PostMapping("/set-password")
-    public ResponseEntity<Void> setPassword(@Valid @RequestBody PasswordSetupRequest request) {
+    public ResponseEntity<LoginResponse> setPassword(@Valid @RequestBody PasswordSetupRequest request, HttpServletRequest httpRequest, HttpServletResponse httpResponse) {
         try {
-            boolean success = emailAuthService.setPassword(
-                request.getToken(), 
-                request.getPassword(), 
+            User user = emailAuthService.setPassword(
+                request.getToken(),
+                request.getPassword(),
                 request.isReset()
             );
-            
-            if (success) {
-                return ResponseEntity.ok().build();
+
+            if (user != null) {
+                // Automatically log the user in
+                UsernamePasswordAuthenticationToken authToken =
+                    new UsernamePasswordAuthenticationToken(user.getEmail(), request.getPassword());
+
+                Authentication authentication = authenticationManager.authenticate(authToken);
+
+                SecurityContext securityContext = SecurityContextHolder.createEmptyContext();
+                securityContext.setAuthentication(authentication);
+                SecurityContextHolder.setContext(securityContext);
+
+                HttpSession session = httpRequest.getSession(true);
+                session.setAttribute(HttpSessionSecurityContextRepository.SPRING_SECURITY_CONTEXT_KEY, securityContext);
+
+                CustomOAuth2User customUser = (CustomOAuth2User) authentication.getPrincipal();
+                User authenticatedUser = customUser.getUser();
+
+                LoginResponse response = new LoginResponse();
+                response.setSuccess(true);
+                response.setMessage("Password set and user logged in successfully");
+                response.setUserId(authenticatedUser.getId());
+                response.setEmail(authenticatedUser.getEmail());
+                response.setCoins(authenticatedUser.getCoins());
+                response.setTrialCoins(authenticatedUser.getTrialCoins());
+
+                log.info("User password set and logged in successfully: {}", authenticatedUser.getEmail());
+                return ResponseEntity.ok(response);
             } else {
-                return ResponseEntity.badRequest().build();
+                LoginResponse response = new LoginResponse();
+                response.setSuccess(false);
+                response.setMessage("Failed to set password. Please try again or request a new link.");
+                return ResponseEntity.badRequest().body(response);
             }
-            
+
+        } catch (BadCredentialsException e) {
+            log.warn("Automatic login failed after password set for token: {}", request.getToken());
+            LoginResponse response = new LoginResponse();
+            response.setSuccess(false);
+            response.setMessage("An error occurred during automatic login.");
+            return ResponseEntity.status(401).body(response);
         } catch (Exception e) {
             log.error("Error setting password for token: {}", request.getToken(), e);
-            return ResponseEntity.internalServerError().build();
+            LoginResponse response = new LoginResponse();
+            response.setSuccess(false);
+            response.setMessage("An error occurred. Please try again.");
+            return ResponseEntity.internalServerError().body(response);
         }
     }
 

@@ -4,10 +4,12 @@ import React, { useState, useEffect, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { Eye, EyeOff, CheckCircle, AlertCircle, Lock } from 'lucide-react';
+import { useAuth } from '@/context/AuthContext';
 
 function PasswordSetupContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
+  const { checkAuthenticationStatus } = useAuth();
   
   const token = searchParams?.get('token');
   const isReset = searchParams?.get('reset') === 'true';
@@ -84,14 +86,17 @@ function PasswordSetupContent() {
         }),
       });
 
-      if (response.ok) {
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        await checkAuthenticationStatus();
         setSuccess(true);
-        // Redirect to login after 3 seconds
+        // Redirect to dashboard after 3 seconds
         setTimeout(() => {
-          router.push('/');
+          router.push('/dashboard');
         }, 3000);
       } else {
-        setError('Failed to set password. Please try again or request a new link.');
+        setError(data.message || 'Failed to set password. Please try again or request a new link.');
       }
     } catch (error) {
       console.error('Error setting password:', error);
@@ -163,13 +168,10 @@ function PasswordSetupContent() {
               {isReset ? 'Password Reset Successfully!' : 'Account Setup Complete!'}
             </h2>
             <p className="text-gray-600 mb-6">
-              {isReset 
-                ? 'Your password has been reset successfully. You can now sign in with your new password.'
-                : 'Your account has been set up successfully. You can now sign in with your email and password.'
-              }
+              You are now logged in. You will be redirected to your dashboard shortly.
             </p>
             <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
-              <p className="text-sm text-green-800">Redirecting you to the homepage in a few seconds...</p>
+              <p className="text-sm text-green-800">Redirecting you to your dashboard...</p>
             </div>
           </div>
         </div>
