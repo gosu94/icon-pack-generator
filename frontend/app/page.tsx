@@ -84,6 +84,17 @@ export default function LandingPage() {
         "/images/gallery/icon36.webp",
     ];
 
+    const illustrationImages = [
+        "/images/illustrations/illustration1.webp",
+        "/images/illustrations/illustration2.webp",
+        "/images/illustrations/illustration3.webp",
+        "/images/illustrations/illustration4.webp",
+        "/images/illustrations/illustration5.webp",
+        "/images/illustrations/illustration6.webp",
+        "/images/illustrations/illustration7.webp",
+        "/images/illustrations/illustration8.webp",
+    ];
+
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50/30">
@@ -217,7 +228,7 @@ export default function LandingPage() {
                                           d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z"/>
                                 </svg>
                             </div>
-                            <h3 className="text-xl font-bold text-slate-900 mb-4">Consistent Style</h3>
+                            <h3 className="text-xl font-bold text-slate-900 mb-4">Visually Consistent Style</h3>
                             <p className="text-slate-600 leading-relaxed">
                                 All icons in your pack maintain the same visual style, color palette, and design
                                 language. Perfect cohesion for professional applications and brand consistency.
@@ -371,6 +382,35 @@ export default function LandingPage() {
                                 </div>
                             ))}
                         </div>
+                    </div>
+                </div>
+            </section>
+
+            {/* Illustrations Gallery Section */}
+            <section className="px-6 py-16 bg-gradient-to-br from-pink-50/50 to-rose-50/50">
+                <div className="max-w-7xl mx-auto">
+                    <div className="text-center mb-12">
+                        <h2 className="text-4xl font-bold text-slate-900 mb-4">
+                            Generated Illustrations Gallery
+                        </h2>
+                        <p className="text-xl text-slate-600 max-w-3xl mx-auto">
+                            Explore stunning illustrations created by our AI models. Each one a unique piece of art for your projects.
+                        </p>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+                        {illustrationImages.map((image, index) => (
+                            <div key={index}
+                                 className="group relative bg-white/80 backdrop-blur-md rounded-2xl p-6 shadow-lg border border-pink-200/30 hover:shadow-xl transition-all duration-300 hover:scale-[1.05] cursor-pointer">
+                                <div
+                                    className="relative aspect-[4/3] w-full bg-gradient-to-br from-slate-100 to-slate-200 rounded-xl flex items-center justify-center overflow-hidden">
+                                    <Image src={image} alt={`Illustration ${index + 1}`} layout="fill"
+                                           className="object-cover"/>
+                                </div>
+                                <div
+                                    className="absolute inset-0 bg-gradient-to-br from-rose-500/0 to-purple-500/0 group-hover:from-rose-500/10 group-hover:to-purple-500/10 rounded-2xl transition-all duration-300"></div>
+                            </div>
+                        ))}
                     </div>
                 </div>
             </section>

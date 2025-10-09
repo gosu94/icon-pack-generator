@@ -267,6 +267,17 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, isVisible, onClose, onS
                 <Mail className="w-5 h-5" />
                 <span className="font-medium">Continue with Email</span>
               </button>
+              <p className="text-xs text-slate-500 text-center pt-1">
+                By continuing, you agree to our{' '}
+                <a href="/terms" target="_blank" rel="noopener noreferrer" className="underline hover:text-slate-700">
+                  Terms and Conditions
+                </a>{' '}
+                and{' '}
+                <a href="/privacy" target="_blank" rel="noopener noreferrer" className="underline hover:text-slate-700">
+                  Privacy Policy
+                </a>
+                .
+              </p>
             </div>
           )}
 

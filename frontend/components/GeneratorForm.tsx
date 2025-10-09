@@ -264,7 +264,7 @@ const GeneratorForm: React.FC<GeneratorFormProps> = ({
                     onChange={(e) => setGeneralDescription(e.target.value)}
                     required={inputType === "text"}
                     className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl text-base placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent focus:bg-white transition-all duration-200 resize-none"
-                    placeholder="Describe the general theme for your icon pack... (e.g., minimalist business icons, colorful social media icons, etc.)"
+                    placeholder={mode === "illustrations" ? "Describe the general theme for your illustrations... (e.g. little fox adventures, children's book theme, etc.)" : "Describe the general theme for your icon pack... (e.g., minimalist business icons, colorful social media icons, etc.)"}
                   />
                 </div>
               ) : (
