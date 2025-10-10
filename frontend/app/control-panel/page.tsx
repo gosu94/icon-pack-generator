@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Navigation from "../../components/Navigation";
 import { useAuth } from "../../context/AuthContext";
-import { X } from "lucide-react";
+import { X, ChevronUp, ChevronDown, ChevronsUpDown } from "lucide-react";
 
 interface UserAdminData {
   id: number;
@@ -17,6 +17,16 @@ interface UserAdminData {
   registeredAt: string;
   authProvider: string;
   isActive: boolean;
+}
+
+interface PagedResponse<T> {
+  content: T[];
+  page: number;
+  size: number;
+  totalElements: number;
+  totalPages: number;
+  first: boolean;
+  last: boolean;
 }
 
 interface UserIcon {
@@ -55,6 +65,18 @@ export default function ControlPanelPage() {
   const [userForCoins, setUserForCoins] = useState<UserAdminData | null>(null);
   const [coins, setCoins] = useState(0);
   const [trialCoins, setTrialCoins] = useState(0);
+  
+  // Sorting state
+  const [sortColumn, setSortColumn] = useState<keyof UserAdminData | null>(null);
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
+  
+  // Pagination state (server-side)
+  const [currentPage, setCurrentPage] = useState(0); // Backend uses 0-based indexing
+  const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [totalElements, setTotalElements] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
+  const [totalIcons, setTotalIcons] = useState(0);
+  const [totalIllustrations, setTotalIllustrations] = useState(0);
 
   useEffect(() => {
     // Check if user is admin
@@ -72,11 +94,32 @@ export default function ControlPanelPage() {
     if (authState.authenticated && authState.user?.isAdmin) {
       fetchUsers();
     }
-  }, [authState, router]);
+  }, [authState, router, currentPage, itemsPerPage, sortColumn, sortDirection]);
 
   const fetchUsers = async () => {
     try {
-      const response = await fetch("/api/admin/users", {
+      // Map frontend column names to backend field names
+      const sortFieldMap: Record<string, string> = {
+        email: "email",
+        lastLogin: "lastLogin",
+        coins: "coins",
+        trialCoins: "trialCoins",
+        generatedIconsCount: "id", // We'll sort by id as proxy since counts are calculated
+        generatedIllustrationsCount: "id",
+        registeredAt: "registeredAt",
+        authProvider: "authProvider",
+        isActive: "isActive",
+      };
+
+      const sortField = sortColumn ? sortFieldMap[sortColumn] || "id" : "id";
+      const params = new URLSearchParams({
+        page: currentPage.toString(),
+        size: itemsPerPage.toString(),
+        sortBy: sortField,
+        direction: sortDirection,
+      });
+
+      const response = await fetch(`/api/admin/users?${params}`, {
         credentials: "include",
       });
 
@@ -89,8 +132,16 @@ export default function ControlPanelPage() {
         throw new Error("Failed to fetch users");
       }
 
-      const data: UserAdminData[] = await response.json();
-      setUsers(data);
+      const data: PagedResponse<UserAdminData> = await response.json();
+      setUsers(data.content);
+      setTotalElements(data.totalElements);
+      setTotalPages(data.totalPages);
+      
+      // Calculate total icons and illustrations
+      const iconsSum = data.content.reduce((sum, user) => sum + user.generatedIconsCount, 0);
+      const illustrationsSum = data.content.reduce((sum, user) => sum + user.generatedIllustrationsCount, 0);
+      setTotalIcons(iconsSum);
+      setTotalIllustrations(illustrationsSum);
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -215,6 +266,37 @@ export default function ControlPanelPage() {
     return date.toLocaleDateString() + " " + date.toLocaleTimeString();
   };
 
+  // Sorting handler (server-side)
+  const handleSort = (column: keyof UserAdminData) => {
+    if (sortColumn === column) {
+      // Toggle direction if same column
+      setSortDirection(sortDirection === "asc" ? "desc" : "asc");
+    } else {
+      // New column, default to ascending
+      setSortColumn(column);
+      setSortDirection("asc");
+    }
+    // Reset to first page when sorting changes
+    setCurrentPage(0);
+  };
+
+  // Pagination handlers (server-side, 0-based indexing)
+  const goToPage = (page: number) => {
+    setCurrentPage(Math.max(0, Math.min(page, totalPages - 1)));
+  };
+
+  // Render sort icon
+  const renderSortIcon = (column: keyof UserAdminData) => {
+    if (sortColumn !== column) {
+      return <ChevronsUpDown className="w-4 h-4 ml-1 text-slate-400" />;
+    }
+    return sortDirection === "asc" ? (
+      <ChevronUp className="w-4 h-4 ml-1 text-slate-700" />
+    ) : (
+      <ChevronDown className="w-4 h-4 ml-1 text-slate-700" />
+    );
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50/30">
@@ -255,29 +337,77 @@ export default function ControlPanelPage() {
             <table className="w-full">
               <thead className="bg-purple-50 border-b border-slate-200">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">
-                    Email
+                  <th
+                    className="px-6 py-3 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider cursor-pointer hover:bg-purple-100 transition-colors"
+                    onClick={() => handleSort("email")}
+                  >
+                    <div className="flex items-center">
+                      Email
+                      {renderSortIcon("email")}
+                    </div>
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">
-                    Last Login
+                  <th
+                    className="px-6 py-3 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider cursor-pointer hover:bg-purple-100 transition-colors"
+                    onClick={() => handleSort("lastLogin")}
+                  >
+                    <div className="flex items-center">
+                      Last Login
+                      {renderSortIcon("lastLogin")}
+                    </div>
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">
-                    Trial Coins
+                  <th
+                    className="px-6 py-3 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider cursor-pointer hover:bg-purple-100 transition-colors"
+                    onClick={() => handleSort("trialCoins")}
+                  >
+                    <div className="flex items-center">
+                      Trial Coins
+                      {renderSortIcon("trialCoins")}
+                    </div>
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">
-                    Coins
+                  <th
+                    className="px-6 py-3 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider cursor-pointer hover:bg-purple-100 transition-colors"
+                    onClick={() => handleSort("coins")}
+                  >
+                    <div className="flex items-center">
+                      Coins
+                      {renderSortIcon("coins")}
+                    </div>
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">
-                    Generated Icons
+                  <th
+                    className="px-6 py-3 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider cursor-pointer hover:bg-purple-100 transition-colors"
+                    onClick={() => handleSort("generatedIconsCount")}
+                  >
+                    <div className="flex items-center">
+                      Generated Icons
+                      {renderSortIcon("generatedIconsCount")}
+                    </div>
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">
-                    Generated Illustrations
+                  <th
+                    className="px-6 py-3 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider cursor-pointer hover:bg-purple-100 transition-colors"
+                    onClick={() => handleSort("generatedIllustrationsCount")}
+                  >
+                    <div className="flex items-center">
+                      Generated Illustrations
+                      {renderSortIcon("generatedIllustrationsCount")}
+                    </div>
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">
-                    Registered
+                  <th
+                    className="px-6 py-3 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider cursor-pointer hover:bg-purple-100 transition-colors"
+                    onClick={() => handleSort("registeredAt")}
+                  >
+                    <div className="flex items-center">
+                      Registered
+                      {renderSortIcon("registeredAt")}
+                    </div>
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">
-                    Provider
+                  <th
+                    className="px-6 py-3 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider cursor-pointer hover:bg-purple-100 transition-colors"
+                    onClick={() => handleSort("authProvider")}
+                  >
+                    <div className="flex items-center">
+                      Provider
+                      {renderSortIcon("authProvider")}
+                    </div>
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">
                     Actions
@@ -343,20 +473,111 @@ export default function ControlPanelPage() {
               </tbody>
             </table>
           </div>
+          
+          {/* Pagination Controls */}
+          <div className="px-6 py-4 bg-white border-t border-slate-200 flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className="text-sm text-slate-600">
+                {totalElements > 0 ? (
+                  <>Showing {currentPage * itemsPerPage + 1} to {Math.min((currentPage + 1) * itemsPerPage, totalElements)} of {totalElements} users</>
+                ) : (
+                  <>No users found</>
+                )}
+              </div>
+              <div className="flex items-center gap-2">
+                <label htmlFor="itemsPerPage" className="text-sm text-slate-600">
+                  Per page:
+                </label>
+                <select
+                  id="itemsPerPage"
+                  value={itemsPerPage}
+                  onChange={(e) => {
+                    setItemsPerPage(Number(e.target.value));
+                    setCurrentPage(0);
+                  }}
+                  className="px-2 py-1 border border-slate-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                >
+                  <option value={5}>5</option>
+                  <option value={10}>10</option>
+                  <option value={25}>25</option>
+                  <option value={50}>50</option>
+                  <option value={100}>100</option>
+                </select>
+              </div>
+            </div>
+            
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => goToPage(0)}
+                disabled={currentPage === 0}
+                className="px-3 py-1 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-md hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                First
+              </button>
+              <button
+                onClick={() => goToPage(currentPage - 1)}
+                disabled={currentPage === 0}
+                className="px-3 py-1 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-md hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                Previous
+              </button>
+              
+              <div className="flex items-center gap-1">
+                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                  let pageIndex;
+                  if (totalPages <= 5) {
+                    pageIndex = i;
+                  } else if (currentPage <= 2) {
+                    pageIndex = i;
+                  } else if (currentPage >= totalPages - 3) {
+                    pageIndex = totalPages - 5 + i;
+                  } else {
+                    pageIndex = currentPage - 2 + i;
+                  }
+                  
+                  return (
+                    <button
+                      key={pageIndex}
+                      onClick={() => goToPage(pageIndex)}
+                      className={`px-3 py-1 text-sm font-medium rounded-md transition-colors ${
+                        currentPage === pageIndex
+                          ? "bg-purple-600 text-white"
+                          : "text-slate-700 bg-white border border-slate-300 hover:bg-slate-50"
+                      }`}
+                    >
+                      {pageIndex + 1}
+                    </button>
+                  );
+                })}
+              </div>
+              
+              <button
+                onClick={() => goToPage(currentPage + 1)}
+                disabled={currentPage === totalPages - 1}
+                className="px-3 py-1 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-md hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                Next
+              </button>
+              <button
+                onClick={() => goToPage(totalPages - 1)}
+                disabled={currentPage === totalPages - 1}
+                className="px-3 py-1 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-md hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                Last
+              </button>
+            </div>
+          </div>
         </div>
 
         <div className="mt-6 text-sm text-slate-600">
-          <p>Total Users: {users.length}</p>
+          <p>Total Users: {totalElements}</p>
           <p>
-            Total Icons Generated:{" "}
-            {users.reduce((sum, user) => sum + user.generatedIconsCount, 0)}
+            Total Icons Generated on this page:{" "}
+            {totalIcons}
           </p>
           <p>
-            Total Illustrations Generated:{" "}
-            {users.reduce(
-              (sum, user) => sum + user.generatedIllustrationsCount,
-              0
-            )}
+            Total Illustrations Generated on this page:{" "}
+            {totalIllustrations}
           </p>
         </div>
       </div>

@@ -1,5 +1,6 @@
 package com.gosu.iconpackgenerator.admin.controller;
 
+import com.gosu.iconpackgenerator.admin.dto.PagedResponse;
 import com.gosu.iconpackgenerator.admin.dto.UserAdminDto;
 import com.gosu.iconpackgenerator.admin.service.AdminService;
 import com.gosu.iconpackgenerator.domain.icons.dto.IconDto;
@@ -13,6 +14,10 @@ import com.gosu.iconpackgenerator.user.repository.UserRepository;
 import com.gosu.iconpackgenerator.user.service.CustomOAuth2User;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.core.user.OAuth2User;
@@ -21,6 +26,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.HashMap;
@@ -60,10 +66,16 @@ public class AdminController {
     }
 
     /**
-     * Get all users (admin only)
+     * Get all users with pagination and sorting (admin only)
      */
     @GetMapping("/users")
-    public ResponseEntity<?> getAllUsers(@AuthenticationPrincipal OAuth2User principal) {
+    public ResponseEntity<?> getAllUsers(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "id") String sortBy,
+            @RequestParam(defaultValue = "asc") String direction,
+            @AuthenticationPrincipal OAuth2User principal) {
+        
         if (!(principal instanceof CustomOAuth2User customUser)) {
             return ResponseEntity.status(401).body(Map.of("error", "Unauthorized"));
         }
@@ -74,8 +86,19 @@ public class AdminController {
             return ResponseEntity.status(403).body(Map.of("error", "Forbidden - Admin access required"));
         }
 
-        List<User> users = userRepository.findAll();
-        List<UserAdminDto> userDtos = users.stream()
+        // Create sort object
+        Sort sort = direction.equalsIgnoreCase("desc") 
+            ? Sort.by(sortBy).descending() 
+            : Sort.by(sortBy).ascending();
+        
+        // Create pageable object
+        Pageable pageable = PageRequest.of(page, size, sort);
+        
+        // Fetch paginated users
+        Page<User> userPage = userRepository.findAll(pageable);
+        
+        // Map to DTOs
+        List<UserAdminDto> userDtos = userPage.getContent().stream()
                 .map(u -> {
                     Long iconCount = generatedIconRepository.countByUser(u);
                     Long illustrationCount = generatedIllustrationRepository.countByUser(u);
@@ -94,8 +117,19 @@ public class AdminController {
                 })
                 .collect(Collectors.toList());
 
-        log.info("Admin user {} retrieved list of {} users", user.getEmail(), userDtos.size());
-        return ResponseEntity.ok(userDtos);
+        // Create paginated response
+        PagedResponse<UserAdminDto> response = new PagedResponse<>(
+                userDtos,
+                userPage.getNumber(),
+                userPage.getSize(),
+                userPage.getTotalElements(),
+                userPage.getTotalPages(),
+                userPage.isFirst(),
+                userPage.isLast()
+        );
+
+        log.info("Admin user {} retrieved page {} of users (total: {})", user.getEmail(), page, userPage.getTotalElements());
+        return ResponseEntity.ok(response);
     }
 
     /**
