@@ -44,9 +44,17 @@ public class BananaModelService implements AIModelService {
      * Note: Banana doesn't explicitly support seed parameter based on the API schema.
      */
     public CompletableFuture<byte[]> generateImage(String prompt, Long seed) {
-        log.info("Generating image with Nano Banana for prompt: {}", prompt);
+        return generateImage(prompt, seed, "4:3");
+    }
+    
+    /**
+     * Generate image with optional seed and custom aspect ratio.
+     * Note: Banana doesn't explicitly support seed parameter based on the API schema.
+     */
+    public CompletableFuture<byte[]> generateImage(String prompt, Long seed, String aspectRatio) {
+        log.info("Generating image with Nano Banana for prompt: {} with aspect ratio: {}", prompt, aspectRatio);
         
-        return generateBananaImageAsync(prompt)
+        return generateBananaImageAsync(prompt, aspectRatio)
                 .whenComplete((bytes, error) -> {
                     if (error != null) {
                         log.error("Error generating image with Banana", error);
@@ -57,6 +65,10 @@ public class BananaModelService implements AIModelService {
     }
     
     private CompletableFuture<byte[]> generateBananaImageAsync(String prompt) {
+        return generateBananaImageAsync(prompt, "4:3");
+    }
+    
+    private CompletableFuture<byte[]> generateBananaImageAsync(String prompt, String aspectRatio) {
         return CompletableFuture.supplyAsync(() -> {
             try {
                 log.info("Generating Banana image with endpoint: {}", BANANA_TEXT_TO_IMAGE_ENDPOINT);
@@ -64,7 +76,7 @@ public class BananaModelService implements AIModelService {
                 // Apply Banana-specific styling to the prompt with explicit constraints
                 String bananaPrompt = prompt + " - clean icon design, no text, no labels, no grid lines, no borders";
                 
-                Map<String, Object> input = createBananaTextToImageInputMap(bananaPrompt);
+                Map<String, Object> input = createBananaTextToImageInputMap(bananaPrompt, aspectRatio);
                 log.info("Making Banana API call with input keys: {}", input.keySet());
                 
                 // Use fal.ai client API with queue update handling
@@ -104,11 +116,15 @@ public class BananaModelService implements AIModelService {
     }
     
     private Map<String, Object> createBananaTextToImageInputMap(String prompt) {
+        return createBananaTextToImageInputMap(prompt, "4:3");
+    }
+    
+    private Map<String, Object> createBananaTextToImageInputMap(String prompt, String aspectRatio) {
         Map<String, Object> input = new HashMap<>();
         input.put("prompt", prompt);
         input.put("num_images", 1); // Generate 1 image
-        input.put("output_format", "png"); // Use PNG for better quality icons
-        input.put("aspect_ratio", "4:3"); // Square aspect ratio for icons
+        input.put("output_format", "png"); // Use PNG for better quality
+        input.put("aspect_ratio", aspectRatio);
         
         log.debug("Banana text-to-image input parameters: {}", input);
         return input;
@@ -127,10 +143,18 @@ public class BananaModelService implements AIModelService {
      * Banana natively supports image-to-image editing via the edit endpoint.
      */
     public CompletableFuture<byte[]> generateImageToImage(String prompt, byte[] sourceImageData, Long seed) {
-        log.info("Generating image-to-image with Banana for prompt: {}", 
-                prompt.substring(0, Math.min(100, prompt.length())));
+        return generateImageToImage(prompt, sourceImageData, seed, "4:3");
+    }
+    
+    /**
+     * Generate image using image-to-image functionality with optional seed and custom aspect ratio.
+     * Banana natively supports image-to-image editing via the edit endpoint.
+     */
+    public CompletableFuture<byte[]> generateImageToImage(String prompt, byte[] sourceImageData, Long seed, String aspectRatio) {
+        log.info("Generating image-to-image with Banana for prompt: {} with aspect ratio: {}", 
+                prompt.substring(0, Math.min(100, prompt.length())), aspectRatio);
         
-        return generateBananaImageToImageAsync(prompt, sourceImageData)
+        return generateBananaImageToImageAsync(prompt, sourceImageData, aspectRatio)
                 .whenComplete((bytes, error) -> {
                     if (error != null) {
                         log.error("Error in Banana image-to-image generation", error);
@@ -141,6 +165,10 @@ public class BananaModelService implements AIModelService {
     }
     
     private CompletableFuture<byte[]> generateBananaImageToImageAsync(String prompt, byte[] sourceImageData) {
+        return generateBananaImageToImageAsync(prompt, sourceImageData, "4:3");
+    }
+    
+    private CompletableFuture<byte[]> generateBananaImageToImageAsync(String prompt, byte[] sourceImageData, String aspectRatio) {
         return CompletableFuture.supplyAsync(() -> {
             try {
                 log.info("Generating Banana image-to-image with endpoint: {}", BANANA_IMAGE_TO_IMAGE_ENDPOINT);
@@ -151,7 +179,7 @@ public class BananaModelService implements AIModelService {
                 // Convert byte array to data URI for the API
                 String dataUri = convertToDataUri(sourceImageData);
                 
-                Map<String, Object> input = createBananaImageToImageInputMap(bananaStylePrompt, dataUri);
+                Map<String, Object> input = createBananaImageToImageInputMap(bananaStylePrompt, dataUri, aspectRatio);
                 log.info("Making Banana image-to-image API call with input keys: {}", input.keySet());
                 
                 // Use fal.ai client API with queue update handling
@@ -191,12 +219,16 @@ public class BananaModelService implements AIModelService {
     }
     
     private Map<String, Object> createBananaImageToImageInputMap(String prompt, String imageDataUri) {
+        return createBananaImageToImageInputMap(prompt, imageDataUri, "4:3");
+    }
+    
+    private Map<String, Object> createBananaImageToImageInputMap(String prompt, String imageDataUri, String aspectRatio) {
         Map<String, Object> input = new HashMap<>();
         input.put("prompt", prompt);
         input.put("image_urls", List.of(imageDataUri)); // Banana expects a list of image URLs/data URIs
         input.put("num_images", 1); // Generate 1 image
-        input.put("output_format", "png"); // Use PNG for better quality icons
-        input.put("aspect_ratio", "4:3"); // Square aspect ratio for icons
+        input.put("output_format", "png"); // Use PNG for better quality
+        input.put("aspect_ratio", aspectRatio);
         
         log.debug("Banana image-to-image input parameters: {}", input);
         return input;

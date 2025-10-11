@@ -20,6 +20,9 @@ public class FileStorageService {
     @Value("${app.illustrations-storage.base-path:static/user-illustrations}")
     private String illustrationsBasePath;
     
+    @Value("${app.mockups-storage.base-path:static/user-mockups}")
+    private String mockupsBasePath;
+    
     /**
      * Save a base64 icon to the file system
      * @param userDirectoryPath The user's directory path (e.g., "default-user")
@@ -251,6 +254,123 @@ public class FileStorageService {
             }
         } catch (IOException e) {
             log.error("Error deleting illustration request files for: {}", requestId, e);
+        }
+    }
+    
+    // ========== Mockup-specific methods ==========
+    
+    /**
+     * Save a base64 mockup to the file system
+     * @param userDirectoryPath The user's directory path (e.g., "default-user")
+     * @param requestId The request ID to group mockups
+     * @param mockupType The mockup type ("original" or "variation")
+     * @param fileName The file name (should include extension)
+     * @param base64Data The base64 encoded image data
+     * @return The full file path where the mockup was saved
+     */
+    public String saveMockup(String userDirectoryPath, String requestId, String mockupType, 
+                            String fileName, String base64Data) {
+        try {
+            // Create the full directory path: mockupsBasePath/userDirectoryPath/requestId/mockupType
+            Path directoryPath = Paths.get(mockupsBasePath, userDirectoryPath, requestId, mockupType);
+            
+            // Create directories if they don't exist
+            if (!Files.exists(directoryPath)) {
+                Files.createDirectories(directoryPath);
+                log.debug("Created mockup directory: {}", directoryPath.toAbsolutePath());
+            }
+            
+            // Create the full file path
+            Path filePath = directoryPath.resolve(fileName);
+            
+            // Decode base64 and save to file
+            byte[] imageBytes = Base64.getDecoder().decode(base64Data);
+            Files.write(filePath, imageBytes);
+            
+            log.debug("Saved mockup to: {}", filePath.toAbsolutePath());
+            
+            // Return relative path from static resources root for web serving
+            return getRelativeMockupWebPath(userDirectoryPath, requestId, mockupType, fileName);
+            
+        } catch (IOException e) {
+            log.error("Error saving mockup to file system", e);
+            throw new RuntimeException("Failed to save mockup: " + fileName, e);
+        }
+    }
+    
+    /**
+     * Generate filename for a mockup
+     * @param mockupId The mockup ID
+     * @return The formatted filename
+     */
+    public String generateMockupFileName(String mockupId) {
+        return String.format("mockup_%s.png", mockupId.substring(0, 8));
+    }
+    
+    /**
+     * Get the relative web path for serving mockup files
+     */
+    private String getRelativeMockupWebPath(String userDirectoryPath, String requestId, 
+                                           String mockupType, String fileName) {
+        // The web path should be /user-mockups/userDirectoryPath/requestId/mockupType/fileName
+        return String.format("/user-mockups/%s/%s/%s/%s", 
+                           userDirectoryPath, requestId, mockupType, fileName);
+    }
+    
+    /**
+     * Get the file size of a saved mockup
+     */
+    public long getMockupFileSize(String userDirectoryPath, String requestId, 
+                                 String mockupType, String fileName) {
+        try {
+            Path filePath = Paths.get(mockupsBasePath, userDirectoryPath, requestId, mockupType, fileName);
+            if (Files.exists(filePath)) {
+                return Files.size(filePath);
+            }
+        } catch (IOException e) {
+            log.error("Error getting file size for mockup: {}", fileName, e);
+        }
+        return 0L;
+    }
+    
+    /**
+     * Read mockup from file system
+     */
+    public byte[] readMockup(String relativeWebPath) throws IOException {
+        String pathInsideUserMockups;
+        if (relativeWebPath.startsWith("/user-mockups/")) {
+            pathInsideUserMockups = relativeWebPath.substring("/user-mockups/".length());
+        } else {
+            pathInsideUserMockups = relativeWebPath;
+        }
+
+        Path filePath = Paths.get(mockupsBasePath).resolve(pathInsideUserMockups);
+        if (Files.exists(filePath)) {
+            return Files.readAllBytes(filePath);
+        }
+        throw new IOException("Mockup file not found: " + filePath.toString());
+    }
+    
+    /**
+     * Delete all mockup files for a specific request
+     */
+    public void deleteMockupRequestFiles(String userDirectoryPath, String requestId) {
+        try {
+            Path requestPath = Paths.get(mockupsBasePath, userDirectoryPath, requestId);
+            if (Files.exists(requestPath)) {
+                Files.walk(requestPath)
+                        .sorted((path1, path2) -> path2.compareTo(path1))
+                        .forEach(path -> {
+                            try {
+                                Files.delete(path);
+                            } catch (IOException e) {
+                                log.error("Error deleting mockup file: {}", path, e);
+                            }
+                        });
+                log.info("Deleted all mockup files for request: {}", requestId);
+            }
+        } catch (IOException e) {
+            log.error("Error deleting mockup request files for: {}", requestId, e);
         }
     }
 }
