@@ -282,6 +282,7 @@ export default function Page() {
       const generationState = {
         requestId,
         request,
+        mode, // Save the current mode (icons or illustrations)
         timestamp: Date.now(),
       };
       localStorage.setItem('pendingGeneration', JSON.stringify(generationState));
@@ -320,9 +321,13 @@ export default function Page() {
   };
 
   // Check generation status using the new endpoint
-  const checkGenerationStatus = async (requestId: string): Promise<any> => {
+  const checkGenerationStatus = async (requestId: string, generationMode: GenerationMode): Promise<any> => {
     try {
-      const response = await fetch(`/status/${requestId}`, {
+      const endpoint = generationMode === "illustrations"
+        ? `/api/illustrations/generate/status/${requestId}`
+        : `/status/${requestId}`;
+      
+      const response = await fetch(endpoint, {
         method: "GET",
         credentials: "include",
       });
@@ -346,10 +351,13 @@ export default function Page() {
     const savedState = getGenerationState();
     if (!savedState) return;
 
-    const { requestId, request } = savedState;
+    const { requestId, request, mode: savedMode } = savedState;
+    
+    // Use the saved mode, or fall back to current mode
+    const generationMode = savedMode || mode;
 
     try {
-      const statusResult = await checkGenerationStatus(requestId);
+      const statusResult = await checkGenerationStatus(requestId, generationMode);
       
       if (statusResult.status === "completed" && statusResult.data) {
         // Close any existing SSE connection since we're recovering completed results
@@ -358,15 +366,22 @@ export default function Page() {
           currentEventSourceRef.current = null;
         }
  
-        // Restore the original request data
+        // Restore the original request data and mode
         setCurrentRequest(request);
+        if (savedMode && savedMode !== mode) {
+          setMode(savedMode);
+        }
         
         // Process the completed response similar to handleGenerationComplete
         const completedResponse = statusResult.data;
         
-        // Extract icons and set up state as if generation just completed
-        if (completedResponse.icons && completedResponse.icons.length > 0) {
-          setCurrentIcons(completedResponse.icons);
+        // Extract items (icons or illustrations) and set up state as if generation just completed
+        const items = generationMode === "illustrations" 
+          ? (completedResponse.illustrations || [])
+          : (completedResponse.icons || []);
+        
+        if (items.length > 0) {
+          setCurrentIcons(items);
           setCurrentResponse(completedResponse);
           
           // Build streaming results from the completed response
@@ -374,13 +389,15 @@ export default function Page() {
           const updatedStreamingResults: any = {};
           
           // Map completed results to streaming format
-          const serviceMapping = {
-            falAiResults: "flux",
-            recraftResults: "recraft", 
-            photonResults: "photon",
-            gptResults: "gpt",
-            bananaResults: "banana"
-          };
+          const serviceMapping = generationMode === "illustrations"
+            ? { bananaResults: "banana" } // Illustrations only use banana service
+            : {
+                falAiResults: "flux",
+                recraftResults: "recraft", 
+                photonResults: "photon",
+                gptResults: "gpt",
+                bananaResults: "banana"
+              };
           
           // Build enabled services map from actual response data
           const inferredEnabledServices: { [key: string]: boolean } = {};
@@ -396,8 +413,12 @@ export default function Page() {
                 serviceResults.forEach((result: any) => {
                   if (result.status !== "disabled") {
                     const uniqueId = `${serviceId}-gen${result.generationIndex || 1}`;
+                    const resultItems = generationMode === "illustrations"
+                      ? (result.illustrations || [])
+                      : (result.icons || []);
+                    
                     updatedStreamingResults[uniqueId] = {
-                      icons: result.icons || [],
+                      icons: resultItems, // Keep as 'icons' for compatibility with ResultsDisplay
                       generationTimeMs: result.generationTimeMs || 0,
                       status: result.status,
                       message: result.message,

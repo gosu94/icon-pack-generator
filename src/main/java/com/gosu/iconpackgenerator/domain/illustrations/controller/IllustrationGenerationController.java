@@ -323,6 +323,7 @@ public class IllustrationGenerationController implements IllustrationGenerationC
         if (storedResponse != null) {
             response.put("status", "completed");
             response.put("message", "Generation completed");
+            response.put("data", storedResponse);
             log.info("Found completed illustration generation for request: {}", requestId);
             return ResponseEntity.ok(response);
         }
