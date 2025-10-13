@@ -27,13 +27,24 @@ interface Illustration {
   theme: string;
 }
 
+interface Mockup {
+  id: number;
+  imageUrl: string;
+  description: string;
+  requestId: string;
+  mockupType: string;
+  theme: string;
+}
+
 type GroupedIcons = Record<string, { original: Icon[]; variation: Icon[] }>;
 type GroupedIllustrations = Record<string, { original: Illustration[]; variation: Illustration[] }>;
+type GroupedMockups = Record<string, { original: Mockup[]; variation: Mockup[] }>;
 
 export default function GalleryPage() {
   const router = useRouter();
   const [groupedIcons, setGroupedIcons] = useState<GroupedIcons>({});
   const [groupedIllustrations, setGroupedIllustrations] = useState<GroupedIllustrations>({});
+  const [groupedMockups, setGroupedMockups] = useState<GroupedMockups>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedRequest, setSelectedRequest] = useState<string | null>(null);
@@ -44,6 +55,7 @@ export default function GalleryPage() {
   const [showProgressModal, setShowProgressModal] = useState(false);
   const [iconsToExport, setIconsToExport] = useState<Icon[]>([]);
   const [illustrationsToExport, setIllustrationsToExport] = useState<Illustration[]>([]);
+  const [mockupsToExport, setMockupsToExport] = useState<Mockup[]>([]);
 
   const [exportProgress, setExportProgress] = useState({
     step: 1,
@@ -116,10 +128,44 @@ export default function GalleryPage() {
       }
     };
 
+    const fetchMockups = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const response = await fetch("/api/gallery/mockups", {
+          credentials: "include",
+        });
+        if (!response.ok) {
+          throw new Error("Failed to fetch mockups");
+        }
+        const data: Mockup[] = await response.json();
+
+        const grouped = data.reduce((acc, mockup) => {
+          if (!acc[mockup.requestId]) {
+            acc[mockup.requestId] = { original: [], variation: [] };
+          }
+          if (mockup.mockupType === "original") {
+            acc[mockup.requestId].original.push(mockup);
+          } else if (mockup.mockupType === "variation") {
+            acc[mockup.requestId].variation.push(mockup);
+          }
+          return acc;
+        }, {} as GroupedMockups);
+
+        setGroupedMockups(grouped);
+      } catch (err: any) {
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+
     if (galleryType === "icons") {
       fetchIcons();
     } else if (galleryType === "illustrations") {
       fetchIllustrations();
+    } else if (galleryType === "mockups") {
+      fetchMockups();
     } else {
       setLoading(false);
     }
@@ -142,6 +188,14 @@ export default function GalleryPage() {
   const openIllustrationExportModal = (illustrations: Illustration[]) => {
     setIllustrationsToExport(illustrations);
     setIconsToExport([]);
+    setMockupsToExport([]);
+    setShowExportModal(true);
+  };
+
+  const openMockupExportModal = (mockups: Mockup[]) => {
+    setMockupsToExport(mockups);
+    setIconsToExport([]);
+    setIllustrationsToExport([]);
     setShowExportModal(true);
   };
 
@@ -261,12 +315,22 @@ export default function GalleryPage() {
       };
       setShowExportModal(false);
       downloadZip(exportData, fileName, "/api/illustrations/export-gallery");
+    } else if (mockupsToExport.length > 0) {
+      const mockupFilePaths = mockupsToExport.map((mockup) => mockup.imageUrl);
+      const fileName = `mockup-pack-gallery-${new Date().getTime()}.zip`;
+      const exportData = {
+        mockupFilePaths,
+        formats,
+        sizes,
+      };
+      setShowExportModal(false);
+      downloadZip(exportData, fileName, "/api/mockups/export-gallery");
     }
   };
 
   const downloadZip = async (exportData: any, fileName: string, endpoint: string) => {
     setShowProgressModal(true);
-    const itemType = endpoint.includes("illustration") ? "illustrations" : "icons";
+    const itemType = endpoint.includes("illustration") ? "illustrations" : endpoint.includes("mockup") ? "mockups" : "icons";
     setExportProgress({
       step: 1,
       message: "Preparing export request...",
@@ -359,6 +423,17 @@ export default function GalleryPage() {
                     </h2>
                     <p className="text-slate-500 mt-2 text-center">
                       Browse your generated illustrations.
+                    </p>
+                  </div>
+                  <div
+                    onClick={() => setGalleryType("mockups")}
+                    className="group cursor-pointer rounded-xl border border-slate-200 bg-white p-6 transition-all duration-300 hover:border-green-300 hover:shadow-lg hover:shadow-green-100"
+                  >
+                    <h2 className="text-2xl font-bold text-slate-800 text-center">
+                      UI Mockups
+                    </h2>
+                    <p className="text-slate-500 mt-2 text-center">
+                      Browse your generated UI mockups.
                     </p>
                   </div>
                 </div>
@@ -768,6 +843,171 @@ export default function GalleryPage() {
                     )}
                   </>
                 )}
+
+                {!error && galleryType === "mockups" && (
+                  <>
+                    {selectedRequest && groupedMockups[selectedRequest] ? (
+                      <div>
+                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6">
+                          <h1 className="text-3xl font-bold text-slate-800 mb-4 sm:mb-0">
+                            {groupedMockups[selectedRequest].original[0]?.theme ||
+                              groupedMockups[selectedRequest].variation[0]?.theme ||
+                              `Request: ${selectedRequest}`}
+                          </h1>
+                          <button
+                            onClick={() =>
+                              openMockupExportModal([
+                                ...groupedMockups[selectedRequest].original,
+                                ...groupedMockups[selectedRequest].variation,
+                              ])
+                            }
+                            className="px-2 sm:px-4 py-2 bg-gradient-to-r from-green-600 to-teal-600 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 flex items-center justify-center gap-2"
+                          >
+                            <Download className="w-4 h-4" />
+                            <span className="hidden sm:inline">
+                              Export All (
+                              {groupedMockups[selectedRequest].original.length +
+                                groupedMockups[selectedRequest].variation.length}{" "}
+                              mockups)
+                            </span>
+                          </button>
+                        </div>
+
+                        {groupedMockups[selectedRequest].original.length > 0 && (
+                          <div className="mb-8 p-4 rounded-lg border border-slate-200/80 bg-white/50 shadow-lg shadow-slate-200/50">
+                            <div className="flex items-center justify-between mb-4">
+                              <h3 className="text-xl font-semibold text-slate-700">
+                                Original Mockup
+                              </h3>
+                              <div className="flex gap-3">
+                                <button
+                                  onClick={() =>
+                                    openMockupExportModal(
+                                      groupedMockups[selectedRequest].original
+                                    )
+                                  }
+                                  className="px-2 sm:px-4 py-2 bg-gradient-to-r from-green-600 to-teal-600 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 flex items-center justify-center gap-2"
+                                >
+                                  <Download className="w-4 h-4" />
+                                </button>
+                              </div>
+                            </div>
+                            <div className="flex justify-center">
+                              {groupedMockups[selectedRequest].original.map(
+                                (mockup, index) => (
+                                  <div
+                                    key={index}
+                                    className="border rounded-lg p-2 bg-white shadow-sm aspect-video max-w-[800px] w-full"
+                                  >
+                                    <img
+                                      src={mockup.imageUrl}
+                                      alt={mockup.description || "Generated UI Mockup"}
+                                      className="w-full h-full object-contain rounded-md"
+                                    />
+                                  </div>
+                                )
+                              )}
+                            </div>
+                          </div>
+                        )}
+
+                        {groupedMockups[selectedRequest].variation.length > 0 && (
+                          <div className="p-4 rounded-lg border border-slate-200/80 bg-white/50 shadow-lg shadow-slate-200/50">
+                            <div className="flex items-center justify-between mb-4">
+                              <h3 className="text-xl font-semibold text-slate-700">
+                                Variation
+                              </h3>
+                              <div className="flex gap-3">
+                                <button
+                                  onClick={() =>
+                                    openMockupExportModal(
+                                      groupedMockups[selectedRequest].variation
+                                    )
+                                  }
+                                  className="px-2 sm:px-4 py-2 bg-gradient-to-r from-green-600 to-teal-600 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 flex items-center justify-center gap-2"
+                                >
+                                  <Download className="w-4 h-4" />
+                                </button>
+                              </div>
+                            </div>
+                            <div className="flex justify-center">
+                              {groupedMockups[selectedRequest].variation.map(
+                                (mockup, index) => (
+                                  <div
+                                    key={index}
+                                    className="border rounded-lg p-2 bg-white shadow-sm aspect-video max-w-[800px] w-full"
+                                  >
+                                    <img
+                                      src={mockup.imageUrl}
+                                      alt={mockup.description || "Generated UI Mockup"}
+                                      className="w-full h-full object-contain rounded-md"
+                                    />
+                                  </div>
+                                )
+                              )}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <div>
+                        <h1 className="text-3xl font-bold mb-8 text-slate-800">
+                          UI Mockup Gallery
+                        </h1>
+                        {Object.keys(groupedMockups).length > 0 ? (
+                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            {Object.entries(groupedMockups).map(
+                              ([requestId, mockupTypes]) => {
+                                const getRequestPreview = () => {
+                                  if (mockupTypes.original.length > 0)
+                                    return mockupTypes.original[0].imageUrl;
+                                  if (mockupTypes.variation.length > 0)
+                                    return mockupTypes.variation[0].imageUrl;
+                                  return "";
+                                };
+                                const theme =
+                                  mockupTypes.original[0]?.theme ||
+                                  mockupTypes.variation[0]?.theme;
+
+                                return (
+                                  <div
+                                    key={requestId}
+                                    onClick={() => handleSelectRequest(requestId)}
+                                    className="group cursor-pointer rounded-lg border border-green-200 bg-white/50 shadow-lg shadow-slate-200/50 p-3 transition-all duration-300 hover:border-green-400 hover:shadow-green-200/50"
+                                  >
+                                    <div className="aspect-video overflow-hidden rounded-md bg-slate-100">
+                                      <img
+                                        src={getRequestPreview()}
+                                        alt="Request Preview"
+                                        className="w-full h-full object-contain transition-transform duration-300 group-hover:scale-105"
+                                      />
+                                    </div>
+                                    <div className="mt-3">
+                                      <h2 className="text-base font-bold text-slate-800 truncate">
+                                        {theme || `Request: ${requestId}`}
+                                      </h2>
+                                      <p className="text-sm text-slate-500 mt-1">
+                                        {mockupTypes.original.length +
+                                          mockupTypes.variation.length}{" "}
+                                        mockups
+                                      </p>
+                                    </div>
+                                  </div>
+                                );
+                              }
+                            )}
+                          </div>
+                        ) : (
+                          <div className="text-center py-16 border-2 border-dashed border-slate-300 rounded-lg">
+                            <p className="text-slate-500">
+                              You don't have any UI mockups yet.
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </>
+                )}
               </>
             )}
           </>
@@ -777,8 +1017,8 @@ export default function GalleryPage() {
         show={showExportModal}
         onClose={() => setShowExportModal(false)}
         onConfirm={confirmGalleryExport}
-        iconCount={iconsToExport.length > 0 ? iconsToExport.length : illustrationsToExport.length}
-        mode={iconsToExport.length > 0 ? "icons" : "illustrations"}
+        iconCount={iconsToExport.length > 0 ? iconsToExport.length : illustrationsToExport.length > 0 ? illustrationsToExport.length : mockupsToExport.length}
+        mode={iconsToExport.length > 0 ? "icons" : illustrationsToExport.length > 0 ? "illustrations" : "mockups"}
       />
 
       <ProgressModal show={showProgressModal} progress={exportProgress} />

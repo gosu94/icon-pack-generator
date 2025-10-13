@@ -6,6 +6,8 @@ import com.gosu.iconpackgenerator.domain.icons.repository.GeneratedIconRepositor
 import com.gosu.iconpackgenerator.domain.icons.service.GridCompositionService;
 import com.gosu.iconpackgenerator.domain.illustrations.entity.GeneratedIllustration;
 import com.gosu.iconpackgenerator.domain.illustrations.repository.GeneratedIllustrationRepository;
+import com.gosu.iconpackgenerator.domain.mockups.entity.GeneratedMockup;
+import com.gosu.iconpackgenerator.domain.mockups.repository.GeneratedMockupRepository;
 import com.gosu.iconpackgenerator.user.model.User;
 import com.gosu.iconpackgenerator.user.service.CustomOAuth2User;
 import lombok.RequiredArgsConstructor;
@@ -28,6 +30,7 @@ public class GalleryController implements GalleryControllerAPI {
 
     private final GeneratedIconRepository generatedIconRepository;
     private final GeneratedIllustrationRepository generatedIllustrationRepository;
+    private final GeneratedMockupRepository generatedMockupRepository;
     private final GridCompositionService gridCompositionService;
 
     @Override
@@ -62,6 +65,23 @@ public class GalleryController implements GalleryControllerAPI {
             return ResponseEntity.ok(illustrations);
         } catch (Exception e) {
             log.error("Error retrieving user illustrations", e);
+            return ResponseEntity.status(500).build();
+        }
+    }
+
+    @GetMapping("/api/gallery/mockups")
+    @ResponseBody
+    public ResponseEntity<List<GeneratedMockup>> getUserMockups(@AuthenticationPrincipal OAuth2User principal) {
+        try {
+            if (!(principal instanceof CustomOAuth2User customUser)) {
+                return ResponseEntity.status(401).build();
+            }
+
+            User user = customUser.getUser();
+            List<GeneratedMockup> mockups = generatedMockupRepository.findByUserOrderByCreatedAtDesc(user);
+            return ResponseEntity.ok(mockups);
+        } catch (Exception e) {
+            log.error("Error retrieving user mockups", e);
             return ResponseEntity.status(500).build();
         }
     }

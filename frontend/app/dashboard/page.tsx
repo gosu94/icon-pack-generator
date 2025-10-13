@@ -86,7 +86,7 @@ export default function Page() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    const count = mode === "illustrations" ? 4 : 9;
+    const count = mode === "illustrations" ? 4 : mode === "mockups" ? 1 : 9;
     setIndividualDescriptions(new Array(count).fill(""));
     
     // Reset output panes when switching modes
@@ -101,6 +101,11 @@ export default function Page() {
     setMoreIconsDescriptions({});
     setAnimatingIcons({});
     setOverallProgress(0);
+    
+    // For mockups, always enable variations (they're free)
+    if (mode === "mockups") {
+      setGenerateVariations(true);
+    }
     
     // Clear any animation timers
     Object.values(animationTimers).forEach((timers) => {
@@ -325,6 +330,8 @@ export default function Page() {
     try {
       const endpoint = generationMode === "illustrations"
         ? `/api/illustrations/generate/status/${requestId}`
+        : generationMode === "mockups"
+        ? `/api/mockups/generate/status/${requestId}`
         : `/status/${requestId}`;
       
       const response = await fetch(endpoint, {
@@ -518,7 +525,8 @@ export default function Page() {
       return false;
     }
     
-    const cost = generateVariations ? 2 : 1;
+    // For mockups, cost is always 1 (variations are free)
+    const cost = mode === "mockups" ? 1 : (generateVariations ? 2 : 1);
     if (authState.user) {
       const regularCoins = authState.user.coins || 0;
       const trialCoins = authState.user.trialCoins || 0;
@@ -528,7 +536,8 @@ export default function Page() {
       const hasTrialCoins = trialCoins > 0;
       
       if (!hasEnoughRegularCoins && !hasTrialCoins) {
-        setErrorMessage(`Insufficient coins. You need ${cost} coin${cost > 1 ? 's' : ''} to generate icons, or you can use your trial coin for a limited experience.`);
+        const itemType = mode === "mockups" ? "mockups" : mode === "illustrations" ? "illustrations" : "icons";
+        setErrorMessage(`Insufficient coins. You need ${cost} coin${cost > 1 ? 's' : ''} to generate ${itemType}, or you can use your trial coin for a limited experience.`);
         return false;
       }
     }
@@ -573,12 +582,17 @@ export default function Page() {
         return newProgress;
       });
     }, 100);
-    const count = mode === "illustrations" ? 4 : 9;
+    const count = mode === "illustrations" ? 4 : mode === "mockups" ? 1 : 9;
     const formData: any = mode === "illustrations" 
       ? {
           illustrationCount: count,
           generationsPerService: generateVariations ? 2 : 1,
           individualDescriptions: individualDescriptions.filter((desc) => desc.trim()),
+        }
+      : mode === "mockups"
+      ? {
+          mockupCount: 1,
+          generationsPerService: 2, // Mockups always generate variations (free)
         }
       : {
           iconCount: count,
@@ -587,7 +601,12 @@ export default function Page() {
         };
         
     if (inputType === "text") {
-      formData.generalDescription = generalDescription.trim();
+      // For mockups, use 'description' field instead of 'generalDescription'
+      if (mode === "mockups") {
+        formData.description = generalDescription.trim();
+      } else {
+        formData.generalDescription = generalDescription.trim();
+      }
     } else if (inputType === "image" && referenceImage) {
       try {
         formData.referenceImageBase64 = await fileToBase64(referenceImage);
@@ -605,6 +624,8 @@ export default function Page() {
     try {
       const endpoint = mode === "illustrations" 
         ? "/api/illustrations/generate/stream/start"
+        : mode === "mockups"
+        ? "/api/mockups/generate/stream/start"
         : "/generate-stream";
       const response = await fetch(endpoint, {
         method: "POST",
@@ -632,6 +653,8 @@ export default function Page() {
       
       const streamEndpoint = mode === "illustrations"
         ? `/api/illustrations/generate/stream/${requestId}`
+        : mode === "mockups"
+        ? `/api/mockups/generate/stream/${requestId}`
         : `/stream/${requestId}`;
       const eventSource = new EventSource(streamEndpoint);
       currentEventSourceRef.current = eventSource;
@@ -939,7 +962,7 @@ export default function Page() {
   const confirmExport = (formats: string[], sizes?: number[]) => {
     if (exportContext) {
       const { requestId, serviceName, generationIndex } = exportContext;
-      const packType = mode === "icons" ? "icon" : "illustration";
+      const packType = mode === "icons" ? "icon" : mode === "illustrations" ? "illustration" : "mockup";
       const fileName = `${packType}-pack-${requestId}-${serviceName}-gen${generationIndex}.zip`;
       const exportData = {
         requestId: requestId,
@@ -955,7 +978,7 @@ export default function Page() {
 
   const downloadZip = async (exportData: any, fileName: string) => {
     setShowProgressModal(true);
-    const itemType = mode === "icons" ? "icons" : "illustrations";
+    const itemType = mode === "icons" ? "icons" : mode === "illustrations" ? "illustrations" : "mockups";
     setExportProgress({
       step: 1,
       message: "Preparing export request...",
@@ -969,7 +992,7 @@ export default function Page() {
           percent: 50,
         });
       }, 500);
-      const endpoint = mode === "icons" ? "/export" : "/api/illustrations/export";
+      const endpoint = mode === "icons" ? "/export" : mode === "illustrations" ? "/api/illustrations/export" : "/api/mockups/export";
       const response = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },

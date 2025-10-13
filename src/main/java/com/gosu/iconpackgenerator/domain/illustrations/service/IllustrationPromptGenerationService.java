@@ -10,31 +10,39 @@ import java.util.stream.Collectors;
 @Slf4j
 public class IllustrationPromptGenerationService {
     
-    private static final String TEXT_TO_IMAGE_PROMPT_TEMPLATE = "A high-quality, modern user interface mockup in a consistent style - general theme: %s.\n" +
-            "The design should include buttons, icons, sliders, player controls, chat bubbles (with sample messages), progress bars, toggles, search bars and rating cards, arranged in a clean, balanced grid layout on a neutral background.\n" +
-            "Each component should share the same visual language — soft shadows, rounded corners, consistent color palette, and even spacing.\n" +
-            "The layout should show distinct UI elements without visible grid lines or borders.\n" +
+    private static final String TEXT_TO_IMAGE_PROMPT_TEMPLATE = "Create a 2x2 arrangement of illustrations in a consistent style. \n" +
+            "Each illustration should be contained within its own square area of equal size, with equal spacing between them. \n" +
+            "Use a fully white division between the illustrations so they can be easily cropped out later.\n" +
             "\n" +
-            "The mockup should look like a professional design system overview or UI kit preview, not a wireframe.\n" +
-            "All text (if any) should be minimal and used only as placeholder content.\n" +
+            "General theme: %s \n" +
+            "%s" +
             "\n" +
-            "Emphasize clarity, readability, and design consistency.\n" +
-            "Use subtle lighting and depth to separate components naturally.\n" +
-            "No branding, no logos, no real-world content — only abstract UI shapes and elements.";
+            "Style guidelines:  \n" +
+            "- All illustrations should share the same style, color palette, and overall visual feel.  \n" +
+            "- No text, labels, numbers, or captions anywhere in the image.  \n" +
+            "- Only color outside illustrations should be white \n" +
+            "- Ensure each illustration fits well within its square area with appropriate padding.  \n" +
+            "- The divisions should be clear enough to separate the illustrations, but not styled (no borders, no decorative lines — just white separation).  \n" +
+            "\n" +
+            "Final output: A clean 2x2 layout of 4 illustrations, ready for cropping. \n";
 
     private static final String IMAGE_TO_IMAGE_PROMPT_TEMPLATE = 
-        "Using the provided reference image as a style guide\n" +
-                "A high-quality, modern user interface mockup in a consistent style - with general theme as in reference image\n" +
-                "The design should include buttons, icons, sliders, player controls ,chat bubbles (with sample messages), progress bars, toggles, search bars and rating cards, arranged in a clean, balanced grid layout on a neutral background.\n" +
-                "Each component should share the same visual language — soft shadows, rounded corners, consistent color palette, and even spacing.\n" +
-                "The layout should show distinct UI elements without visible grid lines or borders.\n" +
+        "Using the provided reference image as a style guide, create a new 2x2 arrangement of illustrations. \n" +
+                "The new image should match the same overall style, color palette, shading, and general theme as the reference. \n" +
+                "Maintain the same 2x2 layout: four square areas of equal size, arranged left to right, top to bottom, with equal white spacing.  \n" +
                 "\n" +
-                "The mockup should look like a professional design system overview or UI kit preview, not a wireframe.\n" +
-                "All text (if any) should be minimal and used only as placeholder content.\n" +
+                "General theme: %s \n" +
+                "%s" +
                 "\n" +
-                "Emphasize clarity, readability, and design consistency.\n" +
-                "Use subtle lighting and depth to separate components naturally.\n" +
-                "No branding, no logos, no real-world content — only abstract UI shapes and elements.";
+                "Style guidelines:  \n" +
+                "- Replicate the visual style of the reference image as closely as possible (line weight, shading, depth, and highlights).  \n" +
+                "- Keep the same consistent color palette and professional look.  \n" +
+                "- No text, labels, numbers, or captions.  \n" +
+                "- Only color outside illustrations should be white \n" +
+                "- The divisions should be clear enough to separate the illustrations, but not styled (no borders, no decorative lines — just white separation).  \n" +
+                "- Ensure each illustration is clearly distinguishable and fits cleanly within its square area with appropriate padding.  \n" +
+                "\n" +
+                "Final output: A new 2x2 layout of 4 illustrations that look like part of the same series as the reference image. ";
     
     public static final String SECOND_GENERATION_VARIATION = 
         " use professional color palette and artistic design";
@@ -77,7 +85,7 @@ public class IllustrationPromptGenerationService {
         }
         
         String prompt = String.format(TEXT_TO_IMAGE_PROMPT_TEMPLATE, 
-            generalDescription, 
+            generalDescription,
             individualPrompts.toString());
         
         log.debug("Generated 2x2 grid prompt: {}", prompt);

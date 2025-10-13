@@ -138,20 +138,22 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
               className={
                 mode === "icons"
                   ? "grid gap-4 grid-cols-[repeat(auto-fit,minmax(140px,1fr))]"
-                  : "grid grid-cols-1 sm:grid-cols-2 gap-6"
+                  : mode === "illustrations"
+                  ? "grid grid-cols-1 sm:grid-cols-2 gap-6"
+                  : "flex justify-center items-center"
               } 
               data-oid=".ge-1o5"
             >
               {result.icons.map((icon, iconIndex) => (
                 <div
                   key={iconIndex}
-                  className={`relative group transform ${getIconAnimationClass(result.serviceId, iconIndex)} ${mode === "icons" ? "hover:scale-105 hover:z-20 flex justify-center" : "hover:scale-105 transition-transform duration-200"}`}
+                  className={`relative group transform ${getIconAnimationClass(result.serviceId, iconIndex)} ${mode === "icons" ? "hover:scale-105 hover:z-20 flex justify-center" : mode === "illustrations" ? "hover:scale-105 transition-transform duration-200" : "hover:scale-105 transition-transform duration-200"}`}
                   data-oid="m76b0.p"
                 >
-                  <div className={mode === "illustrations" ? "aspect-[5/4] w-full max-w-[450px]" : ""}>
+                  <div className={mode === "illustrations" ? "aspect-[5/4] w-full max-w-[450px]" : mode === "mockups" ? "aspect-video w-full max-w-[800px]" : ""}>
                     <img
                       src={`data:image/png;base64,${icon.base64Data}`}
-                      alt={mode === "icons" ? `Generated Icon ${iconIndex + 1}` : `Generated Illustration ${iconIndex + 1}`}
+                      alt={mode === "icons" ? `Generated Icon ${iconIndex + 1}` : mode === "illustrations" ? `Generated Illustration ${iconIndex + 1}` : `Generated UI Mockup`}
                       className={
                         mode === "icons"
                           ? "w-full h-auto max-w-[128px] rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-shadow duration-200"
@@ -169,7 +171,7 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
             </div>
           )}
 
-          {result.status === "success" && uiState === "results" && (
+          {result.status === "success" && uiState === "results" && mode !== "mockups" && (
             <div
               className="mt-6 p-6 bg-white/60 backdrop-blur-lg rounded-2xl shadow-lg border border-purple-200/30"
               data-oid="ovhlhfz"
@@ -331,7 +333,7 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
                 className="text-2xl font-bold text-slate-900"
                 data-oid="rn9b4_h"
               >
-                {mode === "icons" ? "Your Icons" : "Your Illustrations"}
+                {mode === "icons" ? "Your Icons" : mode === "illustrations" ? "Your Illustrations" : "Your UI Mockup"}
               </h2>
             </div>
             <div className="flex-1 overflow-y-auto" data-oid="fr-8:os">
@@ -357,7 +359,7 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
                       />
                     </svg>
                     <p className="text-gray-500" data-oid="gi9rui3">
-                      Generated icons will appear here
+                      {mode === "mockups" ? "Generated UI mockup will appear here" : "Generated icons will appear here"}
                     </p>
                   </div>
                 </div>
@@ -457,7 +459,7 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
                         />
                       </svg>
                       <p className="text-gray-500" data-oid="2c96zzz">
-                        Icon variations will appear here
+                        {mode === "mockups" ? "UI mockup variation will appear here" : "Icon variations will appear here"}
                       </p>
                     </div>
                   </div>

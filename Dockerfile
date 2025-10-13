@@ -78,6 +78,8 @@ RUN mkdir -p /app/generated-images && chown app:app /app/generated-images
 
 # Create user icons directory with proper permissions
 RUN mkdir -p /app/data/user-icons && chown app:app /app/data/user-icons
+RUN mkdir -p /app/data/user-illustrations && chown app:app /app/data/user-illustrations
+RUN mkdir -p /app/data/user-mockups && chown app:app /app/data/user-mockups
 
 # Switch to app user
 USER app

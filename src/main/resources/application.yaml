@@ -151,9 +151,11 @@ callmebot:
 
 app:
   file-storage:
-    base-path: ${FILE_STORAGE_PATH:static/user-icons}
+    base-path: static/user-icons}
   illustrations-storage:
-    base-path: ${FILE_STORAGE_PATH:static/user-illustrations}
+    base-path: static/user-illustrations}
+  mockups-storage:
+    base-path: static/user-mockups
   base-url: ${APP_BASE_URL:http://localhost:8080}
   security:
     remember-me:

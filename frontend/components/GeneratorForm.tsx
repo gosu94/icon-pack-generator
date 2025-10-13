@@ -108,6 +108,9 @@ const GeneratorForm: React.FC<GeneratorFormProps> = ({
   };
 
   const renderIconFields = () => {
+    // Don't render individual fields for mockups mode
+    if (mode === "mockups") return null;
+    
     const count = mode === "illustrations" ? 4 : 9;
     const label = mode === "illustrations" ? "Illustration" : "Icon";
     
@@ -166,7 +169,7 @@ const GeneratorForm: React.FC<GeneratorFormProps> = ({
               type="button"
               onClick={() => setMode("illustrations")}
               disabled={isGenerating}
-              className={`relative overflow-hidden flex-1 px-4 py-3 rounded-lg text-sm font-semibold transition-all duration-200 ${
+              className={`flex-1 px-4 py-3 rounded-lg text-sm font-semibold transition-all duration-200 ${
                 mode === "illustrations"
                   ? "bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-md"
                   : isGenerating
@@ -175,6 +178,20 @@ const GeneratorForm: React.FC<GeneratorFormProps> = ({
               }`}
             >
               Illustrations
+            </button>
+            <button
+              type="button"
+              onClick={() => setMode("mockups")}
+              disabled={isGenerating}
+              className={`relative overflow-hidden flex-1 px-4 py-3 rounded-lg text-sm font-semibold transition-all duration-200 ${
+                mode === "mockups"
+                  ? "bg-gradient-to-r from-green-600 to-teal-600 text-white shadow-md"
+                  : isGenerating
+                  ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                  : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+              }`}
+            >
+              UI
               <div className="absolute top-1.5 right-[-20px] transform rotate-45 bg-green-200 text-green-800 text-xs font-bold px-5">
                 New
               </div>
@@ -184,7 +201,7 @@ const GeneratorForm: React.FC<GeneratorFormProps> = ({
           <h2
             className="text-2xl font-bold text-slate-900 mb-8"
           >
-            {mode === "icons" ? "Icon Pack Generator" : "Illustration Generator"}
+            {mode === "icons" ? "Icon Pack Generator" : mode === "illustrations" ? "Illustration Generator" : "UI Mockup Generator"}
           </h2>
 
           <form
@@ -264,7 +281,13 @@ const GeneratorForm: React.FC<GeneratorFormProps> = ({
                     onChange={(e) => setGeneralDescription(e.target.value)}
                     required={inputType === "text"}
                     className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl text-base placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent focus:bg-white transition-all duration-200 resize-none"
-                    placeholder={mode === "illustrations" ? "Describe the general theme for your illustrations... (e.g. little fox adventures, children's book theme, etc.)" : "Describe the general theme for your icon pack... (e.g., minimalist business icons, colorful social media icons, etc.)"}
+                    placeholder={
+                      mode === "illustrations" 
+                        ? "Describe the general theme for your illustrations... (e.g. little fox adventures, children's book theme, etc.)" 
+                        : mode === "mockups"
+                        ? "Describe the style for your UI mockup... (e.g., dark mode music player, e-commerce checkout, social media feed, etc.)"
+                        : "Describe the general theme for your icon pack... (e.g., minimalist business icons, colorful social media icons, etc.)"
+                    }
                   />
                 </div>
               ) : (
@@ -332,90 +355,94 @@ const GeneratorForm: React.FC<GeneratorFormProps> = ({
               )}
             </div>
 
-            <div>
-              <label
-                className="block text-lg font-semibold text-slate-900 mb-4"
-              >
-                Individual {mode === "icons" ? "Icon" : "Illustration"} Descriptions (Optional)
-              </label>
-              {renderIconFields()}
-            </div>
+            {mode !== "mockups" && (
+              <div>
+                <label
+                  className="block text-lg font-semibold text-slate-900 mb-4"
+                >
+                  Individual {mode === "icons" ? "Icon" : "Illustration"} Descriptions (Optional)
+                </label>
+                {renderIconFields()}
+              </div>
+            )}
 
-            <div className="flex items-center justify-between">
-              <label
-                className="text-lg font-semibold text-slate-900"
-                htmlFor="variations-switch"
-              >
-                Additional Variation
-              </label>
-              <div className="flex items-center space-x-2">
-                {(() => {
-                  const regularCoins = authState.user?.coins || 0;
-                  const trialCoins = authState.user?.trialCoins || 0;
-                  const isTrialOnly = regularCoins === 0 && trialCoins > 0;
-                  
-                  if (isTrialOnly) {
-                    return (
-                      <span className="flex items-center space-x-1 rounded-full bg-orange-100 px-2 py-0.5 text-xs font-semibold text-orange-700">
-                        <span>Not available with trial coin</span>
-                      </span>
-                    );
-                  } else if (generateVariations) {
-                    return (
-                      <span className="flex items-center space-x-1 rounded-full bg-gray-200 px-2 py-0.5 text-xs font-semibold text-gray-700">
-                        <span>+1</span>
-                        <Image
-                          src="/images/coin.webp"
-                          alt="Coin"
-                          width={16}
-                          height={16}
-                        />
-                      </span>
-                    );
-                  }
-                  return null;
-                })()}
-                <button
-                  id="variations-switch"
-                  type="button"
-                  role="switch"
-                  aria-checked={generateVariations}
-                  disabled={(() => {
-                    const regularCoins = authState.user?.coins || 0;
-                    const trialCoins = authState.user?.trialCoins || 0;
-                    return regularCoins === 0 && trialCoins > 0;
-                  })()}
-                  onClick={() => {
+            {mode !== "mockups" && (
+              <div className="flex items-center justify-between">
+                <label
+                  className="text-lg font-semibold text-slate-900"
+                  htmlFor="variations-switch"
+                >
+                  Additional Variation
+                </label>
+                <div className="flex items-center space-x-2">
+                  {(() => {
                     const regularCoins = authState.user?.coins || 0;
                     const trialCoins = authState.user?.trialCoins || 0;
                     const isTrialOnly = regularCoins === 0 && trialCoins > 0;
                     
-                    if (!isTrialOnly) {
-                      setGenerateVariations(!generateVariations);
+                    if (isTrialOnly) {
+                      return (
+                        <span className="flex items-center space-x-1 rounded-full bg-orange-100 px-2 py-0.5 text-xs font-semibold text-orange-700">
+                          <span>Not available with trial coin</span>
+                        </span>
+                      );
+                    } else if (generateVariations) {
+                      return (
+                        <span className="flex items-center space-x-1 rounded-full bg-gray-200 px-2 py-0.5 text-xs font-semibold text-gray-700">
+                          <span>+1</span>
+                          <Image
+                            src="/images/coin.webp"
+                            alt="Coin"
+                            width={16}
+                            height={16}
+                          />
+                        </span>
+                      );
                     }
-                  }}
-                  className={`${
-                    (() => {
+                    return null;
+                  })()}
+                  <button
+                    id="variations-switch"
+                    type="button"
+                    role="switch"
+                    aria-checked={generateVariations}
+                    disabled={(() => {
+                      const regularCoins = authState.user?.coins || 0;
+                      const trialCoins = authState.user?.trialCoins || 0;
+                      return regularCoins === 0 && trialCoins > 0;
+                    })()}
+                    onClick={() => {
                       const regularCoins = authState.user?.coins || 0;
                       const trialCoins = authState.user?.trialCoins || 0;
                       const isTrialOnly = regularCoins === 0 && trialCoins > 0;
                       
-                      if (isTrialOnly) {
-                        return 'bg-gray-300 cursor-not-allowed';
+                      if (!isTrialOnly) {
+                        setGenerateVariations(!generateVariations);
                       }
-                      return generateVariations ? 'bg-purple-600' : 'bg-gray-200';
-                    })()
-                  } relative inline-flex h-6 w-11 flex-shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2`}
-                >
-                  <span
-                    aria-hidden="true"
+                    }}
                     className={`${
-                      generateVariations ? 'translate-x-5' : 'translate-x-0'
-                    } pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out`}
-                  />
-                </button>
+                      (() => {
+                        const regularCoins = authState.user?.coins || 0;
+                        const trialCoins = authState.user?.trialCoins || 0;
+                        const isTrialOnly = regularCoins === 0 && trialCoins > 0;
+                        
+                        if (isTrialOnly) {
+                          return 'bg-gray-300 cursor-not-allowed';
+                        }
+                        return generateVariations ? 'bg-purple-600' : 'bg-gray-200';
+                      })()
+                    } relative inline-flex h-6 w-11 flex-shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2`}
+                  >
+                    <span
+                      aria-hidden="true"
+                      className={`${
+                        generateVariations ? 'translate-x-5' : 'translate-x-0'
+                      } pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out`}
+                    />
+                  </button>
+                </div>
               </div>
-            </div>
+            )}
 
             <button
               type="submit"
@@ -426,6 +453,8 @@ const GeneratorForm: React.FC<GeneratorFormProps> = ({
                   ? "bg-slate-400 cursor-not-allowed"
                   : mode === "illustrations"
                   ? "bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 transform hover:scale-[1.02] shadow-lg hover:shadow-xl"
+                  : mode === "mockups"
+                  ? "bg-gradient-to-r from-green-600 to-teal-600 hover:from-green-700 hover:to-teal-700 transform hover:scale-[1.02] shadow-lg hover:shadow-xl"
                   : "bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 transform hover:scale-[1.02] shadow-lg hover:shadow-xl"
               } transition-all duration-200`}
             >
@@ -442,13 +471,14 @@ const GeneratorForm: React.FC<GeneratorFormProps> = ({
                 <div className="flex items-center justify-center space-x-2">
                   <span>
                     {isAuthenticated 
-                      ? (mode === "icons" ? "Generate Icons" : "Generate Illustrations")
+                      ? (mode === "icons" ? "Generate Icons" : mode === "illustrations" ? "Generate Illustrations" : "Generate UI Mockup")
                       : "Sign in to Generate"}
                   </span>
                   {isAuthenticated && authState.user && (
                     <span className="flex items-center space-x-1 rounded-full bg-white/20 px-2 py-0.5 text-xs font-semibold">
                       {(() => {
-                        const cost = generateVariations ? 2 : 1;
+                        // For mockups, cost is always 1 (variations don't cost extra)
+                        const cost = mode === "mockups" ? 1 : (generateVariations ? 2 : 1);
                         const regularCoins = authState.user.coins || 0;
                         const trialCoins = authState.user.trialCoins || 0;
                         

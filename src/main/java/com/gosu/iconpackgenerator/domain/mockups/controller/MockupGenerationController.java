@@ -342,18 +342,7 @@ public class MockupGenerationController implements MockupGenerationControllerAPI
         log.info("Generate more mockups request from user: {}", user.getEmail());
         
         DeferredResult<MoreMockupsResponse> deferredResult = new DeferredResult<>(300_000L);
-        
-        // Check user's coin balance
-        int availableCoins = coinManagementService.getUserCoins(user);
-        if (availableCoins < 1) {
-            MoreMockupsResponse errorResponse = new MoreMockupsResponse();
-            errorResponse.setStatus("error");
-            errorResponse.setMessage("Insufficient coins. You need at least 1 coin to generate more mockups.");
-            errorResponse.setMockups(new ArrayList<>());
-            deferredResult.setResult(errorResponse);
-            return deferredResult;
-        }
-        
+
         // Deduct coins
         CoinManagementService.CoinDeductionResult coinResult =
                 coinManagementService.deductCoinsForGeneration(user, 1);
