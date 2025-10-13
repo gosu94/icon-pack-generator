@@ -333,7 +333,7 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
                 className="text-2xl font-bold text-slate-900"
                 data-oid="rn9b4_h"
               >
-                {mode === "icons" ? "Your Icons" : mode === "illustrations" ? "Your Illustrations" : "Your UI Mockup"}
+                {mode === "icons" ? "Your Icons" : mode === "illustrations" ? "Your Illustrations" : "Your Mockup"}
               </h2>
             </div>
             <div className="flex-1 overflow-y-auto" data-oid="fr-8:os">

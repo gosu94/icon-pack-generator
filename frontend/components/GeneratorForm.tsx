@@ -285,7 +285,7 @@ const GeneratorForm: React.FC<GeneratorFormProps> = ({
                       mode === "illustrations" 
                         ? "Describe the general theme for your illustrations... (e.g. little fox adventures, children's book theme, etc.)" 
                         : mode === "mockups"
-                        ? "Describe the style for your UI mockup... (e.g., dark mode music player, e-commerce checkout, social media feed, etc.)"
+                        ? "Describe the style for your UI mockup... (e.g., light blue-white soft neumorphic, dark glassmorphic etc.)"
                         : "Describe the general theme for your icon pack... (e.g., minimalist business icons, colorful social media icons, etc.)"
                     }
                   />
