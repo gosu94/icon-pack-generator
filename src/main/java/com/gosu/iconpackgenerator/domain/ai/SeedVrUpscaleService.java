@@ -249,7 +249,7 @@ public class SeedVrUpscaleService {
         }
         
         // Generic fallback
-        return "Failed to upscale with SeedVR. Please try again or use a different image.";
+        return "Failed to upscale. Please try again or use a different image.";
     }
     
     public String getModelName() {

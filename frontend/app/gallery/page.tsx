@@ -63,6 +63,20 @@ export default function GalleryPage() {
     percent: 25,
   });
 
+  // Preview state
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
+
+  const handleImageClick = (imageUrl: string) => {
+    // Only open preview for illustrations and mockups
+    if (galleryType === "illustrations" || galleryType === "mockups") {
+      setPreviewImage(imageUrl);
+    }
+  };
+
+  const closePreview = () => {
+    setPreviewImage(null);
+  };
+
   useEffect(() => {
     const fetchIcons = async () => {
       setLoading(true);
@@ -234,6 +248,54 @@ export default function GalleryPage() {
         sessionStorage.setItem("generatedGridImage", gridImageUrl);
         sessionStorage.setItem("generateMoreMode", "true");
         sessionStorage.setItem("generationMode", "icons");
+
+        // Navigate to dashboard
+        router.push("/dashboard");
+      } else {
+        console.error("Failed to create grid:", data.error);
+        alert("Failed to create grid composition. Please try again.");
+      }
+    } catch (error) {
+      console.error("Error creating grid composition:", error);
+      alert("Failed to create grid composition. Please try again.");
+    }
+  };
+
+  const handleGenerateMockupFromIcons = async (iconType: string) => {
+    if (!selectedRequest) return;
+
+    try {
+      // Call the backend to create the grid composition (same endpoint as generate more)
+      const response = await fetch("/api/gallery/compose-grid", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          requestId: selectedRequest,
+          iconType: iconType,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+
+      if (data.status === "success" && data.gridImageBase64) {
+        // Convert base64 to blob and create URL
+        const binaryString = atob(data.gridImageBase64);
+        const bytes = new Uint8Array(binaryString.length);
+        for (let i = 0; i < binaryString.length; i++) {
+          bytes[i] = binaryString.charCodeAt(i);
+        }
+        const blob = new Blob([bytes], { type: "image/png" });
+
+        // Store the grid image data in sessionStorage for the dashboard to use
+        const gridImageUrl = URL.createObjectURL(blob);
+        sessionStorage.setItem("generatedGridImage", gridImageUrl);
+        sessionStorage.setItem("generateMoreMode", "true");
+        sessionStorage.setItem("generationMode", "mockups"); // Set to mockups mode
 
         // Navigate to dashboard
         router.push("/dashboard");
@@ -427,7 +489,7 @@ export default function GalleryPage() {
                   </div>
                   <div
                     onClick={() => setGalleryType("mockups")}
-                    className="group cursor-pointer rounded-xl border border-slate-200 bg-white p-6 transition-all duration-300 hover:border-green-300 hover:shadow-lg hover:shadow-green-100"
+                    className="group cursor-pointer rounded-xl border border-slate-200 bg-white p-6 transition-all duration-300 hover:border-pink-300 hover:shadow-lg hover:shadow-pink-100"
                   >
                     <h2 className="text-2xl font-bold text-slate-800 text-center">
                       UI Mockups
@@ -530,8 +592,16 @@ export default function GalleryPage() {
                                 <button
                                   onClick={() => handleGenerateMore("original")}
                                   className="px-2 sm:px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 flex items-center justify-center gap-2"
+                                  title="Generate more like this"
                                 >
                                   <Sparkles className="w-4 h-4" />
+                                </button>
+                                <button
+                                  onClick={() => handleGenerateMockupFromIcons("original")}
+                                  className="px-2 sm:px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 flex items-center justify-center gap-1"
+                                  title="Generate UI Mockup from these icons"
+                                >
+                                  <span className="text-xs font-bold">UI</span>
                                 </button>
                                 <button
                                   onClick={() =>
@@ -540,6 +610,7 @@ export default function GalleryPage() {
                                     )
                                   }
                                   className="px-2 sm:px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 flex items-center justify-center gap-2"
+                                  title="Export"
                                 >
                                   <Download className="w-4 h-4" />
                                 </button>
@@ -578,6 +649,13 @@ export default function GalleryPage() {
                                   className="px-2 sm:px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 flex items-center justify-center gap-2"
                                 >
                                   <Sparkles className="w-4 h-4" />
+                                </button>
+                                <button
+                                  onClick={() => handleGenerateMockupFromIcons("variation")}
+                                  className="px-2 sm:px-4 py-2 bg-gradient-to-r from-green-600 to-teal-600 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 flex items-center justify-center gap-1"
+                                  title="Generate UI Mockup from these icons"
+                                >
+                                  <span className="text-xs font-bold">UI</span>
                                 </button>
                                 <button
                                   onClick={() =>
@@ -724,7 +802,8 @@ export default function GalleryPage() {
                                 (illustration, index) => (
                                   <div
                                     key={index}
-                                    className="border rounded-lg p-2 bg-white shadow-sm aspect-[5/4] max-w-[450px] mx-auto"
+                                    className="border rounded-lg p-2 bg-white shadow-sm aspect-[5/4] max-w-[450px] mx-auto cursor-pointer hover:shadow-lg transition-shadow duration-200"
+                                    onClick={() => handleImageClick(illustration.imageUrl)}
                                   >
                                     <img
                                       src={illustration.imageUrl}
@@ -770,7 +849,8 @@ export default function GalleryPage() {
                                 (illustration, index) => (
                                   <div
                                     key={index}
-                                    className="border rounded-lg p-2 bg-white shadow-sm aspect-[5/4] max-w-[450px] mx-auto"
+                                    className="border rounded-lg p-2 bg-white shadow-sm aspect-[5/4] max-w-[450px] mx-auto cursor-pointer hover:shadow-lg transition-shadow duration-200"
+                                    onClick={() => handleImageClick(illustration.imageUrl)}
                                   >
                                     <img
                                       src={illustration.imageUrl}
@@ -861,7 +941,7 @@ export default function GalleryPage() {
                                 ...groupedMockups[selectedRequest].variation,
                               ])
                             }
-                            className="px-2 sm:px-4 py-2 bg-gradient-to-r from-green-600 to-teal-600 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 flex items-center justify-center gap-2"
+                            className="px-2 sm:px-4 py-2 bg-gradient-to-r from-blue-600 to-pink-600 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 flex items-center justify-center gap-2"
                           >
                             <Download className="w-4 h-4" />
                             <span className="hidden sm:inline">
@@ -886,7 +966,7 @@ export default function GalleryPage() {
                                       groupedMockups[selectedRequest].original
                                     )
                                   }
-                                  className="px-2 sm:px-4 py-2 bg-gradient-to-r from-green-600 to-teal-600 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 flex items-center justify-center gap-2"
+                                  className="px-2 sm:px-4 py-2 bg-gradient-to-r from-blue-600 to-pink-600 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 flex items-center justify-center gap-2"
                                 >
                                   <Download className="w-4 h-4" />
                                 </button>
@@ -897,7 +977,8 @@ export default function GalleryPage() {
                                 (mockup, index) => (
                                   <div
                                     key={index}
-                                    className="border rounded-lg p-2 bg-white shadow-sm aspect-video max-w-[800px] w-full"
+                                    className="border rounded-lg p-2 bg-white shadow-sm aspect-video max-w-[800px] w-full cursor-pointer hover:shadow-lg transition-shadow duration-200"
+                                    onClick={() => handleImageClick(mockup.imageUrl)}
                                   >
                                     <img
                                       src={mockup.imageUrl}
@@ -924,7 +1005,7 @@ export default function GalleryPage() {
                                       groupedMockups[selectedRequest].variation
                                     )
                                   }
-                                  className="px-2 sm:px-4 py-2 bg-gradient-to-r from-green-600 to-teal-600 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 flex items-center justify-center gap-2"
+                                  className="px-2 sm:px-4 py-2 bg-gradient-to-r from-blue-600 to-pink-600 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 flex items-center justify-center gap-2"
                                 >
                                   <Download className="w-4 h-4" />
                                 </button>
@@ -935,7 +1016,8 @@ export default function GalleryPage() {
                                 (mockup, index) => (
                                   <div
                                     key={index}
-                                    className="border rounded-lg p-2 bg-white shadow-sm aspect-video max-w-[800px] w-full"
+                                    className="border rounded-lg p-2 bg-white shadow-sm aspect-video max-w-[800px] w-full cursor-pointer hover:shadow-lg transition-shadow duration-200"
+                                    onClick={() => handleImageClick(mockup.imageUrl)}
                                   >
                                     <img
                                       src={mockup.imageUrl}
@@ -973,7 +1055,7 @@ export default function GalleryPage() {
                                   <div
                                     key={requestId}
                                     onClick={() => handleSelectRequest(requestId)}
-                                    className="group cursor-pointer rounded-lg border border-green-200 bg-white/50 shadow-lg shadow-slate-200/50 p-3 transition-all duration-300 hover:border-green-400 hover:shadow-green-200/50"
+                                    className="group cursor-pointer rounded-lg border border-pink-200 bg-white/50 shadow-lg shadow-slate-200/50 p-3 transition-all duration-300 hover:border-pink-400 hover:shadow-pink-200/50"
                                   >
                                     <div className="aspect-video overflow-hidden rounded-md bg-slate-100">
                                       <img
@@ -1022,6 +1104,42 @@ export default function GalleryPage() {
       />
 
       <ProgressModal show={showProgressModal} progress={exportProgress} />
+
+      {/* Full-size image preview modal */}
+      {previewImage && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-90 z-50 flex items-center justify-center p-4"
+          onClick={closePreview}
+        >
+          <div className="relative max-w-7xl max-h-full">
+            <button
+              onClick={closePreview}
+              className="absolute top-4 right-4 text-white bg-black bg-opacity-50 rounded-full p-2 hover:bg-opacity-75 transition-all duration-200 z-10"
+              aria-label="Close preview"
+            >
+              <svg
+                className="w-6 h-6"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M6 18L18 6M6 6l12 12"
+                />
+              </svg>
+            </button>
+            <img
+              src={previewImage}
+              alt="Full size preview"
+              className="max-w-full max-h-[90vh] object-contain rounded-lg"
+              onClick={(e) => e.stopPropagation()}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

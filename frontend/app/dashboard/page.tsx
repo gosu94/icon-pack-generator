@@ -121,11 +121,13 @@ export default function Page() {
     const generationMode = sessionStorage.getItem("generationMode");
     
     if (generateMoreMode === "true" && gridImageUrl) {
-      // Switch to the correct mode (icons or illustrations)
+      // Switch to the correct mode (icons, illustrations, or mockups)
       if (generationMode === "illustrations") {
         setMode("illustrations");
       } else if (generationMode === "icons") {
         setMode("icons");
+      } else if (generationMode === "mockups") {
+        setMode("mockups");
       }
       
       // Switch to image tab

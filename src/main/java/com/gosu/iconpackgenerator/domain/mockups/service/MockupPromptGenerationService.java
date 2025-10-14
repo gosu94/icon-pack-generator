@@ -8,7 +8,7 @@ import org.springframework.stereotype.Service;
 public class MockupPromptGenerationService {
 
     private static final String TEXT_TO_IMAGE_PROMPT_TEMPLATE = "A high-quality, modern user interface mockup in a consistent style - general theme: %s.\n" +
-            "The design should include buttons, icons, sliders, player controls, chat bubbles (with sample messages), progress bars, toggles, search bars and rating cards, arranged in a clean, balanced grid layout on a neutral background.\n" +
+            "The design should include buttons, icons, sliders, player controls, chat bubbles , progress bars, toggles, search bars and rating cards, arranged in a clean, balanced grid layout on a neutral background.\n" +
             "Each component should share the same visual language — soft shadows, rounded corners, consistent color palette, and even spacing.\n" +
             "The layout should show distinct UI elements without visible grid lines or borders.\n" +
             "\n" +
@@ -22,7 +22,7 @@ public class MockupPromptGenerationService {
     private static final String IMAGE_TO_IMAGE_PROMPT_TEMPLATE =
             "Using the provided reference image as a style guide\n" +
                     "A high-quality, modern user interface mockup in a consistent style - with general theme as in reference image\n" +
-                    "The design should include buttons, icons, sliders, player controls ,chat bubbles (with sample messages), progress bars, toggles, search bars and rating cards, arranged in a clean, balanced grid layout on a neutral background.\n" +
+                    "The design should include buttons, icons, sliders, player controls ,chat bubbles, progress bars, toggles, search bars and rating cards, arranged in a clean, balanced grid layout on a neutral background.\n" +
                     "Each component should share the same visual language — soft shadows, rounded corners, consistent color palette, and even spacing.\n" +
                     "The layout should show distinct UI elements without visible grid lines or borders.\n" +
                     "\n" +

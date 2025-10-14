@@ -157,32 +157,58 @@ export default function LandingPage() {
                 </div>
             </section>
 
+            {/* New UI Mockups Feature Section */}
+            <section className="px-6 py-12">
+                <div className="max-w-7xl mx-auto">
+                    <div
+                        className="bg-white/80 backdrop-blur-md rounded-3xl shadow-2xl border border-teal-200/50 overflow-hidden">
+                        <div className="flex flex-col lg:flex-row">
+                            {/* Caption Section */}
+                            <div
+                                className="lg:w-1/3 p-6 md:p-8 flex flex-col justify-center bg-gradient-to-br from-white/50 to-teal-50/50">
+                                <div className="space-y-6">
+                                    <div className="flex items-center space-x-2">
+                                        <Rocket className="w-6 h-6 text-blue-600"/>
+                                        <span
+                                            className="text-sm font-semibold text-blue-600 uppercase tracking-wide">New Feature</span>
+                                    </div>
+
+                                    <h2 className="text-3xl font-bold text-slate-900 leading-tight">
+                                        UI Mockup Generator
+                                    </h2>
+
+                                    <p className="text-slate-600 leading-relaxed">
+                                        Transform your ideas into stunning UI mockups instantly. Generate professional-quality interface designs in 16:9 aspect ratio, perfect for presentations, pitches, and prototypes. Use text descriptions or reference images to bring your vision to life.
+                                    </p>
+
+                                </div>
+                            </div>
+                            {/* Video Section */}
+                            <div
+                                className="lg:w-2/3 relative bg-gradient-to-br from-blue-600 to-pink-600 p-6 md:p-8 flex items-center justify-center min-h-[280px] md:min-h-[400px]">
+                                <div className="relative w-full h-full flex items-center justify-center">
+                                    <div
+                                        className="relative w-full max-w-2xl aspect-video bg-black/20 rounded-2xl flex items-center justify-center backdrop-blur-sm border border-white/20 overflow-hidden">
+                                        <iframe
+                                            src="https://player.vimeo.com/video/REPLACE_WITH_VIDEO_ID?badge=0&amp;autopause=0&amp;player_id=0&amp;app_id=58479"
+                                            allow="autoplay; fullscreen; picture-in-picture; clipboard-write"
+                                            className="w-full h-full"
+                                            title="UI Mockup Generator Feature Video"
+                                        ></iframe>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
             {/* New Illustration Feature Section */}
             <section className="px-6 py-12">
                 <div className="max-w-7xl mx-auto">
                     <div
                         className="bg-white/80 backdrop-blur-md rounded-3xl shadow-2xl border border-pink-200/50 overflow-hidden">
                         <div className="flex flex-col lg:flex-row">
-                            {/* Caption Section */}
-                            <div
-                                className="lg:w-1/3 p-6 md:p-8 flex flex-col justify-center bg-gradient-to-br from-white/50 to-pink-50/50">
-                                <div className="space-y-6">
-                                    <div className="flex items-center space-x-2">
-                                        <Sparkles className="w-6 h-6 text-pink-600"/>
-                                        <span
-                                            className="text-sm font-semibold text-pink-600 uppercase tracking-wide">New Feature</span>
-                                    </div>
-
-                                    <h2 className="text-3xl font-bold text-slate-900 leading-tight">
-                                        New Feature - Illustrations
-                                    </h2>
-
-                                    <p className="text-slate-600 leading-relaxed">
-                                        Unleash your creativity with our new illustration generator. Create visually consistent, high-quality illustrations for your marketing materials, websites, and applications. Describe your vision and let our AI bring it to life.
-                                    </p>
-
-                                </div>
-                            </div>
                             {/* Video Section */}
                             <div
                                 className="lg:w-2/3 relative bg-gradient-to-br from-purple-600 to-pink-600 p-6 md:p-8 flex items-center justify-center min-h-[280px] md:min-h-[400px]">
@@ -196,6 +222,26 @@ export default function LandingPage() {
                                             title="Illustration Generator Feature Video"
                                         ></iframe>
                                     </div>
+                                </div>
+                            </div>
+                            {/* Caption Section */}
+                            <div
+                                className="lg:w-1/3 p-6 md:p-8 flex flex-col justify-center bg-gradient-to-br from-white/50 to-pink-50/50">
+                                <div className="space-y-6">
+                                    <div className="flex items-center space-x-2">
+                                        <Sparkles className="w-6 h-6 text-pink-600"/>
+                                        <span
+                                            className="text-sm font-semibold text-pink-600 uppercase tracking-wide">New Feature</span>
+                                    </div>
+
+                                    <h2 className="text-3xl font-bold text-slate-900 leading-tight">
+                                        Illustrations
+                                    </h2>
+
+                                    <p className="text-slate-600 leading-relaxed">
+                                        Unleash your creativity with our new illustration generator. Create visually consistent, high-quality illustrations for your marketing materials, websites, and applications. Describe your vision and let our AI bring it to life.
+                                    </p>
+
                                 </div>
                             </div>
                         </div>

@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import Image from "next/image";
 import { UIState, ServiceResult, GenerationResponse, GenerationMode } from "../lib/types";
 
@@ -65,10 +65,24 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
   getServiceDisplayName,
   setIsGenerating,
 }) => {
+  // State for full-size image preview modal
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
+
   const getGenerationResults = (generationNumber: number) => {
     return Object.entries(streamingResults)
       .filter(([, result]) => result.generationIndex === generationNumber)
       .map(([serviceId, result]) => ({ serviceId, ...result }));
+  };
+
+  const handleImageClick = (base64Data: string) => {
+    // Only open preview for illustrations and mockups
+    if (mode === "illustrations" || mode === "mockups") {
+      setPreviewImage(base64Data);
+    }
+  };
+
+  const closePreview = () => {
+    setPreviewImage(null);
   };
 
   const renderGenerationResults = (generationNumber: number) => {
@@ -154,16 +168,17 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
                     <img
                       src={`data:image/png;base64,${icon.base64Data}`}
                       alt={mode === "icons" ? `Generated Icon ${iconIndex + 1}` : mode === "illustrations" ? `Generated Illustration ${iconIndex + 1}` : `Generated UI Mockup`}
+                      onClick={() => handleImageClick(icon.base64Data)}
                       className={
                         mode === "icons"
                           ? "w-full h-auto max-w-[128px] rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-shadow duration-200"
-                          : "w-full h-full object-contain rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-shadow duration-200"
+                          : "w-full h-full object-contain rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-shadow duration-200 cursor-pointer"
                       }
                       data-oid="3jhfiim"
                     />
                   </div>
                   <div
-                    className={`absolute inset-0 bg-gradient-to-r from-blue-400 to-purple-500 rounded-lg transition-opacity duration-700 ${animatingIcons[result.serviceId] > iconIndex ? "opacity-0" : "opacity-20"}`}
+                    className={`absolute inset-0 bg-gradient-to-r from-blue-400 to-purple-500 rounded-lg transition-opacity duration-700 pointer-events-none ${animatingIcons[result.serviceId] > iconIndex ? "opacity-0" : "opacity-20"}`}
                     data-oid="bit9s0x"
                   />
                 </div>
@@ -474,6 +489,42 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
           </div>
         )}
       </div>
+
+      {/* Full-size image preview modal */}
+      {previewImage && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-90 z-50 flex items-center justify-center p-4"
+          onClick={closePreview}
+        >
+          <div className="relative max-w-7xl max-h-full">
+            <button
+              onClick={closePreview}
+              className="absolute top-4 right-4 text-white bg-black bg-opacity-50 rounded-full p-2 hover:bg-opacity-75 transition-all duration-200 z-10"
+              aria-label="Close preview"
+            >
+              <svg
+                className="w-6 h-6"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M6 18L18 6M6 6l12 12"
+                />
+              </svg>
+            </button>
+            <img
+              src={`data:image/png;base64,${previewImage}`}
+              alt="Full size preview"
+              className="max-w-full max-h-[90vh] object-contain rounded-lg"
+              onClick={(e) => e.stopPropagation()}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 };

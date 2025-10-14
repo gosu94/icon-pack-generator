@@ -58,9 +58,10 @@ public class FalAiConfig {
             OkHttpClient existingClient = (OkHttpClient) httpClientField.get(client);
             
             // Create a new OkHttpClient with proper connection management
+            // Increased timeouts to handle large image upscaling (e.g., UI mockups in 16:9 aspect ratio)
             OkHttpClient newClient = existingClient.newBuilder()
                     .connectionPool(new ConnectionPool(5, 5, TimeUnit.MINUTES))
-                    .readTimeout(120, TimeUnit.SECONDS)
+                    .readTimeout(240, TimeUnit.SECONDS)  // Increased to 5 minutes for large image upscaling
                     .writeTimeout(120, TimeUnit.SECONDS)
                     .connectTimeout(30, TimeUnit.SECONDS)
                     // Enable connection eviction
