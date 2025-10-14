@@ -12,6 +12,7 @@ export default function LandingPage() {
     const {authState} = useAuth();
     const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
     const [isModalVisible, setIsModalVisible] = useState(false);
+    const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
     const openLoginModal = () => {
         setIsLoginModalOpen(true);
@@ -21,6 +22,14 @@ export default function LandingPage() {
     const closeLoginModal = () => {
         setIsModalVisible(false);
         setTimeout(() => setIsLoginModalOpen(false), 300);
+    };
+
+    const openImageModal = (image: string) => {
+        setSelectedImage(image);
+    };
+
+    const closeImageModal = () => {
+        setSelectedImage(null);
     };
 
     const handleStartCreating = () => {
@@ -93,6 +102,13 @@ export default function LandingPage() {
         "/images/illustrations/illustration6.webp",
         "/images/illustrations/illustration7.webp",
         "/images/illustrations/illustration8.webp",
+    ];
+
+    const mockupImages = [
+        "/images/mockups/mockup1.webp",
+        "/images/mockups/mockup2.webp",
+        "/images/mockups/mockup3.webp",
+        "/images/mockups/mockup4.webp",
     ];
 
 
@@ -447,6 +463,7 @@ export default function LandingPage() {
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
                         {illustrationImages.map((image, index) => (
                             <div key={index}
+                                 onClick={() => openImageModal(image)}
                                  className="group relative bg-white/80 backdrop-blur-md rounded-2xl p-6 shadow-lg border border-pink-200/30 hover:shadow-xl transition-all duration-300 hover:scale-[1.05] cursor-pointer">
                                 <div
                                     className="relative aspect-[4/3] w-full bg-gradient-to-br from-slate-100 to-slate-200 rounded-xl flex items-center justify-center overflow-hidden">
@@ -455,6 +472,36 @@ export default function LandingPage() {
                                 </div>
                                 <div
                                     className="absolute inset-0 bg-gradient-to-br from-rose-500/0 to-purple-500/0 group-hover:from-rose-500/10 group-hover:to-purple-500/10 rounded-2xl transition-all duration-300"></div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            </section>
+
+            {/* UI Mockups Gallery Section */}
+            <section className="px-6 py-16 bg-gradient-to-br from-teal-50/50 to-blue-50/50">
+                <div className="max-w-7xl mx-auto">
+                    <div className="text-center mb-12">
+                        <h2 className="text-4xl font-bold text-slate-900 mb-4">
+                            Generated UI Mockups Gallery
+                        </h2>
+                        <p className="text-xl text-slate-600 max-w-3xl mx-auto">
+                            Explore stunning UI mockups created by our AI models. Each one a unique piece of art for your projects.
+                        </p>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
+                        {mockupImages.map((image, index) => (
+                            <div key={index}
+                                 onClick={() => openImageModal(image)}
+                                 className="group relative bg-white/80 backdrop-blur-md rounded-2xl p-6 shadow-lg border border-teal-200/30 hover:shadow-xl transition-all duration-300 hover:scale-[1.05] cursor-pointer">
+                                <div
+                                    className="relative aspect-[16/9] w-full bg-gradient-to-br from-slate-100 to-slate-200 rounded-xl flex items-center justify-center overflow-hidden">
+                                    <Image src={image} alt={`UI Mockup ${index + 1}`} layout="fill"
+                                           className="object-cover"/>
+                                </div>
+                                <div
+                                    className="absolute inset-0 bg-gradient-to-br from-teal-500/0 to-blue-500/0 group-hover:from-teal-500/10 group-hover:to-blue-500/10 rounded-2xl transition-all duration-300"></div>
                             </div>
                         ))}
                     </div>
@@ -498,6 +545,31 @@ export default function LandingPage() {
                 onClose={closeLoginModal}
                 onSuccess={handleLoginSuccess}
             />
+
+            {selectedImage && (
+                <div
+                    className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50"
+                    onClick={closeImageModal}
+                >
+                    <div className="relative max-w-4xl max-h-[90vh] p-4" onClick={(e) => e.stopPropagation()}>
+                        <Image
+                            src={selectedImage}
+                            alt="Full-size image"
+                            width={1920}
+                            height={1080}
+                            className="object-contain w-full h-full rounded-lg"
+                        />
+                        <button
+                            onClick={closeImageModal}
+                            className="absolute top-[-1rem] right-[-1rem] text-white bg-black/50 rounded-full p-2"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            )}
 
             <Footer/>
         </div>
