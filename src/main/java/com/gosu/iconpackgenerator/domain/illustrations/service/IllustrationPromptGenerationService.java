@@ -10,7 +10,7 @@ import java.util.stream.Collectors;
 @Slf4j
 public class IllustrationPromptGenerationService {
     
-    private static final String TEXT_TO_IMAGE_PROMPT_TEMPLATE = "Create a 2x2 arrangement of illustrations in a consistent style. \n" +
+    private static final String TEXT_TO_IMAGE_PROMPT_TEMPLATE = "Create a 2x2 arrangement of illustrations (with NO captions and NO grid lines) in a consistent style. \n" +
             "Each illustration should be contained within its own square area of equal size, with equal spacing between them. \n" +
             "Use a fully white division between the illustrations so they can be easily cropped out later.\n" +
             "\n" +
@@ -27,7 +27,7 @@ public class IllustrationPromptGenerationService {
             "Final output: A clean 2x2 layout of 4 illustrations, ready for cropping. \n";
 
     private static final String IMAGE_TO_IMAGE_PROMPT_TEMPLATE = 
-        "Using the provided reference image as a style guide, create a new 2x2 arrangement of illustrations. \n" +
+        "Using the provided reference image as a style guide, create a new 2x2 arrangement of illustrations (with NO captions and NO grid lines). \n" +
                 "The new image should match the same overall style, color palette, shading, and general theme as the reference. \n" +
                 "Maintain the same 2x2 layout: four square areas of equal size, arranged left to right, top to bottom, with equal white spacing.  \n" +
                 "\n" +

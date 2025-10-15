@@ -190,7 +190,7 @@ export default function LandingPage() {
                                     </div>
 
                                     <h2 className="text-3xl font-bold text-slate-900 leading-tight">
-                                        UI Mockup Generator
+                                        UI Mockups
                                     </h2>
 
                                     <p className="text-slate-600 leading-relaxed">

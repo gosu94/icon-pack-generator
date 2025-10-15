@@ -152,7 +152,7 @@ public class BananaModelService implements AIModelService {
      */
     public CompletableFuture<byte[]> generateImageToImage(String prompt, byte[] sourceImageData, Long seed, String aspectRatio) {
         log.info("Generating image-to-image with Banana for prompt: {} with aspect ratio: {}", 
-                prompt.substring(0, Math.min(100, prompt.length())), aspectRatio);
+                prompt, aspectRatio);
         
         return generateBananaImageToImageAsync(prompt, sourceImageData, aspectRatio)
                 .whenComplete((bytes, error) -> {
