@@ -81,6 +81,11 @@ RUN mkdir -p /app/data/user-icons && chown app:app /app/data/user-icons
 RUN mkdir -p /app/data/user-illustrations && chown app:app /app/data/user-illustrations
 RUN mkdir -p /app/data/user-mockups && chown app:app /app/data/user-mockups
 
+# Create static directories for file storage (relative paths from application.yaml)
+RUN mkdir -p /app/static/user-icons && chown app:app /app/static/user-icons
+RUN mkdir -p /app/static/user-illustrations && chown app:app /app/static/user-illustrations
+RUN mkdir -p /app/static/user-mockups && chown app:app /app/static/user-mockups
+
 # Switch to app user
 USER app
 

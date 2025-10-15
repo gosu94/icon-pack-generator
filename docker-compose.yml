@@ -71,7 +71,9 @@ services:
      - PHONE_NUMBER=${PHONE_NUMBER:-}
      - CALLMEBOT_API_KEY=${CALLMEBOT_API_KEY:-}
     volumes:
-      - ./static/user-icons:/app/data/user-icons
+      - ./static/user-icons:/app/static/user-icons
+      - ./static/user-illustrations:/app/static/user-illustrations
+      - ./static/user-mockups:/app/static/user-mockups
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
       interval: 30s
