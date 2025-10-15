@@ -206,7 +206,7 @@ export default function LandingPage() {
                                     <div
                                         className="relative w-full max-w-2xl aspect-video bg-black/20 rounded-2xl flex items-center justify-center backdrop-blur-sm border border-white/20 overflow-hidden">
                                         <iframe
-                                            src="https://player.vimeo.com/video/REPLACE_WITH_VIDEO_ID?badge=0&amp;autopause=0&amp;player_id=0&amp;app_id=58479"
+                                            src="https://player.vimeo.com/video/1127539057?badge=0&amp;autopause=0&amp;player_id=0&amp;app_id=58479"
                                             allow="autoplay; fullscreen; picture-in-picture; clipboard-write"
                                             className="w-full h-full"
                                             title="UI Mockup Generator Feature Video"
@@ -320,7 +320,7 @@ export default function LandingPage() {
                                 <div className="w-4 h-4 bg-green-500 rounded-full flex items-center justify-center">
                                     <span className="text-white text-xs font-bold">T</span>
                                 </div>
-                                <span>1 Trial Coin = 5 Icons (out of 9) / 2 illustrations (out of 4)</span>
+                                <span>1 Trial Coin = 5 Icons (out of 9) / 2 illustrations (out of 4) / 1 UI mockup (out of 2)</span>
                             </div>
                         </div>
 
@@ -455,9 +455,6 @@ export default function LandingPage() {
                         <h2 className="text-4xl font-bold text-slate-900 mb-4">
                             Generated Illustrations Gallery
                         </h2>
-                        <p className="text-xl text-slate-600 max-w-3xl mx-auto">
-                            Explore stunning illustrations created by our AI models. Each one a unique piece of art for your projects.
-                        </p>
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
@@ -485,9 +482,6 @@ export default function LandingPage() {
                         <h2 className="text-4xl font-bold text-slate-900 mb-4">
                             Generated UI Mockups Gallery
                         </h2>
-                        <p className="text-xl text-slate-600 max-w-3xl mx-auto">
-                            Explore stunning UI mockups created by our AI models. Each one a unique piece of art for your projects.
-                        </p>
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
