@@ -38,6 +38,12 @@ class IllustrationImageProcessingServiceSpec extends Specification {
 
     @Shared
     BufferedImage synthetic2x2Grid
+    
+    @Shared
+    BufferedImage illustrationGrid1
+    
+    @Shared
+    BufferedImage illustrationGrid2
 
     def setupSpec() {
         // Create output directory
@@ -53,6 +59,23 @@ class IllustrationImageProcessingServiceSpec extends Specification {
             println "✓ Loaded test illustration: ${testIllustration.width}x${testIllustration.height}"
         } else {
             println "⚠ Test illustration not found at: ${testImagePath.toAbsolutePath()}"
+        }
+
+        // Load illustration grid images with grid lines
+        Path grid1Path = Paths.get("src/test/resources/images/illustration_grid3.png")
+        if (Files.exists(grid1Path)) {
+            illustrationGrid1 = ImageIO.read(grid1Path.toFile())
+            println "✓ Loaded illustration_grid1: ${illustrationGrid1.width}x${illustrationGrid1.height}"
+        } else {
+            println "⚠ illustration_grid1.png not found at: ${grid1Path.toAbsolutePath()}"
+        }
+        
+        Path grid2Path = Paths.get("src/test/resources/images/illustration_grid2.png")
+        if (Files.exists(grid2Path)) {
+            illustrationGrid2 = ImageIO.read(grid2Path.toFile())
+            println "✓ Loaded illustration_grid2: ${illustrationGrid2.width}x${illustrationGrid2.height}"
+        } else {
+            println "⚠ illustration_grid2.png not found at: ${grid2Path.toAbsolutePath()}"
         }
 
         // Create a synthetic 2x2 grid for controlled testing (4:3 aspect ratio)
@@ -170,25 +193,41 @@ class IllustrationImageProcessingServiceSpec extends Specification {
     }
 
     def "should process actual test illustration if available"() {
-        when: "Processing actual test illustration"
-        boolean hasTestImage = testIllustration != null
-        List<String> base64Illustrations = null
-        
-        if (hasTestImage) {
-            byte[] testBytes = imageToBytes(testIllustration)
-            base64Illustrations = illustrationImageProcessingService.cropIllustrationsFromGrid(
-                    testBytes, true, 0
-            )
+        when: "Searching for and processing any 'illustration_test*.png' files"
+        Path imageDir = Paths.get("src/test/resources/images")
+        List<Path> testFiles = []
+        Files.newDirectoryStream(imageDir, "illustration_test*.png").each { path -> testFiles.add(path) }
+
+        if (testFiles.isEmpty()) {
+            println "⚠ Skipping - no 'illustration_test*.png' files found in ${imageDir.toAbsolutePath()}"
         }
-        
-        then: "Illustrations are successfully extracted if test image exists"
-        if (hasTestImage) {
+
+        int processedCount = 0
+        testFiles.each { testFile ->
+            BufferedImage testImage = ImageIO.read(testFile.toFile())
+            byte[] testBytes = imageToBytes(testImage)
+
+            List<String> base64Illustrations = illustrationImageProcessingService.cropIllustrationsFromGrid(
+                testBytes, true, 0
+            )
+
             assert base64Illustrations != null
             assert base64Illustrations.size() == 4
-            saveIllustrationsFromBase64(base64Illustrations, "actual_test_illustrations")
-            println "✓ Processed actual test image: extracted ${base64Illustrations.size()} illustrations"
-        } else {
-            println "⚠ Skipping - no test illustration available"
+
+            String filePrefix = testFile.fileName.toString().replace(".png", "")
+            base64Illustrations.eachWithIndex { base64Data, index ->
+                byte[] imageBytes = Base64.getDecoder().decode(base64Data)
+                BufferedImage illustration = ImageIO.read(new ByteArrayInputStream(imageBytes))
+                String outputFilename = "${filePrefix}_quadrant${index + 1}.png"
+                saveImage(illustration, outputFilename)
+            }
+            println "✓ Processed ${testFile.fileName}: extracted and saved 4 illustrations"
+            processedCount++
+        }
+
+        then: "The test completes, having processed all found files"
+        if (!testFiles.isEmpty()) {
+            assert processedCount == testFiles.size()
         }
         true // Always pass this test
     }
@@ -427,6 +466,23 @@ class IllustrationImageProcessingServiceSpec extends Specification {
             byte[] imageBytes = Base64.getDecoder().decode(base64Data)
             BufferedImage illustration = ImageIO.read(new ByteArrayInputStream(imageBytes))
             saveImage(illustration, "${prefix}_${index + 1}.png")
+        }
+    }
+
+    /**
+     * Test helper to call the private removeGridLinesFromIllustration method using reflection
+     */
+    private BufferedImage testRemoveGridLinesDirectly(BufferedImage image) {
+        try {
+            // Use reflection to access the private method
+            def method = illustrationImageProcessingService.class.getDeclaredMethod(
+                    "removeGridLinesFromIllustration", BufferedImage.class)
+            method.setAccessible(true)
+            return method.invoke(illustrationImageProcessingService, image) as BufferedImage
+        } catch (Exception e) {
+            println "⚠ Error calling removeGridLinesFromIllustration via reflection: ${e.message}"
+            e.printStackTrace()
+            return image
         }
     }
 }
