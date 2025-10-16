@@ -21,6 +21,7 @@ public class IllustrationPromptGenerationService {
             "- All illustrations should share the same style, color palette, and overall visual feel.  \n" +
             "- No text, labels, numbers, or captions anywhere in the image.  \n" +
             "- Only color outside illustrations should be white \n" +
+            "- Illustrations should have backgrounds distinguishable from white image background \n" +
             "- Ensure each illustration fits well within its square area with appropriate padding.  \n" +
             "- The divisions should be clear enough to separate the illustrations, but not styled (no borders, no decorative lines — just white separation).  \n" +
             "\n" +
@@ -39,13 +40,14 @@ public class IllustrationPromptGenerationService {
                 "- Keep the same consistent color palette and professional look.  \n" +
                 "- No text, labels, numbers, or captions.  \n" +
                 "- Only color outside illustrations should be white \n" +
+                "- Illustrations should have backgrounds distinguishable from white image background \n" +
                 "- The divisions should be clear enough to separate the illustrations, but not styled (no borders, no decorative lines — just white separation).  \n" +
                 "- Ensure each illustration is clearly distinguishable and fits cleanly within its square area with appropriate padding.  \n" +
                 "\n" +
                 "Final output: A new 2x2 layout of 4 illustrations that look like part of the same series as the reference image. ";
     
     public static final String SECOND_GENERATION_VARIATION = 
-        " use professional color palette and artistic design";
+        ". Use professional color palette and artistic design";
     
     /**
      * Generate prompt for 2x2 grid of illustrations based on text description

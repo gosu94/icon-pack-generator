@@ -27,7 +27,19 @@ import java.util.concurrent.CompletableFuture;
 @RequiredArgsConstructor
 @Slf4j
 public class BananaModelService implements AIModelService {
-    
+
+    public static final String GRID_CLEANUP_PROMPT = "Clean up this image by removing any unwanted visual artifacts while preserving the illustrations themselves.\n" +
+            "Specifically:\n" +
+            "- Remove any visible grid lines, borders, or shadows between the four illustrations.\n" +
+            "- remove any additional black frames or backgrounds\n" +
+            "- Ensure all white areas between and around the illustrations are pure white (#FFFFFF) and perfectly uniform.\n" +
+            "- Remove any text, captions, labels, or numbers that appear inside or near any of the illustrations.\n" +
+            "- If any area looks like leftover handwriting, signature, or watermark text — remove it cleanly and replace it with matching background color or texture.\n" +
+            "- Do not alter the illustration content, colors, or shapes themselves — only remove artifacts and unwanted elements.\n" +
+            "- Keep the 2×2 layout exactly the same — same spacing, size, and alignment of illustrations.\n" +
+            "- Do not add any decorative lines, frames, or artistic elements.\n" +
+            "\n" +
+            "The final image should show four clean illustrations in a 2×2 grid, with pure white separation, no shadows, no text, and no non-white background anywhere.";
     private final FalClient falClient;
     private final ObjectMapper objectMapper;
     
@@ -44,7 +56,7 @@ public class BananaModelService implements AIModelService {
      * Note: Banana doesn't explicitly support seed parameter based on the API schema.
      */
     public CompletableFuture<byte[]> generateImage(String prompt, Long seed) {
-        return generateImage(prompt, seed, "4:3");
+        return generateImage(prompt, seed, "4:3", false);
     }
     
     /**
@@ -52,9 +64,26 @@ public class BananaModelService implements AIModelService {
      * Note: Banana doesn't explicitly support seed parameter based on the API schema.
      */
     public CompletableFuture<byte[]> generateImage(String prompt, Long seed, String aspectRatio) {
-        log.info("Generating image with Nano Banana for prompt: {} with aspect ratio: {}", prompt, aspectRatio);
+        return generateImage(prompt, seed, aspectRatio, false);
+    }
+
+    /**
+     * Generate image with optional seed, custom aspect ratio, and grid/caption removal.
+     * Note: Banana doesn't explicitly support seed parameter based on the API schema.
+     */
+    public CompletableFuture<byte[]> generateImage(String prompt, Long seed, String aspectRatio, boolean removeGridAndCaptions) {
+        log.info("Generating image with Nano Banana for prompt: {} with aspect ratio: {}, removeGridAndCaptions: {}", 
+                prompt, aspectRatio, removeGridAndCaptions);
         
         return generateBananaImageAsync(prompt, aspectRatio)
+                .thenCompose(initialImageBytes -> {
+                    if (removeGridAndCaptions) {
+                        log.info("Applying grid and caption removal to generated image");
+                        return generateBananaImageToImageAsync(GRID_CLEANUP_PROMPT, initialImageBytes, aspectRatio);
+                    } else {
+                        return CompletableFuture.completedFuture(initialImageBytes);
+                    }
+                })
                 .whenComplete((bytes, error) -> {
                     if (error != null) {
                         log.error("Error generating image with Banana", error);
@@ -135,7 +164,7 @@ public class BananaModelService implements AIModelService {
      * Banana natively supports image-to-image editing.
      */
     public CompletableFuture<byte[]> generateImageToImage(String prompt, byte[] sourceImageData) {
-        return generateImageToImage(prompt, sourceImageData, null);
+        return generateImageToImage(prompt, sourceImageData, null, "4:3", false);
     }
     
     /**
@@ -143,7 +172,7 @@ public class BananaModelService implements AIModelService {
      * Banana natively supports image-to-image editing via the edit endpoint.
      */
     public CompletableFuture<byte[]> generateImageToImage(String prompt, byte[] sourceImageData, Long seed) {
-        return generateImageToImage(prompt, sourceImageData, seed, "4:3");
+        return generateImageToImage(prompt, sourceImageData, seed, "4:3", false);
     }
     
     /**
@@ -151,10 +180,27 @@ public class BananaModelService implements AIModelService {
      * Banana natively supports image-to-image editing via the edit endpoint.
      */
     public CompletableFuture<byte[]> generateImageToImage(String prompt, byte[] sourceImageData, Long seed, String aspectRatio) {
-        log.info("Generating image-to-image with Banana for prompt: {} with aspect ratio: {}", 
-                prompt, aspectRatio);
+        return generateImageToImage(prompt, sourceImageData, seed, aspectRatio, false);
+    }
+    
+    /**
+     * Generate image using image-to-image functionality with optional seed, custom aspect ratio, and grid/caption removal.
+     * Banana natively supports image-to-image editing via the edit endpoint.
+     */
+    public CompletableFuture<byte[]> generateImageToImage(String prompt, byte[] sourceImageData, Long seed, String aspectRatio, boolean removeGridAndCaptions) {
+        log.info("Generating image-to-image with Banana for prompt: {} with aspect ratio: {}, removeGridAndCaptions: {}", 
+                prompt, aspectRatio, removeGridAndCaptions);
         
         return generateBananaImageToImageAsync(prompt, sourceImageData, aspectRatio)
+                .thenCompose(initialImageBytes -> {
+                    if (removeGridAndCaptions) {
+                        log.info("Applying grid and caption removal to image-to-image result");
+                        String cleanupPrompt = GRID_CLEANUP_PROMPT;
+                        return generateBananaImageToImageAsync(cleanupPrompt, initialImageBytes, aspectRatio);
+                    } else {
+                        return CompletableFuture.completedFuture(initialImageBytes);
+                    }
+                })
                 .whenComplete((bytes, error) -> {
                     if (error != null) {
                         log.error("Error in Banana image-to-image generation", error);
@@ -172,15 +218,12 @@ public class BananaModelService implements AIModelService {
         return CompletableFuture.supplyAsync(() -> {
             try {
                 log.info("Generating Banana image-to-image with endpoint: {}", BANANA_IMAGE_TO_IMAGE_ENDPOINT);
-                
-                // Apply Banana-style prompt formatting
-                String bananaStylePrompt = prompt + " - clean icon design, no text, no labels, no grid lines, no borders";
-                
+
                 // Convert byte array to data URI for the API
                 String dataUri = convertToDataUri(sourceImageData);
                 
-                Map<String, Object> input = createBananaImageToImageInputMap(bananaStylePrompt, dataUri, aspectRatio);
-                log.info("Making Banana image-to-image API call with input keys: {}", input.keySet());
+                Map<String, Object> input = createBananaImageToImageInputMap(prompt, dataUri, aspectRatio);
+                log.info("Making Banana image-to-image API call with input keys: {} and prompt: {}", input.keySet(), prompt);
                 
                 // Use fal.ai client API with queue update handling
                 Output<JsonObject> output = falClient.subscribe(BANANA_IMAGE_TO_IMAGE_ENDPOINT,

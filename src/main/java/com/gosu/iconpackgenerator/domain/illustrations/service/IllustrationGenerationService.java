@@ -247,7 +247,7 @@ public class IllustrationGenerationService {
                 request.getIndividualDescriptions()
         );
 
-        return bananaModelService.generateImage(prompt, seed)
+        return bananaModelService.generateImage(prompt, seed, "4:3", true)
                 .thenCompose(imageData -> {
                     log.info("Upscaling illustration image before processing (factor: 2)");
 
@@ -278,7 +278,7 @@ public class IllustrationGenerationService {
 
         byte[] referenceImageData = Base64.getDecoder().decode(request.getReferenceImageBase64());
 
-        return bananaModelService.generateImageToImage(prompt, referenceImageData, seed)
+        return bananaModelService.generateImageToImage(prompt, referenceImageData, seed, "4:3", true)
                 .thenCompose(imageData -> {
                     log.info("Upscaling illustration image before processing (factor: 2)");
 
@@ -302,7 +302,7 @@ public class IllustrationGenerationService {
     public CompletableFuture<List<IllustrationGenerationResponse.GeneratedIllustration>> generateMoreIllustrationsFromImage(
             byte[] originalImageData, String prompt, Long seed, List<String> descriptions) {
 
-        return bananaModelService.generateImageToImage(prompt, originalImageData, seed)
+        return bananaModelService.generateImageToImage(prompt, originalImageData, seed, "4:3", true)
                 .thenCompose(imageData -> {
                     log.info("Upscaling more illustrations image before processing (factor: 2)");
 

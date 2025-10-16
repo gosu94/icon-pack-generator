@@ -14,7 +14,10 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
-import java.util.concurrent.*;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 @Service
@@ -35,14 +38,13 @@ public class IllustrationImageProcessingService {
         public long imageParsingMs = 0;
         public long solidFrameDetectionMs = 0;
         public long gridBoundsDetectionMs = 0;
-        public long artifactCleanupMs = 0;
         public long contentBoundsDetectionMs = 0;
         public long illustrationResizingMs = 0;
         public long upscaleMs = 0;
 
         public long getTotalMs() {
             return backgroundRemovalMs + imageParsingMs + solidFrameDetectionMs +
-                    gridBoundsDetectionMs + artifactCleanupMs + contentBoundsDetectionMs + 
+                    gridBoundsDetectionMs + contentBoundsDetectionMs +
                     illustrationResizingMs + upscaleMs;
         }
     }
@@ -141,13 +143,11 @@ public class IllustrationImageProcessingService {
     private static class IllustrationProcessingResult {
         final int index;
         final BufferedImage processedImage;
-        final long artifactCleanupMs;
         final long contentBoundsMs;
-        
-        IllustrationProcessingResult(int index, BufferedImage image, long artifactCleanupMs, long contentBoundsMs) {
+
+        IllustrationProcessingResult(int index, BufferedImage image, long contentBoundsMs) {
             this.index = index;
             this.processedImage = image;
-            this.artifactCleanupMs = artifactCleanupMs;
             this.contentBoundsMs = contentBoundsMs;
         }
     }
@@ -168,82 +168,77 @@ public class IllustrationImageProcessingService {
 
         // Create a thread pool for parallel processing (4 quadrants)
         ExecutorService executor = Executors.newFixedThreadPool(4);
-        
+
         try {
             // Process all 4 quadrants in parallel
             List<CompletableFuture<IllustrationProcessingResult>> futures = new ArrayList<>();
-            
+
             for (int row = 0; row < 2; row++) {
                 for (int col = 0; col < 2; col++) {
                     final int finalRow = row;
                     final int finalCol = col;
                     final int index = row * 2 + col;
-                    
+
                     Rectangle illustrationRect = gridBounds.getIllustrationRectangle(row, col);
-                    
+
                     // Create a copy of the subimage for thread safety
                     BufferedImage subImage = deepCopyBufferedImage(originalImage.getSubimage(
                             illustrationRect.x, illustrationRect.y, illustrationRect.width, illustrationRect.height));
-                    
+
                     // Submit processing task for this quadrant
                     CompletableFuture<IllustrationProcessingResult> future = CompletableFuture.supplyAsync(() -> {
                         try {
                             log.debug("Processing illustration [{},{}] in parallel thread", finalRow, finalCol);
-                            
-                            // Clean up artifacts
-                            long artifactCleanupStart = System.currentTimeMillis();
-                            BufferedImage cleaned = cleanupIllustrationArtifacts(subImage, finalRow, finalCol);
-                            long artifactCleanupTime = System.currentTimeMillis() - artifactCleanupStart;
-                            
+
                             // Detect content bounds
                             long contentBoundsStart = System.currentTimeMillis();
-                            Rectangle contentBounds = detectContentBounds(cleaned);
+                            Rectangle contentBounds = detectContentBounds(subImage);
                             long contentBoundsTime = System.currentTimeMillis() - contentBoundsStart;
-                            
+
+                            BufferedImage processed = subImage;
                             if (contentBounds != null && contentBounds.width > 0 && contentBounds.height > 0) {
-                                cleaned = cleaned.getSubimage(
+                                processed = subImage.getSubimage(
                                         contentBounds.x, contentBounds.y, contentBounds.width, contentBounds.height);
                                 log.debug("Processed illustration [{},{}]: content size {}x{}",
                                         finalRow, finalCol, contentBounds.width, contentBounds.height);
                             }
-                            
-                            return new IllustrationProcessingResult(index, cleaned, artifactCleanupTime, contentBoundsTime);
-                            
+
+                            return new IllustrationProcessingResult(index, processed, contentBoundsTime);
+
                         } catch (Exception e) {
                             log.error("Error processing illustration [{},{}]", finalRow, finalCol, e);
-                            return new IllustrationProcessingResult(index, subImage, 0, 0);
+                            return new IllustrationProcessingResult(index, subImage, 0);
                         }
                     }, executor);
-                    
+
                     futures.add(future);
                 }
             }
-            
+
             // Wait for all tasks to complete and collect results
             CompletableFuture<Void> allOf = CompletableFuture.allOf(
                     futures.toArray(new CompletableFuture[0]));
-            
+
             allOf.join(); // Wait for all to complete
-            
+
             // Collect results in order
             List<IllustrationProcessingResult> results = futures.stream()
                     .map(CompletableFuture::join)
                     .sorted((a, b) -> Integer.compare(a.index, b.index))
                     .collect(Collectors.toList());
-            
+
             // Accumulate timing
             for (IllustrationProcessingResult result : results) {
-                timing.artifactCleanupMs += result.artifactCleanupMs;
                 timing.contentBoundsDetectionMs += result.contentBoundsMs;
             }
-            
+
             log.info("Parallel processing completed for all 4 quadrants");
-            
+
             // First pass: find maximum dimensions
             List<BufferedImage> croppedImages = new ArrayList<>();
             int maxContentWidth = 0;
             int maxContentHeight = 0;
-            
+
             for (IllustrationProcessingResult result : results) {
                 BufferedImage img = result.processedImage;
                 croppedImages.add(img);
@@ -286,7 +281,7 @@ public class IllustrationImageProcessingService {
             }
 
             return illustrations;
-            
+
         } finally {
             // Shutdown executor and wait for all tasks to complete
             executor.shutdown();
@@ -300,7 +295,7 @@ public class IllustrationImageProcessingService {
             }
         }
     }
-    
+
     /**
      * Create a deep copy of a BufferedImage for thread-safe parallel processing
      */
@@ -331,8 +326,6 @@ public class IllustrationImageProcessingService {
                 timing.solidFrameDetectionMs, getPercentage(timing.solidFrameDetectionMs, totalProcessingTime)));
         log.info(String.format("│   • Grid Bounds Detection:  %6d ms  (%5.1f%%)",
                 timing.gridBoundsDetectionMs, getPercentage(timing.gridBoundsDetectionMs, totalProcessingTime)));
-        log.info(String.format("│   • Artifact Cleanup:       %6d ms  (%5.1f%%)",
-                timing.artifactCleanupMs, getPercentage(timing.artifactCleanupMs, totalProcessingTime)));
         log.info(String.format("│   • Content Bounds Detection: %6d ms  (%5.1f%%)",
                 timing.contentBoundsDetectionMs, getPercentage(timing.contentBoundsDetectionMs, totalProcessingTime)));
         log.info(String.format("│   • Illustration Resizing:  %6d ms  (%5.1f%%)",
@@ -449,387 +442,6 @@ public class IllustrationImageProcessingService {
                 yBounds[0][0], yBounds[0][1], yBounds[1][0], yBounds[1][1]);
 
         return new GridBounds(xBounds, yBounds);
-    }
-
-    /**
-     * Clean up artifacts from a cropped illustration by detecting grey/semi-transparent frames at edges
-     * and replacing them with white background. This is a simplified, fast approach.
-     *
-     * @param croppedIllustration The cropped illustration image that may contain artifacts
-     * @param row                 The row position of this illustration in the 2x2 grid (0-1)
-     * @param col                 The column position of this illustration in the 2x2 grid (0-1)
-     * @return The cleaned illustration with white background replacing any edge frames
-     */
-    private BufferedImage cleanupIllustrationArtifacts(BufferedImage croppedIllustration, int row, int col) {
-        int width = croppedIllustration.getWidth();
-        int height = croppedIllustration.getHeight();
-
-        log.debug("Cleaning up edge frames for illustration at [{},{}] with size {}x{}", row, col, width, height);
-
-        // Convert to ARGB if not already
-        BufferedImage cleanedIllustration = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
-        Graphics2D g2d = cleanedIllustration.createGraphics();
-        g2d.drawImage(croppedIllustration, 0, 0, null);
-        g2d.dispose();
-
-        // Define maximum edge thickness to check - grid lines are typically thin (1-10 pixels max)
-        int maxEdgeThickness = 20; // Conservative limit to avoid removing content
-        
-        int pixelsReplaced = 0;
-
-        // Check and clean each edge based on grid position
-        if (col > 0) { // Not leftmost column - check left edge
-            pixelsReplaced += detectAndReplaceEdgeFrame(cleanedIllustration, "left", maxEdgeThickness);
-        }
-        
-        if (col < 1) { // Not rightmost column - check right edge
-            pixelsReplaced += detectAndReplaceEdgeFrame(cleanedIllustration, "right", maxEdgeThickness);
-        }
-        
-        if (row > 0) { // Not top row - check top edge
-            pixelsReplaced += detectAndReplaceEdgeFrame(cleanedIllustration, "top", maxEdgeThickness);
-        }
-        
-        if (row < 1) { // Not bottom row - check bottom edge
-            pixelsReplaced += detectAndReplaceEdgeFrame(cleanedIllustration, "bottom", maxEdgeThickness);
-        }
-
-        log.debug("Replaced {} edge frame pixels with white for illustration at [{},{}]", pixelsReplaced, row, col);
-        return cleanedIllustration;
-    }
-
-    /**
-     * Detect and replace grey or semi-transparent frame pixels on a specific edge with opaque white.
-     * This uses a two-phase approach:
-     * 1. Detect if there's a consistent grid line at the very edge
-     * 2. Only replace pixels that match the detected line's characteristics
-     *
-     * @param illustration     The illustration image to process
-     * @param edge            The edge to check: "top", "bottom", "left", or "right"
-     * @param maxThickness    Maximum thickness to check from the edge
-     * @return Number of pixels replaced with white
-     */
-    private int detectAndReplaceEdgeFrame(BufferedImage illustration, String edge, int maxThickness) {
-        int width = illustration.getWidth();
-        int height = illustration.getHeight();
-        int pixelsReplaced = 0;
-        
-        // Phase 1: Detect the dominant edge line color by sampling the very first pixels
-        Integer dominantLineColor = detectEdgeLineColor(illustration, edge);
-        
-        if (dominantLineColor == null) {
-            return 0; // No consistent grid line detected at the edge
-        }
-        
-        log.debug("Detected {} edge line with color RGB({},{},{})", edge, 
-                (dominantLineColor >> 16) & 0xFF, (dominantLineColor >> 8) & 0xFF, dominantLineColor & 0xFF);
-        
-        // Phase 2: Detect frame thickness by scanning for pixels matching the line color
-        int frameThickness = detectFrameThicknessForColor(illustration, edge, maxThickness, dominantLineColor);
-        
-        if (frameThickness == 0) {
-            return 0; // No frame detected
-        }
-        
-        log.debug("Detected {} edge frame of thickness {}", edge, frameThickness);
-        
-        // Phase 3: Replace pixels that match the detected line color with opaque white
-        int whiteRGB = 0xFFFFFFFF; // Opaque white
-        
-        switch (edge.toLowerCase()) {
-            case "top":
-                for (int y = 0; y < frameThickness && y < height; y++) {
-                    for (int x = 0; x < width; x++) {
-                        if (isMatchingLineColor(illustration.getRGB(x, y), dominantLineColor)) {
-                            illustration.setRGB(x, y, whiteRGB);
-                            pixelsReplaced++;
-                        }
-                    }
-                }
-                break;
-                
-            case "bottom":
-                for (int y = Math.max(0, height - frameThickness); y < height; y++) {
-                    for (int x = 0; x < width; x++) {
-                        if (isMatchingLineColor(illustration.getRGB(x, y), dominantLineColor)) {
-                            illustration.setRGB(x, y, whiteRGB);
-                            pixelsReplaced++;
-                        }
-                    }
-                }
-                break;
-                
-            case "left":
-                for (int x = 0; x < frameThickness && x < width; x++) {
-                    for (int y = 0; y < height; y++) {
-                        if (isMatchingLineColor(illustration.getRGB(x, y), dominantLineColor)) {
-                            illustration.setRGB(x, y, whiteRGB);
-                            pixelsReplaced++;
-                        }
-                    }
-                }
-                break;
-                
-            case "right":
-                for (int x = Math.max(0, width - frameThickness); x < width; x++) {
-                    for (int y = 0; y < height; y++) {
-                        if (isMatchingLineColor(illustration.getRGB(x, y), dominantLineColor)) {
-                            illustration.setRGB(x, y, whiteRGB);
-                            pixelsReplaced++;
-                        }
-                    }
-                }
-                break;
-        }
-        
-        return pixelsReplaced;
-    }
-    
-    /**
-     * Detect the dominant color of the grid line at the edge of the image.
-     * Samples the first few pixels (up to 5 deep) from the edge to get a better color profile.
-     * This handles grid lines that have varying colors (e.g., black core with grey anti-aliasing edges).
-     *
-     * @param image The image to analyze
-     * @param edge  The edge to check
-     * @return The dominant RGB color of the line, or null if no consistent line detected
-     */
-    private Integer detectEdgeLineColor(BufferedImage image, String edge) {
-        int width = image.getWidth();
-        int height = image.getHeight();
-        
-        List<Integer> edgeColors = new ArrayList<>();
-        
-        // Sample pixels at the edge - go 3-5 pixels deep to get full color profile
-        int sampleDepth = Math.min(5, Math.min(width, height) / 20);
-        
-        switch (edge.toLowerCase()) {
-            case "top":
-                // Sample first few rows
-                for (int y = 0; y < sampleDepth; y++) {
-                    for (int x = 0; x < width; x += Math.max(1, width / 100)) {
-                        int rgb = image.getRGB(x, y);
-                        if (isFramePixel(rgb)) {
-                            edgeColors.add(rgb & 0x00FFFFFF); // Store RGB only (ignore alpha for comparison)
-                        }
-                    }
-                }
-                break;
-                
-            case "bottom":
-                // Sample last few rows
-                for (int y = height - sampleDepth; y < height; y++) {
-                    for (int x = 0; x < width; x += Math.max(1, width / 100)) {
-                        int rgb = image.getRGB(x, y);
-                        if (isFramePixel(rgb)) {
-                            edgeColors.add(rgb & 0x00FFFFFF);
-                        }
-                    }
-                }
-                break;
-                
-            case "left":
-                // Sample first few columns
-                for (int x = 0; x < sampleDepth; x++) {
-                    for (int y = 0; y < height; y += Math.max(1, height / 100)) {
-                        int rgb = image.getRGB(x, y);
-                        if (isFramePixel(rgb)) {
-                            edgeColors.add(rgb & 0x00FFFFFF);
-                        }
-                    }
-                }
-                break;
-                
-            case "right":
-                // Sample last few columns
-                for (int x = width - sampleDepth; x < width; x++) {
-                    for (int y = 0; y < height; y += Math.max(1, height / 100)) {
-                        int rgb = image.getRGB(x, y);
-                        if (isFramePixel(rgb)) {
-                            edgeColors.add(rgb & 0x00FFFFFF);
-                        }
-                    }
-                }
-                break;
-        }
-        
-        // Need at least 30% of samples to be frame pixels to consider it a line
-        // Lower threshold to catch lines that might be partially obscured or inconsistent
-        int samplesPerLine = (edge.equals("top") || edge.equals("bottom")) ? 
-                Math.max(1, width / 100) : Math.max(1, height / 100);
-        int totalSamples = samplesPerLine * sampleDepth; // Total samples across all depth
-        
-        if (edgeColors.size() < totalSamples * 0.3) {
-            return null; // Not enough frame pixels - probably not a grid line
-        }
-        
-        // Calculate the average color of the detected frame pixels
-        int totalRed = 0, totalGreen = 0, totalBlue = 0;
-        for (Integer rgb : edgeColors) {
-            totalRed += (rgb >> 16) & 0xFF;
-            totalGreen += (rgb >> 8) & 0xFF;
-            totalBlue += rgb & 0xFF;
-        }
-        
-        int avgRed = totalRed / edgeColors.size();
-        int avgGreen = totalGreen / edgeColors.size();
-        int avgBlue = totalBlue / edgeColors.size();
-        
-        return (avgRed << 16) | (avgGreen << 8) | avgBlue;
-    }
-    
-    /**
-     * Detect frame thickness for pixels matching a specific line color
-     */
-    private int detectFrameThicknessForColor(BufferedImage image, String edge, int maxThickness, int targetColor) {
-        int width = image.getWidth();
-        int height = image.getHeight();
-        
-        for (int thickness = 1; thickness <= maxThickness; thickness++) {
-            int matchingPixelCount = 0;
-            int totalPixels = 0;
-            
-            // Sample pixels along the line at current thickness
-            switch (edge.toLowerCase()) {
-                case "top":
-                    if (thickness > height) return thickness - 1;
-                    for (int x = 0; x < width; x += Math.max(1, width / 50)) {
-                        totalPixels++;
-                        if (isMatchingLineColor(image.getRGB(x, thickness - 1), targetColor)) {
-                            matchingPixelCount++;
-                        }
-                    }
-                    break;
-                    
-                case "bottom":
-                    if (thickness > height) return thickness - 1;
-                    for (int x = 0; x < width; x += Math.max(1, width / 50)) {
-                        totalPixels++;
-                        if (isMatchingLineColor(image.getRGB(x, height - thickness), targetColor)) {
-                            matchingPixelCount++;
-                        }
-                    }
-                    break;
-                    
-                case "left":
-                    if (thickness > width) return thickness - 1;
-                    for (int y = 0; y < height; y += Math.max(1, height / 50)) {
-                        totalPixels++;
-                        if (isMatchingLineColor(image.getRGB(thickness - 1, y), targetColor)) {
-                            matchingPixelCount++;
-                        }
-                    }
-                    break;
-                    
-                case "right":
-                    if (thickness > width) return thickness - 1;
-                    for (int y = 0; y < height; y += Math.max(1, height / 50)) {
-                        totalPixels++;
-                        if (isMatchingLineColor(image.getRGB(width - thickness, y), targetColor)) {
-                            matchingPixelCount++;
-                        }
-                    }
-                    break;
-                    
-                default:
-                    return 0;
-            }
-            
-            // Check if this line has predominantly matching pixels
-            double matchRatio = totalPixels > 0 ? (double) matchingPixelCount / totalPixels : 0.0;
-            
-            // If less than 40% match, we've reached the end of the frame
-            // Lower threshold to handle lines with some gaps or variations
-            if (matchRatio < 0.40) {
-                return thickness - 1;
-            }
-        }
-        
-        // All checked lines were matching pixels
-        return maxThickness;
-    }
-    
-    /**
-     * Check if a pixel color matches the detected line color (within tolerance)
-     */
-    private boolean isMatchingLineColor(int pixelRGB, int lineRGB) {
-        int pixelRed = (pixelRGB >> 16) & 0xFF;
-        int pixelGreen = (pixelRGB >> 8) & 0xFF;
-        int pixelBlue = pixelRGB & 0xFF;
-        
-        int lineRed = (lineRGB >> 16) & 0xFF;
-        int lineGreen = (lineRGB >> 8) & 0xFF;
-        int lineBlue = lineRGB & 0xFF;
-        
-        // Colors must be within 40 units of the line color in each channel
-        // High tolerance to handle full range of grid line variations:
-        // - Black core (0,0,0) to light grey edges (40,40,40)
-        // - Anti-aliasing, compression artifacts, and blending
-        int colorTolerance = 40;
-        
-        return Math.abs(pixelRed - lineRed) <= colorTolerance &&
-               Math.abs(pixelGreen - lineGreen) <= colorTolerance &&
-               Math.abs(pixelBlue - lineBlue) <= colorTolerance;
-    }
-    
-    /**
-     * Check if a pixel is a frame artifact (grey, black, semi-transparent, or near-white).
-     * Frame pixels are typically:
-     * - Any shade of grey (including black) where RGB values are similar to each other
-     * - Semi-transparent pixels (alpha < 255 but > 0)
-     * - Very light colors that aren't pure white (includes subtle greys)
-     * - Anything that's not pure white (255,255,255,255) or actual content colors
-     *
-     * @param rgb The RGB value of the pixel
-     * @return true if the pixel appears to be a frame artifact
-     */
-    private boolean isFramePixel(int rgb) {
-        int alpha = (rgb >> 24) & 0xFF;
-        int red = (rgb >> 16) & 0xFF;
-        int green = (rgb >> 8) & 0xFF;
-        int blue = rgb & 0xFF;
-        
-        // Check for semi-transparent pixels (common in grid lines)
-        if (alpha > 10 && alpha < 250) {
-            return true;
-        }
-        
-        // Skip pure white pixels (the target background)
-        if (alpha == 255 && red == 255 && green == 255 && blue == 255) {
-            return false;
-        }
-        
-        // Check if RGB values are similar (greyish/neutral color)
-        int maxDiff = Math.max(Math.abs(red - green), Math.max(Math.abs(green - blue), Math.abs(red - blue)));
-        boolean isGreyish = maxDiff < 40; // RGB values within 40 of each other (increased tolerance)
-        
-        if (!isGreyish) {
-            return false; // Not a neutral grey/black/white color - likely actual content
-        }
-        
-        // At this point, pixel is greyish (neutral color)
-        int avgColor = (red + green + blue) / 3;
-        
-        // Black frames: very dark greys/blacks
-        if (avgColor < 50) {
-            return true;
-        }
-        
-        // Medium grey frames: typical grey grid lines
-        if (avgColor >= 50 && avgColor < 240) {
-            return true;
-        }
-        
-        // Subtle grey frames: very light greys that are close to but not exactly white
-        // This catches subtle differences like RGB(240,240,240) or RGB(250,250,250)
-        if (avgColor >= 240 && avgColor < 255) {
-            // Check if it's actually slightly different from pure white
-            if (red < 255 || green < 255 || blue < 255) {
-                return true;
-            }
-        }
-        
-        return false;
     }
 
     /**
