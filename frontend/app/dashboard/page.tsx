@@ -190,17 +190,20 @@ export default function Page() {
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (!document.hidden) {
-        // User returned to page, check for pending generations
+        // User returned to page, check for pending generations immediately
+        console.log("👁️ Page visible - checking for pending generations...");
         handleGenerationRecovery();
       }
     };
 
     const handleFocus = () => {
       // Also check when window gets focus (for cases where visibility API might not work)
+      console.log("🎯 Window focused - checking for pending generations...");
       handleGenerationRecovery();
     };
 
     // Check immediately on mount in case user refreshed during generation
+    console.log("🚀 Component mounted - checking for pending generations...");
     handleGenerationRecovery();
 
     // Listen for page visibility changes
@@ -470,8 +473,16 @@ export default function Page() {
         }
       } else if (statusResult.status === "in_progress") {
         // Keep the saved state, user can check again later
+        console.log("⏳ Recovery: Generation still in progress, keeping state for next check");
+        // Optionally show a message to user that generation is still running
+        if (uiState === "initial" || uiState === "error") {
+          setUiState("streaming");
+          setIsGenerating(true);
+          setErrorMessage("");
+        }
       } else {
         // Clear the outdated saved state
+        console.log("🗑️ Recovery: Generation not found or expired, clearing state");
         clearGenerationState();
       }
     } catch (error) {
@@ -708,22 +719,36 @@ export default function Page() {
       });
       eventSource.onerror = (error) => {
         console.error("EventSource error:", error);
-        // Only show connection error if we haven't already recovered successfully
-        if (!isRecoveredRef.current) {
-          setTimeout(() => {
-            // Double-check we haven't recovered in the meantime
-            if (!isRecoveredRef.current) {
-              setErrorMessage("Connection error. Please try again.");
-              setUiState("error");
-              setIsGenerating(false);
-              if (overallProgressTimerRef.current)
-                clearInterval(overallProgressTimerRef.current);
-            }
-          }, 100); // Small delay to ensure any concurrent recovery completes
-        }
         
         eventSource.close();
         currentEventSourceRef.current = null;
+        
+        // Only show connection error if we haven't already recovered successfully
+        if (!isRecoveredRef.current) {
+          // Try recovery first before showing error
+          console.log("🔄 EventSource error - attempting recovery before showing error...");
+          handleGenerationRecovery().then(() => {
+            // After recovery attempt, check if we successfully recovered
+            setTimeout(() => {
+              if (!isRecoveredRef.current) {
+                // Recovery didn't find completed results - show error
+                setErrorMessage("Connection error. Please try again.");
+                setUiState("error");
+                setIsGenerating(false);
+                if (overallProgressTimerRef.current)
+                  clearInterval(overallProgressTimerRef.current);
+              }
+            }, 500); // Give recovery a moment to update the UI
+          }).catch((recoveryError) => {
+            console.error("Recovery attempt failed:", recoveryError);
+            // Show error if recovery attempt fails
+            setErrorMessage("Connection error. Please try again.");
+            setUiState("error");
+            setIsGenerating(false);
+            if (overallProgressTimerRef.current)
+              clearInterval(overallProgressTimerRef.current);
+          });
+        }
       };
     } catch (error) {
       console.error("❌ Error starting generation:", error);
