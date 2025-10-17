@@ -9,9 +9,8 @@ import com.gosu.iconpackgenerator.domain.illustrations.dto.IllustrationGeneratio
 import com.gosu.iconpackgenerator.domain.illustrations.dto.IllustrationGenerationResponse;
 import com.gosu.iconpackgenerator.domain.illustrations.dto.MoreIllustrationsRequest;
 import com.gosu.iconpackgenerator.domain.illustrations.dto.MoreIllustrationsResponse;
-import com.gosu.iconpackgenerator.domain.illustrations.service.IllustrationGenerationService;
+import com.gosu.iconpackgenerator.domain.illustrations.service.IllustrationGenerationServiceV2;
 import com.gosu.iconpackgenerator.domain.illustrations.service.IllustrationPersistenceService;
-import com.gosu.iconpackgenerator.domain.illustrations.service.IllustrationPromptGenerationService;
 import com.gosu.iconpackgenerator.user.model.User;
 import com.gosu.iconpackgenerator.user.service.CustomOAuth2User;
 import jakarta.annotation.PreDestroy;
@@ -45,13 +44,13 @@ import java.util.concurrent.TimeUnit;
 @Slf4j
 public class IllustrationGenerationController implements IllustrationGenerationControllerAPI {
     
-    private final IllustrationGenerationService illustrationGenerationService;
+    private final IllustrationGenerationServiceV2 illustrationGenerationService;
     private final ObjectMapper objectMapper;
     private final StreamingStateStore streamingStateStore;
-    private final IllustrationPromptGenerationService illustrationPromptGenerationService;
     private final IllustrationPersistenceService illustrationPersistenceService;
     private final CoinManagementService coinManagementService;
-    
+
+
     private final ScheduledExecutorService heartbeatScheduler = Executors.newScheduledThreadPool(5);
     
     @PreDestroy
@@ -447,20 +446,21 @@ public class IllustrationGenerationController implements IllustrationGenerationC
                 }
 
                 byte[] originalImageData = Base64.getDecoder().decode(request.getOriginalImageBase64());
-                String prompt = illustrationPromptGenerationService.generatePromptForReferenceImage(
-                        request.getIllustrationDescriptions(), 
-                        request.getGeneralDescription());
                 
                 // Use a varied seed to ensure different results each time
                 // Add a random component to avoid generating identical illustrations
                 Long variedSeed = request.getSeed() != null ? 
-                        request.getSeed() + System.currentTimeMillis() % 10000 : 
-                        null;
+                        request.getSeed() + System.currentTimeMillis() % 10000 :
+                        System.currentTimeMillis() % 10000;
                 
-                // Generate new illustrations using the service (includes upscaling)
+                // V2: Pass raw general description - the service will generate individual prompts for each illustration
+                // This ensures each illustration gets its own unique prompt based on its specific description
                 CompletableFuture<List<IllustrationGenerationResponse.GeneratedIllustration>> generationFuture = 
                         illustrationGenerationService.generateMoreIllustrationsFromImage(
-                                originalImageData, prompt, variedSeed, request.getIllustrationDescriptions());
+                                originalImageData, 
+                                request.getGeneralDescription(), 
+                                variedSeed, 
+                                request.getIllustrationDescriptions());
                 
                 List<IllustrationGenerationResponse.GeneratedIllustration> newIllustrations = generationFuture.join();
 

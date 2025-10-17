@@ -241,9 +241,12 @@ public class AnyLlmModelService {
     
     private String extractTextFromResult(JsonNode result) {
         try {
+            log.debug("Extracting text from any-llm result: {}", result);
+            
             // Check for error in response
             JsonNode errorNode = result.path("error");
-            if (errorNode != null && !errorNode.isMissingNode() && !errorNode.asText().isEmpty()) {
+            // Only treat as error if the node exists, is not missing, is not null, and has non-empty text
+            if (errorNode != null && !errorNode.isMissingNode() && !errorNode.isNull() && !errorNode.asText().isEmpty()) {
                 String error = errorNode.asText();
                 log.error("Error in any-llm response: {}", error);
                 throw new FalAiException("LLM generation failed: " + error);
@@ -251,7 +254,7 @@ public class AnyLlmModelService {
             
             // Extract the output text
             JsonNode outputNode = result.path("output");
-            if (outputNode != null && !outputNode.isMissingNode()) {
+            if (outputNode != null && !outputNode.isMissingNode() && !outputNode.isNull()) {
                 String output = outputNode.asText();
                 if (!output.isEmpty()) {
                     log.debug("Successfully extracted text output, length: {} characters", output.length());
@@ -276,7 +279,8 @@ public class AnyLlmModelService {
             
             // Check for error in response
             JsonNode errorNode = result.path("error");
-            if (errorNode != null && !errorNode.isMissingNode() && !errorNode.asText().isEmpty()) {
+            // Only treat as error if the node exists, is not missing, is not null, and has non-empty text
+            if (errorNode != null && !errorNode.isMissingNode() && !errorNode.isNull() && !errorNode.asText().isEmpty()) {
                 String error = errorNode.asText();
                 log.error("Error in any-llm response: {}", error);
                 throw new FalAiException("LLM generation failed: " + error);

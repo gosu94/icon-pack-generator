@@ -50,6 +50,42 @@ public class IllustrationPromptGenerationService {
         ". Use professional color palette and artistic design";
     
     /**
+     * Template for generating the first individual illustration (text-to-image)
+     */
+    private static final String INDIVIDUAL_FIRST_ILLUSTRATION_TEMPLATE =
+        "Create a single high-quality illustration based on the following:\n" +
+        "General theme: %s\n" +
+        "%s" +
+        "\n" +
+        "Style guidelines:\n" +
+        "- Create a professional, cohesive illustration that fits the theme\n" +
+        "- Use a consistent style and professional color palette\n" +
+        "- No text, labels, numbers, or captions anywhere in the image\n" +
+        "- Ensure the illustration has appropriate padding and composition\n" +
+        "- The illustration should be clear, distinct, and visually appealing\n" +
+        "\n" +
+        "Final output: A single, high-quality illustration ready to use.";
+    
+    /**
+     * Template for generating subsequent illustrations matching the style of the first (image-to-image)
+     */
+    private static final String INDIVIDUAL_SUBSEQUENT_ILLUSTRATION_TEMPLATE =
+        "Using the provided reference image as a style guide, create a new illustration that matches its style.\n" +
+        "The new illustration should have the same visual style, color palette, shading, line weight, and professional look.\n" +
+        "\n" +
+        "General theme: %s\n" +
+        "%s" +
+        "\n" +
+        "Style guidelines:\n" +
+        "- Match the exact visual style of the reference illustration (color palette, shading, depth, highlights)\n" +
+        "- Keep the same professional look and artistic approach\n" +
+        "- No text, labels, numbers, or captions\n" +
+        "- Ensure the illustration has the same composition quality as the reference\n" +
+        "- The new illustration should look like it's from the same series as the reference\n" +
+        "\n" +
+        "Final output: A new illustration that seamlessly fits with the reference style.";
+    
+    /**
      * Generate prompt for 2x2 grid of illustrations based on text description
      */
     public String generatePromptFor2x2Grid(String generalDescription, List<String> individualDescriptions) {
@@ -143,6 +179,42 @@ public class IllustrationPromptGenerationService {
             individualPrompts.toString());
         
         log.debug("Generated reference image prompt: {}", prompt);
+        return prompt;
+    }
+    
+    /**
+     * Generate prompt for the first individual illustration (text-to-image)
+     */
+    public String generatePromptForFirstIndividualIllustration(String generalDescription, String specificDescription) {
+        String specificPart = "";
+        if (specificDescription != null && !specificDescription.trim().isEmpty()) {
+            specificPart = "Specific subject: " + specificDescription;
+        }
+        
+        String prompt = String.format(INDIVIDUAL_FIRST_ILLUSTRATION_TEMPLATE, 
+            generalDescription,
+            specificPart);
+        
+        log.debug("Generated first individual illustration prompt: {}", prompt);
+        return prompt;
+    }
+    
+    /**
+     * Generate prompt for subsequent individual illustrations (image-to-image)
+     */
+    public String generatePromptForSubsequentIndividualIllustration(String generalDescription, String specificDescription) {
+        String specificPart = "";
+        if (specificDescription != null && !specificDescription.trim().isEmpty()) {
+            specificPart = "Specific subject: " + specificDescription;
+        } else {
+            specificPart = "Create a new illustration that fits the theme and complements the reference style.";
+        }
+        
+        String prompt = String.format(INDIVIDUAL_SUBSEQUENT_ILLUSTRATION_TEMPLATE, 
+            generalDescription,
+            specificPart);
+        
+        log.debug("Generated subsequent individual illustration prompt: {}", prompt);
         return prompt;
     }
 }

@@ -312,48 +312,40 @@ export default function GalleryPage() {
   const handleGenerateMoreIllustrations = async (illustrationType: string) => {
     if (!selectedRequest) return;
 
-    try {
-      // Call the backend to create the 2x2 grid composition for illustrations
-      const response = await fetch("/api/gallery/compose-illustration-grid", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({
-          requestId: selectedRequest,
-          illustrationType: illustrationType,
-        }),
-      });
+    const illustrationGroup = groupedIllustrations[selectedRequest];
+    if (!illustrationGroup) {
+      alert("Could not find illustration group.");
+      return;
+    }
 
+    const illustrations =
+      illustrationType === "original"
+        ? illustrationGroup.original
+        : illustrationGroup.variation;
+
+    if (!illustrations || illustrations.length === 0) {
+      alert("No illustrations found to generate more from.");
+      return;
+    }
+
+    const firstIllustration = illustrations[0];
+
+    try {
+      const response = await fetch(firstIllustration.imageUrl);
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
+      const imageBlob = await response.blob();
+      const imageUrl = URL.createObjectURL(imageBlob);
 
-      const data = await response.json();
+      sessionStorage.setItem("generatedGridImage", imageUrl);
+      sessionStorage.setItem("generateMoreMode", "true");
+      sessionStorage.setItem("generationMode", "illustrations");
 
-      if (data.status === "success" && data.gridImageBase64) {
-        // Convert base64 to blob and create URL
-        const binaryString = atob(data.gridImageBase64);
-        const bytes = new Uint8Array(binaryString.length);
-        for (let i = 0; i < binaryString.length; i++) {
-          bytes[i] = binaryString.charCodeAt(i);
-        }
-        const blob = new Blob([bytes], { type: "image/png" });
-
-        // Store the grid image data in sessionStorage for the dashboard to use
-        const gridImageUrl = URL.createObjectURL(blob);
-        sessionStorage.setItem("generatedGridImage", gridImageUrl);
-        sessionStorage.setItem("generateMoreMode", "true");
-        sessionStorage.setItem("generationMode", "illustrations");
-
-        // Navigate to dashboard
-        router.push("/dashboard");
-      } else {
-        console.error("Failed to create illustration grid:", data.error);
-        alert("Failed to create illustration grid composition. Please try again.");
-      }
+      router.push("/dashboard");
     } catch (error) {
-      console.error("Error creating illustration grid composition:", error);
-      alert("Failed to create illustration grid composition. Please try again.");
+      console.error("Error using illustration as reference:", error);
+      alert("Failed to use illustration as reference. Please try again.");
     }
   };
 
