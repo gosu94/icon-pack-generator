@@ -644,7 +644,7 @@ export default function GalleryPage() {
                                 </button>
                                 <button
                                   onClick={() => handleGenerateMockupFromIcons("variation")}
-                                  className="px-2 sm:px-4 py-2 bg-gradient-to-r from-green-600 to-teal-600 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 flex items-center justify-center gap-1"
+                                  className="px-2 sm:px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 flex items-center justify-center gap-1"
                                   title="Generate UI Mockup from these icons"
                                 >
                                   <span className="text-xs font-bold">UI</span>
