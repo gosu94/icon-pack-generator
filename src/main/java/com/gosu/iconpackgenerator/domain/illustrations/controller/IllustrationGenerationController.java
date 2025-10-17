@@ -164,7 +164,7 @@ public class IllustrationGenerationController implements IllustrationGenerationC
         emitter.onCompletion(() -> {
             log.info("Illustration SSE completed for request: {}", requestId);
             streamingStateStore.removeEmitter(requestId);
-            streamingStateStore.removeRequest(requestId);
+            // Keep request in state store briefly for potential recovery (cleaned up by whenComplete)
         });
         emitter.onTimeout(() -> {
             log.warn("Illustration SSE timeout for request: {}", requestId);
@@ -173,10 +173,31 @@ public class IllustrationGenerationController implements IllustrationGenerationC
             emitter.complete();
         });
         emitter.onError(throwable -> {
-            log.error("Illustration SSE error for request: {}", requestId, throwable);
-            streamingStateStore.removeEmitter(requestId);
-            streamingStateStore.removeRequest(requestId);
-            emitter.completeWithError(throwable);
+            // Check if this is a client disconnection (expected on mobile when switching apps)
+            boolean isClientDisconnect = throwable instanceof org.springframework.web.context.request.async.AsyncRequestNotUsableException
+                    || (throwable.getCause() != null && throwable.getCause() instanceof java.io.IOException 
+                        && (throwable.getCause().getMessage() != null 
+                            && (throwable.getCause().getMessage().contains("Broken pipe")
+                                || throwable.getCause().getMessage().contains("Connection reset")
+                                || throwable.getCause().getMessage().contains("Socket closed"))));
+            
+            if (isClientDisconnect) {
+                // Client disconnected (e.g., switched apps on mobile) - this is expected
+                log.debug("Client disconnected from illustration SSE for request: {} - generation continues in background for recovery", requestId);
+                streamingStateStore.removeEmitter(requestId);
+                // Keep request in state store for recovery - it will be cleaned up when generation completes
+                // Don't call completeWithError as the connection is already gone
+            } else {
+                // Unexpected error - log and clean up
+                log.error("Illustration SSE error for request: {}", requestId, throwable);
+                streamingStateStore.removeEmitter(requestId);
+                streamingStateStore.removeRequest(requestId);
+                try {
+                    emitter.completeWithError(throwable);
+                } catch (Exception e) {
+                    log.debug("Could not complete emitter with error: {}", e.getMessage());
+                }
+            }
         });
         
         return emitter;
@@ -257,35 +278,48 @@ public class IllustrationGenerationController implements IllustrationGenerationC
                 }
                 
                 SseEmitter emitter = streamingStateStore.getEmitter(requestId);
-                if (emitter != null && error != null) {
-                    log.error("Error in streaming illustration generation for request: {}", requestId, error);
-                    try {
-                        // Sanitize error message for user display
-                        String sanitizedError = sanitizeErrorMessage(
-                            error instanceof Exception ? (Exception) error : new Exception(error));
-                        
-                        ServiceProgressUpdate errorUpdate = new ServiceProgressUpdate();
-                        errorUpdate.setRequestId(requestId);
-                        errorUpdate.setEventType("generation_error");
-                        errorUpdate.setStatus("error");
-                        errorUpdate.setMessage(sanitizedError);
-                        
-                        String jsonUpdate = objectMapper.writeValueAsString(errorUpdate);
-                        boolean sent = safeSendSseUpdate(emitter, requestId, "generation_error", jsonUpdate);
-                        
-                        if (sent) {
-                            try {
-                                emitter.completeWithError(error);
-                            } catch (Exception e) {
-                                log.debug("Error completing emitter with error: {}", e.getMessage());
+                
+                if (error != null) {
+                    // Generation failed with error
+                    if (emitter != null) {
+                        log.error("Error in streaming illustration generation for request: {}", requestId, error);
+                        try {
+                            // Sanitize error message for user display
+                            String sanitizedError = sanitizeErrorMessage(
+                                error instanceof Exception ? (Exception) error : new Exception(error));
+                            
+                            ServiceProgressUpdate errorUpdate = new ServiceProgressUpdate();
+                            errorUpdate.setRequestId(requestId);
+                            errorUpdate.setEventType("generation_error");
+                            errorUpdate.setStatus("error");
+                            errorUpdate.setMessage(sanitizedError);
+                            
+                            String jsonUpdate = objectMapper.writeValueAsString(errorUpdate);
+                            boolean sent = safeSendSseUpdate(emitter, requestId, "generation_error", jsonUpdate);
+                            
+                            if (sent) {
+                                try {
+                                    emitter.completeWithError(error);
+                                } catch (Exception e) {
+                                    log.debug("Error completing emitter with error: {}", e.getMessage());
+                                }
                             }
+                        } catch (Exception e) {
+                            log.error("Error preparing error update for request: {}", requestId, e);
                         }
-                    } catch (Exception e) {
-                        log.error("Error preparing error update for request: {}", requestId, e);
+                    } else {
+                        log.error("Error in streaming illustration generation for request: {} (client disconnected)", requestId, error);
                     }
+                    // Clean up on error
+                    streamingStateStore.removeRequest(requestId);
                 } else if (response != null) {
-                    // Store the response for later retrieval
+                    // Generation succeeded - store response for retrieval
                     streamingStateStore.addResponse(requestId, response);
+                    if (emitter == null) {
+                        log.info("Stored illustration response for request: {} (client disconnected during generation)", requestId);
+                    }
+                    // Clean up the request now that generation is complete
+                    streamingStateStore.removeRequest(requestId);
                 }
             });
             
