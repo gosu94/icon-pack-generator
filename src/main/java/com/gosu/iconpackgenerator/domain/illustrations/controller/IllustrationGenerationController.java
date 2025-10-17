@@ -198,12 +198,19 @@ public class IllustrationGenerationController implements IllustrationGenerationC
                 request.getIndividualDescriptions().add("");
             }
             
-            // Start heartbeat
+            // Start heartbeat with error handling to prevent exceptions after completion
             log.debug("Starting heartbeat for illustration request: {}", requestId);
             heartbeatTask = heartbeatScheduler.scheduleAtFixedRate(
                 () -> {
-                    if (!isConnectionActive(requestId)) {
-                        log.debug("Connection lost during illustration generation for request: {}", requestId);
+                    try {
+                        if (!isConnectionActive(requestId)) {
+                            log.debug("Connection lost during illustration generation for request: {}", requestId);
+                        }
+                    } catch (IllegalStateException e) {
+                        // Emitter already completed - this is expected, ignore
+                        log.debug("Heartbeat skipped for request {} - emitter already completed", requestId);
+                    } catch (Exception e) {
+                        log.debug("Heartbeat error for request {}: {}", requestId, e.getMessage());
                     }
                 },
                 5, 5, TimeUnit.SECONDS
@@ -219,14 +226,19 @@ public class IllustrationGenerationController implements IllustrationGenerationC
                         boolean sent = safeSendSseUpdate(emitter, requestId, update.getEventType(), jsonUpdate);
                         
                         if ("generation_complete".equals(update.getEventType())) {
+                            // Cancel heartbeat before completing emitter to prevent race conditions
                             if (finalHeartbeatTask != null && !finalHeartbeatTask.isCancelled()) {
                                 finalHeartbeatTask.cancel(false);
+                                log.debug("Cancelled heartbeat for completed generation: {}", requestId);
                             }
                             
-                            if (sent && isConnectionActive(requestId)) {
+                            // Complete the emitter if we successfully sent the final update
+                            if (sent) {
                                 try {
                                     emitter.complete();
                                     log.debug("Successfully completed illustration SSE stream for request: {}", requestId);
+                                } catch (IllegalStateException e) {
+                                    log.debug("Emitter already completed for request: {}", requestId);
                                 } catch (Exception e) {
                                     log.debug("Error completing emitter for request: {} - {}", requestId, e.getMessage());
                                 }
@@ -360,6 +372,11 @@ public class IllustrationGenerationController implements IllustrationGenerationC
                 .name(eventName)
                 .data(data));
             return true;
+        } catch (IllegalStateException e) {
+            // Emitter already completed - this is expected in race conditions with heartbeat
+            log.debug("Cannot send SSE update for request {} - emitter already completed", requestId);
+            streamingStateStore.removeEmitter(requestId);
+            return false;
         } catch (org.springframework.web.context.request.async.AsyncRequestNotUsableException e) {
             log.debug("Client disconnected from illustration SSE stream for request: {} - {}", requestId, e.getMessage());
             streamingStateStore.removeEmitter(requestId);
