@@ -9,6 +9,9 @@ import com.gosu.iconpackgenerator.domain.icons.repository.GeneratedIconRepositor
 import com.gosu.iconpackgenerator.domain.illustrations.dto.IllustrationDto;
 import com.gosu.iconpackgenerator.domain.illustrations.entity.GeneratedIllustration;
 import com.gosu.iconpackgenerator.domain.illustrations.repository.GeneratedIllustrationRepository;
+import com.gosu.iconpackgenerator.domain.mockups.dto.MockupDto;
+import com.gosu.iconpackgenerator.domain.mockups.entity.GeneratedMockup;
+import com.gosu.iconpackgenerator.domain.mockups.repository.GeneratedMockupRepository;
 import com.gosu.iconpackgenerator.user.model.User;
 import com.gosu.iconpackgenerator.user.repository.UserRepository;
 import com.gosu.iconpackgenerator.user.service.CustomOAuth2User;
@@ -44,6 +47,7 @@ public class AdminController {
     private final UserRepository userRepository;
     private final GeneratedIconRepository generatedIconRepository;
     private final GeneratedIllustrationRepository generatedIllustrationRepository;
+    private final GeneratedMockupRepository generatedMockupRepository;
 
     /**
      * Check if current user is admin
@@ -102,6 +106,7 @@ public class AdminController {
                 .map(u -> {
                     Long iconCount = generatedIconRepository.countByUser(u);
                     Long illustrationCount = generatedIllustrationRepository.countByUser(u);
+                    long mockupCount = generatedMockupRepository.countByUser(u);
                     return new UserAdminDto(
                             u.getId(),
                             u.getEmail(),
@@ -110,6 +115,7 @@ public class AdminController {
                             u.getTrialCoins() != null ? u.getTrialCoins() : 0,
                             iconCount,
                             illustrationCount,
+                            mockupCount,
                             u.getRegisteredAt(),
                             u.getAuthProvider(),
                             u.getIsActive()
@@ -204,6 +210,42 @@ public class AdminController {
 
         log.info("Admin user {} retrieved {} illustrations for user {}", adminUser.getEmail(), illustrationDtos.size(), targetUser.getEmail());
         return ResponseEntity.ok(illustrationDtos);
+    }
+
+    /**
+     * Get mockups for a specific user (admin only)
+     */
+    @GetMapping("/users/{userId}/mockups")
+    public ResponseEntity<?> getUserMockups(@PathVariable Long userId, @AuthenticationPrincipal OAuth2User principal) {
+        if (!(principal instanceof CustomOAuth2User customUser)) {
+            return ResponseEntity.status(401).body(Map.of("error", "Unauthorized"));
+        }
+
+        User adminUser = customUser.getUser();
+        if (!adminService.isAdmin(adminUser)) {
+            log.warn("Non-admin user {} attempted to access admin endpoint", adminUser.getEmail());
+            return ResponseEntity.status(403).body(Map.of("error", "Forbidden - Admin access required"));
+        }
+
+        User targetUser = userRepository.findById(userId)
+                .orElse(null);
+
+        if (targetUser == null) {
+            return ResponseEntity.status(404).body(Map.of("error", "User not found"));
+        }
+
+        List<GeneratedMockup> mockups = generatedMockupRepository.findByUserOrderByCreatedAtDesc(targetUser);
+        List<MockupDto> mockupDtos = mockups.stream()
+                .map(mockup -> new MockupDto(
+                        mockup.getFilePath(),
+                        mockup.getDescription(),
+                        mockup.getMockupType(),
+                        mockup.getRequestId()
+                ))
+                .collect(Collectors.toList());
+
+        log.info("Admin user {} retrieved {} mockups for user {}", adminUser.getEmail(), mockupDtos.size(), targetUser.getEmail());
+        return ResponseEntity.ok(mockupDtos);
     }
 
     /**

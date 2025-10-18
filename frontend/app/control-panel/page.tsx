@@ -14,6 +14,7 @@ interface UserAdminData {
   trialCoins: number;
   generatedIconsCount: number;
   generatedIllustrationsCount: number;
+  generatedMockupsCount: number;
   registeredAt: string;
   authProvider: string;
   isActive: boolean;
@@ -46,6 +47,13 @@ interface UserIllustration {
   requestId: string;
 }
 
+interface UserMockup {
+  imageUrl: string;
+  description: string;
+  serviceSource: string;
+  requestId: string;
+}
+
 export default function ControlPanelPage() {
   const router = useRouter();
   const { authState } = useAuth();
@@ -57,10 +65,13 @@ export default function ControlPanelPage() {
   const [userIllustrations, setUserIllustrations] = useState<UserIllustration[]>(
     []
   );
+  const [userMockups, setUserMockups] = useState<UserMockup[]>([]);
   const [loadingIcons, setLoadingIcons] = useState(false);
   const [loadingIllustrations, setLoadingIllustrations] = useState(false);
+  const [loadingMockups, setLoadingMockups] = useState(false);
   const [showIconsModal, setShowIconsModal] = useState(false);
   const [showIllustrationsModal, setShowIllustrationsModal] = useState(false);
+  const [showMockupsModal, setShowMockupsModal] = useState(false);
   const [showSetCoinsModal, setShowSetCoinsModal] = useState(false);
   const [userForCoins, setUserForCoins] = useState<UserAdminData | null>(null);
   const [coins, setCoins] = useState(0);
@@ -77,6 +88,7 @@ export default function ControlPanelPage() {
   const [totalPages, setTotalPages] = useState(0);
   const [totalIcons, setTotalIcons] = useState(0);
   const [totalIllustrations, setTotalIllustrations] = useState(0);
+  const [totalMockups, setTotalMockups] = useState(0);
 
   useEffect(() => {
     // Check if user is admin
@@ -106,6 +118,7 @@ export default function ControlPanelPage() {
         trialCoins: "trialCoins",
         generatedIconsCount: "id", // We'll sort by id as proxy since counts are calculated
         generatedIllustrationsCount: "id",
+        generatedMockupsCount: "id",
         registeredAt: "registeredAt",
         authProvider: "authProvider",
         isActive: "isActive",
@@ -140,8 +153,10 @@ export default function ControlPanelPage() {
       // Calculate total icons and illustrations
       const iconsSum = data.content.reduce((sum, user) => sum + user.generatedIconsCount, 0);
       const illustrationsSum = data.content.reduce((sum, user) => sum + user.generatedIllustrationsCount, 0);
+      const mockupsSum = data.content.reduce((sum, user) => sum + user.generatedMockupsCount, 0);
       setTotalIcons(iconsSum);
       setTotalIllustrations(illustrationsSum);
+      setTotalMockups(mockupsSum);
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -191,6 +206,27 @@ export default function ControlPanelPage() {
     }
   };
 
+  const fetchUserMockups = async (userId: number) => {
+    setLoadingMockups(true);
+    try {
+      const response = await fetch(`/api/admin/users/${userId}/mockups`, {
+        credentials: "include",
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch user mockups");
+      }
+
+      const data: UserMockup[] = await response.json();
+      setUserMockups(data);
+    } catch (err: any) {
+      console.error("Error fetching user mockups:", err);
+      setUserMockups([]);
+    } finally {
+      setLoadingMockups(false);
+    }
+  };
+
   const handleViewIcons = async (user: UserAdminData) => {
     setSelectedUser(user);
     setShowIconsModal(true);
@@ -203,6 +239,12 @@ export default function ControlPanelPage() {
     await fetchUserIllustrations(user.id);
   };
 
+  const handleViewMockups = async (user: UserAdminData) => {
+    setSelectedUser(user);
+    setShowMockupsModal(true);
+    await fetchUserMockups(user.id);
+  };
+
   const closeIconsModal = () => {
     setShowIconsModal(false);
     setSelectedUser(null);
@@ -213,6 +255,12 @@ export default function ControlPanelPage() {
     setShowIllustrationsModal(false);
     setSelectedUser(null);
     setUserIllustrations([]);
+  };
+
+  const closeMockupsModal = () => {
+    setShowMockupsModal(false);
+    setSelectedUser(null);
+    setUserMockups([]);
   };
 
   const handleOpenSetCoinsModal = (user: UserAdminData) => {
@@ -393,6 +441,15 @@ export default function ControlPanelPage() {
                   </th>
                   <th
                     className="px-6 py-3 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider cursor-pointer hover:bg-purple-100 transition-colors"
+                    onClick={() => handleSort("generatedMockupsCount")}
+                  >
+                    <div className="flex items-center">
+                      Generated Mockups
+                      {renderSortIcon("generatedMockupsCount")}
+                    </div>
+                  </th>
+                  <th
+                    className="px-6 py-3 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider cursor-pointer hover:bg-purple-100 transition-colors"
                     onClick={() => handleSort("registeredAt")}
                   >
                     <div className="flex items-center">
@@ -450,6 +507,14 @@ export default function ControlPanelPage() {
                         className="inline-flex items-center px-3 py-1 rounded-md text-sm font-medium bg-gradient-to-r from-green-600 to-teal-600 text-white hover:from-green-700 hover:to-teal-700 transition-all duration-200"
                       >
                         View ({user.generatedIllustrationsCount})
+                      </button>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm">
+                      <button
+                        onClick={() => handleViewMockups(user)}
+                        className="inline-flex items-center px-3 py-1 rounded-md text-sm font-medium bg-gradient-to-r from-pink-500 to-rose-500 text-white hover:from-pink-600 hover:to-rose-600 transition-all duration-200"
+                      >
+                        View ({user.generatedMockupsCount})
                       </button>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600">
@@ -578,6 +643,10 @@ export default function ControlPanelPage() {
           <p>
             Total Illustrations Generated on this page:{" "}
             {totalIllustrations}
+          </p>
+          <p>
+            Total Mockups Generated on this page:{" "}
+            {totalMockups}
           </p>
         </div>
       </div>
@@ -772,6 +841,74 @@ export default function ControlPanelPage() {
             <div className="flex justify-end p-6 border-t border-slate-200">
               <button
                 onClick={closeIllustrationsModal}
+                className="px-4 py-2 bg-slate-200 text-slate-700 rounded-lg hover:bg-slate-300 transition-colors"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Mockups Modal */}
+      {showMockupsModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-6xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+            <div className="flex items-center justify-between p-6 border-b border-slate-200">
+              <div>
+                <h2 className="text-2xl font-bold text-slate-800">
+                  Mockups for {selectedUser?.email}
+                </h2>
+                <p className="text-sm text-slate-600 mt-1">
+                  Total: {userMockups.length} mockups
+                </p>
+              </div>
+              <button
+                onClick={closeMockupsModal}
+                className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
+              >
+                <X className="w-6 h-6 text-slate-600" />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-6">
+              {loadingMockups ? (
+                <div className="flex items-center justify-center py-12">
+                  <p className="text-slate-600">Loading mockups...</p>
+                </div>
+              ) : userMockups.length === 0 ? (
+                <div className="flex items-center justify-center py-12">
+                  <p className="text-slate-600">
+                    No mockups found for this user
+                  </p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                  {userMockups.map((mockup, index) => (
+                    <div
+                      key={index}
+                      className="border rounded-lg p-2 bg-white shadow-sm hover:shadow-md transition-shadow"
+                    >
+                      <img
+                        src={mockup.imageUrl}
+                        alt={mockup.description || "Generated Mockup"}
+                        className="w-full h-auto object-cover rounded-md"
+                      />
+                      <div className="mt-2 text-xs text-slate-600 truncate">
+                        {mockup.description}
+                      </div>
+                      <div className="mt-1 text-xs text-slate-400 truncate">
+                        {mockup.serviceSource}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="flex justify-end p-6 border-t border-slate-200">
+              <button
+                onClick={closeMockupsModal}
                 className="px-4 py-2 bg-slate-200 text-slate-700 rounded-lg hover:bg-slate-300 transition-colors"
               >
                 Close

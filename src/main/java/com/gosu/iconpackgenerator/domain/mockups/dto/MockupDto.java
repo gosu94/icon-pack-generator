@@ -10,7 +10,6 @@ import lombok.NoArgsConstructor;
 public class MockupDto {
     private String imageUrl;
     private String description;
-    private String serviceSource;
+    private String mockupType;
     private String requestId;
 }
-
