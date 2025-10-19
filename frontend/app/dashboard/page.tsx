@@ -1453,6 +1453,10 @@ export default function Page() {
           setMoreIconsDescriptions={setMoreIconsDescriptions}
           getServiceDisplayName={getServiceDisplayName}
           setIsGenerating={setIsGenerating}
+          setMode={setMode}
+          setInputType={setInputType}
+          setReferenceImage={setReferenceImage}
+          setImagePreview={setImagePreview}
         />
       </div>
       <ExportModal

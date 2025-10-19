@@ -39,6 +39,10 @@ interface ResultsDisplayProps {
   >;
   getServiceDisplayName: (serviceId: string) => string;
   setIsGenerating: (isGenerating: boolean) => void;
+  setMode: (mode: GenerationMode) => void;
+  setInputType: (inputType: string) => void;
+  setReferenceImage: (file: File | null) => void;
+  setImagePreview: (preview: string) => void;
 }
 
 const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
@@ -64,6 +68,10 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
   setMoreIconsDescriptions,
   getServiceDisplayName,
   setIsGenerating,
+  setMode,
+  setInputType,
+  setReferenceImage,
+  setImagePreview,
 }) => {
   // State for full-size image preview modal
   const [previewImage, setPreviewImage] = useState<string | null>(null);
@@ -83,6 +91,34 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
 
   const closePreview = () => {
     setPreviewImage(null);
+  };
+
+  const handleGenerateIconsFromMockup = async (base64Data: string) => {
+    try {
+      // Convert base64 to blob
+      const base64Response = await fetch(`data:image/png;base64,${base64Data}`);
+      const blob = await base64Response.blob();
+      
+      // Create File object from blob
+      const file = new File([blob], "mockup-reference.png", {
+        type: "image/png",
+        lastModified: Date.now(),
+      });
+      
+      // Create preview URL
+      const previewUrl = URL.createObjectURL(blob);
+      
+      // Set up the form for icon generation
+      setReferenceImage(file);
+      setImagePreview(previewUrl);
+      setInputType("image");
+      setMode("icons");
+      
+      // Scroll to top to show the form
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    } catch (error) {
+      console.error("Error converting mockup to reference image:", error);
+    }
   };
 
   const renderGenerationResults = (generationNumber: number) => {
@@ -183,6 +219,41 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
                   />
                 </div>
               ))}
+            </div>
+          )}
+
+          {result.status === "success" && uiState === "results" && mode === "mockups" && (
+            <div
+              className="mt-6 p-6 bg-white/60 backdrop-blur-lg rounded-2xl shadow-lg border border-blue-200/30"
+            >
+              <div
+                className="flex items-center justify-between mb-4"
+              >
+                <h4
+                  className="text-base font-semibold text-slate-800"
+                >
+                  Use Mockup as Reference
+                </h4>
+                <button
+                  onClick={() => {
+                    // Get the first icon (mockup image) from this result
+                    if (result.icons && result.icons.length > 0) {
+                      handleGenerateIconsFromMockup(result.icons[0].base64Data);
+                    }
+                  }}
+                  className="px-4 py-2 rounded-xl text-sm font-semibold text-white bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 transform hover:scale-105 shadow-md hover:shadow-lg transition-all duration-200"
+                >
+                  <div className="flex items-center justify-center space-x-2">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                    <span>Generate Icons</span>
+                  </div>
+                </button>
+              </div>
+              <p className="text-xs text-slate-500">
+                Use this mockup as a reference to generate matching icon packs
+              </p>
             </div>
           )}
 
