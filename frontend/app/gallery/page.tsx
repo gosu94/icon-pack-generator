@@ -349,6 +349,28 @@ export default function GalleryPage() {
     }
   };
 
+  const handleGenerateIconsFromMockup = async (mockup: Mockup) => {
+    if (!mockup) return;
+
+    try {
+        const response = await fetch(mockup.imageUrl);
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const imageBlob = await response.blob();
+        const imageUrl = URL.createObjectURL(imageBlob);
+
+        sessionStorage.setItem("generatedGridImage", imageUrl);
+        sessionStorage.setItem("generateMoreMode", "true");
+        sessionStorage.setItem("generationMode", "icons");
+
+        router.push("/dashboard");
+    } catch (error) {
+        console.error("Error using mockup as reference:", error);
+        alert("Failed to use mockup as reference. Please try again.");
+    }
+  };
+
   const confirmGalleryExport = (formats: string[], sizes?: number[]) => {
     if (iconsToExport.length > 0) {
       const iconFilePaths = iconsToExport.map((icon) => icon.imageUrl);
@@ -953,6 +975,13 @@ export default function GalleryPage() {
                               </h3>
                               <div className="flex gap-3">
                                 <button
+                                  onClick={() => handleGenerateIconsFromMockup(groupedMockups[selectedRequest].original[0])}
+                                  className="px-2 sm:px-4 py-2 bg-gradient-to-r from-purple-600 to-blue-600 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 flex items-center justify-center gap-1"
+                                  title="Generate Icons from this Mockup"
+                                >
+                                  <span className="text-xs font-bold">Icon</span>
+                                </button>
+                                <button
                                   onClick={() =>
                                     openMockupExportModal(
                                       groupedMockups[selectedRequest].original
@@ -991,6 +1020,13 @@ export default function GalleryPage() {
                                 Variation
                               </h3>
                               <div className="flex gap-3">
+                                <button
+                                  onClick={() => handleGenerateIconsFromMockup(groupedMockups[selectedRequest].variation[0])}
+                                  className="px-2 sm:px-4 py-2 bg-gradient-to-r from-purple-600 to-blue-600 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 flex items-center justify-center gap-1"
+                                  title="Generate Icons from this Mockup"
+                                >
+                                  <span className="text-xs font-bold">Icon</span>
+                                </button>
                                 <button
                                   onClick={() =>
                                     openMockupExportModal(
