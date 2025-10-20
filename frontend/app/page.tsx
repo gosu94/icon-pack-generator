@@ -206,7 +206,7 @@ export default function LandingPage() {
                                     <div
                                         className="relative w-full max-w-2xl aspect-video bg-black/20 rounded-2xl flex items-center justify-center backdrop-blur-sm border border-white/20 overflow-hidden">
                                         <iframe
-                                            src="https://player.vimeo.com/video/1127539057?badge=0&amp;autopause=0&amp;player_id=0&amp;app_id=58479"
+                                            src="https://player.vimeo.com/video/1129000758?badge=0&amp;autopause=0&amp;player_id=0&amp;app_id=58479"
                                             allow="autoplay; fullscreen; picture-in-picture; clipboard-write"
                                             className="w-full h-full"
                                             title="UI Mockup Generator Feature Video"
