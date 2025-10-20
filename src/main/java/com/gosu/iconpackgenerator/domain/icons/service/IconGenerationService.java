@@ -322,7 +322,7 @@ public class IconGenerationService {
         // Use image-to-image generation with the reference image
         return generateImageToImageWithService(aiService, prompt, referenceImageData, seed)
                 .thenApply(imageData -> {
-                    List<String> base64Icons = imageProcessingService.cropIconsFromGrid(imageData, 9, true);
+                    List<String> base64Icons = imageProcessingService.cropIconsFromGrid(imageData, 9, false);
                     return createIconListWithOriginalImage(base64Icons, imageData, request, serviceName);
                 });
     }
