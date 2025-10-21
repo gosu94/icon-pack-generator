@@ -1,21 +1,33 @@
 package com.gosu.iconpackgenerator.domain.icons.service;
 
+import com.gosu.iconpackgenerator.domain.ai.RecraftVectorizeModelService;
 import com.gosu.iconpackgenerator.domain.icons.dto.IconExportRequest;
 import com.gosu.iconpackgenerator.domain.icons.dto.IconGenerationResponse;
 import dev.matrixlab.webp4j.NativeWebP;
-
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import javax.imageio.ImageIO;
 import java.awt.*;
-import java.util.List;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.Base64;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
@@ -25,12 +37,20 @@ import java.util.zip.ZipOutputStream;
 public class IconExportService {
 
     private final ImageProcessingService imageProcessingService;
+    private final RecraftVectorizeModelService recraftVectorizeModelService;
     
     // Standard icon sizes for PNG exports
     private static final int[] PNG_SIZES = {32, 64, 128, 256, 512};
     
     // Comprehensive ICO sizes for modern applications and high-DPI displays
     private static final int[] ICO_SIZES = {32, 48, 64, 128, 256};
+    private static final Pattern PATH_TAG_PATTERN = Pattern.compile("<path[^>]*?>", Pattern.CASE_INSENSITIVE);
+    private static final Pattern FILL_ATTR_PATTERN = Pattern.compile("fill\\s*=\\s*\"([^\"]+)\"", Pattern.CASE_INSENSITIVE);
+    private static final Pattern D_ATTR_PATTERN = Pattern.compile("d\\s*=\\s*\"([^\"]+)\"", Pattern.CASE_INSENSITIVE);
+    private static final Pattern RGB_FUNCTION_PATTERN = Pattern.compile("rgba?\\s*\\(\\s*(\\d+)\\s*,\\s*(\\d+)\\s*,\\s*(\\d+)", Pattern.CASE_INSENSITIVE);
+    private static final Pattern RECT_PATH_DATA_PATTERN = Pattern.compile(
+            "^M\\s*0(?:\\.0+)?\\s+0(?:\\.0+)?\\s+L\\s*([0-9]+(?:\\.[0-9]+)?)\\s+0(?:\\.0+)?\\s+L\\s*\\1\\s+([0-9]+(?:\\.[0-9]+)?)\\s+L\\s*0(?:\\.0+)?\\s+\\2\\s+L\\s*0(?:\\.0+)?\\s+0(?:\\.0+)?\\s+Z$",
+            Pattern.CASE_INSENSITIVE);
     
     // Cache for WebP4j availability to avoid repeated checks
     private Boolean webp4jAvailable = null;
@@ -52,11 +72,15 @@ public class IconExportService {
         try (ByteArrayOutputStream baos = new ByteArrayOutputStream();
              ZipOutputStream zos = new ZipOutputStream(baos)) {
 
-            int iconIndex = 1;
-            for (IconGenerationResponse.GeneratedIcon icon : exportRequest.getIcons()) {
-                String iconBase64Data = icon.getBase64Data();
-                byte[] originalIconData = Base64.getDecoder().decode(iconBase64Data);
-                String baseName = createBaseName(icon, iconIndex);
+            List<PreparedIcon> preparedIcons = prepareIcons(exportRequest.getIcons());
+            Map<String, byte[]> vectorizedSvgs = exportRequest.isVectorizeSvg()
+                    ? generateVectorizedSvgs(preparedIcons)
+                    : Collections.emptyMap();
+
+            for (PreparedIcon preparedIcon : preparedIcons) {
+                String iconBase64Data = preparedIcon.icon().getBase64Data();
+                byte[] originalIconData = preparedIcon.originalData();
+                String baseName = preparedIcon.baseName();
 
                 if (formats.contains("svg")) {
                     createSvgVersion(zos, iconBase64Data, baseName);
@@ -70,9 +94,16 @@ public class IconExportService {
                 if (formats.contains("ico")) {
                     createIcoVersion(zos, originalIconData, baseName);
                 }
+                if (exportRequest.isVectorizeSvg()) {
+                    byte[] vectorizedSvg = vectorizedSvgs.get(baseName);
+                    if (vectorizedSvg != null && vectorizedSvg.length > 0) {
+                        createVectorizedSvgEntry(zos, baseName, vectorizedSvg);
+                    } else {
+                        log.warn("Vectorized SVG not available for icon {} ({})", baseName, preparedIcon.icon().getDescription());
+                    }
+                }
 
-                log.debug("Created requested formats for icon {} ({})", iconIndex, baseName);
-                iconIndex++;
+                log.debug("Created requested formats for icon ({})", baseName);
             }
 
             zos.finish();
@@ -83,6 +114,142 @@ public class IconExportService {
             log.error("Error creating ZIP file for request: {}", exportRequest.getRequestId(), e);
             throw new RuntimeException("Failed to create icon pack ZIP", e);
         }
+    }
+
+    private List<PreparedIcon> prepareIcons(List<IconGenerationResponse.GeneratedIcon> icons) {
+        List<PreparedIcon> preparedIcons = new ArrayList<>();
+        int iconIndex = 1;
+        for (IconGenerationResponse.GeneratedIcon icon : icons) {
+            if (icon == null || icon.getBase64Data() == null) {
+                throw new IllegalArgumentException("Icon data missing for export at index " + iconIndex);
+            }
+            byte[] originalIconData = Base64.getDecoder().decode(icon.getBase64Data());
+            String baseName = createBaseName(icon, iconIndex);
+            preparedIcons.add(new PreparedIcon(baseName, icon, originalIconData));
+            iconIndex++;
+        }
+        return preparedIcons;
+    }
+
+    private Map<String, byte[]> generateVectorizedSvgs(List<PreparedIcon> preparedIcons) {
+        if (preparedIcons.isEmpty()) {
+            return Collections.emptyMap();
+        }
+
+        int poolSize = Math.min(preparedIcons.size(), 9);
+        ExecutorService executor = Executors.newFixedThreadPool(poolSize);
+
+        try {
+            List<CompletableFuture<VectorizedSvgResult>> futures = new ArrayList<>();
+            for (PreparedIcon preparedIcon : preparedIcons) {
+                futures.add(CompletableFuture.supplyAsync(() -> {
+                    byte[] svgBytes = recraftVectorizeModelService.vectorizeImageBlocking(preparedIcon.originalData());
+                    byte[] sanitized = sanitizeVectorizedSvg(svgBytes, preparedIcon.baseName());
+                    return new VectorizedSvgResult(preparedIcon.baseName(), sanitized);
+                }, executor));
+            }
+
+            CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
+
+            Map<String, byte[]> vectorizedSvgs = new HashMap<>();
+            for (CompletableFuture<VectorizedSvgResult> future : futures) {
+                VectorizedSvgResult result = future.join();
+                vectorizedSvgs.put(result.baseName(), result.svgBytes());
+            }
+
+            log.info("Successfully vectorized {} icons for export", vectorizedSvgs.size());
+            return vectorizedSvgs;
+
+        } catch (CompletionException e) {
+            Throwable cause = e.getCause() != null ? e.getCause() : e;
+            log.error("Vectorization failed for one or more icons", cause);
+            throw new RuntimeException("Failed to vectorize icons for export", cause);
+        } finally {
+            executor.shutdown();
+            try {
+                if (!executor.awaitTermination(30, TimeUnit.SECONDS)) {
+                    executor.shutdownNow();
+                }
+            } catch (InterruptedException e) {
+                executor.shutdownNow();
+                Thread.currentThread().interrupt();
+            }
+        }
+    }
+
+    private byte[] sanitizeVectorizedSvg(byte[] svgBytes, String baseName) {
+        if (svgBytes == null || svgBytes.length == 0) {
+            return svgBytes;
+        }
+
+        String svgContent = new String(svgBytes, StandardCharsets.UTF_8);
+        Matcher pathMatcher = PATH_TAG_PATTERN.matcher(svgContent);
+        StringBuffer sanitizedSvg = new StringBuffer();
+        boolean modified = false;
+
+        while (pathMatcher.find()) {
+            String pathTag = pathMatcher.group();
+            String fillValue = extractAttribute(pathTag, FILL_ATTR_PATTERN);
+
+            if (fillValue != null && isSolidBackgroundFill(fillValue)) {
+                String pathData = extractAttribute(pathTag, D_ATTR_PATTERN);
+                if (pathData != null && isFullCanvasRectangle(pathData)) {
+                    String updatedTag = FILL_ATTR_PATTERN.matcher(pathTag).replaceFirst("fill=\"none\"");
+                    pathMatcher.appendReplacement(sanitizedSvg, Matcher.quoteReplacement(updatedTag));
+                    modified = true;
+                    log.debug("Sanitized background rectangle for vectorized icon {}", baseName);
+                    continue;
+                }
+            }
+
+            pathMatcher.appendReplacement(sanitizedSvg, Matcher.quoteReplacement(pathTag));
+        }
+
+        pathMatcher.appendTail(sanitizedSvg);
+        return modified ? sanitizedSvg.toString().getBytes(StandardCharsets.UTF_8) : svgBytes;
+    }
+
+    private String extractAttribute(String tag, Pattern pattern) {
+        Matcher matcher = pattern.matcher(tag);
+        if (matcher.find()) {
+            return matcher.group(1);
+        }
+        return null;
+    }
+
+    private boolean isSolidBackgroundFill(String fillValue) {
+        if (fillValue == null) {
+            return false;
+        }
+        String trimmed = fillValue.trim();
+        Matcher rgbMatcher = RGB_FUNCTION_PATTERN.matcher(trimmed);
+        if (rgbMatcher.find()) {
+            try {
+                int r = Integer.parseInt(rgbMatcher.group(1));
+                int g = Integer.parseInt(rgbMatcher.group(2));
+                int b = Integer.parseInt(rgbMatcher.group(3));
+                return r <= 2 && g <= 2 && b <= 2;
+            } catch (NumberFormatException ignored) {
+                return false;
+            }
+        }
+        return false;
+    }
+
+    private boolean isFullCanvasRectangle(String pathData) {
+        if (pathData == null || pathData.isBlank()) {
+            return false;
+        }
+
+        String normalized = pathData.replace(",", " ").trim().replaceAll("\\s+", " ");
+        return RECT_PATH_DATA_PATTERN.matcher(normalized).matches();
+    }
+
+    private void createVectorizedSvgEntry(ZipOutputStream zos, String baseName, byte[] svgBytes) throws IOException {
+        ZipEntry zipEntry = new ZipEntry("vectorized-svg/" + baseName + ".svg");
+        zos.putNextEntry(zipEntry);
+        zos.write(svgBytes);
+        zos.closeEntry();
     }
     
     private void createSvgVersion(ZipOutputStream zos, String iconBase64Data, String baseName) throws IOException {
@@ -394,5 +561,11 @@ public class IconExportService {
         } else {
             return String.format("%02d_icon", index);
         }
+    }
+
+    private record PreparedIcon(String baseName, IconGenerationResponse.GeneratedIcon icon, byte[] originalData) {
+    }
+
+    private record VectorizedSvgResult(String baseName, byte[] svgBytes) {
     }
 }

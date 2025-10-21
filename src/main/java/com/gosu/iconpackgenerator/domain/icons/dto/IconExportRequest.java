@@ -12,5 +12,6 @@ public class IconExportRequest {
     private int generationIndex;
     private List<IconGenerationResponse.GeneratedIcon> icons;
     private List<String> formats;
+    private boolean vectorizeSvg;
 
 }

@@ -7,4 +7,5 @@ import java.util.List;
 public class GalleryExportRequest {
     private List<String> iconFilePaths;
     private List<String> formats;
+    private boolean vectorizeSvg;
 }

@@ -986,7 +986,7 @@ export default function Page() {
     setShowExportModal(true);
   };
 
-  const confirmExport = (formats: string[], sizes?: number[]) => {
+  const confirmExport = (formats: string[], sizes?: number[], vectorizeSvg?: boolean) => {
     if (exportContext) {
       const { requestId, serviceName, generationIndex } = exportContext;
       const packType = mode === "icons" ? "icon" : mode === "illustrations" ? "illustration" : "mockup";
@@ -997,6 +997,7 @@ export default function Page() {
         generationIndex: generationIndex,
         formats: formats,
         sizes: sizes,
+        vectorizeSvg: vectorizeSvg ?? false,
       };
       setShowExportModal(false);
       downloadZip(exportData, fileName);

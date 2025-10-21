@@ -7,14 +7,20 @@ import com.gosu.iconpackgenerator.domain.icons.dto.IconExportRequest;
 import com.gosu.iconpackgenerator.domain.icons.dto.IconGenerationResponse;
 import com.gosu.iconpackgenerator.domain.icons.entity.GeneratedIcon;
 import com.gosu.iconpackgenerator.domain.icons.repository.GeneratedIconRepository;
+import com.gosu.iconpackgenerator.domain.icons.service.CoinManagementService;
 import com.gosu.iconpackgenerator.domain.icons.service.FileStorageService;
 import com.gosu.iconpackgenerator.domain.icons.service.IconExportService;
+import com.gosu.iconpackgenerator.user.model.User;
+import com.gosu.iconpackgenerator.user.service.CustomOAuth2User;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.ResponseBody;
 
@@ -23,6 +29,7 @@ import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
 import java.util.UUID;
+import java.nio.charset.StandardCharsets;
 
 @Controller
 @RequiredArgsConstructor
@@ -33,12 +40,22 @@ public class IconExportController implements IconExportControllerAPI {
     private final StreamingStateStore streamingStateStore;
     private final GeneratedIconRepository generatedIconRepository;
     private final FileStorageService fileStorageService;
+    private final CoinManagementService coinManagementService;
 
     @Override
     @ResponseBody
-    public ResponseEntity<byte[]> exportIcons(@RequestBody IconExportRequest exportRequest) {
+    public ResponseEntity<byte[]> exportIcons(@RequestBody IconExportRequest exportRequest,
+                                              @AuthenticationPrincipal OAuth2User principal) {
         log.info("Received export request for service: {} from request: {} - creating comprehensive icon pack with all generations",
                 exportRequest.getServiceName(), exportRequest.getRequestId());
+
+        if (!(principal instanceof CustomOAuth2User customUser)) {
+            log.warn("Unauthorized export attempt: no authenticated user");
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body("User not authenticated".getBytes(StandardCharsets.UTF_8));
+        }
+
+        User user = customUser.getUser();
 
         List<IconGenerationResponse.GeneratedIcon> iconsToExport = exportRequest.getIcons();
         log.info("Received export request with {} icons in the request body.", (iconsToExport != null ? iconsToExport.size() : 0));
@@ -82,6 +99,26 @@ public class IconExportController implements IconExportControllerAPI {
 
         exportRequest.setIcons(iconsToExport);
 
+        if (exportRequest.isVectorizeSvg()) {
+            int iconCount = Math.max(iconsToExport.size(), 1);
+            int coinCost = (int) Math.ceil(iconCount / 9.0);
+            CoinManagementService.CoinDeductionResult coinResult = coinManagementService.deductCoinsForGeneration(user, coinCost);
+            if (!coinResult.isSuccess()) {
+                log.warn("Insufficient coins for vectorized export by user {}: {}", user.getEmail(), coinResult.getErrorMessage());
+                String errorMessage = coinResult.getErrorMessage() != null
+                        ? coinResult.getErrorMessage()
+                        : "Insufficient coins for vectorized export.";
+                return ResponseEntity.status(HttpStatus.PAYMENT_REQUIRED)
+                        .body(errorMessage.getBytes(StandardCharsets.UTF_8));
+            }
+            log.info("Vectorized SVG export coin deduction for user {}: deducted {} {} coin(s) (requested cost: {}, icon count: {})",
+                    user.getEmail(),
+                    coinResult.getDeductedAmount(),
+                    coinResult.isUsedTrialCoins() ? "trial" : "regular",
+                    coinCost,
+                    iconsToExport.size());
+        }
+
         try {
             byte[] zipData = iconExportService.createIconPackZip(exportRequest);
 
@@ -106,8 +143,17 @@ public class IconExportController implements IconExportControllerAPI {
 
     @Override
     @ResponseBody
-    public ResponseEntity<byte[]> exportFromGallery(@RequestBody GalleryExportRequest galleryExportRequest) {
+    public ResponseEntity<byte[]> exportFromGallery(@RequestBody GalleryExportRequest galleryExportRequest,
+                                                    @AuthenticationPrincipal OAuth2User principal) {
         log.info("Received gallery export request for {} icons.", galleryExportRequest.getIconFilePaths().size());
+
+        if (!(principal instanceof CustomOAuth2User customUser)) {
+            log.warn("Unauthorized gallery export attempt: no authenticated user");
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body("User not authenticated".getBytes(StandardCharsets.UTF_8));
+        }
+
+        User user = customUser.getUser();
 
         try {
             List<IconGenerationResponse.GeneratedIcon> iconsToExport = new ArrayList<>();
@@ -142,6 +188,27 @@ public class IconExportController implements IconExportControllerAPI {
             exportRequest.setServiceName("gallery");
             exportRequest.setGenerationIndex(1);
             exportRequest.setFormats(galleryExportRequest.getFormats()); // Pass formats from gallery request
+            exportRequest.setVectorizeSvg(galleryExportRequest.isVectorizeSvg());
+
+            if (exportRequest.isVectorizeSvg()) {
+                int iconCount = Math.max(iconsToExport.size(), 1);
+                int coinCost = (int) Math.ceil(iconCount / 9.0);
+                CoinManagementService.CoinDeductionResult coinResult = coinManagementService.deductCoinsForGeneration(user, coinCost);
+                if (!coinResult.isSuccess()) {
+                    log.warn("Insufficient coins for gallery vectorized export by user {}: {}", user.getEmail(), coinResult.getErrorMessage());
+                    String errorMessage = coinResult.getErrorMessage() != null
+                            ? coinResult.getErrorMessage()
+                            : "Insufficient coins for vectorized export.";
+                    return ResponseEntity.status(HttpStatus.PAYMENT_REQUIRED)
+                            .body(errorMessage.getBytes(StandardCharsets.UTF_8));
+                }
+                log.info("Gallery vectorized SVG export coin deduction for user {}: deducted {} {} coin(s) (requested cost: {}, icon count: {})",
+                        user.getEmail(),
+                        coinResult.getDeductedAmount(),
+                        coinResult.isUsedTrialCoins() ? "trial" : "regular",
+                        coinCost,
+                        iconsToExport.size());
+            }
 
             byte[] zipData = iconExportService.createIconPackZip(exportRequest);
 

@@ -371,13 +371,14 @@ export default function GalleryPage() {
     }
   };
 
-  const confirmGalleryExport = (formats: string[], sizes?: number[]) => {
+  const confirmGalleryExport = (formats: string[], sizes?: number[], vectorizeSvg?: boolean) => {
     if (iconsToExport.length > 0) {
       const iconFilePaths = iconsToExport.map((icon) => icon.imageUrl);
       const fileName = `icon-pack-gallery-${new Date().getTime()}.zip`;
       const exportData = {
         iconFilePaths,
         formats,
+        vectorizeSvg: vectorizeSvg ?? false,
       };
       setShowExportModal(false);
       downloadZip(exportData, fileName, "/api/export-gallery");

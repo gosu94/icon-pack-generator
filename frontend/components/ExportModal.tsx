@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from "react";
+import Image from "next/image";
 import { Switch } from "@/components/ui/switch";
 import { GenerationMode } from "../lib/types";
 
 interface ExportModalProps {
   show: boolean;
   onClose: () => void;
-  onConfirm: (formats: string[], sizes?: number[]) => void;
+  onConfirm: (formats: string[], sizes?: number[], vectorizeSvg?: boolean) => void;
   iconCount: number;
   mode: GenerationMode;
 }
@@ -20,7 +21,6 @@ const ExportModal: React.FC<ExportModalProps> = ({
   const [formats, setFormats] = useState(
     mode === "icons"
       ? {
-          svg: true,
           png: true,
           ico: true,
           webp: true,
@@ -30,22 +30,29 @@ const ExportModal: React.FC<ExportModalProps> = ({
           webp: true,
         }
   );
+  const [vectorizeSvg, setVectorizeSvg] = useState(false);
 
   useEffect(() => {
     setFormats(
       mode === "icons"
         ? {
-            svg: true,
             png: true,
             ico: true,
             webp: true,
           }
         : {
             png: true,
-            webp: true,
-          }
+          webp: true,
+        }
     );
+    setVectorizeSvg(false);
   }, [mode]);
+
+  useEffect(() => {
+    if (!show) {
+      setVectorizeSvg(false);
+    }
+  }, [show]);
 
   const handleFormatChange = (format: keyof typeof formats) => {
     setFormats((prev) => ({ ...prev, [format]: !prev[format] }));
@@ -66,11 +73,13 @@ const ExportModal: React.FC<ExportModalProps> = ({
       const selectedSizes = [1920];
       onConfirm(selectedFormats, selectedSizes);
     } else {
-      onConfirm(selectedFormats);
+      onConfirm(selectedFormats, undefined, vectorizeSvg);
     }
   };
 
   if (!show) return null;
+
+  const totalVectorCost = Math.ceil(Math.max(iconCount, 1) / 9);
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -142,6 +151,39 @@ const ExportModal: React.FC<ExportModalProps> = ({
                 
               </div>
             </div>
+            {mode === "icons" && (
+              <div className="rounded-lg border border-blue-100 bg-gradient-to-r from-purple-50 to-blue-50 p-4 mt-3">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex-1 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <p className="text-sm font-semibold text-indigo-900">
+                        Vectorized SVG export
+                      </p>
+                      <span className="flex items-center space-x-1 rounded-full bg-indigo-100 px-2 py-0.5 text-xs font-semibold text-indigo-800">
+                        <span>+{totalVectorCost}</span>
+                        <Image src="/images/coin.webp" alt="Coin" width={16} height={16} />
+                      </span>
+                    </div>
+                    <p className="text-xs text-indigo-700">
+                      Toggle to receive crisp, editable SVGs processed with AI. Costs 1 coin per 9 icons (this export: {totalVectorCost} coin{totalVectorCost === 1 ? "" : "s"}).
+                    </p>
+                    <div className="flex items-start space-x-2 rounded-md bg-indigo-200/60 px-3 py-2">
+                      <span className="mt-0.5 text-indigo-900" aria-hidden="true">
+                        ⚠️
+                      </span>
+                      <p className="text-xs text-indigo-900">
+                        Important: works best for simple, flat icons. Highly detailed or textured artwork may produce less accurate results.
+                      </p>
+                    </div>
+                  </div>
+                  <Switch
+                    id="vectorize-svg"
+                    checked={vectorizeSvg}
+                    onCheckedChange={() => setVectorizeSvg((prev) => !prev)}
+                  />
+                </div>
+              </div>
+            )}
           </div>
         </div>
         
