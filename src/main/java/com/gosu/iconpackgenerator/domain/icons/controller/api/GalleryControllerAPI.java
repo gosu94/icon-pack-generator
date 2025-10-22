@@ -2,6 +2,7 @@ package com.gosu.iconpackgenerator.domain.icons.controller.api;
 
 import com.gosu.iconpackgenerator.domain.icons.entity.GeneratedIcon;
 import com.gosu.iconpackgenerator.domain.illustrations.entity.GeneratedIllustration;
+import com.gosu.iconpackgenerator.domain.letters.entity.GeneratedLetterIcon;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.ResponseEntity;
@@ -26,6 +27,11 @@ public interface GalleryControllerAPI {
     @GetMapping("/api/gallery/illustrations")
     @ResponseBody
     ResponseEntity<List<GeneratedIllustration>> getUserIllustrations(@AuthenticationPrincipal OAuth2User principal);
+
+    @Operation(summary = "Get all generated letter packs for the authenticated user")
+    @GetMapping("/api/gallery/letters")
+    @ResponseBody
+    ResponseEntity<List<GeneratedLetterIcon>> getUserLetters(@AuthenticationPrincipal OAuth2User principal);
 
     @Operation(summary = "Get all generated icons for a specific request")
     @GetMapping("/api/gallery/request/{requestId}")

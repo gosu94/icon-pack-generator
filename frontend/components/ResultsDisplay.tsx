@@ -1,6 +1,6 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Image from "next/image";
-import { UIState, ServiceResult, GenerationResponse, GenerationMode } from "../lib/types";
+import { UIState, ServiceResult, GenerationResponse, GenerationMode, LetterGroup } from "../lib/types";
 
 interface ResultsDisplayProps {
   mode: GenerationMode;
@@ -20,6 +20,7 @@ interface ResultsDisplayProps {
     generationIndex: number,
   ) => void;
   currentResponse: GenerationResponse | null;
+  letterGroups: LetterGroup[];
   moreIconsVisible: { [key: string]: boolean };
   showMoreIconsForm: (uniqueId: string) => void;
   hideMoreIconsForm: (uniqueId: string) => void;
@@ -59,6 +60,7 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
   animatingIcons,
   exportGeneration,
   currentResponse,
+  letterGroups,
   moreIconsVisible,
   showMoreIconsForm,
   hideMoreIconsForm,
@@ -75,11 +77,81 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
 }) => {
   // State for full-size image preview modal
   const [previewImage, setPreviewImage] = useState<string | null>(null);
+  const [letterVisibleCount, setLetterVisibleCount] = useState(0);
+
+  const getLetterIcons = () => {
+    const groupsToRender =
+      currentResponse?.letterGroups && currentResponse.letterGroups.length > 0
+        ? currentResponse.letterGroups
+        : letterGroups;
+    return (groupsToRender || []).flatMap((group) => group.icons || []);
+  };
+
+  useEffect(() => {
+    if (mode !== "letters") {
+      setLetterVisibleCount(0);
+      return;
+    }
+
+    const icons = getLetterIcons();
+    setLetterVisibleCount(0);
+
+    if (!icons || icons.length === 0) {
+      return;
+    }
+
+    const timers: NodeJS.Timeout[] = [];
+    icons.forEach((_, index) => {
+      const timer = setTimeout(() => {
+        setLetterVisibleCount((prev) => (index + 1 > prev ? index + 1 : prev));
+      }, index * 120);
+      timers.push(timer);
+    });
+
+    return () => {
+      timers.forEach(clearTimeout);
+    };
+    // We intentionally omit getLetterIcons reference to avoid re-creating function
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode, currentResponse?.letterGroups, letterGroups]);
 
   const getGenerationResults = (generationNumber: number) => {
     return Object.entries(streamingResults)
       .filter(([, result]) => result.generationIndex === generationNumber)
       .map(([serviceId, result]) => ({ serviceId, ...result }));
+  };
+
+  const renderLetterGroups = () => {
+    const icons = getLetterIcons();
+
+    if (!icons || icons.length === 0) {
+      return isGenerating ? (
+        <div className="flex flex-col items-center justify-center py-20 space-y-4 text-gray-600">
+          <div className="h-10 w-10 animate-spin rounded-full border-b-2 border-gray-400" />
+          <p className="text-sm font-medium">In progress...</p>
+        </div>
+      ) : (
+        <div className="text-center text-gray-500">Generated letters will appear here once ready.</div>
+      );
+    }
+
+    return (
+      <div className="grid gap-4 justify-items-center grid-cols-[repeat(auto-fit,minmax(96px,128px))]">
+        {icons.map((icon, index) => (
+          <div key={`${icon.letter}-${index}`} className="w-full flex justify-center">
+            <img
+              src={`data:image/png;base64,${icon.base64Data}`}
+              alt={`Letter ${icon.letter}`}
+              className={`w-full max-w-[128px] aspect-square object-cover rounded-2xl shadow transition-all duration-500 ease-out hover:scale-105 ${
+                index < letterVisibleCount
+                  ? "opacity-100 scale-100"
+                  : "opacity-0 scale-75"
+              }`}
+            />
+          </div>
+        ))}
+      </div>
+    );
   };
 
   const handleImageClick = (base64Data: string) => {
@@ -419,8 +491,22 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
                 className="text-2xl font-bold text-slate-900"
                 data-oid="rn9b4_h"
               >
-                {mode === "icons" ? "Your Icons" : mode === "illustrations" ? "Your Illustrations" : "Your Mockup"}
+                {mode === "icons"
+                  ? "Your Icons"
+                  : mode === "letters"
+                  ? "Your Letter Pack"
+                  : mode === "illustrations"
+                  ? "Your Illustrations"
+                  : "Your Mockup"}
               </h2>
+              {mode === "letters" && getLetterIcons().length > 0 && currentResponse?.requestId && (
+                <button
+                  onClick={() => exportGeneration(currentResponse.requestId, "letters", 1)}
+                  className="px-3 py-1 bg-blue-50 text-blue-600 rounded text-sm font-semibold hover:bg-blue-100 transition-colors"
+                >
+                  Export Letter Pack
+                </button>
+              )}
             </div>
             <div className="flex-1 overflow-y-auto" data-oid="fr-8:os">
               {uiState === "initial" && (
@@ -445,7 +531,11 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
                       />
                     </svg>
                     <p className="text-gray-500" data-oid="gi9rui3">
-                      {mode === "mockups" ? "Generated UI mockup will appear here" : "Generated icons will appear here"}
+                      {mode === "mockups"
+                        ? "Generated UI mockup will appear here"
+                        : mode === "letters"
+                        ? "Generated letter packs will appear here"
+                        : "Generated icons will appear here"}
                     </p>
                   </div>
                 </div>
@@ -495,7 +585,7 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
               )}
               {(uiState === "streaming" || uiState === "results") && (
                 <div className="space-y-6" data-oid="g25wa45">
-                  {renderGenerationResults(1)}
+                  {mode === "letters" ? renderLetterGroups() : renderGenerationResults(1)}
                 </div>
               )}
             </div>

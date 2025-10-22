@@ -8,6 +8,7 @@ import {
   GenerationResponse,
   UIState,
   GenerationMode,
+  LetterGroup,
 } from "@/lib/types";
 import Navigation from "../../components/Navigation";
 import GeneratorForm from "../../components/GeneratorForm";
@@ -43,6 +44,7 @@ export default function Page() {
   const [currentRequest, setCurrentRequest] = useState<any>(null);
   const [currentResponse, setCurrentResponse] =
     useState<GenerationResponse | null>(null);
+  const [currentLetterGroups, setCurrentLetterGroups] = useState<LetterGroup[]>([]);
   const [streamingResults, setStreamingResults] = useState<StreamingResults>(
     {},
   );
@@ -86,13 +88,21 @@ export default function Page() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    const count = mode === "illustrations" ? 4 : mode === "mockups" ? 1 : 9;
+    const count =
+      mode === "illustrations"
+        ? 4
+        : mode === "mockups"
+        ? 1
+        : mode === "letters"
+        ? 0
+        : 9;
     setIndividualDescriptions(new Array(count).fill(""));
     
     // Reset output panes when switching modes
     setCurrentIcons([]);
     setCurrentRequest(null);
     setCurrentResponse(null);
+    setCurrentLetterGroups([]);
     setStreamingResults({});
     setUiState("initial");
     setErrorMessage("");
@@ -105,6 +115,8 @@ export default function Page() {
     // For mockups, always enable variations (they're free)
     if (mode === "mockups") {
       setGenerateVariations(true);
+    } else if (mode === "letters") {
+      setGenerateVariations(false);
     }
     
     // Clear any animation timers
@@ -538,8 +550,15 @@ export default function Page() {
       return false;
     }
     
-    // For mockups, cost is always 1 (variations are free)
-    const cost = mode === "mockups" ? 1 : (generateVariations ? 2 : 1);
+    // Pricing per mode
+    const cost =
+      mode === "letters"
+        ? 3
+        : mode === "mockups"
+        ? 1
+        : generateVariations
+        ? 2
+        : 1;
     if (authState.user) {
       const regularCoins = authState.user.coins || 0;
       const trialCoins = authState.user.trialCoins || 0;
@@ -549,7 +568,14 @@ export default function Page() {
       const hasTrialCoins = trialCoins > 0;
       
       if (!hasEnoughRegularCoins && !hasTrialCoins) {
-        const itemType = mode === "mockups" ? "mockups" : mode === "illustrations" ? "illustrations" : "icons";
+        const itemType =
+          mode === "mockups"
+            ? "mockups"
+            : mode === "illustrations"
+            ? "illustrations"
+            : mode === "letters"
+            ? "letters"
+            : "icons";
         setErrorMessage(`Insufficient coins. You need ${cost} coin${cost > 1 ? 's' : ''} to generate ${itemType}, or you can use your trial coin for a limited experience.`);
         return false;
       }
@@ -561,6 +587,11 @@ export default function Page() {
   const generateIcons = async () => {
     if (!validateForm()) {
       setUiState("error");
+      return;
+    }
+
+    if (mode === "letters") {
+      await generateLetterPack();
       return;
     }
     setIsGenerating(true);
@@ -982,12 +1013,39 @@ export default function Page() {
     serviceName: string,
     generationIndex: number,
   ) => {
-    setExportContext({ requestId, serviceName, generationIndex });
+    if (mode === "letters") {
+      setExportContext({ requestId });
+    } else {
+      setExportContext({ requestId, serviceName, generationIndex });
+    }
     setShowExportModal(true);
   };
 
   const confirmExport = (formats: string[], sizes?: number[], vectorizeSvg?: boolean) => {
     if (exportContext) {
+      if (mode === "letters") {
+        const requestId = exportContext.requestId || currentResponse?.requestId || "letters";
+        const groupsSource =
+          currentLetterGroups.length > 0
+            ? currentLetterGroups
+            : currentResponse?.letterGroups || [];
+        const iconsPayload = groupsSource.flatMap((group) =>
+          (group.icons || []).map((icon) => ({
+            letter: icon.letter,
+            base64Data: icon.base64Data,
+          })),
+        );
+        const exportData = {
+          requestId,
+          formats,
+          icons: iconsPayload,
+        };
+        const fileName = `letter-pack-${requestId}.zip`;
+        setShowExportModal(false);
+        downloadZip(exportData, fileName);
+        return;
+      }
+
       const { requestId, serviceName, generationIndex } = exportContext;
       const packType = mode === "icons" ? "icon" : mode === "illustrations" ? "illustration" : "mockup";
       const fileName = `${packType}-pack-${requestId}-${serviceName}-gen${generationIndex}.zip`;
@@ -1006,7 +1064,14 @@ export default function Page() {
 
   const downloadZip = async (exportData: any, fileName: string) => {
     setShowProgressModal(true);
-    const itemType = mode === "icons" ? "icons" : mode === "illustrations" ? "illustrations" : "mockups";
+    const itemType =
+      mode === "icons"
+        ? "icons"
+        : mode === "illustrations"
+        ? "illustrations"
+        : mode === "letters"
+        ? "letters"
+        : "mockups";
     setExportProgress({
       step: 1,
       message: "Preparing export request...",
@@ -1020,7 +1085,14 @@ export default function Page() {
           percent: 50,
         });
       }, 500);
-      const endpoint = mode === "icons" ? "/export" : mode === "illustrations" ? "/api/illustrations/export" : "/api/mockups/export";
+      const endpoint =
+        mode === "icons"
+          ? "/export"
+          : mode === "illustrations"
+          ? "/api/illustrations/export"
+          : mode === "letters"
+          ? "/api/letters/export"
+          : "/api/mockups/export";
       const response = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -1058,6 +1130,119 @@ export default function Page() {
       setShowProgressModal(false);
       setErrorMessage(`Failed to export ${itemType}. Please try again.`);
       setUiState("error");
+    }
+  };
+
+  const generateLetterPack = async () => {
+    setIsGenerating(true);
+    setUiState("streaming");
+    setStreamingResults({});
+    setShowResultsPanes(false);
+    setOverallProgress(0);
+    setErrorMessage("");
+    setCurrentLetterGroups([]);
+    setCurrentIcons([]);
+    setCurrentRequest(null);
+    setCurrentResponse(null);
+
+    if (overallProgressTimerRef.current) {
+      clearInterval(overallProgressTimerRef.current);
+    }
+    const duration = 120000;
+    setTotalDuration(duration);
+    const increment = 100 / (duration / 100);
+    overallProgressTimerRef.current = setInterval(() => {
+      setOverallProgress((prev) => {
+        const next = prev + increment;
+        if (next >= 100) {
+          if (overallProgressTimerRef.current) {
+            clearInterval(overallProgressTimerRef.current);
+          }
+          return 100;
+        }
+        return next;
+      });
+    }, 100);
+
+    const requestPayload: Record<string, any> = {};
+
+    try {
+      if (inputType === "text") {
+        requestPayload.generalDescription = generalDescription.trim();
+      } else if (inputType === "image" && referenceImage) {
+        requestPayload.referenceImageBase64 = await fileToBase64(referenceImage);
+      } else {
+        setErrorMessage("Please provide a theme description or a reference image.");
+        setUiState("error");
+        setIsGenerating(false);
+        return;
+      }
+    } catch (conversionError) {
+      console.error("Error converting reference image:", conversionError);
+      setErrorMessage("Failed to process reference image");
+      setUiState("error");
+      setIsGenerating(false);
+      return;
+    }
+
+    setCurrentRequest({ ...requestPayload });
+
+    try {
+      const response = await fetch("/api/letters/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(requestPayload),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`HTTP error ${response.status}: ${errorText}`);
+      }
+
+      const data = await response.json();
+
+      if (data.status !== "success") {
+        setErrorMessage(data.message || "Failed to generate letter pack.");
+        setUiState("error");
+        setIsGenerating(false);
+        return;
+      }
+
+      const groups: LetterGroup[] = data.groups || [];
+      setCurrentLetterGroups(groups);
+
+      const flattenedIcons: Icon[] = groups.flatMap((group: LetterGroup) =>
+        (group.icons || []).map((icon) => ({
+          base64Data: icon.base64Data,
+          description: icon.letter,
+        })),
+      );
+
+      setCurrentIcons(flattenedIcons);
+      setCurrentResponse({
+        icons: flattenedIcons,
+        requestId: data.requestId,
+        letterGroups: groups,
+      });
+
+      setUiState("results");
+      setIsGenerating(false);
+      setOverallProgress(100);
+      setShowResultsPanes(true);
+
+      setTimeout(() => {
+        checkAuthenticationStatus();
+      }, 1500);
+    } catch (error) {
+      console.error("Error generating letter pack:", error);
+      setErrorMessage("Failed to generate letter pack. Please try again.");
+      setUiState("error");
+      setIsGenerating(false);
+    } finally {
+      if (overallProgressTimerRef.current) {
+        clearInterval(overallProgressTimerRef.current);
+      }
     }
   };
 
@@ -1445,6 +1630,7 @@ export default function Page() {
           animatingIcons={animatingIcons}
           exportGeneration={exportGeneration}
           currentResponse={currentResponse}
+          letterGroups={currentLetterGroups}
           moreIconsVisible={moreIconsVisible}
           showMoreIconsForm={showMoreIconsForm}
           hideMoreIconsForm={hideMoreIconsForm}
@@ -1465,7 +1651,12 @@ export default function Page() {
         onClose={() => setShowExportModal(false)}
         onConfirm={confirmExport}
         iconCount={
-          exportContext
+          mode === "letters"
+            ? currentLetterGroups.reduce(
+                (total, group) => total + (group.icons ? group.icons.length : 0),
+                0,
+              )
+            : exportContext
             ? streamingResults[
                 `${exportContext.serviceName}-gen${exportContext.generationIndex}`
               ]?.icons?.length || 0

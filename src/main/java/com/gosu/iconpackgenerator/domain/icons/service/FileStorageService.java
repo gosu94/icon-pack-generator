@@ -22,6 +22,9 @@ public class FileStorageService {
     
     @Value("${app.mockups-storage.base-path:static/user-mockups}")
     private String mockupsBasePath;
+
+    @Value("${app.letterpacks-storage.base-path:static/user-letterpacks}")
+    private String letterpacksBasePath;
     
     /**
      * Save a base64 icon to the file system
@@ -233,7 +236,75 @@ public class FileStorageService {
         }
         throw new IOException("Illustration file not found: " + filePath.toString());
     }
-    
+
+    public String saveLetterIcon(String userDirectoryPath,
+                                 String requestId,
+                                 String letterGroup,
+                                 String fileName,
+                                 String base64Data) {
+        try {
+            Path directoryPath = Paths.get(letterpacksBasePath, userDirectoryPath, requestId, letterGroup);
+            if (!Files.exists(directoryPath)) {
+                Files.createDirectories(directoryPath);
+                log.debug("Created letter pack directory: {}", directoryPath.toAbsolutePath());
+            }
+
+            Path filePath = directoryPath.resolve(fileName);
+            byte[] imageBytes = Base64.getDecoder().decode(base64Data);
+            Files.write(filePath, imageBytes);
+
+            return getRelativeLetterWebPath(userDirectoryPath, requestId, letterGroup, fileName);
+        } catch (IOException e) {
+            log.error("Error saving letter icon to file system", e);
+            throw new RuntimeException("Failed to save letter icon: " + fileName, e);
+        }
+    }
+
+    public String generateLetterIconFileName(String letter, int sequenceIndex) {
+        String sanitizedLetter = letter == null ? "letter" : letter.toLowerCase().replaceAll("[^a-z0-9]", "");
+        if (sanitizedLetter.isEmpty()) {
+            sanitizedLetter = "letter";
+        }
+        return String.format("%s_%02d.png", sanitizedLetter, sequenceIndex);
+    }
+
+    private String getRelativeLetterWebPath(String userDirectoryPath,
+                                            String requestId,
+                                            String letterGroup,
+                                            String fileName) {
+        return String.format("/user-letterpacks/%s/%s/%s/%s",
+                userDirectoryPath, requestId, letterGroup, fileName);
+    }
+
+    public long getLetterFileSize(String userDirectoryPath,
+                                  String requestId,
+                                  String letterGroup,
+                                  String fileName) {
+        try {
+            Path filePath = Paths.get(letterpacksBasePath, userDirectoryPath, requestId, letterGroup, fileName);
+            if (Files.exists(filePath)) {
+                return Files.size(filePath);
+            }
+        } catch (IOException e) {
+            log.error("Error getting letter icon file size for {}", fileName, e);
+        }
+        return 0L;
+    }
+
+    public byte[] readLetterIcon(String relativeWebPath) throws IOException {
+        String pathInsideRoot;
+        if (relativeWebPath.startsWith("/user-letterpacks/")) {
+            pathInsideRoot = relativeWebPath.substring("/user-letterpacks/".length());
+        } else {
+            pathInsideRoot = relativeWebPath;
+        }
+        Path filePath = Paths.get(letterpacksBasePath).resolve(pathInsideRoot);
+        if (Files.exists(filePath)) {
+            return Files.readAllBytes(filePath);
+        }
+        throw new IOException("Letter icon file not found: " + filePath.toString());
+    }
+
     /**
      * Delete all illustration files for a specific request
      */

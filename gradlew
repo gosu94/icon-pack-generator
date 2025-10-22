@@ -88,6 +88,12 @@ APP_BASE_NAME=${0##*/}
 # Discard cd standard output in case $CDPATH is set (https://github.com/gradle/gradle/issues/25036)
 APP_HOME=$( cd -P "${APP_HOME:-./}" > /dev/null && printf '%s\n' "$PWD" ) || exit
 
+# Ensure Gradle uses a writable user home inside the project when sandboxed.
+if [ -z "$GRADLE_USER_HOME" ]; then
+    GRADLE_USER_HOME="$APP_HOME/.gradle"
+    export GRADLE_USER_HOME
+fi
+
 # Use the maximum available, or set MAX_FD != -1 to use that value.
 MAX_FD=maximum
 
@@ -115,6 +121,17 @@ case "$( uname )" in                #(
 esac
 
 CLASSPATH="\\\"\\\""
+
+# Default to the JDK bundled on this host when JAVA_HOME is unset.
+if [ -z "$JAVA_HOME" ]; then
+    for candidate in "/Library/Java/JavaVirtualMachines/jdk-17.jdk/Contents/Home" "/Library/Java/JavaVirtualMachines/jdk-13.0.1+9/Contents/Home"
+    do
+        if [ -x "$candidate/bin/java" ]; then
+            JAVA_HOME="$candidate"
+            break
+        fi
+    done
+fi
 
 
 # Determine the Java command to use to start the JVM.

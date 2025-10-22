@@ -25,8 +25,28 @@ export interface GenerationResponse {
   photonResults?: ServiceResult[];
   gptResults?: ServiceResult[];
   bananaResults?: ServiceResult[];
+  letterGroups?: LetterGroup[];
 }
 
 export type UIState = "initial" | "streaming" | "error" | "results";
 
-export type GenerationMode = "icons" | "illustrations" | "mockups";
+export interface LetterIcon {
+  letter: string;
+  base64Data: string;
+  sequence: number;
+}
+
+export interface LetterGroup {
+  name: string;
+  icons: LetterIcon[];
+  originalGridImageBase64?: string;
+}
+
+export interface LetterPackResponse {
+  status: string;
+  message: string;
+  requestId: string;
+  groups: LetterGroup[];
+}
+
+export type GenerationMode = "icons" | "illustrations" | "mockups" | "letters";

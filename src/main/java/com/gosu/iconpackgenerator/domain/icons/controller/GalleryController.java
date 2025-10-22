@@ -6,6 +6,8 @@ import com.gosu.iconpackgenerator.domain.icons.repository.GeneratedIconRepositor
 import com.gosu.iconpackgenerator.domain.icons.service.GridCompositionService;
 import com.gosu.iconpackgenerator.domain.illustrations.entity.GeneratedIllustration;
 import com.gosu.iconpackgenerator.domain.illustrations.repository.GeneratedIllustrationRepository;
+import com.gosu.iconpackgenerator.domain.letters.entity.GeneratedLetterIcon;
+import com.gosu.iconpackgenerator.domain.letters.repository.GeneratedLetterIconRepository;
 import com.gosu.iconpackgenerator.domain.mockups.entity.GeneratedMockup;
 import com.gosu.iconpackgenerator.domain.mockups.repository.GeneratedMockupRepository;
 import com.gosu.iconpackgenerator.user.model.User;
@@ -31,6 +33,7 @@ public class GalleryController implements GalleryControllerAPI {
     private final GeneratedIconRepository generatedIconRepository;
     private final GeneratedIllustrationRepository generatedIllustrationRepository;
     private final GeneratedMockupRepository generatedMockupRepository;
+    private final GeneratedLetterIconRepository generatedLetterIconRepository;
     private final GridCompositionService gridCompositionService;
 
     @Override
@@ -82,6 +85,24 @@ public class GalleryController implements GalleryControllerAPI {
             return ResponseEntity.ok(mockups);
         } catch (Exception e) {
             log.error("Error retrieving user mockups", e);
+            return ResponseEntity.status(500).build();
+        }
+    }
+
+    @Override
+    @GetMapping("/api/gallery/letters")
+    @ResponseBody
+    public ResponseEntity<List<GeneratedLetterIcon>> getUserLetters(@AuthenticationPrincipal OAuth2User principal) {
+        try {
+            if (!(principal instanceof CustomOAuth2User customUser)) {
+                return ResponseEntity.status(401).build();
+            }
+
+            User user = customUser.getUser();
+            List<GeneratedLetterIcon> letters = generatedLetterIconRepository.findByUserOrderByCreatedAtDesc(user);
+            return ResponseEntity.ok(letters);
+        } catch (Exception e) {
+            log.error("Error retrieving user letter packs", e);
             return ResponseEntity.status(500).build();
         }
     }

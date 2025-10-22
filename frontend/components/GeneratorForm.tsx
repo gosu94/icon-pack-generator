@@ -108,8 +108,8 @@ const GeneratorForm: React.FC<GeneratorFormProps> = ({
   };
 
   const renderIconFields = () => {
-    // Don't render individual fields for mockups mode
-    if (mode === "mockups") return null;
+    // Letters and mockups do not use individual description fields
+    if (mode === "mockups" || mode === "letters") return null;
     
     const count = mode === "illustrations" ? 4 : 9;
     const label = mode === "illustrations" ? "Illustration" : "Icon";
@@ -167,6 +167,20 @@ const GeneratorForm: React.FC<GeneratorFormProps> = ({
             </button>
             <button
               type="button"
+              onClick={() => setMode("letters")}
+              disabled={isGenerating}
+              className={`flex-1 px-4 py-3 rounded-lg text-sm font-semibold transition-all duration-200 ${
+                mode === "letters"
+                  ? "bg-gradient-to-r from-purple-600 to-blue-600 text-white shadow-md"
+                  : isGenerating
+                  ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                  : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+              }`}
+            >
+              Letters
+            </button>
+            <button
+              type="button"
               onClick={() => setMode("illustrations")}
               disabled={isGenerating}
               className={`flex-1 px-4 py-3 rounded-lg text-sm font-semibold transition-all duration-200 ${
@@ -201,7 +215,13 @@ const GeneratorForm: React.FC<GeneratorFormProps> = ({
           <h2
             className="text-2xl font-bold text-slate-900 mb-8"
           >
-            {mode === "icons" ? "Icon Pack Generator" : mode === "illustrations" ? "Illustration Generator" : "UI Mockup Generator"}
+            {mode === "icons"
+              ? "Icon Pack Generator"
+              : mode === "letters"
+              ? "Letter Pack Generator"
+              : mode === "illustrations"
+              ? "Illustration Generator"
+              : "UI Mockup Generator"}
           </h2>
 
           <form
@@ -286,6 +306,8 @@ const GeneratorForm: React.FC<GeneratorFormProps> = ({
                         ? "Describe the general theme for your illustrations... (e.g. little fox adventures, children's book theme, etc.)" 
                         : mode === "mockups"
                         ? "Describe the style for your UI mockup... (e.g., light blue-white soft neumorphic, dark glassmorphic etc.)"
+                        : mode === "letters"
+                        ? "Describe the overall style for your alphabet letters... (e.g., playful cartoon typography, futuristic neon lettering, etc.)"
                         : "Describe the general theme for your icon pack... (e.g., minimalist business icons, colorful social media icons, etc.)"
                     }
                   />
@@ -355,7 +377,7 @@ const GeneratorForm: React.FC<GeneratorFormProps> = ({
               )}
             </div>
 
-            {mode !== "mockups" && (
+            {(mode === "icons" || mode === "illustrations") && (
               <div>
                 <label
                   className="block text-lg font-semibold text-slate-900 mb-4"
@@ -366,7 +388,7 @@ const GeneratorForm: React.FC<GeneratorFormProps> = ({
               </div>
             )}
 
-            {mode !== "mockups" && (
+            {mode === "icons" && (
               <div className="flex items-center justify-between">
                 <label
                   className="text-lg font-semibold text-slate-900"
@@ -471,14 +493,26 @@ const GeneratorForm: React.FC<GeneratorFormProps> = ({
                 <div className="flex items-center justify-center space-x-2">
                   <span>
                     {isAuthenticated 
-                      ? (mode === "icons" ? "Generate Icons" : mode === "illustrations" ? "Generate Illustrations" : "Generate UI Mockup")
+                      ? mode === "icons"
+                        ? "Generate Icons"
+                        : mode === "letters"
+                        ? "Generate Letter Pack"
+                        : mode === "illustrations"
+                        ? "Generate Illustrations"
+                        : "Generate UI Mockup"
                       : "Sign in to Generate"}
                   </span>
                   {isAuthenticated && authState.user && (
                     <span className="flex items-center space-x-1 rounded-full bg-white/20 px-2 py-0.5 text-xs font-semibold">
                       {(() => {
                         // For mockups, cost is always 1 (variations don't cost extra)
-                        const cost = mode === "mockups" ? 1 : (generateVariations ? 2 : 1);
+                        const cost = mode === "letters"
+                          ? 3
+                          : mode === "mockups"
+                          ? 1
+                          : generateVariations
+                          ? 2
+                          : 1;
                         const regularCoins = authState.user.coins || 0;
                         const trialCoins = authState.user.trialCoins || 0;
                         
