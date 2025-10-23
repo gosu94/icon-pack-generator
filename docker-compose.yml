@@ -74,6 +74,7 @@ services:
       - ./static/user-icons:/app/static/user-icons
       - ./static/user-illustrations:/app/static/user-illustrations
       - ./static/user-mockups:/app/static/user-mockups
+      - ./static/user-labels:/app/static/user-labels
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
       interval: 30s
