@@ -315,7 +315,7 @@ export default function LandingPage() {
                         <div onClick={() => openImageModal('/images/features/feature_variations.webp')}
                              className="bg-white/80 backdrop-blur-md rounded-2xl shadow-lg border border-purple-200/30 flex flex-col md:flex-row overflow-hidden hover:shadow-xl transition-all duration-300 hover:scale-[1.02] cursor-pointer">
                             <div className="md:w-1/2 p-8 flex flex-col justify-center">
-                                <h3 className="text-2xl font-bold text-slate-900 mb-4">🌈Variations</h3>
+                                <h3 className="text-2xl font-bold text-slate-900 mb-4">🌈 Variations</h3>
                                 <p className="text-slate-600 leading-relaxed">
                                     Explore creative options with ease.
                                     Generate multiple stylistic variations for your icons, illustrations, or labels — and instantly find the version that fits your vision best.
@@ -330,7 +330,7 @@ export default function LandingPage() {
                         <div onClick={() => openImageModal('/images/features/feature_labels.webp')}
                              className="bg-white/80 backdrop-blur-md rounded-2xl shadow-lg border border-purple-200/30 flex flex-col md:flex-row overflow-hidden hover:shadow-xl transition-all duration-300 hover:scale-[1.02] cursor-pointer">
                             <div className="md:w-1/2 p-8 flex flex-col justify-center">
-                                <h3 className="text-2xl font-bold text-slate-900 mb-4">🏷️Labels</h3>
+                                <h3 className="text-2xl font-bold text-slate-900 mb-4">🏷️ Labels</h3>
                                 <p className="text-slate-600 leading-relaxed">
                                     Add text that matches your design language.
                                     Create custom labels that blend seamlessly with your icon style — whether you start from scratch or describe what you need in plain text.
@@ -345,7 +345,7 @@ export default function LandingPage() {
                         <div onClick={() => openImageModal('/images/features/feature_illustrations.webp')}
                              className="bg-white/80 backdrop-blur-md rounded-2xl shadow-lg border border-purple-200/30 flex flex-col md:flex-row overflow-hidden hover:shadow-xl transition-all duration-300 hover:scale-[1.02] cursor-pointer">
                             <div className="md:w-1/2 p-8 flex flex-col justify-center">
-                                <h3 className="text-2xl font-bold text-slate-900 mb-4">🎨Illustrations</h3>
+                                <h3 className="text-2xl font-bold text-slate-900 mb-4">🎨 Illustrations</h3>
                                 <p className="text-slate-600 leading-relaxed">
                                     Extend your visual system beyond icons.
                                     Generate cohesive, on-brand illustrations that complement your icons and keep a consistent visual tone across your entire project.
@@ -360,7 +360,7 @@ export default function LandingPage() {
                         <div onClick={() => openImageModal('/images/features/feature_mockups.webp')}
                              className="bg-white/80 backdrop-blur-md rounded-2xl shadow-lg border border-purple-200/30 flex flex-col md:flex-row overflow-hidden hover:shadow-xl transition-all duration-300 hover:scale-[1.02] cursor-pointer">
                             <div className="md:w-1/2 p-8 flex flex-col justify-center">
-                                <h3 className="text-2xl font-bold text-slate-900 mb-4">🧩UI Mockups</h3>
+                                <h3 className="text-2xl font-bold text-slate-900 mb-4">🧩 UI Mockups</h3>
                                 <p className="text-slate-600 leading-relaxed">
                                     Bring your style to full interfaces.
                                     Generate complete UI mockups that match your icon aesthetic — or flip the process: start with a mockup and use it as the foundation for your icon set.                                </p>

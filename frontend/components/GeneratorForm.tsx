@@ -511,7 +511,7 @@ const GeneratorForm: React.FC<GeneratorFormProps> = ({
                 <div className="flex items-center justify-center space-x-2">
                   <span>
                     {isAuthenticated 
-                      ? (mode === "icons" ? "Generate Icons" : mode === "illustrations" ? "Generate Illustrations" : "Generate UI Mockup")
+                      ? (mode === "icons" ? "Generate Icons" : mode === "illustrations" ? "Generate Illustrations" : mode === "labels" ? "Generate Label" : "Generate UI Mockup")
                       : "Sign in to Generate"}
                   </span>
                   {isAuthenticated && authState.user && (
