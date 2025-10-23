@@ -3,6 +3,16 @@ export interface Icon {
   description?: string;
 }
 
+export interface Label {
+  id: number;
+  imageUrl: string;
+  labelText: string;
+  requestId: string;
+  labelType: string;
+  serviceSource: string;
+  theme: string;
+}
+
 export interface ServiceResult {
   icons: Icon[];
   originalGridImageBase64?: string;
@@ -29,4 +39,4 @@ export interface GenerationResponse {
 
 export type UIState = "initial" | "streaming" | "error" | "results";
 
-export type GenerationMode = "icons" | "illustrations" | "mockups";
+export type GenerationMode = "icons" | "illustrations" | "mockups" | "labels";

@@ -36,15 +36,28 @@ interface Mockup {
   theme: string;
 }
 
+interface LabelItem {
+  id: number;
+  imageUrl: string;
+  filePath?: string;
+  labelText: string;
+  requestId: string;
+  labelType: string;
+  serviceSource: string;
+  theme: string;
+}
+
 type GroupedIcons = Record<string, { original: Icon[]; variation: Icon[] }>;
 type GroupedIllustrations = Record<string, { original: Illustration[]; variation: Illustration[] }>;
 type GroupedMockups = Record<string, { original: Mockup[]; variation: Mockup[] }>;
+type GroupedLabels = Record<string, { original: LabelItem[]; variation: LabelItem[] }>;
 
 export default function GalleryPage() {
   const router = useRouter();
   const [groupedIcons, setGroupedIcons] = useState<GroupedIcons>({});
   const [groupedIllustrations, setGroupedIllustrations] = useState<GroupedIllustrations>({});
   const [groupedMockups, setGroupedMockups] = useState<GroupedMockups>({});
+  const [groupedLabels, setGroupedLabels] = useState<GroupedLabels>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedRequest, setSelectedRequest] = useState<string | null>(null);
@@ -56,6 +69,7 @@ export default function GalleryPage() {
   const [iconsToExport, setIconsToExport] = useState<Icon[]>([]);
   const [illustrationsToExport, setIllustrationsToExport] = useState<Illustration[]>([]);
   const [mockupsToExport, setMockupsToExport] = useState<Mockup[]>([]);
+  const [labelsToExport, setLabelsToExport] = useState<LabelItem[]>([]);
 
   const [exportProgress, setExportProgress] = useState({
     step: 1,
@@ -67,8 +81,7 @@ export default function GalleryPage() {
   const [previewImage, setPreviewImage] = useState<string | null>(null);
 
   const handleImageClick = (imageUrl: string) => {
-    // Only open preview for illustrations and mockups
-    if (galleryType === "illustrations" || galleryType === "mockups") {
+    if (galleryType === "illustrations" || galleryType === "mockups" || galleryType === "labels") {
       setPreviewImage(imageUrl);
     }
   };
@@ -174,12 +187,51 @@ export default function GalleryPage() {
       }
     };
 
+    const fetchLabels = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const response = await fetch("/api/gallery/labels", {
+          credentials: "include",
+        });
+        if (!response.ok) {
+          throw new Error("Failed to fetch labels");
+        }
+        const data: LabelItem[] = await response.json();
+
+        const grouped = data.reduce((acc, label) => {
+          const normalizedLabel: LabelItem = {
+            ...label,
+            imageUrl: label.imageUrl || label.filePath || "",
+          };
+
+          if (!acc[label.requestId]) {
+            acc[label.requestId] = { original: [], variation: [] };
+          }
+          if (normalizedLabel.labelType === "original") {
+            acc[label.requestId].original.push(normalizedLabel);
+          } else if (normalizedLabel.labelType === "variation") {
+            acc[label.requestId].variation.push(normalizedLabel);
+          }
+          return acc;
+        }, {} as GroupedLabels);
+
+        setGroupedLabels(grouped);
+      } catch (err: any) {
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+
     if (galleryType === "icons") {
       fetchIcons();
     } else if (galleryType === "illustrations") {
       fetchIllustrations();
     } else if (galleryType === "mockups") {
       fetchMockups();
+    } else if (galleryType === "labels") {
+      fetchLabels();
     } else {
       setLoading(false);
     }
@@ -196,6 +248,8 @@ export default function GalleryPage() {
   const openExportModal = (icons: Icon[]) => {
     setIconsToExport(icons);
     setIllustrationsToExport([]);
+    setMockupsToExport([]);
+    setLabelsToExport([]);
     setShowExportModal(true);
   };
 
@@ -203,6 +257,7 @@ export default function GalleryPage() {
     setIllustrationsToExport(illustrations);
     setIconsToExport([]);
     setMockupsToExport([]);
+    setLabelsToExport([]);
     setShowExportModal(true);
   };
 
@@ -210,6 +265,15 @@ export default function GalleryPage() {
     setMockupsToExport(mockups);
     setIconsToExport([]);
     setIllustrationsToExport([]);
+    setLabelsToExport([]);
+    setShowExportModal(true);
+  };
+
+  const openLabelExportModal = (labels: LabelItem[]) => {
+    setLabelsToExport(labels);
+    setIconsToExport([]);
+    setIllustrationsToExport([]);
+    setMockupsToExport([]);
     setShowExportModal(true);
   };
 
@@ -298,6 +362,50 @@ export default function GalleryPage() {
         sessionStorage.setItem("generationMode", "mockups"); // Set to mockups mode
 
         // Navigate to dashboard
+        router.push("/dashboard");
+      } else {
+        console.error("Failed to create grid:", data.error);
+        alert("Failed to create grid composition. Please try again.");
+      }
+    } catch (error) {
+      console.error("Error creating grid composition:", error);
+      alert("Failed to create grid composition. Please try again.");
+    }
+  };
+
+  const handleGenerateLabelsFromIcons = async (iconType: string) => {
+    if (!selectedRequest) return;
+
+    try {
+      const response = await fetch("/api/gallery/compose-grid", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          requestId: selectedRequest,
+          iconType: iconType,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+
+      if (data.status === "success" && data.gridImageBase64) {
+        const binaryString = atob(data.gridImageBase64);
+        const bytes = new Uint8Array(binaryString.length);
+        for (let i = 0; i < binaryString.length; i++) {
+          bytes[i] = binaryString.charCodeAt(i);
+        }
+        const blob = new Blob([bytes], { type: "image/png" });
+
+        const gridImageUrl = URL.createObjectURL(blob);
+        sessionStorage.setItem("generatedGridImage", gridImageUrl);
+        sessionStorage.setItem("generateMoreMode", "true");
+        sessionStorage.setItem("generationMode", "labels");
+
         router.push("/dashboard");
       } else {
         console.error("Failed to create grid:", data.error);
@@ -402,12 +510,27 @@ export default function GalleryPage() {
       };
       setShowExportModal(false);
       downloadZip(exportData, fileName, "/api/mockups/export-gallery");
+    } else if (labelsToExport.length > 0) {
+      const labelFilePaths = labelsToExport.map((label) => label.imageUrl);
+      const fileName = `label-pack-gallery-${new Date().getTime()}.zip`;
+      const exportData = {
+        labelFilePaths,
+        formats,
+      };
+      setShowExportModal(false);
+      downloadZip(exportData, fileName, "/api/labels/export-gallery");
     }
   };
 
   const downloadZip = async (exportData: any, fileName: string, endpoint: string) => {
     setShowProgressModal(true);
-    const itemType = endpoint.includes("illustration") ? "illustrations" : endpoint.includes("mockup") ? "mockups" : "icons";
+    const itemType = endpoint.includes("illustration")
+      ? "illustrations"
+      : endpoint.includes("mockup")
+      ? "mockups"
+      : endpoint.includes("label")
+      ? "labels"
+      : "icons";
     setExportProgress({
       step: 1,
       message: "Preparing export request...",
@@ -417,7 +540,7 @@ export default function GalleryPage() {
       setTimeout(() => {
         setExportProgress({
           step: 2,
-          message: `Converting ${itemType} to multiple formats and sizes...`,
+          message: `Converting ${itemType} to multiple formats${itemType === "icons" || itemType === "illustrations" || itemType === "mockups" ? " and sizes" : ""}...`,
           percent: 50,
         });
       }, 500);
@@ -466,6 +589,9 @@ export default function GalleryPage() {
   const selectedIconGroup = selectedRequest
     ? groupedIcons[selectedRequest]
     : null;
+  const selectedLabelGroup = selectedRequest
+    ? groupedLabels[selectedRequest]
+    : null;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50/30">
@@ -502,18 +628,29 @@ export default function GalleryPage() {
                       Browse your generated illustrations.
                     </p>
                   </div>
+                <div
+                  onClick={() => setGalleryType("mockups")}
+                  className="group cursor-pointer rounded-xl border border-slate-200 bg-white p-6 transition-all duration-300 hover:border-pink-300 hover:shadow-lg hover:shadow-pink-100"
+                >
+                  <h2 className="text-2xl font-bold text-slate-800 text-center">
+                    UI Mockups
+                  </h2>
+                  <p className="text-slate-500 mt-2 text-center">
+                    Browse your generated UI mockups.
+                  </p>
+                </div>
                   <div
-                    onClick={() => setGalleryType("mockups")}
-                    className="group cursor-pointer rounded-xl border border-slate-200 bg-white p-6 transition-all duration-300 hover:border-pink-300 hover:shadow-lg hover:shadow-pink-100"
+                    onClick={() => setGalleryType("labels")}
+                    className="group cursor-pointer rounded-xl border border-slate-200 bg-white p-6 transition-all duration-300 hover:border-emerald-300 hover:shadow-lg hover:shadow-emerald-100"
                   >
                     <h2 className="text-2xl font-bold text-slate-800 text-center">
-                      UI Mockups
+                      Labels
                     </h2>
                     <p className="text-slate-500 mt-2 text-center">
-                      Browse your generated UI mockups.
+                      Browse your generated labels.
                     </p>
                   </div>
-                </div>
+              </div>
               </div>
             ) : (
               <>
@@ -544,6 +681,8 @@ export default function GalleryPage() {
                       setSelectedRequest(null);
                       setGroupedIcons({});
                       setGroupedIllustrations({});
+                      setGroupedMockups({});
+                      setGroupedLabels({});
                       setError(null);
                     }}
                     className="mb-8 inline-flex items-center gap-2 rounded-md bg-slate-100 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-200 transition-colors"
@@ -619,6 +758,13 @@ export default function GalleryPage() {
                                   <span className="text-xs font-bold">UI</span>
                                 </button>
                                 <button
+                                  onClick={() => handleGenerateLabelsFromIcons("original")}
+                                  className="px-2 sm:px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 flex items-center justify-center gap-1"
+                                  title="Generate Labels from these icons"
+                                >
+                                  <span className="text-xs font-bold">T</span>
+                                </button>
+                                <button
                                   onClick={() =>
                                     openExportModal(
                                       selectedIconGroup.original
@@ -662,6 +808,7 @@ export default function GalleryPage() {
                                     handleGenerateMore("variation")
                                   }
                                   className="px-2 sm:px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 flex items-center justify-center gap-2"
+                                  title="Generate more like this"
                                 >
                                   <Sparkles className="w-4 h-4" />
                                 </button>
@@ -671,6 +818,13 @@ export default function GalleryPage() {
                                   title="Generate UI Mockup from these icons"
                                 >
                                   <span className="text-xs font-bold">UI</span>
+                                </button>
+                                <button
+                                  onClick={() => handleGenerateLabelsFromIcons("variation")}
+                                  className="px-2 sm:px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 flex items-center justify-center gap-1"
+                                  title="Generate Labels from these icons"
+                                >
+                                  <span className="text-xs font-bold">T</span>
                                 </button>
                                 <button
                                   onClick={() =>
@@ -745,6 +899,161 @@ export default function GalleryPage() {
                                       {iconTypes.original.length +
                                         iconTypes.variation.length}{" "}
                                       icons
+                                    </p>
+                                  </div>
+                                </div>
+                              );
+                            }
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </>
+                )}
+
+                {!error && galleryType === "labels" && (
+                  <>
+                    {selectedLabelGroup && selectedRequest ? (
+                      <div>
+                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6">
+                          <h1 className="text-3xl font-bold text-slate-800 mb-4 sm:mb-0">
+                            {selectedLabelGroup.original[0]?.theme ||
+                              selectedLabelGroup.variation[0]?.theme ||
+                              `Request: ${selectedRequest}`}
+                          </h1>
+                          <button
+                            onClick={() =>
+                              openLabelExportModal([
+                                ...selectedLabelGroup.original,
+                                ...selectedLabelGroup.variation,
+                              ])
+                            }
+                            className="px-2 sm:px-4 py-2 bg-gradient-to-r from-emerald-500 to-sky-500 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 flex items-center justify-center gap-2"
+                          >
+                            <Download className="w-4 h-4" />
+                            <span className="hidden sm:inline">
+                              Export All (
+                              {selectedLabelGroup.original.length +
+                                selectedLabelGroup.variation.length}{" "}
+                              labels)
+                            </span>
+                          </button>
+                        </div>
+
+                        {selectedLabelGroup.original.length > 0 && (
+                          <div className="mb-8 p-4 rounded-lg border border-slate-200/80 bg-white/50 shadow-lg shadow-slate-200/50">
+                            <div className="flex items-center justify-between mb-4">
+                              <h3 className="text-xl font-semibold text-slate-700">
+                                Original Labels
+                              </h3>
+                              <button
+                                onClick={() =>
+                                  openLabelExportModal(
+                                    selectedLabelGroup.original,
+                                  )
+                                }
+                                className="px-2 sm:px-4 py-2 bg-gradient-to-r from-emerald-500 to-sky-500 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 flex items-center justify-center gap-2"
+                              >
+                                <Download className="w-4 h-4" />
+                              </button>
+                            </div>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                              {selectedLabelGroup.original.map((label, index) => (
+                                <div
+                                  key={index}
+                                  className="border rounded-lg p-4 bg-white shadow-sm flex flex-col items-center gap-3"
+                                >
+                                    <img
+                                      src={label.imageUrl}
+                                    alt={label.labelText || "Generated Label"}
+                                    className="w-full h-auto object-contain rounded-md bg-slate-50 border border-slate-200"
+                                  />
+                                  <p className="text-sm font-semibold text-slate-700 text-center">
+                                    {label.labelText}
+                                  </p>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {selectedLabelGroup.variation.length > 0 && (
+                          <div className="p-4 rounded-lg border border-slate-200/80 bg-white/50 shadow-lg shadow-slate-200/50">
+                            <div className="flex items-center justify-between mb-4">
+                              <h3 className="text-xl font-semibold text-slate-700">
+                                Variations
+                              </h3>
+                              <button
+                                onClick={() =>
+                                  openLabelExportModal(
+                                    selectedLabelGroup.variation,
+                                  )
+                                }
+                                className="px-2 sm:px-4 py-2 bg-gradient-to-r from-emerald-500 to-sky-500 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 flex items-center justify-center gap-2"
+                              >
+                                <Download className="w-4 h-4" />
+                              </button>
+                            </div>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                              {selectedLabelGroup.variation.map((label, index) => (
+                                <div
+                                  key={index}
+                                  className="border rounded-lg p-4 bg-white shadow-sm flex flex-col items-center gap-3"
+                                >
+                                    <img
+                                      src={label.imageUrl}
+                                    alt={label.labelText || "Generated Label"}
+                                    className="w-full h-auto object-contain rounded-md bg-slate-50 border border-slate-200"
+                                  />
+                                  <p className="text-sm font-semibold text-slate-700 text-center">
+                                    {label.labelText}
+                                  </p>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <div>
+                        <h1 className="text-3xl font-bold mb-8 text-slate-800">
+                          Label Gallery
+                        </h1>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                          {Object.entries(groupedLabels).map(
+                            ([requestId, labelTypes]) => {
+                              const getRequestPreview = () => {
+                                if (labelTypes.original.length > 0)
+                                  return labelTypes.original[0].imageUrl;
+                                if (labelTypes.variation.length > 0)
+                                  return labelTypes.variation[0].imageUrl;
+                                return "";
+                              };
+                              const theme =
+                                labelTypes.original[0]?.theme ||
+                                labelTypes.variation[0]?.theme;
+
+                              return (
+                                <div
+                                  key={requestId}
+                                  onClick={() => handleSelectRequest(requestId)}
+                                  className="group cursor-pointer rounded-lg border border-emerald-200 bg-white/50 shadow-lg shadow-slate-200/50 p-3 transition-all duration-300 hover:border-emerald-400 hover:shadow-emerald-200/50 flex items-center"
+                                >
+                                  <div className="w-1/3 aspect-square overflow-hidden rounded-md bg-slate-100 flex-shrink-0">
+                                    <img
+                                      src={getRequestPreview()}
+                                      alt="Request Preview"
+                                      className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                                    />
+                                  </div>
+                                  <div className="w-2/3 pl-4">
+                                    <h2 className="text-base font-bold text-slate-800 truncate">
+                                      {theme || `Request: ${requestId}`}
+                                    </h2>
+                                    <p className="text-sm text-slate-500 mt-1">
+                                      {labelTypes.original.length +
+                                        labelTypes.variation.length}{" "}
+                                      labels
                                     </p>
                                   </div>
                                 </div>
@@ -1128,8 +1437,24 @@ export default function GalleryPage() {
         show={showExportModal}
         onClose={() => setShowExportModal(false)}
         onConfirm={confirmGalleryExport}
-        iconCount={iconsToExport.length > 0 ? iconsToExport.length : illustrationsToExport.length > 0 ? illustrationsToExport.length : mockupsToExport.length}
-        mode={iconsToExport.length > 0 ? "icons" : illustrationsToExport.length > 0 ? "illustrations" : "mockups"}
+        iconCount={
+          iconsToExport.length > 0
+            ? iconsToExport.length
+            : illustrationsToExport.length > 0
+            ? illustrationsToExport.length
+            : mockupsToExport.length > 0
+            ? mockupsToExport.length
+            : labelsToExport.length
+        }
+        mode={
+          iconsToExport.length > 0
+            ? "icons"
+            : illustrationsToExport.length > 0
+            ? "illustrations"
+            : mockupsToExport.length > 0
+            ? "mockups"
+            : "labels"
+        }
       />
 
       <ProgressModal show={showProgressModal} progress={exportProgress} />

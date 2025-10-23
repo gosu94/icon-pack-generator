@@ -1,0 +1,162 @@
+package com.gosu.iconpackgenerator.domain.labels.service;
+
+import com.gosu.iconpackgenerator.domain.labels.dto.LabelExportRequest;
+import com.gosu.iconpackgenerator.domain.labels.dto.LabelGenerationResponse;
+import dev.matrixlab.webp4j.NativeWebP;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
+
+import javax.imageio.ImageIO;
+import java.awt.image.BufferedImage;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.util.Base64;
+import java.util.List;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipOutputStream;
+
+@Service
+@Slf4j
+public class LabelExportService {
+
+    private Boolean webpAvailable = null;
+    private NativeWebP nativeWebP = null;
+
+    public byte[] createLabelPackZip(LabelExportRequest exportRequest) {
+        List<String> formats = exportRequest.getFormats();
+        if (formats == null || formats.isEmpty()) {
+            formats = List.of("png", "webp");
+        }
+
+        try (ByteArrayOutputStream baos = new ByteArrayOutputStream();
+             ZipOutputStream zos = new ZipOutputStream(baos)) {
+
+            int index = 1;
+            for (LabelGenerationResponse.GeneratedLabel label : exportRequest.getLabels()) {
+                if (label == null || label.getBase64Data() == null) {
+                    continue;
+                }
+
+                byte[] originalBytes = Base64.getDecoder().decode(label.getBase64Data());
+                BufferedImage bufferedImage = ImageIO.read(new ByteArrayInputStream(originalBytes));
+                if (bufferedImage == null) {
+                    log.warn("Failed to read label image for export {}", index);
+                    index++;
+                    continue;
+                }
+
+                if (formats.contains("png")) {
+                    byte[] pngData = encodeImage(bufferedImage, "png");
+                    addEntry(zos, String.format("labels/label_%d.png", index), pngData);
+                }
+
+                if (formats.contains("webp") && isWebpAvailable()) {
+                    try {
+                        byte[] webpData = encodeImageToWebP(bufferedImage);
+                        addEntry(zos, String.format("labels/label_%d.webp", index), webpData);
+                    } catch (Exception e) {
+                        log.warn("Failed to encode label {} to WebP: {}", index, e.getMessage());
+                    }
+                }
+
+                index++;
+            }
+
+            zos.finish();
+            return baos.toByteArray();
+        } catch (IOException e) {
+            log.error("Error creating label export zip", e);
+            throw new RuntimeException("Failed to create label export", e);
+        }
+    }
+
+    private void addEntry(ZipOutputStream zos, String name, byte[] data) throws IOException {
+        ZipEntry entry = new ZipEntry(name);
+        zos.putNextEntry(entry);
+        zos.write(data);
+        zos.closeEntry();
+    }
+
+    private byte[] encodeImage(BufferedImage image, String format) {
+        try (ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
+            ImageIO.write(image, format, baos);
+            return baos.toByteArray();
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to encode label image to " + format, e);
+        }
+    }
+
+    private boolean isWebpAvailable() {
+        if (webpAvailable == null) {
+            try {
+                nativeWebP = new NativeWebP();
+                webpAvailable = true;
+            } catch (Exception e) {
+                log.warn("WebP4j library not available, skipping WebP export: {}", e.getMessage());
+                webpAvailable = false;
+                nativeWebP = null;
+            }
+        }
+        return webpAvailable;
+    }
+
+    private byte[] encodeImageToWebP(BufferedImage image) throws Exception {
+        if (nativeWebP == null) {
+            throw new Exception("NativeWebP not initialized");
+        }
+
+        int width = image.getWidth();
+        int height = image.getHeight();
+        boolean hasAlpha = image.getColorModel().hasAlpha();
+
+        byte[] imageBytes = convertBufferedImageToBytes(image);
+        if (imageBytes.length == 0) {
+            throw new Exception("Failed to convert BufferedImage to raw bytes");
+        }
+
+        int stride = width * (hasAlpha ? 4 : 3);
+        float quality = 80.0f;
+
+        byte[] encodedWebP = hasAlpha
+                ? nativeWebP.encodeRGBA(imageBytes, width, height, stride, quality)
+                : nativeWebP.encodeRGB(imageBytes, width, height, stride, quality);
+
+        if (encodedWebP == null || encodedWebP.length == 0) {
+            throw new Exception("WebP encoding returned empty data");
+        }
+
+        return encodedWebP;
+    }
+
+    private byte[] convertBufferedImageToBytes(BufferedImage image) {
+        boolean hasAlpha = image.getColorModel().hasAlpha();
+        int width = image.getWidth();
+        int height = image.getHeight();
+        int bytesPerPixel = hasAlpha ? 4 : 3;
+
+        byte[] output = new byte[width * height * bytesPerPixel];
+        int[] rowBuffer = new int[width];
+        int index = 0;
+
+        for (int y = 0; y < height; y++) {
+            image.getRGB(0, y, width, 1, rowBuffer, 0, width);
+            for (int x = 0; x < width; x++) {
+                int argb = rowBuffer[x];
+                if (hasAlpha) {
+                    output[index++] = (byte) ((argb >> 16) & 0xFF);
+                    output[index++] = (byte) ((argb >> 8) & 0xFF);
+                    output[index++] = (byte) (argb & 0xFF);
+                    output[index++] = (byte) ((argb >> 24) & 0xFF);
+                } else {
+                    output[index++] = (byte) ((argb >> 16) & 0xFF);
+                    output[index++] = (byte) ((argb >> 8) & 0xFF);
+                    output[index++] = (byte) (argb & 0xFF);
+                }
+            }
+        }
+
+        return output;
+    }
+}
+

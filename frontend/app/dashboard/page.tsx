@@ -27,6 +27,7 @@ export default function Page() {
   
   const [generateVariations, setGenerateVariations] = useState(false);
   const [generalDescription, setGeneralDescription] = useState("");
+  const [labelText, setLabelText] = useState("");
   const [individualDescriptions, setIndividualDescriptions] = useState<
     string[]
   >([]);
@@ -86,8 +87,12 @@ export default function Page() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    const count = mode === "illustrations" ? 4 : mode === "mockups" ? 1 : 9;
+    const count =
+      mode === "illustrations" ? 4 : mode === "mockups" ? 1 : mode === "labels" ? 1 : 9;
     setIndividualDescriptions(new Array(count).fill(""));
+    if (mode !== "labels") {
+      setLabelText("");
+    }
     
     // Reset output panes when switching modes
     setCurrentIcons([]);
@@ -128,6 +133,8 @@ export default function Page() {
         setMode("icons");
       } else if (generationMode === "mockups") {
         setMode("mockups");
+      } else if (generationMode === "labels") {
+        setMode("labels");
       }
       
       // Switch to image tab
@@ -337,6 +344,8 @@ export default function Page() {
         ? `/api/illustrations/generate/status/${requestId}`
         : generationMode === "mockups"
         ? `/api/mockups/generate/status/${requestId}`
+        : generationMode === "labels"
+        ? `/api/labels/generate/status/${requestId}`
         : `/status/${requestId}`;
       
       const response = await fetch(endpoint, {
@@ -387,47 +396,58 @@ export default function Page() {
         // Process the completed response similar to handleGenerationComplete
         const completedResponse = statusResult.data;
         
-        // Extract items (icons or illustrations) and set up state as if generation just completed
-        const items = generationMode === "illustrations" 
-          ? (completedResponse.illustrations || [])
-          : (completedResponse.icons || []);
+        const convertLabelToIcon = (label: any) => ({
+          id: label.id,
+          base64Data: label.base64Data,
+          description: label.labelText,
+          serviceSource: label.serviceSource || "gpt",
+        });
+
+        // Extract items (icons, illustrations, or labels) and set up state as if generation just completed
+        const items =
+          generationMode === "illustrations"
+            ? (completedResponse.illustrations || [])
+            : generationMode === "labels"
+            ? ((completedResponse.labels || []).map(convertLabelToIcon))
+            : (completedResponse.icons || []);
         
         if (items.length > 0) {
           setCurrentIcons(items);
-          setCurrentResponse(completedResponse);
+          setCurrentResponse({ ...completedResponse, icons: items });
           
           // Build streaming results from the completed response
           // Infer which services were enabled by checking which results exist
           const updatedStreamingResults: any = {};
           
           // Map completed results to streaming format
-          const serviceMapping = generationMode === "illustrations"
-            ? { bananaResults: "banana" } // Illustrations only use banana service
-            : {
-                falAiResults: "flux",
-                recraftResults: "recraft", 
-                photonResults: "photon",
-                gptResults: "gpt",
-                bananaResults: "banana"
-              };
+          const serviceMapping =
+            generationMode === "illustrations"
+              ? { bananaResults: { serviceId: "banana", itemsKey: "illustrations" } }
+              : generationMode === "labels"
+              ? { gptResults: { serviceId: "gpt", itemsKey: "labels" } }
+              : {
+                  falAiResults: { serviceId: "flux", itemsKey: "icons" },
+                  recraftResults: { serviceId: "recraft", itemsKey: "icons" },
+                  photonResults: { serviceId: "photon", itemsKey: "icons" },
+                  gptResults: { serviceId: "gpt", itemsKey: "icons" },
+                  bananaResults: { serviceId: "banana", itemsKey: "icons" },
+                };
           
-          // Build enabled services map from actual response data
-          const inferredEnabledServices: { [key: string]: boolean } = {};
-          
-          Object.entries(serviceMapping).forEach(([responseKey, serviceId]) => {
+          Object.entries(serviceMapping).forEach(([responseKey, config]) => {
             const serviceResults = completedResponse[responseKey];
             if (serviceResults && Array.isArray(serviceResults)) {
               // Service is enabled if it has results and they're not all "disabled"
               const hasEnabledResults = serviceResults.some((result: any) => result.status !== "disabled");
               if (hasEnabledResults) {
-                inferredEnabledServices[serviceId] = true;
-                
                 serviceResults.forEach((result: any) => {
                   if (result.status !== "disabled") {
-                    const uniqueId = `${serviceId}-gen${result.generationIndex || 1}`;
-                    const resultItems = generationMode === "illustrations"
-                      ? (result.illustrations || [])
-                      : (result.icons || []);
+                    const uniqueId = `${config.serviceId}-gen${result.generationIndex || 1}`;
+                    const resultItems =
+                      config.itemsKey === "illustrations"
+                        ? (result.illustrations || [])
+                        : config.itemsKey === "labels"
+                        ? ((result.labels || []).map(convertLabelToIcon))
+                        : (result.icons || []);
                     
                     updatedStreamingResults[uniqueId] = {
                       icons: resultItems, // Keep as 'icons' for compatibility with ResultsDisplay
@@ -529,10 +549,22 @@ export default function Page() {
   };
 
   const validateForm = (): boolean => {
-    if (inputType === "text" && !generalDescription.trim()) {
-      setErrorMessage("Please provide a general description.");
+    if (mode === "labels" && !labelText.trim()) {
+      setErrorMessage("Please provide the label text.");
       return false;
     }
+
+    if (inputType === "text") {
+      if (mode === "labels" && !generalDescription.trim()) {
+        setErrorMessage("Please provide a general theme for your label.");
+        return false;
+      }
+      if (mode !== "labels" && !generalDescription.trim()) {
+        setErrorMessage("Please provide a general description.");
+        return false;
+      }
+    }
+
     if (inputType === "image" && !referenceImage) {
       setErrorMessage("Please select a reference image.");
       return false;
@@ -549,7 +581,14 @@ export default function Page() {
       const hasTrialCoins = trialCoins > 0;
       
       if (!hasEnoughRegularCoins && !hasTrialCoins) {
-        const itemType = mode === "mockups" ? "mockups" : mode === "illustrations" ? "illustrations" : "icons";
+        const itemType =
+          mode === "mockups"
+            ? "mockups"
+            : mode === "illustrations"
+            ? "illustrations"
+            : mode === "labels"
+            ? "labels"
+            : "icons";
         setErrorMessage(`Insufficient coins. You need ${cost} coin${cost > 1 ? 's' : ''} to generate ${itemType}, or you can use your trial coin for a limited experience.`);
         return false;
       }
@@ -595,28 +634,39 @@ export default function Page() {
         return newProgress;
       });
     }, 100);
-    const count = mode === "illustrations" ? 4 : mode === "mockups" ? 1 : 9;
-    const formData: any = mode === "illustrations" 
-      ? {
-          illustrationCount: count,
-          generationsPerService: generateVariations ? 2 : 1,
-          individualDescriptions: individualDescriptions.filter((desc) => desc.trim()),
-        }
-      : mode === "mockups"
-      ? {
-          mockupCount: 1,
-          generationsPerService: 2, // Mockups always generate variations (free)
-        }
-      : {
-          iconCount: count,
-          generationsPerService: generateVariations ? 2 : 1,
-          individualDescriptions: individualDescriptions.filter((desc) => desc.trim()),
-        };
+    const count =
+      mode === "illustrations" ? 4 : mode === "mockups" ? 1 : mode === "labels" ? 1 : 9;
+    let formData: any;
+
+    if (mode === "illustrations") {
+      formData = {
+        illustrationCount: count,
+        generationsPerService: generateVariations ? 2 : 1,
+        individualDescriptions: individualDescriptions.filter((desc) => desc.trim()),
+      };
+    } else if (mode === "mockups") {
+      formData = {
+        mockupCount: 1,
+        generationsPerService: 2, // Mockups always generate variations (free)
+      };
+    } else if (mode === "labels") {
+      formData = {
+        labelText: labelText.trim(),
+        generationsPerService: generateVariations ? 2 : 1,
+      };
+    } else {
+      formData = {
+        iconCount: count,
+        generationsPerService: generateVariations ? 2 : 1,
+        individualDescriptions: individualDescriptions.filter((desc) => desc.trim()),
+      };
+    }
         
     if (inputType === "text") {
-      // For mockups, use 'description' field instead of 'generalDescription'
       if (mode === "mockups") {
         formData.description = generalDescription.trim();
+      } else if (mode === "labels") {
+        formData.generalTheme = generalDescription.trim();
       } else {
         formData.generalDescription = generalDescription.trim();
       }
@@ -639,6 +689,8 @@ export default function Page() {
         ? "/api/illustrations/generate/stream/start"
         : mode === "mockups"
         ? "/api/mockups/generate/stream/start"
+        : mode === "labels"
+        ? "/api/labels/generate/stream/start"
         : "/generate-stream";
       const response = await fetch(endpoint, {
         method: "POST",
@@ -668,6 +720,8 @@ export default function Page() {
         ? `/api/illustrations/generate/stream/${requestId}`
         : mode === "mockups"
         ? `/api/mockups/generate/stream/${requestId}`
+        : mode === "labels"
+        ? `/api/labels/generate/stream/${requestId}`
         : `/stream/${requestId}`;
       const eventSource = new EventSource(streamEndpoint);
       currentEventSourceRef.current = eventSource;
@@ -989,14 +1043,21 @@ export default function Page() {
   const confirmExport = (formats: string[], sizes?: number[], vectorizeSvg?: boolean) => {
     if (exportContext) {
       const { requestId, serviceName, generationIndex } = exportContext;
-      const packType = mode === "icons" ? "icon" : mode === "illustrations" ? "illustration" : "mockup";
+      const packType =
+        mode === "icons"
+          ? "icon"
+          : mode === "illustrations"
+          ? "illustration"
+          : mode === "labels"
+          ? "label"
+          : "mockup";
       const fileName = `${packType}-pack-${requestId}-${serviceName}-gen${generationIndex}.zip`;
       const exportData = {
         requestId: requestId,
         serviceName: serviceName,
         generationIndex: generationIndex,
         formats: formats,
-        sizes: sizes,
+        sizes: mode === "labels" ? undefined : sizes,
         vectorizeSvg: vectorizeSvg ?? false,
       };
       setShowExportModal(false);
@@ -1006,7 +1067,14 @@ export default function Page() {
 
   const downloadZip = async (exportData: any, fileName: string) => {
     setShowProgressModal(true);
-    const itemType = mode === "icons" ? "icons" : mode === "illustrations" ? "illustrations" : "mockups";
+    const itemType =
+      mode === "icons"
+        ? "icons"
+        : mode === "illustrations"
+        ? "illustrations"
+        : mode === "labels"
+        ? "labels"
+        : "mockups";
     setExportProgress({
       step: 1,
       message: "Preparing export request...",
@@ -1016,11 +1084,18 @@ export default function Page() {
       setTimeout(() => {
         setExportProgress({
           step: 2,
-          message: `Converting ${itemType} to multiple formats and sizes...`,
+          message: `Converting ${itemType} to multiple formats${mode === "illustrations" || mode === "mockups" || mode === "icons" ? " and sizes" : ""}...`,
           percent: 50,
         });
       }, 500);
-      const endpoint = mode === "icons" ? "/export" : mode === "illustrations" ? "/api/illustrations/export" : "/api/mockups/export";
+      const endpoint =
+        mode === "icons"
+          ? "/export"
+          : mode === "illustrations"
+          ? "/api/illustrations/export"
+          : mode === "labels"
+          ? "/api/labels/export"
+          : "/api/mockups/export";
       const response = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -1414,6 +1489,8 @@ export default function Page() {
           setMode={setMode}
           inputType={inputType}
           setInputType={setInputType}
+          labelText={labelText}
+          setLabelText={setLabelText}
           generateVariations={generateVariations}
           setGenerateVariations={setGenerateVariations}
           

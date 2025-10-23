@@ -8,6 +8,8 @@ interface GeneratorFormProps {
   setMode: (value: GenerationMode) => void;
   inputType: string;
   setInputType: (value: string) => void;
+  labelText: string;
+  setLabelText: (value: string) => void;
   generateVariations: boolean;
   setGenerateVariations: (value: boolean) => void;
 
@@ -30,6 +32,8 @@ const GeneratorForm: React.FC<GeneratorFormProps> = ({
   setMode,
   inputType,
   setInputType,
+  labelText,
+  setLabelText,
   generateVariations,
   setGenerateVariations,
 
@@ -108,8 +112,8 @@ const GeneratorForm: React.FC<GeneratorFormProps> = ({
   };
 
   const renderIconFields = () => {
-    // Don't render individual fields for mockups mode
-    if (mode === "mockups") return null;
+    // Don't render individual fields for mockups or labels mode
+    if (mode === "mockups" || mode === "labels") return null;
     
     const count = mode === "illustrations" ? 4 : 9;
     const label = mode === "illustrations" ? "Illustration" : "Icon";
@@ -150,12 +154,12 @@ const GeneratorForm: React.FC<GeneratorFormProps> = ({
         ></div>
         <div className="relative z-10">
           {/* Mode Tabs */}
-          <div className="flex items-center space-x-2 mb-6">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-6">
             <button
               type="button"
               onClick={() => setMode("icons")}
               disabled={isGenerating}
-              className={`flex-1 px-4 py-3 rounded-lg text-sm font-semibold transition-all duration-200 ${
+              className={`px-4 py-3 rounded-lg text-sm font-semibold transition-all duration-200 ${
                 mode === "icons"
                   ? "bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-md"
                   : isGenerating
@@ -169,7 +173,7 @@ const GeneratorForm: React.FC<GeneratorFormProps> = ({
               type="button"
               onClick={() => setMode("illustrations")}
               disabled={isGenerating}
-              className={`flex-1 px-4 py-3 rounded-lg text-sm font-semibold transition-all duration-200 ${
+              className={`px-4 py-3 rounded-lg text-sm font-semibold transition-all duration-200 ${
                 mode === "illustrations"
                   ? "bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-md"
                   : isGenerating
@@ -183,7 +187,7 @@ const GeneratorForm: React.FC<GeneratorFormProps> = ({
               type="button"
               onClick={() => setMode("mockups")}
               disabled={isGenerating}
-              className={`relative overflow-hidden flex-1 px-4 py-3 rounded-lg text-sm font-semibold transition-all duration-200 ${
+              className={`relative overflow-hidden px-4 py-3 rounded-lg text-sm font-semibold transition-all duration-200 ${
                 mode === "mockups"
                   ? "bg-gradient-to-r from-blue-600 to-pink-600 text-white shadow-md"
                   : isGenerating
@@ -192,16 +196,33 @@ const GeneratorForm: React.FC<GeneratorFormProps> = ({
               }`}
             >
               UI
-              <div className="absolute top-1.5 right-[-20px] transform rotate-45 bg-green-200 text-green-800 text-xs font-bold px-5">
-                New
-              </div>
+            </button>
+            <button
+              type="button"
+              onClick={() => setMode("labels")}
+              disabled={isGenerating}
+              className={`px-4 py-3 rounded-lg text-sm font-semibold transition-all duration-200 ${
+                mode === "labels"
+                  ? "bg-gradient-to-r from-emerald-500 to-sky-500 text-white shadow-md"
+                  : isGenerating
+                  ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                  : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+              }`}
+            >
+              Labels
             </button>
           </div>
 
           <h2
             className="text-2xl font-bold text-slate-900 mb-8"
           >
-            {mode === "icons" ? "Icon Pack Generator" : mode === "illustrations" ? "Illustration Generator" : "UI Mockup Generator"}
+            {mode === "icons"
+              ? "Icon Pack Generator"
+              : mode === "illustrations"
+              ? "Illustration Generator"
+              : mode === "labels"
+              ? "Label Generator"
+              : "UI Mockup Generator"}
           </h2>
 
           <form
@@ -264,8 +285,23 @@ const GeneratorForm: React.FC<GeneratorFormProps> = ({
                   </svg>
                     <span className="hidden md:inline">Reference Image</span>
                 </button>
-              </div>
             </div>
+          </div>
+
+            {mode === "labels" && (
+              <div>
+                <label className="block text-lg font-semibold text-slate-900 mb-4">
+                  Label Text
+                </label>
+                <input
+                  type="text"
+                  value={labelText}
+                  onChange={(e) => setLabelText(e.target.value)}
+                  placeholder="Enter the exact text that should appear on the label"
+                  className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl text-base placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent focus:bg-white transition-all duration-200"
+                />
+              </div>
+            )}
 
             <div>
               {inputType === "text" ? (
@@ -286,6 +322,8 @@ const GeneratorForm: React.FC<GeneratorFormProps> = ({
                         ? "Describe the general theme for your illustrations... (e.g. little fox adventures, children's book theme, etc.)" 
                         : mode === "mockups"
                         ? "Describe the style for your UI mockup... (e.g., light blue-white soft neumorphic, dark glassmorphic etc.)"
+                        : mode === "labels"
+                        ? "Describe the general theme for your label... (e.g., sophisticated vintage apothecary, futuristic neon tech, organic botanical line art, etc.)"
                         : "Describe the general theme for your icon pack... (e.g., minimalist business icons, colorful social media icons, etc.)"
                     }
                   />
@@ -355,7 +393,7 @@ const GeneratorForm: React.FC<GeneratorFormProps> = ({
               )}
             </div>
 
-            {mode !== "mockups" && (
+            {(mode === "icons" || mode === "illustrations") && (
               <div>
                 <label
                   className="block text-lg font-semibold text-slate-900 mb-4"
@@ -455,6 +493,8 @@ const GeneratorForm: React.FC<GeneratorFormProps> = ({
                   ? "bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 transform hover:scale-[1.02] shadow-lg hover:shadow-xl"
                   : mode === "mockups"
                   ? "bg-gradient-to-r from-blue-600 to-pink-600 hover:from-blue-700 hover:to-pink-700 transform hover:scale-[1.02] shadow-lg hover:shadow-xl"
+                        : mode === "labels"
+                  ? "bg-gradient-to-r from-emerald-500 to-sky-500 hover:from-emerald-600 hover:to-sky-600 transform hover:scale-[1.02] shadow-lg hover:shadow-xl"
                   : "bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 transform hover:scale-[1.02] shadow-lg hover:shadow-xl"
               } transition-all duration-200`}
             >

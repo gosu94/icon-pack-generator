@@ -156,6 +156,8 @@ app:
     base-path: static/user-illustrations
   mockups-storage:
     base-path: static/user-mockups
+  labels-storage:
+    base-path: static/user-labels
   base-url: ${APP_BASE_URL:http://localhost:8080}
   security:
     remember-me:

@@ -83,8 +83,7 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
   };
 
   const handleImageClick = (base64Data: string) => {
-    // Only open preview for illustrations and mockups
-    if (mode === "illustrations" || mode === "mockups") {
+    if (mode === "illustrations" || mode === "mockups" || mode === "labels") {
       setPreviewImage(base64Data);
     }
   };
@@ -186,8 +185,8 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
           {showResultsPanes && result.icons && result.icons.length > 0 && (
             <div 
               className={
-                mode === "icons"
-                  ? "grid gap-4 grid-cols-[repeat(auto-fit,minmax(140px,1fr))]"
+                mode === "icons" || mode === "labels"
+                  ? "grid gap-4 grid-cols-[repeat(auto-fit,minmax(160px,1fr))]"
                   : mode === "illustrations"
                   ? "grid grid-cols-1 sm:grid-cols-2 gap-6"
                   : "flex justify-center items-center"
@@ -197,17 +196,41 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
               {result.icons.map((icon, iconIndex) => (
                 <div
                   key={iconIndex}
-                  className={`relative group transform ${getIconAnimationClass(result.serviceId, iconIndex)} ${mode === "icons" ? "hover:scale-105 hover:z-20 flex justify-center" : mode === "illustrations" ? "hover:scale-105 transition-transform duration-200" : "hover:scale-105 transition-transform duration-200"}`}
+                  className={`relative group transform ${getIconAnimationClass(result.serviceId, iconIndex)} ${
+                    mode === "icons" || mode === "labels"
+                      ? "hover:scale-105 hover:z-20 flex justify-center"
+                      : "hover:scale-105 transition-transform duration-200"
+                  }`}
                   data-oid="m76b0.p"
                 >
-                  <div className={mode === "illustrations" ? "aspect-[5/4] w-full max-w-[450px]" : mode === "mockups" ? "aspect-video w-full max-w-[800px]" : ""}>
+                  <div
+                    className={
+                      mode === "illustrations"
+                        ? "aspect-[5/4] w-full max-w-[450px]"
+                        : mode === "mockups"
+                        ? "aspect-video w-full max-w-[800px]"
+                        : mode === "labels"
+                        ? "w-full max-w-[320px]"
+                        : ""
+                    }
+                  >
                     <img
                       src={`data:image/png;base64,${icon.base64Data}`}
-                      alt={mode === "icons" ? `Generated Icon ${iconIndex + 1}` : mode === "illustrations" ? `Generated Illustration ${iconIndex + 1}` : `Generated UI Mockup`}
+                      alt={
+                        mode === "icons"
+                          ? `Generated Icon ${iconIndex + 1}`
+                          : mode === "illustrations"
+                          ? `Generated Illustration ${iconIndex + 1}`
+                          : mode === "labels"
+                          ? `Generated Label ${iconIndex + 1}`
+                          : `Generated UI Mockup`
+                      }
                       onClick={() => handleImageClick(icon.base64Data)}
                       className={
                         mode === "icons"
                           ? "w-full h-auto max-w-[128px] rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-shadow duration-200"
+                          : mode === "labels"
+                          ? "w-full h-auto max-w-[280px] rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-shadow duration-200"
                           : "w-full h-full object-contain rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-shadow duration-200 cursor-pointer"
                       }
                       data-oid="3jhfiim"
@@ -257,7 +280,7 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
             </div>
           )}
 
-          {result.status === "success" && uiState === "results" && mode !== "mockups" && (
+          {result.status === "success" && uiState === "results" && (mode === "icons" || mode === "illustrations") && (
             <div
               className="mt-6 p-6 bg-white/60 backdrop-blur-lg rounded-2xl shadow-lg border border-purple-200/30"
               data-oid="ovhlhfz"
@@ -419,7 +442,13 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
                 className="text-2xl font-bold text-slate-900"
                 data-oid="rn9b4_h"
               >
-                {mode === "icons" ? "Your Icons" : mode === "illustrations" ? "Your Illustrations" : "Your Mockup"}
+                {mode === "icons"
+                  ? "Your Icons"
+                  : mode === "illustrations"
+                  ? "Your Illustrations"
+                  : mode === "labels"
+                  ? "Your Labels"
+                  : "Your Mockup"}
               </h2>
             </div>
             <div className="flex-1 overflow-y-auto" data-oid="fr-8:os">
@@ -445,7 +474,11 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
                       />
                     </svg>
                     <p className="text-gray-500" data-oid="gi9rui3">
-                      {mode === "mockups" ? "Generated UI mockup will appear here" : "Generated icons will appear here"}
+                      {mode === "mockups"
+                        ? "Generated UI mockup will appear here"
+                        : mode === "labels"
+                        ? "Generated labels will appear here"
+                        : "Generated icons will appear here"}
                     </p>
                   </div>
                 </div>
@@ -545,7 +578,11 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
                         />
                       </svg>
                       <p className="text-gray-500" data-oid="2c96zzz">
-                        {mode === "mockups" ? "UI mockup variation will appear here" : "Icon variations will appear here"}
+                        {mode === "mockups"
+                          ? "UI mockup variation will appear here"
+                          : mode === "labels"
+                          ? "Label variations will appear here"
+                          : "Icon variations will appear here"}
                       </p>
                     </div>
                   </div>

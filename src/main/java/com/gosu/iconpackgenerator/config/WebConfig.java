@@ -32,6 +32,9 @@ public class WebConfig implements WebMvcConfigurer {
     @Value("${app.mockups-storage.base-path}")
     private String mockupsStorageBasePath;
 
+    @Value("${app.labels-storage.base-path}")
+    private String labelsBasePath;
+
     @Override
     public void addResourceHandlers(ResourceHandlerRegistry registry) {
         // This configuration allows serving files directly from the filesystem
@@ -71,11 +74,16 @@ public class WebConfig implements WebMvcConfigurer {
                 .addResourceLocations(userIllustrationsResourceLocation)
                 .setCachePeriod(3600); // Cache for 1 hour
 
-        // Serve user-generated illustrations from the file storage directory
         Path userMockupsPath = Paths.get(mockupsStorageBasePath);
         String userMockupsResourceLocation = userMockupsPath.toUri().toString();
         registry.addResourceHandler("/user-mockups/**")
                 .addResourceLocations(userMockupsResourceLocation)
+                .setCachePeriod(3600); // Cache for 1 hour
+
+        Path labelsPath = Paths.get(labelsBasePath);
+        String userLabelsResourceLocation = labelsPath.toUri().toString();
+        registry.addResourceHandler("/user-labels/**")
+                .addResourceLocations(userLabelsResourceLocation)
                 .setCachePeriod(3600); // Cache for 1 hour
 
         // Handle SPA routing - serve index.html for all routes that don't match API endpoints

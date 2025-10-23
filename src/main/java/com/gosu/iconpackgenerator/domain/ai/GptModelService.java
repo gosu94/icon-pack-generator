@@ -37,6 +37,11 @@ import java.util.concurrent.CompletableFuture;
 @Slf4j
 public class GptModelService implements AIModelService {
 
+    public enum PromptAugmentation {
+        ICON,
+        NONE
+    }
+
     private final FalClient falClient;
     private final ObjectMapper objectMapper;
     private final OpenAIConfig openAIConfig;
@@ -47,16 +52,27 @@ public class GptModelService implements AIModelService {
 
     @Override
     public CompletableFuture<byte[]> generateImage(String prompt) {
-        return generateImage(prompt, null);
+        return generateImage(prompt, null, PromptAugmentation.ICON);
+    }
+
+    public CompletableFuture<byte[]> generateImage(String prompt, PromptAugmentation augmentation) {
+        return generateImage(prompt, null, augmentation);
     }
 
     /**
      * Generate image with optional seed for reproducible results
      */
     public CompletableFuture<byte[]> generateImage(String prompt, Long seed) {
-        log.info("Generating image with GPT Image for prompt: {} (seed: {})", prompt, seed);
+        return generateImage(prompt, seed, PromptAugmentation.ICON);
+    }
 
-        return generateGptImageAsync(prompt, seed)
+    /**
+     * Generate image with optional seed and configurable prompt augmentation.
+     */
+    public CompletableFuture<byte[]> generateImage(String prompt, Long seed, PromptAugmentation augmentation) {
+        log.info("Generating image with GPT Image for prompt: {} (seed: {}, augmentation: {})", prompt, seed, augmentation);
+
+        return generateGptImageAsync(prompt, seed, augmentation)
                 .whenComplete((bytes, error) -> {
                     if (error != null) {
                         log.error("Error generating image with GPT Image", error);
@@ -66,12 +82,12 @@ public class GptModelService implements AIModelService {
                 });
     }
 
-    private CompletableFuture<byte[]> generateGptImageAsync(String prompt, Long seed) {
+    private CompletableFuture<byte[]> generateGptImageAsync(String prompt, Long seed, PromptAugmentation augmentation) {
         return CompletableFuture.supplyAsync(() -> {
             Exception lastException;
 
             try {
-                return attemptGptGeneration(prompt, seed, false);
+                return attemptGptGeneration(prompt, seed, false, augmentation);
             } catch (Exception e) {
                 lastException = e;
                 String errorMessage = e.getMessage();
@@ -87,7 +103,7 @@ public class GptModelService implements AIModelService {
                 if (isLikelyTemporaryFailure(errorMessage)) {
                     log.info("Likely temporary failure detected, attempting retry with same parameters");
                     try {
-                        return attemptGptGeneration(prompt, seed, true);
+                        return attemptGptGeneration(prompt, seed, true, augmentation);
                     } catch (Exception retryException) {
                         log.error("Retry attempt also failed", retryException);
                         lastException = retryException;
@@ -106,12 +122,14 @@ public class GptModelService implements AIModelService {
         });
     }
 
-    private byte[] attemptGptGeneration(String prompt, Long seed, boolean isRetry) throws Exception {
-        log.info("Generating GPT image with endpoint: {} (seed: {}, retry: {})", GPT_TEXT_TO_IMAGE_ENDPOINT, seed, isRetry);
+    private byte[] attemptGptGeneration(String prompt, Long seed, boolean isRetry, PromptAugmentation augmentation) throws Exception {
+        log.info("Generating GPT image with endpoint: {} (seed: {}, retry: {}, augmentation: {})", GPT_TEXT_TO_IMAGE_ENDPOINT, seed, isRetry, augmentation);
 
         // Apply GPT-specific styling to the prompt with explicit constraints
         // Use the same prompt for both initial attempt and retry
-        String gptPrompt = prompt + " - clean icon design, no text, no labels, no grid lines, no borders, transparent background";
+        String gptPrompt = PromptAugmentation.ICON.equals(augmentation)
+                ? prompt + " - clean icon design, no text, no labels, no grid lines, no borders, transparent background"
+                : prompt;
 
         Map<String, Object> input = createGptTextToImageInputMap(gptPrompt, seed);
         log.info("Making GPT text-to-image API call with input keys: {} (seed: {}, retry: {})", input.keySet(), seed, isRetry);

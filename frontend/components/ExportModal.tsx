@@ -42,7 +42,7 @@ const ExportModal: React.FC<ExportModalProps> = ({
           }
         : {
             png: true,
-          webp: true,
+            webp: true,
         }
     );
     setVectorizeSvg(false);
@@ -73,7 +73,7 @@ const ExportModal: React.FC<ExportModalProps> = ({
       const selectedSizes = [1920];
       onConfirm(selectedFormats, selectedSizes);
     } else {
-      onConfirm(selectedFormats, undefined, vectorizeSvg);
+      onConfirm(selectedFormats, undefined, mode === "icons" ? vectorizeSvg : false);
     }
   };
 
@@ -85,7 +85,9 @@ const ExportModal: React.FC<ExportModalProps> = ({
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-white rounded-lg p-6 w-full max-w-md">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-medium text-gray-900">Export {mode === "icons" ? "Icon" : mode === "illustrations" ? "Illustration" : "UI Mockup"} Pack</h3>
+          <h3 className="text-lg font-medium text-gray-900">
+            Export {mode === "icons" ? "Icon" : mode === "illustrations" ? "Illustration" : mode === "labels" ? "Label" : "UI Mockup"} Pack
+          </h3>
           <button
             onClick={onClose}
             className="text-gray-400 hover:text-gray-600"
@@ -108,7 +110,7 @@ const ExportModal: React.FC<ExportModalProps> = ({
         
         <div className="space-y-4">
           <p className="text-gray-600 text-sm">
-            Select the formats you need for your {mode === "icons" ? "icon" : mode === "illustrations" ? "illustration" : "UI mockup"} pack.
+            Select the formats you need for your {mode === "icons" ? "icon" : mode === "illustrations" ? "illustration" : mode === "labels" ? "label" : "UI mockup"} pack.
           </p>
           
           <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg p-4 border border-blue-100">
@@ -129,7 +131,7 @@ const ExportModal: React.FC<ExportModalProps> = ({
               <div className="w-full space-y-4">
                 <div>
                   <p className="text-sm font-semibold text-blue-900 mb-3">
-                    {iconCount} {mode === "icons" ? "icons" : mode === "illustrations" ? "illustrations" : "mockups"} • Choose your formats
+                    {iconCount} {mode === "icons" ? "icons" : mode === "illustrations" ? "illustrations" : mode === "labels" ? "labels" : "mockups"} • Choose your formats
                   </p>
                   
                   <div className="grid grid-cols-2 gap-4">

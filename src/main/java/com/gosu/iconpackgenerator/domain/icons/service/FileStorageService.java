@@ -22,6 +22,9 @@ public class FileStorageService {
     
     @Value("${app.mockups-storage.base-path:static/user-mockups}")
     private String mockupsBasePath;
+
+    @Value("${app.labels-storage.base-path:static/user-labels}")
+    private String labelsBasePath;
     
     /**
      * Save a base64 icon to the file system
@@ -198,6 +201,71 @@ public class FileStorageService {
         // The web path should be /user-illustrations/userDirectoryPath/requestId/illustrationType/fileName
         return String.format("/user-illustrations/%s/%s/%s/%s", 
                            userDirectoryPath, requestId, illustrationType, fileName);
+    }
+
+    // ========== Label-specific methods ==========
+
+    public String saveLabel(String userDirectoryPath, String requestId, String labelType,
+                            String fileName, String base64Data) {
+        try {
+            Path directoryPath = Paths.get(labelsBasePath, userDirectoryPath, requestId, labelType);
+
+            if (!Files.exists(directoryPath)) {
+                Files.createDirectories(directoryPath);
+                log.debug("Created label directory: {}", directoryPath.toAbsolutePath());
+            }
+
+            Path filePath = directoryPath.resolve(fileName);
+            byte[] imageBytes = Base64.getDecoder().decode(base64Data);
+            Files.write(filePath, imageBytes);
+
+            log.debug("Saved label to: {}", filePath.toAbsolutePath());
+            return getRelativeLabelWebPath(userDirectoryPath, requestId, labelType, fileName);
+        } catch (IOException e) {
+            log.error("Error saving label to file system", e);
+            throw new RuntimeException("Failed to save label: " + fileName, e);
+        }
+    }
+
+    public String generateLabelFileName(String serviceSource, String labelId, int generationIndex) {
+        return String.format("%s_%s_gen%d.png",
+                serviceSource,
+                labelId.substring(0, Math.min(labelId.length(), 8)),
+                generationIndex);
+    }
+
+    private String getRelativeLabelWebPath(String userDirectoryPath, String requestId,
+                                           String labelType, String fileName) {
+        return String.format("/user-labels/%s/%s/%s/%s",
+                userDirectoryPath, requestId, labelType, fileName);
+    }
+
+    public long getLabelFileSize(String userDirectoryPath, String requestId,
+                                 String labelType, String fileName) {
+        try {
+            Path filePath = Paths.get(labelsBasePath, userDirectoryPath, requestId, labelType, fileName);
+            if (Files.exists(filePath)) {
+                return Files.size(filePath);
+            }
+        } catch (IOException e) {
+            log.error("Error getting file size for label: {}", fileName, e);
+        }
+        return 0L;
+    }
+
+    public byte[] readLabel(String relativeWebPath) throws IOException {
+        String pathInsideLabels;
+        if (relativeWebPath.startsWith("/user-labels/")) {
+            pathInsideLabels = relativeWebPath.substring("/user-labels/".length());
+        } else {
+            pathInsideLabels = relativeWebPath;
+        }
+
+        Path filePath = Paths.get(labelsBasePath).resolve(pathInsideLabels);
+        if (Files.exists(filePath)) {
+            return Files.readAllBytes(filePath);
+        }
+        throw new IOException("File not found: " + filePath);
     }
     
     /**

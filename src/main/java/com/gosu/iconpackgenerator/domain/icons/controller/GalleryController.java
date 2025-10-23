@@ -6,6 +6,8 @@ import com.gosu.iconpackgenerator.domain.icons.repository.GeneratedIconRepositor
 import com.gosu.iconpackgenerator.domain.icons.service.GridCompositionService;
 import com.gosu.iconpackgenerator.domain.illustrations.entity.GeneratedIllustration;
 import com.gosu.iconpackgenerator.domain.illustrations.repository.GeneratedIllustrationRepository;
+import com.gosu.iconpackgenerator.domain.labels.entity.GeneratedLabel;
+import com.gosu.iconpackgenerator.domain.labels.repository.GeneratedLabelRepository;
 import com.gosu.iconpackgenerator.domain.mockups.entity.GeneratedMockup;
 import com.gosu.iconpackgenerator.domain.mockups.repository.GeneratedMockupRepository;
 import com.gosu.iconpackgenerator.user.model.User;
@@ -31,6 +33,7 @@ public class GalleryController implements GalleryControllerAPI {
     private final GeneratedIconRepository generatedIconRepository;
     private final GeneratedIllustrationRepository generatedIllustrationRepository;
     private final GeneratedMockupRepository generatedMockupRepository;
+    private final GeneratedLabelRepository generatedLabelRepository;
     private final GridCompositionService gridCompositionService;
 
     @Override
@@ -47,6 +50,23 @@ public class GalleryController implements GalleryControllerAPI {
             return ResponseEntity.ok(icons);
         } catch (Exception e) {
             log.error("Error retrieving user icons", e);
+            return ResponseEntity.status(500).build();
+        }
+    }
+
+    @GetMapping("/api/gallery/labels")
+    @ResponseBody
+    public ResponseEntity<List<GeneratedLabel>> getUserLabels(@AuthenticationPrincipal OAuth2User principal) {
+        try {
+            if (!(principal instanceof CustomOAuth2User customUser)) {
+                return ResponseEntity.status(401).build();
+            }
+
+            User user = customUser.getUser();
+            List<GeneratedLabel> labels = generatedLabelRepository.findByUserOrderByCreatedAtDesc(user);
+            return ResponseEntity.ok(labels);
+        } catch (Exception e) {
+            log.error("Error retrieving user labels", e);
             return ResponseEntity.status(500).build();
         }
     }
