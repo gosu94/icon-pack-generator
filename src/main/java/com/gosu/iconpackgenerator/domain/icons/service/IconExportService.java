@@ -228,7 +228,7 @@ public class IconExportService {
                 int r = Integer.parseInt(rgbMatcher.group(1));
                 int g = Integer.parseInt(rgbMatcher.group(2));
                 int b = Integer.parseInt(rgbMatcher.group(3));
-                return r <= 2 && g <= 2 && b <= 2;
+                return r <= 30 && g <= 30 && b <= 30;
             } catch (NumberFormatException ignored) {
                 return false;
             }

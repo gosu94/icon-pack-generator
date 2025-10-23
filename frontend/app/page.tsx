@@ -173,97 +173,6 @@ export default function LandingPage() {
                 </div>
             </section>
 
-            {/* New UI Mockups Feature Section */}
-            <section className="px-6 py-12">
-                <div className="max-w-7xl mx-auto">
-                    <div
-                        className="bg-white/80 backdrop-blur-md rounded-3xl shadow-2xl border border-teal-200/50 overflow-hidden">
-                        <div className="flex flex-col lg:flex-row">
-                            {/* Caption Section */}
-                            <div
-                                className="lg:w-1/3 p-6 md:p-8 flex flex-col justify-center bg-gradient-to-br from-white/50 to-teal-50/50">
-                                <div className="space-y-6">
-                                    <div className="flex items-center space-x-2">
-                                        <Rocket className="w-6 h-6 text-blue-600"/>
-                                        <span
-                                            className="text-sm font-semibold text-blue-600 uppercase tracking-wide">New Feature</span>
-                                    </div>
-
-                                    <h2 className="text-3xl font-bold text-slate-900 leading-tight">
-                                        UI Mockups
-                                    </h2>
-
-                                    <p className="text-slate-600 leading-relaxed">
-                                        Transform your ideas into stunning UI mockups instantly. Generate professional-quality interface designs in 16:9 aspect ratio, perfect for presentations, pitches, and prototypes. Use text descriptions or reference images to bring your vision to life.
-                                    </p>
-
-                                </div>
-                            </div>
-                            {/* Video Section */}
-                            <div
-                                className="lg:w-2/3 relative bg-gradient-to-br from-blue-600 to-pink-600 p-6 md:p-8 flex items-center justify-center min-h-[280px] md:min-h-[400px]">
-                                <div className="relative w-full h-full flex items-center justify-center">
-                                    <div
-                                        className="relative w-full max-w-2xl aspect-video bg-black/20 rounded-2xl flex items-center justify-center backdrop-blur-sm border border-white/20 overflow-hidden">
-                                        <iframe
-                                            src="https://player.vimeo.com/video/1129000758?badge=0&amp;autopause=0&amp;player_id=0&amp;app_id=58479"
-                                            allow="autoplay; fullscreen; picture-in-picture; clipboard-write"
-                                            className="w-full h-full"
-                                            title="UI Mockup Generator Feature Video"
-                                        ></iframe>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </section>
-
-            {/* New Illustration Feature Section */}
-            <section className="px-6 py-12">
-                <div className="max-w-7xl mx-auto">
-                    <div
-                        className="bg-white/80 backdrop-blur-md rounded-3xl shadow-2xl border border-pink-200/50 overflow-hidden">
-                        <div className="flex flex-col lg:flex-row">
-                            {/* Video Section */}
-                            <div
-                                className="lg:w-2/3 relative bg-gradient-to-br from-purple-600 to-pink-600 p-6 md:p-8 flex items-center justify-center min-h-[280px] md:min-h-[400px]">
-                                <div className="relative w-full h-full flex items-center justify-center">
-                                    <div
-                                        className="relative w-full max-w-2xl aspect-video bg-black/20 rounded-2xl flex items-center justify-center backdrop-blur-sm border border-white/20 overflow-hidden">
-                                        <iframe
-                                            src="https://player.vimeo.com/video/1125205255?badge=0&amp;autopause=0&amp;player_id=0&amp;app_id=58479"
-                                            allow="autoplay; fullscreen; picture-in-picture; clipboard-write"
-                                            className="w-full h-full"
-                                            title="Illustration Generator Feature Video"
-                                        ></iframe>
-                                    </div>
-                                </div>
-                            </div>
-                            {/* Caption Section */}
-                            <div
-                                className="lg:w-1/3 p-6 md:p-8 flex flex-col justify-center bg-gradient-to-br from-white/50 to-pink-50/50">
-                                <div className="space-y-6">
-                                    <div className="flex items-center space-x-2">
-                                        <Sparkles className="w-6 h-6 text-pink-600"/>
-                                        <span
-                                            className="text-sm font-semibold text-pink-600 uppercase tracking-wide">New Feature</span>
-                                    </div>
-
-                                    <h2 className="text-3xl font-bold text-slate-900 leading-tight">
-                                        Illustrations
-                                    </h2>
-
-                                    <p className="text-slate-600 leading-relaxed">
-                                        Unleash your creativity with our new illustration generator. Create visually consistent, high-quality illustrations for your marketing materials, websites, and applications. Describe your vision and let our AI bring it to life.
-                                    </p>
-
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </section>
 
             {/* Features Section */}
             <section className="px-6 py-16">
@@ -384,6 +293,83 @@ export default function LandingPage() {
                                 fees.
                             </p>
                         </div>
+                    </div>
+                </div>
+            </section>
+
+            {/* Additional Features Section */}
+            <section className="px-6 py-16 bg-slate-50/50">
+                <div className="max-w-7xl mx-auto">
+                    <div className="text-center mb-12">
+                        <h2 className="text-4xl font-bold text-slate-900 mb-4">
+                            Additional Features
+                        </h2>
+                        <p className="text-xl text-slate-600 max-w-3xl mx-auto">
+                            Expand your creative possibilities with these powerful additions.
+                        </p>
+                    </div>
+
+                    <div className="grid md:grid-cols-1 lg:grid-cols-2 gap-8">
+
+                        {/* Variations Card */}
+                        <div onClick={() => openImageModal('/images/features/feature_variations.webp')}
+                             className="bg-white/80 backdrop-blur-md rounded-2xl shadow-lg border border-purple-200/30 flex flex-col md:flex-row overflow-hidden hover:shadow-xl transition-all duration-300 hover:scale-[1.02] cursor-pointer">
+                            <div className="md:w-1/2 p-8 flex flex-col justify-center">
+                                <h3 className="text-2xl font-bold text-slate-900 mb-4">🌈Variations</h3>
+                                <p className="text-slate-600 leading-relaxed">
+                                    Explore creative options with ease.
+                                    Generate multiple stylistic variations for your icons, illustrations, or labels — and instantly find the version that fits your vision best.
+                                </p>
+                            </div>
+                            <div className="md:w-1/2 p-4 flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100">
+                                <Image src="/images/features/feature_variations.webp" alt="Variations feature" width={800} height={450} className="rounded-lg shadow-md object-cover aspect-video"/>
+                            </div>
+                        </div>
+
+                        {/* Label Card */}
+                        <div onClick={() => openImageModal('/images/features/feature_labels.webp')}
+                             className="bg-white/80 backdrop-blur-md rounded-2xl shadow-lg border border-purple-200/30 flex flex-col md:flex-row overflow-hidden hover:shadow-xl transition-all duration-300 hover:scale-[1.02] cursor-pointer">
+                            <div className="md:w-1/2 p-8 flex flex-col justify-center">
+                                <h3 className="text-2xl font-bold text-slate-900 mb-4">🏷️Labels</h3>
+                                <p className="text-slate-600 leading-relaxed">
+                                    Add text that matches your design language.
+                                    Create custom labels that blend seamlessly with your icon style — whether you start from scratch or describe what you need in plain text.
+                                </p>
+                            </div>
+                            <div className="md:w-1/2 p-4 flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100">
+                                <Image src="/images/features/feature_labels.webp" alt="Label feature" width={800} height={450} className="rounded-lg shadow-md object-cover aspect-video"/>
+                            </div>
+                        </div>
+
+                        {/* Illustrations Card */}
+                        <div onClick={() => openImageModal('/images/features/feature_illustrations.webp')}
+                             className="bg-white/80 backdrop-blur-md rounded-2xl shadow-lg border border-purple-200/30 flex flex-col md:flex-row overflow-hidden hover:shadow-xl transition-all duration-300 hover:scale-[1.02] cursor-pointer">
+                            <div className="md:w-1/2 p-8 flex flex-col justify-center">
+                                <h3 className="text-2xl font-bold text-slate-900 mb-4">🎨Illustrations</h3>
+                                <p className="text-slate-600 leading-relaxed">
+                                    Extend your visual system beyond icons.
+                                    Generate cohesive, on-brand illustrations that complement your icons and keep a consistent visual tone across your entire project.
+                                </p>
+                            </div>
+                            <div className="md:w-1/2 p-4 flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100">
+                                <Image src="/images/features/feature_illustrations.webp" alt="Illustrations feature" width={800} height={450} className="rounded-lg shadow-md object-cover aspect-video"/>
+                            </div>
+                        </div>
+
+                        {/* UI Mockups Card */}
+                        <div onClick={() => openImageModal('/images/features/feature_mockups.webp')}
+                             className="bg-white/80 backdrop-blur-md rounded-2xl shadow-lg border border-purple-200/30 flex flex-col md:flex-row overflow-hidden hover:shadow-xl transition-all duration-300 hover:scale-[1.02] cursor-pointer">
+                            <div className="md:w-1/2 p-8 flex flex-col justify-center">
+                                <h3 className="text-2xl font-bold text-slate-900 mb-4">🧩UI Mockups</h3>
+                                <p className="text-slate-600 leading-relaxed">
+                                    Bring your style to full interfaces.
+                                    Generate complete UI mockups that match your icon aesthetic — or flip the process: start with a mockup and use it as the foundation for your icon set.                                </p>
+                            </div>
+                            <div className="md:w-1/2 p-4 flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100">
+                                <Image src="/images/features/feature_mockups.webp" alt="UI Mockups feature" width={800} height={450} className="rounded-lg shadow-md object-cover aspect-video"/>
+                            </div>
+                        </div>
+
                     </div>
                 </div>
             </section>

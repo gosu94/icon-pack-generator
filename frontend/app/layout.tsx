@@ -13,7 +13,7 @@ export const metadata: Metadata = {
         siteName: 'Icon Pack Generator',
         images: [
             {
-                url: 'https://iconpackgen.com/images/open-graph-logo.png?v=3',
+                url: 'https://iconpackgen.com/images/open-graph-logo.png?v=4',
                 width: 1200,
                 height: 630,
                 alt: 'Icon Pack Generator Preview',
