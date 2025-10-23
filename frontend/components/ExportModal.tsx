@@ -174,7 +174,7 @@ const ExportModal: React.FC<ExportModalProps> = ({
                         ⚠️
                       </span>
                       <p className="text-xs text-indigo-900">
-                        Important: works best for simple, flat icons. Highly detailed or textured artwork may produce less accurate results.
+                        Important: vectorized icons may lose minor details during conversion.
                       </p>
                     </div>
                   </div>

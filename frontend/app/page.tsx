@@ -311,18 +311,18 @@ export default function LandingPage() {
 
                     <div className="grid md:grid-cols-1 lg:grid-cols-2 gap-8">
 
-                        {/* Variations Card */}
-                        <div onClick={() => openImageModal('/images/features/feature_variations.webp')}
+                        {/* SVG Exports Card */}
+                        <div onClick={() => openImageModal('/images/features/feature_svg-exports.webp')}
                              className="bg-white/80 backdrop-blur-md rounded-2xl shadow-lg border border-purple-200/30 flex flex-col md:flex-row overflow-hidden hover:shadow-xl transition-all duration-300 hover:scale-[1.02] cursor-pointer">
                             <div className="md:w-1/2 p-8 flex flex-col justify-center">
-                                <h3 className="text-2xl font-bold text-slate-900 mb-4">🌈 Variations</h3>
+                                <h3 className="text-2xl font-bold text-slate-900 mb-4">📐 SVG Exports</h3>
                                 <p className="text-slate-600 leading-relaxed">
-                                    Explore creative options with ease.
-                                    Generate multiple stylistic variations for your icons, illustrations, or labels — and instantly find the version that fits your vision best.
+                                    Export vector-perfect icons that scale to any size without a hint of blur.
+                                    Download AI-refined SVGs and keep your assets crisp across responsive apps, pitch decks, and high-DPI displays.
                                 </p>
                             </div>
                             <div className="md:w-1/2 p-4 flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100">
-                                <Image src="/images/features/feature_variations.webp" alt="Variations feature" width={800} height={450} className="rounded-lg shadow-md object-cover aspect-video"/>
+                                <Image src="/images/features/feature_svg-exports.webp" alt="SVG exports feature" width={800} height={450} className="rounded-lg shadow-md object-cover aspect-video"/>
                             </div>
                         </div>
 
