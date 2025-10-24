@@ -229,7 +229,7 @@ export default function LandingPage() {
                                 <div className="w-4 h-4 bg-green-500 rounded-full flex items-center justify-center">
                                     <span className="text-white text-xs font-bold">T</span>
                                 </div>
-                                <span>1 Trial Coin = 5 Icons (out of 9) / 2 illustrations (out of 4) / 1 UI mockup (out of 2)</span>
+                                <span>1 Trial Coin = 5 Icons (out of 9)</span>
                             </div>
                         </div>
 

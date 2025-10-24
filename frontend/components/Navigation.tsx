@@ -88,21 +88,28 @@ const Navigation: React.FC<NavigationProps> = ({ useLoginPage = false }) => {
           <div className="flex items-center space-x-3">
             <Image
               src="/images/logo small.webp"
-              alt="Icon Pack Generator"
+              alt="Icon Pack Gen"
               width={32}
               height={32}
             />
             <Link href="/">
               <span className="text-xl font-medium text-black cursor-pointer">
-                Icon Pack Generator
-                <span className="inline-flex items-center ml-2">
+                IconPackGen
+                <span className="inline-flex items-center ml-1">
                   <span className="font-bold bg-clip-text text-transparent bg-gradient-to-b from-purple-400 to-purple-700">
-                    AI
+                      AI
                   </span>
-                  <Sparkles className="w-3 h-3 text-purple-400 ml-1" />
+                  <Sparkles className="w-3 h-3 text-purple-400 mb-2" />
                 </span>
               </span>
             </Link>
+            <Image
+                src="/images/haloween.webp"
+                alt="Halloween"
+                width={24}
+                height={24}
+                className="ml-1"
+            />
           </div>
         </div>
 
