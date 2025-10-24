@@ -19,14 +19,14 @@ const Footer: React.FC = () => {
                 height={32}
               />
               <span className="text-xl font-semibold text-white">
-                Icon Pack Generator
+                IconPackGen
               </span>
             </div>
             <p className="text-slate-300 mb-6 max-w-md">
               Create stunning icon packs with AI-powered technology. Generate professional-quality icons in minutes, not hours.
             </p>
             <div className="flex items-center space-x-2 text-sm text-slate-400">
-              <span>© 2025 Icon Pack Generator. All rights reserved.</span>
+              <span>© 2025 Icon Pack Gen. All rights reserved.</span>
             </div>
           </div>
 

@@ -194,7 +194,7 @@ function LoginPageContent() {
             className="transition-transform group-hover:scale-105"
           />
           <span className="text-2xl font-medium text-slate-900 cursor-pointer flex items-center">
-            Icon Pack Generator
+            IconPackGen
             <span className="ml-2 font-bold bg-clip-text text-transparent bg-gradient-to-b from-purple-400 to-purple-700">
               AI
             </span>
