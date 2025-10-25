@@ -12,6 +12,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.Base64;
+import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
@@ -268,10 +269,22 @@ public class IllustrationGenerationServiceV2 {
             ProgressUpdateCallback progressCallback, String requestId, int generationIndex) {
 
         String generalTheme = request.getGeneralDescription();
+        List<String> providedDescriptions = request.getIndividualDescriptions();
+        boolean hasIndividualDescriptions = providedDescriptions != null &&
+                providedDescriptions.stream().anyMatch(desc -> desc != null && !desc.trim().isEmpty());
 
-        // Step 1: Ensure we have 4 individual descriptions
-        return illustrationDescriptionGenerationService.ensureFourDescriptions(
-                        generalTheme, request.getIndividualDescriptions())
+        CompletableFuture<List<String>> descriptionsFuture;
+        if (request.hasReferenceImage() && !hasIndividualDescriptions) {
+            log.info("Reference image provided with no individual descriptions; using generic prompts.");
+            descriptionsFuture = CompletableFuture.completedFuture(
+                    new ArrayList<>(Collections.nCopies(4, "")));
+        } else {
+            // Step 1: Ensure we have 4 individual descriptions
+            descriptionsFuture = illustrationDescriptionGenerationService.ensureFourDescriptions(
+                    generalTheme, providedDescriptions);
+        }
+
+        return descriptionsFuture
                 .thenCompose(descriptions -> {
                     log.info("Using descriptions for V2 generation: {}", descriptions);
 
@@ -587,4 +600,3 @@ public class IllustrationGenerationServiceV2 {
         return "Failed to generate illustrations (V2). Please try again or contact support if the issue persists.";
     }
 }
-
