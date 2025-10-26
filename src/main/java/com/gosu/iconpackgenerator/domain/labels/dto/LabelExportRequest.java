@@ -11,5 +11,5 @@ public class LabelExportRequest {
     private int generationIndex;
     private List<LabelGenerationResponse.GeneratedLabel> labels;
     private List<String> formats;
+    private boolean vectorizeSvg;
 }
-

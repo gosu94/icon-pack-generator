@@ -2,7 +2,10 @@ package com.gosu.iconpackgenerator.domain.labels.service;
 
 import com.gosu.iconpackgenerator.domain.labels.dto.LabelExportRequest;
 import com.gosu.iconpackgenerator.domain.labels.dto.LabelGenerationResponse;
+import com.gosu.iconpackgenerator.domain.vectorization.SvgVectorizationService;
+import com.gosu.iconpackgenerator.domain.vectorization.VectorizationException;
 import dev.matrixlab.webp4j.NativeWebP;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
@@ -18,7 +21,10 @@ import java.util.zip.ZipOutputStream;
 
 @Service
 @Slf4j
+@RequiredArgsConstructor
 public class LabelExportService {
+
+    private final SvgVectorizationService svgVectorizationService;
 
     private Boolean webpAvailable = null;
     private NativeWebP nativeWebP = null;
@@ -35,6 +41,7 @@ public class LabelExportService {
             int index = 1;
             for (LabelGenerationResponse.GeneratedLabel label : exportRequest.getLabels()) {
                 if (label == null || label.getBase64Data() == null) {
+                    index++;
                     continue;
                 }
 
@@ -46,17 +53,28 @@ public class LabelExportService {
                     continue;
                 }
 
+                String baseName = String.format("label_%d", index);
+
                 if (formats.contains("png")) {
                     byte[] pngData = encodeImage(bufferedImage, "png");
-                    addEntry(zos, String.format("labels/label_%d.png", index), pngData);
+                    addEntry(zos, String.format("labels/%s.png", baseName), pngData);
                 }
 
                 if (formats.contains("webp") && isWebpAvailable()) {
                     try {
                         byte[] webpData = encodeImageToWebP(bufferedImage);
-                        addEntry(zos, String.format("labels/label_%d.webp", index), webpData);
+                        addEntry(zos, String.format("labels/%s.webp", baseName), webpData);
                     } catch (Exception e) {
                         log.warn("Failed to encode label {} to WebP: {}", index, e.getMessage());
+                    }
+                }
+
+                if (exportRequest.isVectorizeSvg()) {
+                    byte[] vectorizedSvg = svgVectorizationService.vectorizeImage(originalBytes, baseName);
+                    if (vectorizedSvg != null && vectorizedSvg.length > 0) {
+                        addEntry(zos, String.format("vectorized-svg/%s.svg", baseName), vectorizedSvg);
+                    } else {
+                        throw new VectorizationException("Vectorized SVG empty for label " + index);
                     }
                 }
 
@@ -159,4 +177,3 @@ public class LabelExportService {
         return output;
     }
 }
-

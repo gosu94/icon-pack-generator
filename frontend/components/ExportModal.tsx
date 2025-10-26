@@ -73,13 +73,16 @@ const ExportModal: React.FC<ExportModalProps> = ({
       const selectedSizes = [1920];
       onConfirm(selectedFormats, selectedSizes);
     } else {
-      onConfirm(selectedFormats, undefined, mode === "icons" ? vectorizeSvg : false);
+      const shouldVectorize = (mode === "icons" || mode === "labels") ? vectorizeSvg : false;
+      onConfirm(selectedFormats, undefined, shouldVectorize);
     }
   };
 
   if (!show) return null;
 
   const totalVectorCost = Math.ceil(Math.max(iconCount, 1) / 9);
+  const labelVectorCost = 1;
+  const showVectorOption = mode === "icons" || mode === "labels";
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -153,7 +156,7 @@ const ExportModal: React.FC<ExportModalProps> = ({
                 
               </div>
             </div>
-            {mode === "icons" && (
+            {showVectorOption && (
               <div className="rounded-lg border border-blue-100 bg-gradient-to-r from-purple-50 to-blue-50 p-4 mt-3">
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex-1 space-y-2">
@@ -162,12 +165,16 @@ const ExportModal: React.FC<ExportModalProps> = ({
                         Vectorized SVG export
                       </p>
                       <span className="flex items-center space-x-1 rounded-full bg-indigo-100 px-2 py-0.5 text-xs font-semibold text-indigo-800">
-                        <span>+{totalVectorCost}</span>
+                        <span>
+                          +{mode === "icons" ? totalVectorCost : labelVectorCost}
+                        </span>
                         <Image src="/images/coin.webp" alt="Coin" width={16} height={16} />
                       </span>
                     </div>
                     <p className="text-xs text-indigo-700">
-                      Toggle to receive crisp, editable SVGs processed with AI. Costs 1 coin per 9 icons (this export: {totalVectorCost} coin{totalVectorCost === 1 ? "" : "s"}).
+                      {mode === "icons"
+                        ? `Toggle to receive crisp, editable SVGs processed with AI. Costs 1 coin per 9 icons (this export: ${totalVectorCost} coin${totalVectorCost === 1 ? "" : "s"}).`
+                        : "Toggle to receive a crisp, editable SVG version processed with AI. Costs 1 coin for this export."}
                     </p>
                     <div className="flex items-start space-x-2 rounded-md bg-indigo-200/60 px-3 py-2">
                       <span className="mt-0.5 text-indigo-900" aria-hidden="true">

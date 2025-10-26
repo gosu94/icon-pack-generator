@@ -516,6 +516,7 @@ export default function GalleryPage() {
       const exportData = {
         labelFilePaths,
         formats,
+        vectorizeSvg: vectorizeSvg ?? false,
       };
       setShowExportModal(false);
       downloadZip(exportData, fileName, "/api/labels/export-gallery");
@@ -557,8 +558,25 @@ export default function GalleryPage() {
         message: "Creating ZIP file...",
         percent: 75,
       });
-      if (!response.ok)
-        throw new Error(`HTTP error! status: ${response.status}`);
+      if (!response.ok) {
+        let errorMessage = `Failed to export ${itemType}. Please try again.`;
+        try {
+          const errorBody = await response.text();
+          if (errorBody) {
+            errorMessage = errorBody;
+          }
+        } catch (readError) {
+          console.error("Failed to read error body:", readError);
+        }
+
+        setShowProgressModal(false);
+        if (response.status === 402) {
+          alert(`${errorMessage}`);
+        } else {
+          alert(errorMessage);
+        }
+        return;
+      }
 
       const blob = await response.blob();
       setExportProgress({

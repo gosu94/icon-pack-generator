@@ -8,5 +8,5 @@ import java.util.List;
 public class LabelGalleryExportRequest {
     private List<String> labelFilePaths;
     private List<String> formats;
+    private boolean vectorizeSvg;
 }
-
