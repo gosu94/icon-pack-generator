@@ -41,9 +41,9 @@ public class SvgVectorizationService {
             "^M\\s*0(?:\\.0+)?\\s+0(?:\\.0+)?\\s+L\\s*([0-9]+(?:\\.[0-9]+)?)\\s+0(?:\\.0+)?\\s+L\\s*\\1\\s+([0-9]+(?:\\.[0-9]+)?)\\s+L\\s*0(?:\\.0+)?\\s+\\2\\s+L\\s*0(?:\\.0+)?\\s+0(?:\\.0+)?\\s+Z$",
             Pattern.CASE_INSENSITIVE);
 
-    private static final int VECTOR_BACKGROUND_R = 128;
-    private static final int VECTOR_BACKGROUND_G = 128;
-    private static final int VECTOR_BACKGROUND_B = 128;
+    private static final int VECTOR_BACKGROUND_R = 255;
+    private static final int VECTOR_BACKGROUND_G = 255;
+    private static final int VECTOR_BACKGROUND_B = 255;
     private static final int VECTOR_BACKGROUND_TOLERANCE = 4;
     private static final int VECTOR_BACKGROUND_ARGB =
             new Color(VECTOR_BACKGROUND_R, VECTOR_BACKGROUND_G, VECTOR_BACKGROUND_B, 255).getRGB();
@@ -117,7 +117,7 @@ public class SvgVectorizationService {
         }
     }
 
-    private byte[] prepareImageForVectorization(byte[] imageData, String baseName) {
+    public byte[] prepareImageForVectorization(byte[] imageData, String baseName) {
         try (ByteArrayInputStream bais = new ByteArrayInputStream(imageData)) {
             BufferedImage image = ImageIO.read(bais);
             if (image == null) {
@@ -173,7 +173,7 @@ public class SvgVectorizationService {
         }
     }
 
-    private byte[] sanitizeVectorizedSvg(byte[] svgBytes, String baseName) {
+    public byte[] sanitizeVectorizedSvg(byte[] svgBytes, String baseName) {
         if (svgBytes == null || svgBytes.length == 0) {
             return svgBytes;
         }

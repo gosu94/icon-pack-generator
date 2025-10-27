@@ -1,19 +1,18 @@
 package com.gosu.iconpackgenerator.domain.icons.service
 
 import com.gosu.iconpackgenerator.domain.ai.RecraftVectorizeModelService
+import com.gosu.iconpackgenerator.domain.vectorization.SvgVectorizationService
 import spock.lang.Specification
 
 import javax.imageio.ImageIO
 import java.awt.image.BufferedImage
-import java.io.ByteArrayInputStream
 import java.nio.charset.StandardCharsets
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths
-import java.util.Locale
 import java.nio.file.StandardOpenOption
 
-class IconExportServiceTest extends Specification {
+class SvgVectorizationServiceTest extends Specification {
 
     private static final Path ICONS_DIR = Paths.get("src/test/resources/icons")
     private static final Path OUTPUT_DIR = ICONS_DIR.resolve("output")
@@ -33,7 +32,7 @@ class IconExportServiceTest extends Specification {
 
     def "prepareIconForVectorization replaces transparent pixels in PNG fixtures"() {
         given:
-        def service = new IconExportService(Mock(ImageProcessingService), Mock(RecraftVectorizeModelService))
+        def service = new SvgVectorizationService(Mock(RecraftVectorizeModelService))
         List<Path> pngFiles = listIconFiles("*.png")
         assert !pngFiles.isEmpty()
 
@@ -41,7 +40,7 @@ class IconExportServiceTest extends Specification {
         Files.createDirectories(OUTPUT_DIR)
         List<BufferedImage> processedImages = pngFiles.collect { Path path ->
             byte[] input = Files.readAllBytes(path)
-            byte[] output = service.prepareIconForVectorization(input, path.fileName.toString())
+            byte[] output = service.prepareImageForVectorization(input, path.fileName.toString())
             String fileName = path.fileName.toString().replaceAll("(?i)\\.png\$", "")
             Path outPath = OUTPUT_DIR.resolve("${fileName}_prepared.png")
             writeBytes(outPath, output)
@@ -62,7 +61,7 @@ class IconExportServiceTest extends Specification {
 
     def "sanitizeVectorizedSvg removes background rectangles from SVG fixtures"() {
         given:
-        def service = new IconExportService(Mock(ImageProcessingService), Mock(RecraftVectorizeModelService))
+        def service = new SvgVectorizationService(Mock(RecraftVectorizeModelService))
         List<Path> svgFiles = listIconFiles("*.svg")
         assert !svgFiles.isEmpty()
 
