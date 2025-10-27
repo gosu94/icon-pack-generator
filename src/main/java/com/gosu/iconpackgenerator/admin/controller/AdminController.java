@@ -312,7 +312,7 @@ public class AdminController {
         stats.put("totalIcons", totalIcons);
         stats.put("totalIllustrations", totalIllustrations);
         stats.put("totalMockups", totalMockups);
-        stats.put("totalLabels", totalMockups);
+        stats.put("totalLabels", totalLabels);
 
         log.info("Admin user {} retrieved system stats.", user.getEmail());
         return ResponseEntity.ok(stats);
