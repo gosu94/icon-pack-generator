@@ -9,6 +9,7 @@ import com.gosu.iconpackgenerator.domain.icons.repository.GeneratedIconRepositor
 import com.gosu.iconpackgenerator.domain.illustrations.dto.IllustrationDto;
 import com.gosu.iconpackgenerator.domain.illustrations.entity.GeneratedIllustration;
 import com.gosu.iconpackgenerator.domain.illustrations.repository.GeneratedIllustrationRepository;
+import com.gosu.iconpackgenerator.domain.labels.repository.GeneratedLabelRepository;
 import com.gosu.iconpackgenerator.domain.mockups.dto.MockupDto;
 import com.gosu.iconpackgenerator.domain.mockups.entity.GeneratedMockup;
 import com.gosu.iconpackgenerator.domain.mockups.repository.GeneratedMockupRepository;
@@ -48,6 +49,7 @@ public class AdminController {
     private final GeneratedIconRepository generatedIconRepository;
     private final GeneratedIllustrationRepository generatedIllustrationRepository;
     private final GeneratedMockupRepository generatedMockupRepository;
+    private final GeneratedLabelRepository generatedLabelRepository;
 
     /**
      * Check if current user is admin
@@ -284,5 +286,35 @@ public class AdminController {
 
         log.info("Admin user {} updated coins for user {}. New values: coins={}, trialCoins={}", adminUser.getEmail(), targetUser.getEmail(), targetUser.getCoins(), targetUser.getTrialCoins());
         return ResponseEntity.ok(Map.of("message", "Coins updated successfully"));
+    }
+
+    /**
+     * Get system-wide statistics (admin only)
+     */
+    @GetMapping("/stats")
+    public ResponseEntity<?> getStats(@AuthenticationPrincipal OAuth2User principal) {
+        if (!(principal instanceof CustomOAuth2User customUser)) {
+            return ResponseEntity.status(401).body(Map.of("error", "Unauthorized"));
+        }
+
+        User user = customUser.getUser();
+        if (!adminService.isAdmin(user)) {
+            log.warn("Non-admin user {} attempted to access admin stats endpoint", user.getEmail());
+            return ResponseEntity.status(403).body(Map.of("error", "Forbidden - Admin access required"));
+        }
+
+        long totalIcons = generatedIconRepository.count();
+        long totalIllustrations = generatedIllustrationRepository.count();
+        long totalMockups = generatedMockupRepository.count();
+        long totalLabels = generatedLabelRepository.count();
+
+        Map<String, Long> stats = new HashMap<>();
+        stats.put("totalIcons", totalIcons);
+        stats.put("totalIllustrations", totalIllustrations);
+        stats.put("totalMockups", totalMockups);
+        stats.put("totalLabels", totalMockups);
+
+        log.info("Admin user {} retrieved system stats.", user.getEmail());
+        return ResponseEntity.ok(stats);
     }
 }

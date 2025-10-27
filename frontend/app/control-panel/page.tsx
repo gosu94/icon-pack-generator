@@ -89,6 +89,7 @@ export default function ControlPanelPage() {
   const [totalIcons, setTotalIcons] = useState(0);
   const [totalIllustrations, setTotalIllustrations] = useState(0);
   const [totalMockups, setTotalMockups] = useState(0);
+  const [totalLabels, setTotalLabels] = useState(0);
 
   useEffect(() => {
     // Check if user is admin
@@ -107,6 +108,34 @@ export default function ControlPanelPage() {
       fetchUsers();
     }
   }, [authState, router, currentPage, itemsPerPage, sortColumn, sortDirection]);
+
+  useEffect(() => {
+    if (authState.authenticated && authState.user?.isAdmin) {
+      const fetchStats = async () => {
+        try {
+          const response = await fetch(`/api/admin/stats`, {
+            credentials: "include",
+          });
+
+          if (!response.ok) {
+            throw new Error("Failed to fetch stats");
+          }
+          
+          const stats = await response.json();
+
+          setTotalIcons(stats.totalIcons);
+          setTotalIllustrations(stats.totalIllustrations);
+          setTotalMockups(stats.totalMockups);
+          setTotalLabels(stats.totalLabels);
+        } catch (err) {
+          console.error("Error fetching stats:", err);
+          // Silently fail on total counts.
+        }
+      };
+
+      fetchStats();
+    }
+  }, [authState.authenticated, authState.user?.isAdmin]);
 
   const fetchUsers = async () => {
     try {
@@ -149,14 +178,6 @@ export default function ControlPanelPage() {
       setUsers(data.content);
       setTotalElements(data.totalElements);
       setTotalPages(data.totalPages);
-      
-      // Calculate total icons and illustrations
-      const iconsSum = data.content.reduce((sum, user) => sum + user.generatedIconsCount, 0);
-      const illustrationsSum = data.content.reduce((sum, user) => sum + user.generatedIllustrationsCount, 0);
-      const mockupsSum = data.content.reduce((sum, user) => sum + user.generatedMockupsCount, 0);
-      setTotalIcons(iconsSum);
-      setTotalIllustrations(illustrationsSum);
-      setTotalMockups(mockupsSum);
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -637,16 +658,20 @@ export default function ControlPanelPage() {
         <div className="mt-6 text-sm text-slate-600">
           <p>Total Users: {totalElements}</p>
           <p>
-            Total Icons Generated on this page:{" "}
+            Total Icons Generated:{" "}
             {totalIcons}
           </p>
           <p>
-            Total Illustrations Generated on this page:{" "}
+            Total Illustrations Generated:{" "}
             {totalIllustrations}
           </p>
           <p>
-            Total Mockups Generated on this page:{" "}
+            Total Mockups Generated:{" "}
             {totalMockups}
+          </p>
+          <p>
+              Total Labels Generated:{" "}
+              {totalLabels}
           </p>
         </div>
       </div>
