@@ -44,7 +44,7 @@ public class SvgVectorizationService {
     private static final int VECTOR_BACKGROUND_R = 255;
     private static final int VECTOR_BACKGROUND_G = 255;
     private static final int VECTOR_BACKGROUND_B = 255;
-    private static final int VECTOR_BACKGROUND_TOLERANCE = 4;
+    private static final int VECTOR_BACKGROUND_TOLERANCE = 10;
     private static final int VECTOR_BACKGROUND_ARGB =
             new Color(VECTOR_BACKGROUND_R, VECTOR_BACKGROUND_G, VECTOR_BACKGROUND_B, 255).getRGB();
 
