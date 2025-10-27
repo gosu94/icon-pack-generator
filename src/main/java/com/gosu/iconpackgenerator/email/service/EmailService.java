@@ -188,6 +188,35 @@ public class EmailService {
         }
     }
 
+    public boolean sendCustomEmail(String toEmail, String subject, String htmlBody) {
+        try {
+            String cleanSubject = subject != null ? subject.trim() : "";
+            String cleanHtmlBody = htmlBody != null ? htmlBody : "";
+            String textBody = htmlToPlainText(cleanHtmlBody);
+            return sendEmail(toEmail, cleanSubject, cleanHtmlBody, textBody);
+        } catch (Exception e) {
+            log.error("Failed to send custom email to {}", toEmail, e);
+            return false;
+        }
+    }
+
+    private String htmlToPlainText(String html) {
+        if (html == null || html.isBlank()) {
+            return "";
+        }
+
+        String normalized = html
+                .replaceAll("(?i)<br\\s*/?>", "\n")
+                .replaceAll("(?i)</p>", "\n\n")
+                .replaceAll("&nbsp;", " ");
+
+        String withoutTags = normalized.replaceAll("<[^>]+>", "");
+        return withoutTags
+                .replaceAll("\\r\\n", "\n")
+                .replaceAll("\\n{3,}", "\n\n")
+                .trim();
+    }
+
     private boolean sendEmail(String toEmail, String subject, String htmlBody, String textBody) {
         try {
             Email from = new Email(fromEmail);

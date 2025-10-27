@@ -5,54 +5,179 @@ import { useRouter } from "next/navigation";
 import Navigation from "../../components/Navigation";
 import { useAuth } from "../../context/AuthContext";
 import { X, ChevronUp, ChevronDown, ChevronsUpDown } from "lucide-react";
+import {
+  UserAdminData,
+  PagedResponse,
+  UserIcon,
+  UserIllustration,
+  UserMockup,
+} from "./types";
+import UsersTab from "./components/UsersTab";
+import EmailTab from "./components/EmailTab";
 
-interface UserAdminData {
-  id: number;
-  email: string;
-  lastLogin: string | null;
-  coins: number;
-  trialCoins: number;
-  generatedIconsCount: number;
-  generatedIllustrationsCount: number;
-  generatedMockupsCount: number;
-  registeredAt: string;
-  authProvider: string;
-  isActive: boolean;
-}
-
-interface PagedResponse<T> {
-  content: T[];
-  page: number;
-  size: number;
-  totalElements: number;
-  totalPages: number;
-  first: boolean;
-  last: boolean;
-}
-
-interface UserIcon {
-  id: number;
-  imageUrl: string;
-  description: string;
-  serviceSource: string;
-  requestId: string;
-  iconType: string;
-  theme: string;
-}
-
-interface UserIllustration {
-  imageUrl: string;
-  description: string;
-  serviceSource: string;
-  requestId: string;
-}
-
-interface UserMockup {
-  imageUrl: string;
-  description: string;
-  serviceSource: string;
-  requestId: string;
-}
+const DEFAULT_EMAIL_BODY = `<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>IconPackGen AI Update</title>
+    <style>
+      body {
+        margin: 0;
+        padding: 0;
+        background: #f8fafc;
+        font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        color: #0f172a;
+      }
+      .email-wrapper {
+        width: 100%;
+        padding: 32px 16px;
+        background: linear-gradient(135deg, #eef2ff, #f5f3ff);
+      }
+      .email-card {
+        max-width: 640px;
+        margin: 0 auto;
+        background: #ffffff;
+        border-radius: 24px;
+        box-shadow: 0 30px 60px rgba(79, 70, 229, 0.12);
+        overflow: hidden;
+        border: 1px solid rgba(79, 70, 229, 0.08);
+      }
+      .email-header {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        padding: 32px;
+        background: linear-gradient(135deg, rgba(99, 102, 241, 0.12), rgba(124, 58, 237, 0.08));
+      }
+      .email-header h1 {
+        margin: 0;
+        font-size: 26px;
+        font-weight: 700;
+        color: #0f172a;
+      }
+      .email-header .brand-accent {
+        background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
+        -webkit-background-clip: text;
+        color: transparent;
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+      }
+      .email-header .brand-accent span {
+        font-size: 18px;
+      }
+      .email-content {
+        padding: 32px;
+      }
+      .email-content h2 {
+        font-size: 22px;
+        margin: 0 0 16px;
+        color: #312e81;
+      }
+      .email-content p {
+        margin: 0 0 16px;
+        line-height: 1.6;
+        color: #334155;
+        font-size: 16px;
+      }
+      .feature-list {
+        padding: 0;
+        margin: 24px 0 32px;
+        list-style: none;
+      }
+      .feature-list li {
+        margin-bottom: 16px;
+        padding-left: 32px;
+        position: relative;
+        font-size: 15px;
+        color: #1e293b;
+      }
+      .feature-list li::before {
+        content: '✨';
+        position: absolute;
+        left: 0;
+        top: 0;
+      }
+      .cta-button {
+        display: inline-block;
+        padding: 14px 32px;
+        background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
+        color: #ffffff !important;
+        border-radius: 9999px;
+        text-decoration: none;
+        font-weight: 600;
+        box-shadow: 0 20px 35px rgba(99, 102, 241, 0.35);
+      }
+      .email-footer {
+        padding: 24px 32px 32px;
+        background: #f8fafc;
+        border-top: 1px solid rgba(99, 102, 241, 0.08);
+        font-size: 13px;
+        color: #64748b;
+        line-height: 1.6;
+      }
+      @media (max-width: 600px) {
+        .email-header,
+        .email-content,
+        .email-footer {
+          padding: 24px;
+        }
+        .email-header h1 {
+          font-size: 22px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="email-wrapper">
+      <div class="email-card">
+        <div class="email-header">
+          <img
+            src="https://iconpackgen.com/images/logo%20small.webp"
+            alt="IconPackGen AI"
+            width="48"
+            height="48"
+            style="border-radius: 12px"
+          />
+          <h1>
+            IconPackGen
+            <span class="brand-accent">AI <span>✨</span></span>
+          </h1>
+        </div>
+        <div class="email-content">
+          <h2>Hey there,</h2>
+          <p>
+            We have something exciting to share with you from IconPackGen AI. Here’s a quick
+            overview of the latest updates, improvements, and insider tips to help you create your
+            next standout project.
+          </p>
+          <ul class="feature-list">
+            <li>Add your feature highlight or announcement here.</li>
+            <li>Share an upcoming launch, workshop, or promotion.</li>
+            <li>Include a helpful tip, resource, or community spotlight.</li>
+          </ul>
+          <a
+            href="https://iconpackgen.com/dashboard"
+            class="cta-button"
+            target="_blank"
+            rel="noopener"
+          >
+            Jump back into IconPackGen
+          </a>
+        </div>
+        <div class="email-footer">
+          <p>
+            IconPackGen AI &bull; Crafted with creativity for designers and teams around the globe.
+          </p>
+          <p style="margin-top: 12px">
+            You’re receiving this email because you’re part of the IconPackGen community. If you want to
+            unsubscribe - just let me know.
+          </p>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>`;
 
 export default function ControlPanelPage() {
   const router = useRouter();
@@ -90,6 +215,16 @@ export default function ControlPanelPage() {
   const [totalIllustrations, setTotalIllustrations] = useState(0);
   const [totalMockups, setTotalMockups] = useState(0);
   const [totalLabels, setTotalLabels] = useState(0);
+  const [activeTab, setActiveTab] = useState<"users" | "email">("users");
+  const [emailSubject, setEmailSubject] = useState("");
+  const [emailBody, setEmailBody] = useState(DEFAULT_EMAIL_BODY);
+  const [emailRecipientScope, setEmailRecipientScope] = useState<
+    "ME" | "EVERYBODY"
+  >("ME");
+  const [showEmailConfirmModal, setShowEmailConfirmModal] = useState(false);
+  const [emailSending, setEmailSending] = useState(false);
+  const [emailStatus, setEmailStatus] = useState<string | null>(null);
+  const [emailError, setEmailError] = useState<string | null>(null);
 
   useEffect(() => {
     // Check if user is admin
@@ -329,6 +464,89 @@ export default function ControlPanelPage() {
     }
   };
 
+  const handleItemsPerPageChange = (value: number) => {
+    setItemsPerPage(value);
+    setCurrentPage(0);
+  };
+
+  const resetEmailStatusMessages = () => {
+    setEmailStatus(null);
+    setEmailError(null);
+  };
+
+  const handleEmailSubjectChange = (value: string) => {
+    setEmailSubject(value);
+    resetEmailStatusMessages();
+  };
+
+  const handleEmailBodyChange = (value: string) => {
+    setEmailBody(value);
+    resetEmailStatusMessages();
+  };
+
+  const handleEmailRecipientScopeChange = (value: "ME" | "EVERYBODY") => {
+    setEmailRecipientScope(value);
+    resetEmailStatusMessages();
+  };
+
+  const handleConfirmSendEmail = () => {
+    if (emailSubject.trim().length === 0 || emailBody.trim().length === 0) {
+      return;
+    }
+    resetEmailStatusMessages();
+    setShowEmailConfirmModal(true);
+  };
+
+  const handleCancelSendEmail = () => {
+    setShowEmailConfirmModal(false);
+  };
+
+  const resetEmailForm = () => {
+    setEmailSubject("");
+    setEmailBody(DEFAULT_EMAIL_BODY);
+    setEmailRecipientScope("ME");
+  };
+
+  const handleSendEmail = async () => {
+    setEmailError(null);
+    setEmailStatus(null);
+    setEmailSending(true);
+
+    try {
+      const response = await fetch(`/api/admin/email`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+        body: JSON.stringify({
+          subject: emailSubject.trim(),
+          htmlBody: emailBody,
+          recipientScope: emailRecipientScope,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response
+          .json()
+          .catch(() => ({ message: "Failed to send email" }));
+        throw new Error(errorData.message || "Failed to send email");
+      }
+
+      setEmailStatus("Email sent successfully.");
+      resetEmailForm();
+    } catch (err: any) {
+      console.error(err.message);
+      setEmailError(err.message);
+    } finally {
+      setEmailSending(false);
+      setShowEmailConfirmModal(false);
+    }
+  };
+
+  const isEmailFormValid =
+    emailSubject.trim().length > 0 && emailBody.trim().length > 0;
+
   const formatDate = (dateString: string | null) => {
     if (!dateString) return "Never";
     const date = new Date(dateString);
@@ -397,282 +615,72 @@ export default function ControlPanelPage() {
             Admin Control Panel
           </h1>
           <p className="text-slate-600">
-            Manage users and view system statistics
+            Manage users, view system statistics, and send email updates.
           </p>
         </div>
 
         <div className="bg-white/50 rounded-lg border border-slate-200/80 shadow-lg shadow-slate-200/50 overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-purple-50 border-b border-slate-200">
-                <tr>
-                  <th
-                    className="px-6 py-3 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider cursor-pointer hover:bg-purple-100 transition-colors"
-                    onClick={() => handleSort("email")}
-                  >
-                    <div className="flex items-center">
-                      Email
-                      {renderSortIcon("email")}
-                    </div>
-                  </th>
-                  <th
-                    className="px-6 py-3 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider cursor-pointer hover:bg-purple-100 transition-colors"
-                    onClick={() => handleSort("lastLogin")}
-                  >
-                    <div className="flex items-center">
-                      Last Login
-                      {renderSortIcon("lastLogin")}
-                    </div>
-                  </th>
-                  <th
-                    className="px-6 py-3 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider cursor-pointer hover:bg-purple-100 transition-colors"
-                    onClick={() => handleSort("trialCoins")}
-                  >
-                    <div className="flex items-center">
-                      Trial Coins
-                      {renderSortIcon("trialCoins")}
-                    </div>
-                  </th>
-                  <th
-                    className="px-6 py-3 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider cursor-pointer hover:bg-purple-100 transition-colors"
-                    onClick={() => handleSort("coins")}
-                  >
-                    <div className="flex items-center">
-                      Coins
-                      {renderSortIcon("coins")}
-                    </div>
-                  </th>
-                  <th
-                    className="px-6 py-3 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider cursor-pointer hover:bg-purple-100 transition-colors"
-                    onClick={() => handleSort("generatedIconsCount")}
-                  >
-                    <div className="flex items-center">
-                      Generated Icons
-                      {renderSortIcon("generatedIconsCount")}
-                    </div>
-                  </th>
-                  <th
-                    className="px-6 py-3 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider cursor-pointer hover:bg-purple-100 transition-colors"
-                    onClick={() => handleSort("generatedIllustrationsCount")}
-                  >
-                    <div className="flex items-center">
-                      Generated Illustrations
-                      {renderSortIcon("generatedIllustrationsCount")}
-                    </div>
-                  </th>
-                  <th
-                    className="px-6 py-3 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider cursor-pointer hover:bg-purple-100 transition-colors"
-                    onClick={() => handleSort("generatedMockupsCount")}
-                  >
-                    <div className="flex items-center">
-                      Generated Mockups
-                      {renderSortIcon("generatedMockupsCount")}
-                    </div>
-                  </th>
-                  <th
-                    className="px-6 py-3 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider cursor-pointer hover:bg-purple-100 transition-colors"
-                    onClick={() => handleSort("registeredAt")}
-                  >
-                    <div className="flex items-center">
-                      Registered
-                      {renderSortIcon("registeredAt")}
-                    </div>
-                  </th>
-                  <th
-                    className="px-6 py-3 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider cursor-pointer hover:bg-purple-100 transition-colors"
-                    onClick={() => handleSort("authProvider")}
-                  >
-                    <div className="flex items-center">
-                      Provider
-                      {renderSortIcon("authProvider")}
-                    </div>
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-slate-100">
-                {users.map((user) => (
-                  <tr
-                    key={user.id}
-                    className="hover:bg-slate-50 transition-colors"
-                  >
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900">
-                      {user.email}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600">
-                      {formatDate(user.lastLogin)}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900">
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                        {user.trialCoins}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900">
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
-                        {user.coins}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm">
-                      <button
-                        onClick={() => handleViewIcons(user)}
-                        className="inline-flex items-center px-3 py-1 rounded-md text-sm font-medium bg-gradient-to-r from-blue-600 to-purple-600 text-white hover:from-blue-700 hover:to-purple-700 transition-all duration-200"
-                      >
-                        View ({user.generatedIconsCount})
-                      </button>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm">
-                      <button
-                        onClick={() => handleViewIllustrations(user)}
-                        className="inline-flex items-center px-3 py-1 rounded-md text-sm font-medium bg-gradient-to-r from-green-600 to-teal-600 text-white hover:from-green-700 hover:to-teal-700 transition-all duration-200"
-                      >
-                        View ({user.generatedIllustrationsCount})
-                      </button>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm">
-                      <button
-                        onClick={() => handleViewMockups(user)}
-                        className="inline-flex items-center px-3 py-1 rounded-md text-sm font-medium bg-gradient-to-r from-pink-500 to-rose-500 text-white hover:from-pink-600 hover:to-rose-600 transition-all duration-200"
-                      >
-                        View ({user.generatedMockupsCount})
-                      </button>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600">
-                      {formatDate(user.registeredAt)}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600">
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                        {user.authProvider}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                      <button
-                        onClick={() => handleOpenSetCoinsModal(user)}
-                        className="text-indigo-600 hover:text-indigo-900"
-                      >
-                        Set Coins
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="flex gap-2 border-b border-slate-200 bg-white/70 px-6 py-3">
+            <button
+              onClick={() => setActiveTab("users")}
+              className={`rounded-md px-4 py-2 text-sm font-semibold transition-colors ${
+                activeTab === "users"
+                  ? "bg-purple-600 text-white shadow"
+                  : "text-slate-600 hover:bg-purple-100"
+              }`}
+            >
+              Users
+            </button>
+            <button
+              onClick={() => setActiveTab("email")}
+              className={`rounded-md px-4 py-2 text-sm font-semibold transition-colors ${
+                activeTab === "email"
+                  ? "bg-purple-600 text-white shadow"
+                  : "text-slate-600 hover:bg-purple-100"
+              }`}
+            >
+              Email
+            </button>
           </div>
-          
-          {/* Pagination Controls */}
-          <div className="px-6 py-4 bg-white border-t border-slate-200 flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <div className="text-sm text-slate-600">
-                {totalElements > 0 ? (
-                  <>Showing {currentPage * itemsPerPage + 1} to {Math.min((currentPage + 1) * itemsPerPage, totalElements)} of {totalElements} users</>
-                ) : (
-                  <>No users found</>
-                )}
-              </div>
-              <div className="flex items-center gap-2">
-                <label htmlFor="itemsPerPage" className="text-sm text-slate-600">
-                  Per page:
-                </label>
-                <select
-                  id="itemsPerPage"
-                  value={itemsPerPage}
-                  onChange={(e) => {
-                    setItemsPerPage(Number(e.target.value));
-                    setCurrentPage(0);
-                  }}
-                  className="px-2 py-1 border border-slate-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
-                >
-                  <option value={5}>5</option>
-                  <option value={10}>10</option>
-                  <option value={25}>25</option>
-                  <option value={50}>50</option>
-                  <option value={100}>100</option>
-                </select>
-              </div>
-            </div>
-            
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => goToPage(0)}
-                disabled={currentPage === 0}
-                className="px-3 py-1 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-md hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-              >
-                First
-              </button>
-              <button
-                onClick={() => goToPage(currentPage - 1)}
-                disabled={currentPage === 0}
-                className="px-3 py-1 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-md hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-              >
-                Previous
-              </button>
-              
-              <div className="flex items-center gap-1">
-                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                  let pageIndex;
-                  if (totalPages <= 5) {
-                    pageIndex = i;
-                  } else if (currentPage <= 2) {
-                    pageIndex = i;
-                  } else if (currentPage >= totalPages - 3) {
-                    pageIndex = totalPages - 5 + i;
-                  } else {
-                    pageIndex = currentPage - 2 + i;
-                  }
-                  
-                  return (
-                    <button
-                      key={pageIndex}
-                      onClick={() => goToPage(pageIndex)}
-                      className={`px-3 py-1 text-sm font-medium rounded-md transition-colors ${
-                        currentPage === pageIndex
-                          ? "bg-purple-600 text-white"
-                          : "text-slate-700 bg-white border border-slate-300 hover:bg-slate-50"
-                      }`}
-                    >
-                      {pageIndex + 1}
-                    </button>
-                  );
-                })}
-              </div>
-              
-              <button
-                onClick={() => goToPage(currentPage + 1)}
-                disabled={currentPage === totalPages - 1}
-                className="px-3 py-1 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-md hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-              >
-                Next
-              </button>
-              <button
-                onClick={() => goToPage(totalPages - 1)}
-                disabled={currentPage === totalPages - 1}
-                className="px-3 py-1 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-md hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-              >
-                Last
-              </button>
-            </div>
-          </div>
-        </div>
 
-        <div className="mt-6 text-sm text-slate-600">
-          <p>Total Users: {totalElements}</p>
-          <p>
-            Total Icons Generated:{" "}
-            {totalIcons}
-          </p>
-          <p>
-            Total Illustrations Generated:{" "}
-            {totalIllustrations}
-          </p>
-          <p>
-            Total Mockups Generated:{" "}
-            {totalMockups}
-          </p>
-          <p>
-              Total Labels Generated:{" "}
-              {totalLabels}
-          </p>
+          {activeTab === "users" && (
+            <UsersTab
+              users={users}
+              onSort={handleSort}
+              renderSortIcon={renderSortIcon}
+              onViewIcons={handleViewIcons}
+              onViewIllustrations={handleViewIllustrations}
+              onViewMockups={handleViewMockups}
+              onOpenSetCoinsModal={handleOpenSetCoinsModal}
+              formatDate={formatDate}
+              totalElements={totalElements}
+              itemsPerPage={itemsPerPage}
+              onItemsPerPageChange={handleItemsPerPageChange}
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={goToPage}
+              totalIcons={totalIcons}
+              totalIllustrations={totalIllustrations}
+              totalMockups={totalMockups}
+              totalLabels={totalLabels}
+            />
+          )}
+
+          {activeTab === "email" && (
+            <EmailTab
+              emailSubject={emailSubject}
+              emailBody={emailBody}
+              emailRecipientScope={emailRecipientScope}
+              emailStatus={emailStatus}
+              emailError={emailError}
+              isEmailFormValid={isEmailFormValid}
+              onSubjectChange={handleEmailSubjectChange}
+              onBodyChange={handleEmailBodyChange}
+              onRecipientChange={handleEmailRecipientScopeChange}
+              onRequestSend={handleConfirmSendEmail}
+              onReset={resetEmailForm}
+            />
+          )}
         </div>
       </div>
 
@@ -937,6 +945,50 @@ export default function ControlPanelPage() {
                 className="px-4 py-2 bg-slate-200 text-slate-700 rounded-lg hover:bg-slate-300 transition-colors"
               >
                 Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showEmailConfirmModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-md rounded-lg bg-white shadow-lg">
+            <div className="border-b border-slate-200 px-6 py-4">
+              <h2 className="text-xl font-semibold text-slate-800">
+                Confirm email send
+              </h2>
+            </div>
+            <div className="space-y-3 px-6 py-4 text-sm text-slate-600">
+              <p>
+                You are about to send this message to{" "}
+                <span className="font-semibold">
+                  {emailRecipientScope === "EVERYBODY"
+                    ? "all users"
+                    : "yourself"}
+                </span>
+                .
+              </p>
+              <p>
+                <span className="font-semibold text-slate-700">Subject:</span>{" "}
+                {emailSubject || "(no subject)"}
+              </p>
+              <p>This action cannot be undone. Are you sure you want to proceed?</p>
+            </div>
+            <div className="flex justify-end gap-2 border-t border-slate-200 px-6 py-4">
+              <button
+                onClick={handleCancelSendEmail}
+                className="rounded-md border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-100"
+                disabled={emailSending}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSendEmail}
+                disabled={emailSending}
+                className="rounded-md bg-purple-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-purple-700 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {emailSending ? "Sending..." : "Send email"}
               </button>
             </div>
           </div>

@@ -26,6 +26,14 @@ public class AdminService {
         return isAdmin;
     }
 
+    public String getConfiguredAdminEmail() {
+        if (adminEmail == null) {
+            return null;
+        }
+        String trimmed = adminEmail.trim();
+        return trimmed.isEmpty() ? null : trimmed;
+    }
+
     /**
      * Check if the given user is an admin
      */
