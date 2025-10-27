@@ -10,6 +10,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import javax.imageio.ImageIO;
+import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -25,6 +26,8 @@ import java.util.zip.ZipOutputStream;
 public class LabelExportService {
 
     private final SvgVectorizationService svgVectorizationService;
+
+    private static final int MIN_VECTORIZE_HEIGHT = 256;
 
     private Boolean webpAvailable = null;
     private NativeWebP nativeWebP = null;
@@ -70,7 +73,12 @@ public class LabelExportService {
                 }
 
                 if (exportRequest.isVectorizeSvg()) {
-                    byte[] vectorizedSvg = svgVectorizationService.vectorizeImage(originalBytes, baseName);
+                    byte[] vectorizationBytes = originalBytes;
+                    if (bufferedImage.getHeight() < MIN_VECTORIZE_HEIGHT) {
+                        vectorizationBytes = extendImageHeight(bufferedImage, MIN_VECTORIZE_HEIGHT);
+                    }
+
+                    byte[] vectorizedSvg = svgVectorizationService.vectorizeImage(vectorizationBytes, baseName);
                     if (vectorizedSvg != null && vectorizedSvg.length > 0) {
                         addEntry(zos, String.format("vectorized-svg/%s.svg", baseName), vectorizedSvg);
                     } else {
@@ -103,6 +111,18 @@ public class LabelExportService {
         } catch (IOException e) {
             throw new RuntimeException("Failed to encode label image to " + format, e);
         }
+    }
+
+    private byte[] extendImageHeight(BufferedImage image, int targetHeight) {
+        int width = image.getWidth();
+        BufferedImage extendedImage = new BufferedImage(width, targetHeight, BufferedImage.TYPE_INT_ARGB);
+        Graphics2D graphics = extendedImage.createGraphics();
+        try {
+            graphics.drawImage(image, 0, 0, null);
+        } finally {
+            graphics.dispose();
+        }
+        return encodeImage(extendedImage, "png");
     }
 
     private boolean isWebpAvailable() {
