@@ -77,6 +77,12 @@ export default function GalleryPage() {
     percent: 25,
   });
 
+  const actionButtonBaseClass =
+    "px-2 sm:px-4 py-2 bg-[#ffffff] text-[#3C4BFF] font-medium rounded-2xl shadow-sm hover:shadow-md transition-all flex items-center justify-center border border-[#E6E8FF] hover:bg-[#F5F6FF] active:shadow-sm focus:outline-none focus:ring-2 focus:ring-[#3C4BFF]/40";
+
+  const truncateHeading = (value: string) =>
+    value.length > 80 ? `${value.slice(0, 79)}...` : value;
+
   // Preview state
   const [previewImage, setPreviewImage] = useState<string | null>(null);
 
@@ -675,8 +681,12 @@ export default function GalleryPage() {
                 {selectedRequest ? (
                   <button
                     onClick={handleBackToGallery}
-                    className="mb-8 inline-flex items-center gap-2 rounded-md bg-purple-50 px-4 py-2 text-sm font-medium text-purple-600 hover:bg-purple-100 transition-colors"
-                  >
+                    className="mb-8 px-3 sm:px-5 py-2.5 bg-[#ffffff] text-[#3C4BFF] font-medium
+             rounded-2xl shadow-sm hover:shadow-md transition-all
+             flex items-center justify-center gap-2
+             border border-[#E6E8FF]
+             hover:bg-[#F5F6FF] active:shadow-sm
+             focus:outline-none focus:ring-2 focus:ring-[#3C4BFF]/40"                  >
                     <svg
                       xmlns="http://www.w3.org/2000/svg"
                       width="16"
@@ -703,8 +713,12 @@ export default function GalleryPage() {
                       setGroupedLabels({});
                       setError(null);
                     }}
-                    className="mb-8 inline-flex items-center gap-2 rounded-md bg-slate-100 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-200 transition-colors"
-                  >
+                    className="mb-8 px-3 sm:px-5 py-2.5 bg-[#ffffff] text-[#3C4BFF] font-medium
+             rounded-2xl shadow-sm hover:shadow-md transition-all
+             flex items-center justify-center gap-2
+             border border-[#E6E8FF]
+             hover:bg-[#F5F6FF] active:shadow-sm
+             focus:outline-none focus:ring-2 focus:ring-[#3C4BFF]/40"                  >
                     <svg
                       xmlns="http://www.w3.org/2000/svg"
                       width="16"
@@ -731,9 +745,11 @@ export default function GalleryPage() {
 
                         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6">
                           <h1 className="text-3xl font-bold text-slate-800 mb-4 sm:mb-0">
-                            {selectedIconGroup.original[0]?.theme ||
-                              selectedIconGroup.variation[0]?.theme ||
-                              `Request: ${selectedRequest}`}
+                            {truncateHeading(
+                              selectedIconGroup.original[0]?.theme ||
+                                selectedIconGroup.variation[0]?.theme ||
+                                `Request: ${selectedRequest}`
+                            )}
                           </h1>
                           <button
                             onClick={() =>
@@ -742,7 +758,12 @@ export default function GalleryPage() {
                                 ...selectedIconGroup.variation,
                               ])
                             }
-                            className="px-2 sm:px-4 py-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 flex items-center justify-center gap-2"
+                            className="px-3 sm:px-5 py-2.5 bg-[#ffffff] text-[#3C4BFF] font-medium
+             rounded-2xl shadow-sm hover:shadow-md transition-all
+             flex items-center justify-center gap-2
+             border border-[#E6E8FF]
+             hover:bg-[#F5F6FF] active:shadow-sm
+             focus:outline-none focus:ring-2 focus:ring-[#3C4BFF]/40"
                           >
                             <Download className="w-4 h-4" />
                             <span className="hidden sm:inline">
@@ -763,21 +784,21 @@ export default function GalleryPage() {
                               <div className="flex gap-3">
                                 <button
                                   onClick={() => handleGenerateMore("original")}
-                                  className="px-2 sm:px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 flex items-center justify-center gap-2"
+                                  className={`${actionButtonBaseClass} gap-2`}
                                   title="Generate more like this"
                                 >
                                   <Sparkles className="w-4 h-4" />
                                 </button>
                                 <button
                                   onClick={() => handleGenerateMockupFromIcons("original")}
-                                  className="px-2 sm:px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 flex items-center justify-center gap-1"
+                                  className={`${actionButtonBaseClass} gap-1`}
                                   title="Generate UI Mockup from these icons"
                                 >
                                   <span className="text-xs font-bold">UI</span>
                                 </button>
                                 <button
                                   onClick={() => handleGenerateLabelsFromIcons("original")}
-                                  className="px-2 sm:px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 flex items-center justify-center gap-1"
+                                  className={`${actionButtonBaseClass} gap-1`}
                                   title="Generate Labels from these icons"
                                 >
                                   <span className="text-xs font-bold">T</span>
@@ -788,7 +809,7 @@ export default function GalleryPage() {
                                       selectedIconGroup.original
                                     )
                                   }
-                                  className="px-2 sm:px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 flex items-center justify-center gap-2"
+                                  className={`${actionButtonBaseClass} gap-2`}
                                   title="Export"
                                 >
                                   <Download className="w-4 h-4" />
@@ -825,21 +846,21 @@ export default function GalleryPage() {
                                   onClick={() =>
                                     handleGenerateMore("variation")
                                   }
-                                  className="px-2 sm:px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 flex items-center justify-center gap-2"
+                                  className={`${actionButtonBaseClass} gap-2`}
                                   title="Generate more like this"
                                 >
                                   <Sparkles className="w-4 h-4" />
                                 </button>
                                 <button
                                   onClick={() => handleGenerateMockupFromIcons("variation")}
-                                  className="px-2 sm:px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 flex items-center justify-center gap-1"
+                                  className={`${actionButtonBaseClass} gap-1`}
                                   title="Generate UI Mockup from these icons"
                                 >
                                   <span className="text-xs font-bold">UI</span>
                                 </button>
                                 <button
                                   onClick={() => handleGenerateLabelsFromIcons("variation")}
-                                  className="px-2 sm:px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 flex items-center justify-center gap-1"
+                                  className={`${actionButtonBaseClass} gap-1`}
                                   title="Generate Labels from these icons"
                                 >
                                   <span className="text-xs font-bold">T</span>
@@ -850,7 +871,7 @@ export default function GalleryPage() {
                                       selectedIconGroup.variation
                                     )
                                   }
-                                  className="px-2 sm:px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 flex items-center justify-center gap-2"
+                                  className={`${actionButtonBaseClass} gap-2`}
                                 >
                                   <Download className="w-4 h-4" />
                                 </button>
@@ -935,9 +956,11 @@ export default function GalleryPage() {
                       <div>
                         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6">
                           <h1 className="text-3xl font-bold text-slate-800 mb-4 sm:mb-0">
-                            {selectedLabelGroup.original[0]?.theme ||
-                              selectedLabelGroup.variation[0]?.theme ||
-                              `Request: ${selectedRequest}`}
+                            {truncateHeading(
+                              selectedLabelGroup.original[0]?.theme ||
+                                selectedLabelGroup.variation[0]?.theme ||
+                                `Request: ${selectedRequest}`
+                            )}
                           </h1>
                           <button
                             onClick={() =>
@@ -946,7 +969,13 @@ export default function GalleryPage() {
                                 ...selectedLabelGroup.variation,
                               ])
                             }
-                            className="px-2 sm:px-4 py-2 bg-gradient-to-r from-emerald-500 to-sky-500 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 flex items-center justify-center gap-2"
+
+                            className="px-3 sm:px-5 py-2.5 bg-[#ffffff] text-[#3C4BFF] font-medium
+             rounded-2xl shadow-sm hover:shadow-md transition-all
+             flex items-center justify-center gap-2
+             border border-[#E6E8FF]
+             hover:bg-[#F5F6FF] active:shadow-sm
+             focus:outline-none focus:ring-2 focus:ring-[#3C4BFF]/40"
                           >
                             <Download className="w-4 h-4" />
                             <span className="hidden sm:inline">
@@ -970,7 +999,7 @@ export default function GalleryPage() {
                                     selectedLabelGroup.original,
                                   )
                                 }
-                                className="px-2 sm:px-4 py-2 bg-gradient-to-r from-emerald-500 to-sky-500 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 flex items-center justify-center gap-2"
+                                className={`${actionButtonBaseClass} gap-1`}
                               >
                                 <Download className="w-4 h-4" />
                               </button>
@@ -1007,7 +1036,7 @@ export default function GalleryPage() {
                                     selectedLabelGroup.variation,
                                   )
                                 }
-                                className="px-2 sm:px-4 py-2 bg-gradient-to-r from-emerald-500 to-sky-500 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 flex items-center justify-center gap-2"
+                                className={`${actionButtonBaseClass} gap-1`}
                               >
                                 <Download className="w-4 h-4" />
                               </button>
@@ -1091,9 +1120,11 @@ export default function GalleryPage() {
 
                         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6">
                           <h1 className="text-3xl font-bold text-slate-800 mb-4 sm:mb-0">
-                            {groupedIllustrations[selectedRequest].original[0]?.theme ||
-                              groupedIllustrations[selectedRequest].variation[0]?.theme ||
-                              `Request: ${selectedRequest}`}
+                            {truncateHeading(
+                              groupedIllustrations[selectedRequest].original[0]?.theme ||
+                                groupedIllustrations[selectedRequest].variation[0]?.theme ||
+                                `Request: ${selectedRequest}`
+                            )}
                           </h1>
                           <button
                             onClick={() =>
@@ -1102,7 +1133,12 @@ export default function GalleryPage() {
                                 ...groupedIllustrations[selectedRequest].variation,
                               ])
                             }
-                            className="px-2 sm:px-4 py-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 flex items-center justify-center gap-2"
+                            className="px-3 sm:px-5 py-2.5 bg-[#ffffff] text-[#3C4BFF] font-medium
+             rounded-2xl shadow-sm hover:shadow-md transition-all
+             flex items-center justify-center gap-2
+             border border-[#E6E8FF]
+             hover:bg-[#F5F6FF] active:shadow-sm
+             focus:outline-none focus:ring-2 focus:ring-[#3C4BFF]/40"
                           >
                             <Download className="w-4 h-4" />
                             <span className="hidden sm:inline">
@@ -1123,7 +1159,7 @@ export default function GalleryPage() {
                               <div className="flex gap-3">
                                 <button
                                   onClick={() => handleGenerateMoreIllustrations("original")}
-                                  className="px-2 sm:px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 flex items-center justify-center gap-2"
+                                  className={`${actionButtonBaseClass} gap-2`}
                                 >
                                   <Sparkles className="w-4 h-4" />
                                 </button>
@@ -1133,7 +1169,7 @@ export default function GalleryPage() {
                                       groupedIllustrations[selectedRequest].original
                                     )
                                   }
-                                  className="px-2 sm:px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 flex items-center justify-center gap-2"
+                                  className={`${actionButtonBaseClass} gap-2`}
                                 >
                                   <Download className="w-4 h-4" />
                                 </button>
@@ -1170,7 +1206,7 @@ export default function GalleryPage() {
                                   onClick={() =>
                                     handleGenerateMoreIllustrations("variation")
                                   }
-                                  className="px-2 sm:px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 flex items-center justify-center gap-2"
+                                  className={`${actionButtonBaseClass} gap-2`}
                                 >
                                   <Sparkles className="w-4 h-4" />
                                 </button>
@@ -1180,7 +1216,7 @@ export default function GalleryPage() {
                                       groupedIllustrations[selectedRequest].variation
                                     )
                                   }
-                                  className="px-2 sm:px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 flex items-center justify-center gap-2"
+                                  className={`${actionButtonBaseClass} gap-2`}
                                 >
                                   <Download className="w-4 h-4" />
                                 </button>
@@ -1272,9 +1308,11 @@ export default function GalleryPage() {
                       <div>
                         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6">
                           <h1 className="text-3xl font-bold text-slate-800 mb-4 sm:mb-0">
-                            {groupedMockups[selectedRequest].original[0]?.theme ||
-                              groupedMockups[selectedRequest].variation[0]?.theme ||
-                              `Request: ${selectedRequest}`}
+                            {truncateHeading(
+                              groupedMockups[selectedRequest].original[0]?.theme ||
+                                groupedMockups[selectedRequest].variation[0]?.theme ||
+                                `Request: ${selectedRequest}`
+                            )}
                           </h1>
                           <button
                             onClick={() =>
@@ -1283,7 +1321,12 @@ export default function GalleryPage() {
                                 ...groupedMockups[selectedRequest].variation,
                               ])
                             }
-                            className="px-2 sm:px-4 py-2 bg-gradient-to-r from-blue-600 to-pink-600 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 flex items-center justify-center gap-2"
+                            className="px-3 sm:px-5 py-2.5 bg-[#ffffff] text-[#3C4BFF] font-medium
+             rounded-2xl shadow-sm hover:shadow-md transition-all
+             flex items-center justify-center gap-2
+             border border-[#E6E8FF]
+             hover:bg-[#F5F6FF] active:shadow-sm
+             focus:outline-none focus:ring-2 focus:ring-[#3C4BFF]/40"
                           >
                             <Download className="w-4 h-4" />
                             <span className="hidden sm:inline">
@@ -1304,7 +1347,7 @@ export default function GalleryPage() {
                               <div className="flex gap-3">
                                 <button
                                   onClick={() => handleGenerateIconsFromMockup(groupedMockups[selectedRequest].original[0])}
-                                  className="px-2 sm:px-4 py-2 bg-gradient-to-r from-purple-600 to-blue-600 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 flex items-center justify-center gap-1"
+                                  className={`${actionButtonBaseClass} gap-1`}
                                   title="Generate Icons from this Mockup"
                                 >
                                   <span className="text-xs font-bold">Icon</span>
@@ -1315,7 +1358,7 @@ export default function GalleryPage() {
                                       groupedMockups[selectedRequest].original
                                     )
                                   }
-                                  className="px-2 sm:px-4 py-2 bg-gradient-to-r from-blue-600 to-pink-600 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 flex items-center justify-center gap-2"
+                                  className={`${actionButtonBaseClass} gap-1`}
                                 >
                                   <Download className="w-4 h-4" />
                                 </button>
@@ -1350,7 +1393,7 @@ export default function GalleryPage() {
                               <div className="flex gap-3">
                                 <button
                                   onClick={() => handleGenerateIconsFromMockup(groupedMockups[selectedRequest].variation[0])}
-                                  className="px-2 sm:px-4 py-2 bg-gradient-to-r from-purple-600 to-blue-600 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 flex items-center justify-center gap-1"
+                                  className={`${actionButtonBaseClass} gap-1`}
                                   title="Generate Icons from this Mockup"
                                 >
                                   <span className="text-xs font-bold">Icon</span>
@@ -1361,7 +1404,7 @@ export default function GalleryPage() {
                                       groupedMockups[selectedRequest].variation
                                     )
                                   }
-                                  className="px-2 sm:px-4 py-2 bg-gradient-to-r from-blue-600 to-pink-600 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 flex items-center justify-center gap-2"
+                                  className={`${actionButtonBaseClass} gap-1`}
                                 >
                                   <Download className="w-4 h-4" />
                                 </button>
