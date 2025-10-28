@@ -14,8 +14,11 @@ import java.util.Base64;
 @Slf4j
 public class LabelImageProcessingService {
 
+    private static final int MIN_LABEL_DIMENSION = 256;
+
     /**
-     * Crop the generated label image to the bounding box of visible content.
+     * Crop the generated label image to the bounding box of visible content and ensure
+     * the result has a minimum dimension by upscaling if necessary.
      * Falls back to the original image if bounds cannot be detected.
      */
     public String cropToContent(String base64Image) {
@@ -44,8 +47,10 @@ public class LabelImageProcessingService {
                     Math.min(bounds.height, source.getHeight() - bounds.y)
             );
 
+            BufferedImage resized = resizeIfNeeded(cropped);
+
             ByteArrayOutputStream baos = new ByteArrayOutputStream();
-            ImageIO.write(cropped, "png", baos);
+            ImageIO.write(resized, "png", baos);
             return Base64.getEncoder().encodeToString(baos.toByteArray());
         } catch (Exception e) {
             log.error("Failed to crop label image, returning original", e);
@@ -150,5 +155,30 @@ public class LabelImageProcessingService {
 
         return new Rectangle(minX, minY, maxX - minX + 1, maxY - minY + 1);
     }
-}
 
+    private BufferedImage resizeIfNeeded(BufferedImage image) {
+        int width = image.getWidth();
+        int height = image.getHeight();
+        int minDimension = Math.min(width, height);
+
+        if (minDimension >= MIN_LABEL_DIMENSION) {
+            return image;
+        }
+
+        double scale = (double) MIN_LABEL_DIMENSION / minDimension;
+        int targetWidth = (int) Math.round(width * scale);
+        int targetHeight = (int) Math.round(height * scale);
+
+        BufferedImage resized = new BufferedImage(targetWidth, targetHeight, BufferedImage.TYPE_INT_ARGB);
+        Graphics2D graphics = resized.createGraphics();
+        try {
+            graphics.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
+            graphics.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
+            graphics.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+            graphics.drawImage(image, 0, 0, targetWidth, targetHeight, null);
+        } finally {
+            graphics.dispose();
+        }
+        return resized;
+    }
+}
