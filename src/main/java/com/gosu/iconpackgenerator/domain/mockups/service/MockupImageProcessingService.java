@@ -23,7 +23,7 @@ import java.util.List;
 public class MockupImageProcessingService {
 
     public static final int MOCKUP_TARGET_WIDTH = 1920; // Full HD width for 16:9 mockups
-    private static final int WHITE_THRESHOLD = 245;
+    private static final int FOREGROUND_ALPHA_THRESHOLD = 16;
     private static final int MIN_COMPONENT_AREA = 200;
     private static final int COMPONENT_MARGIN = 3;
     private static final int MIN_COMPONENT_DIMENSION = 256;
@@ -71,8 +71,8 @@ public class MockupImageProcessingService {
     }
     
     /**
-     * Extract connected foreground regions (UI components) from a mockup rendered on a white background.
-     * Uses a simple flood-fill based content bound detection to locate components and crops them out.
+     * Extract connected foreground regions (UI components) from a mockup rendered on a transparent background.
+     * Uses an alpha-based flood-fill to locate components and crops them out.
      *
      * @param mockupImage Parsed mockup image
      * @return List of cropped component images
@@ -82,8 +82,9 @@ public class MockupImageProcessingService {
             throw new IllegalArgumentException("Mockup image must not be null");
         }
 
-        int width = mockupImage.getWidth();
-        int height = mockupImage.getHeight();
+        BufferedImage sourceImage = ensureArgbImage(mockupImage);
+        int width = sourceImage.getWidth();
+        int height = sourceImage.getHeight();
         boolean[] visited = new boolean[width * height];
         List<BufferedImage> components = new ArrayList<>();
         int[] dx = {-1, 0, 1, -1, 1, -1, 0, 1};
@@ -97,7 +98,7 @@ public class MockupImageProcessingService {
                 }
 
                 visited[index] = true;
-                int rgb = mockupImage.getRGB(x, y);
+                int rgb = sourceImage.getRGB(x, y);
                 if (!isForegroundPixel(rgb)) {
                     continue;
                 }
@@ -134,7 +135,7 @@ public class MockupImageProcessingService {
                         }
 
                         visited[neighborIndex] = true;
-                        int neighborRgb = mockupImage.getRGB(nx, ny);
+                        int neighborRgb = sourceImage.getRGB(nx, ny);
                         if (!isForegroundPixel(neighborRgb)) {
                             continue;
                         }
@@ -158,15 +159,14 @@ public class MockupImageProcessingService {
                 BufferedImage croppedComponent = new BufferedImage(cropWidth, cropHeight, BufferedImage.TYPE_INT_ARGB);
                 Graphics2D graphics = croppedComponent.createGraphics();
                 try {
-                    graphics.drawImage(mockupImage,
+                    graphics.drawImage(sourceImage,
                             0, 0, cropWidth, cropHeight,
                             cropX, cropY, cropX + cropWidth, cropY + cropHeight,
                             null);
                 } finally {
                     graphics.dispose();
                 }
-                BufferedImage transparentComponent = removeWhiteBackground(croppedComponent);
-                components.add(resizeComponentIfNeeded(transparentComponent));
+                components.add(resizeComponentIfNeeded(croppedComponent));
             }
         }
 
@@ -185,15 +185,7 @@ public class MockupImageProcessingService {
 
     private boolean isForegroundPixel(int rgb) {
         int alpha = (rgb >>> 24) & 0xFF;
-        if (alpha < 16) {
-            return false;
-        }
-
-        int red = (rgb >> 16) & 0xFF;
-        int green = (rgb >> 8) & 0xFF;
-        int blue = rgb & 0xFF;
-        int brightness = (red + green + blue) / 3;
-        return brightness < WHITE_THRESHOLD;
+        return alpha >= FOREGROUND_ALPHA_THRESHOLD;
     }
 
     private BufferedImage resizeComponentIfNeeded(BufferedImage component) {
@@ -222,229 +214,18 @@ public class MockupImageProcessingService {
         return resized;
     }
 
-    private BufferedImage removeWhiteBackground(BufferedImage image) {
-        int width = image.getWidth();
-        int height = image.getHeight();
-
-        BufferedImage argbImage;
+    private BufferedImage ensureArgbImage(BufferedImage image) {
         if (image.getType() == BufferedImage.TYPE_INT_ARGB) {
-            argbImage = image;
-        } else {
-            argbImage = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
-            Graphics2D graphics = argbImage.createGraphics();
-            try {
-                graphics.drawImage(image, 0, 0, null);
-            } finally {
-                graphics.dispose();
-            }
+            return image;
         }
 
-        int[] backgroundColor = estimateBackgroundColor(argbImage);
-        boolean[] visited = new boolean[width * height];
-        Deque<int[]> queue = new ArrayDeque<>();
-
-        for (int x = 0; x < width; x++) {
-            enqueueIfBackground(queue, visited, argbImage, x, 0, width, height, backgroundColor);
-            enqueueIfBackground(queue, visited, argbImage, x, height - 1, width, height, backgroundColor);
+        BufferedImage argbImage = new BufferedImage(image.getWidth(), image.getHeight(), BufferedImage.TYPE_INT_ARGB);
+        Graphics2D graphics = argbImage.createGraphics();
+        try {
+            graphics.drawImage(image, 0, 0, null);
+        } finally {
+            graphics.dispose();
         }
-        for (int y = 0; y < height; y++) {
-            enqueueIfBackground(queue, visited, argbImage, 0, y, width, height, backgroundColor);
-            enqueueIfBackground(queue, visited, argbImage, width - 1, y, width, height, backgroundColor);
-        }
-
-        int[] dirs = {-1, 0, 1, 0, -1};
-        while (!queue.isEmpty()) {
-            int[] point = queue.removeFirst();
-            int px = point[0];
-            int py = point[1];
-            argbImage.setRGB(px, py, 0x00FFFFFF);
-
-            for (int i = 0; i < 4; i++) {
-                int nx = px + dirs[i];
-                int ny = py + dirs[i + 1];
-                enqueueIfBackground(queue, visited, argbImage, nx, ny, width, height, backgroundColor);
-            }
-        }
-
-        if (backgroundColor != null) {
-            int iterations = 0;
-            boolean changed;
-            do {
-                changed = false;
-                boolean[] toClear = new boolean[width * height];
-                for (int y = 0; y < height; y++) {
-                    for (int x = 0; x < width; x++) {
-                        int rgb = argbImage.getRGB(x, y);
-                        if (!isBackgroundLike(rgb, backgroundColor)) {
-                            continue;
-                        }
-                        if (hasTransparentNeighbor(argbImage, x, y)) {
-                            toClear[y * width + x] = true;
-                            changed = true;
-                        }
-                    }
-                }
-                for (int y = 0; y < height; y++) {
-                    for (int x = 0; x < width; x++) {
-                        if (toClear[y * width + x]) {
-                            argbImage.setRGB(x, y, 0x00FFFFFF);
-                        }
-                    }
-                }
-                iterations++;
-            } while (changed && iterations < 6);
-        }
-
         return argbImage;
-    }
-
-    private void enqueueIfBackground(Deque<int[]> queue, boolean[] visited, BufferedImage image,
-                                     int x, int y, int width, int height, int[] backgroundColor) {
-        if (x < 0 || x >= width || y < 0 || y >= height) {
-            return;
-        }
-        int index = y * width + x;
-        if (visited[index]) {
-            return;
-        }
-        visited[index] = true;
-
-        int rgb = image.getRGB(x, y);
-        if (!isBackgroundPixel(rgb, backgroundColor)) {
-            return;
-        }
-        queue.add(new int[]{x, y});
-    }
-
-    private boolean isBackgroundPixel(int rgb, int[] backgroundColor) {
-        int alpha = (rgb >>> 24) & 0xFF;
-        if (alpha < 10) {
-            return true;
-        }
-        int red = (rgb >> 16) & 0xFF;
-        int green = (rgb >> 8) & 0xFF;
-        int blue = rgb & 0xFF;
-        int brightness = (red + green + blue) / 3;
-        if (backgroundColor != null) {
-            int distance = colorDistance(red, green, blue, backgroundColor);
-            int backgroundBrightness = (backgroundColor[0] + backgroundColor[1] + backgroundColor[2]) / 3;
-            if (brightness >= backgroundBrightness - 25 && distance <= 70) {
-                return true;
-            }
-        }
-        return brightness >= WHITE_THRESHOLD;
-    }
-
-    private boolean isBackgroundLike(int rgb, int[] backgroundColor) {
-        if (backgroundColor == null) {
-            return false;
-        }
-        int alpha = (rgb >>> 24) & 0xFF;
-        if (alpha < 10) {
-            return false;
-        }
-        int red = (rgb >> 16) & 0xFF;
-        int green = (rgb >> 8) & 0xFF;
-        int blue = rgb & 0xFF;
-        int brightness = (red + green + blue) / 3;
-        int backgroundBrightness = (backgroundColor[0] + backgroundColor[1] + backgroundColor[2]) / 3;
-        int distance = colorDistance(red, green, blue, backgroundColor);
-        return brightness >= backgroundBrightness - 20 && distance <= 60;
-    }
-
-    private boolean hasTransparentNeighbor(BufferedImage image, int x, int y) {
-        int width = image.getWidth();
-        int height = image.getHeight();
-        for (int dy = -1; dy <= 1; dy++) {
-            for (int dx = -1; dx <= 1; dx++) {
-                if (dx == 0 && dy == 0) {
-                    continue;
-                }
-                int nx = x + dx;
-                int ny = y + dy;
-                if (nx < 0 || nx >= width || ny < 0 || ny >= height) {
-                    continue;
-                }
-                int neighbor = image.getRGB(nx, ny);
-                int alpha = (neighbor >>> 24) & 0xFF;
-                if (alpha < 10) {
-                    return true;
-                }
-            }
-        }
-        return false;
-    }
-
-    private int[] estimateBackgroundColor(BufferedImage image) {
-        int width = image.getWidth();
-        int height = image.getHeight();
-        long sumR = 0;
-        long sumG = 0;
-        long sumB = 0;
-        int count = 0;
-
-        for (int x = 0; x < width; x++) {
-            int[] top = extractIfBright(image.getRGB(x, 0));
-            if (top != null) {
-                sumR += top[0];
-                sumG += top[1];
-                sumB += top[2];
-                count++;
-            }
-            int[] bottom = extractIfBright(image.getRGB(x, height - 1));
-            if (bottom != null) {
-                sumR += bottom[0];
-                sumG += bottom[1];
-                sumB += bottom[2];
-                count++;
-            }
-        }
-        for (int y = 0; y < height; y++) {
-            int[] left = extractIfBright(image.getRGB(0, y));
-            if (left != null) {
-                sumR += left[0];
-                sumG += left[1];
-                sumB += left[2];
-                count++;
-            }
-            int[] right = extractIfBright(image.getRGB(width - 1, y));
-            if (right != null) {
-                sumR += right[0];
-                sumG += right[1];
-                sumB += right[2];
-                count++;
-            }
-        }
-
-        if (count == 0) {
-            return null;
-        }
-
-        return new int[]{
-                (int) Math.min(255, Math.max(0, sumR / count)),
-                (int) Math.min(255, Math.max(0, sumG / count)),
-                (int) Math.min(255, Math.max(0, sumB / count))
-        };
-    }
-
-    private int[] extractIfBright(int rgb) {
-        int alpha = (rgb >>> 24) & 0xFF;
-        if (alpha < 10) {
-            return null;
-        }
-        int red = (rgb >> 16) & 0xFF;
-        int green = (rgb >> 8) & 0xFF;
-        int blue = rgb & 0xFF;
-        int brightness = (red + green + blue) / 3;
-        if (brightness < 200) {
-            return null;
-        }
-        return new int[]{red, green, blue};
-    }
-
-    private int colorDistance(int red, int green, int blue, int[] backgroundColor) {
-        return Math.abs(red - backgroundColor[0])
-                + Math.abs(green - backgroundColor[1])
-                + Math.abs(blue - backgroundColor[2]);
     }
 }
