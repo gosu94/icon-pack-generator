@@ -8,7 +8,7 @@ import org.springframework.stereotype.Service;
 public class LabelPromptGenerationService {
 
     private static final String TEXT_TO_IMAGE_TEMPLATE = """
-            Create a high-quality image of the text '%s' displayed in one single horizontal line.
+            Create a high-quality image of the text '%s' .
             Style the text according to a %s.
             Match the theme’s typography, color palette, texture, lighting, and mood.
             Keep the text centered and fully on one line (no line breaks or stacked words).
@@ -17,7 +17,7 @@ public class LabelPromptGenerationService {
             """;
 
     private static final String IMAGE_TO_IMAGE_TEMPLATE = """
-            Create a high-quality image of the text '%s' in one single horizontal line, using the exact same visual style as the attached reference image.
+            Create a high-quality image of the text '%s', using the exact same visual style as the attached reference image.
             Match the font shape, texture, color palette, lighting, and material properties precisely.
             Keep the text centered, fully on one line, and do not stack or break words.
             Maintain the same artistic mood and rendering style as the reference.

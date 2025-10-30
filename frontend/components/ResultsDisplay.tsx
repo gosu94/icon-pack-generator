@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import Image from "next/image";
+import { Download } from "lucide-react";
 import { UIState, ServiceResult, GenerationResponse, GenerationMode } from "../lib/types";
 
 interface ResultsDisplayProps {
@@ -75,6 +76,8 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
 }) => {
   // State for full-size image preview modal
   const [previewImage, setPreviewImage] = useState<string | null>(null);
+  const actionButtonBaseClass =
+    "px-2 sm:px-4 py-2 bg-[#ffffff] text-[#3C4BFF] font-medium rounded-2xl shadow-sm hover:shadow-md transition-all flex items-center justify-center border border-[#E6E8FF] hover:bg-[#F5F6FF] active:shadow-sm focus:outline-none focus:ring-2 focus:ring-[#3C4BFF]/40";
 
   const getGenerationResults = (generationNumber: number) => {
     return Object.entries(streamingResults)
@@ -92,32 +95,69 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
     setPreviewImage(null);
   };
 
-  const handleGenerateIconsFromMockup = async (base64Data: string) => {
+  const prepareReferenceFromBase64 = (
+    base64Data: string,
+    filename: string,
+    targetMode: GenerationMode,
+  ) => {
     try {
-      // Convert base64 to blob
-      const base64Response = await fetch(`data:image/png;base64,${base64Data}`);
-      const blob = await base64Response.blob();
-      
-      // Create File object from blob
-      const file = new File([blob], "mockup-reference.png", {
+      const cleanBase64 = base64Data.includes(",")
+        ? base64Data.split(",").pop() ?? base64Data
+        : base64Data;
+      const binaryString = atob(cleanBase64);
+      const length = binaryString.length;
+      const bytes = new Uint8Array(length);
+      for (let i = 0; i < length; i++) {
+        bytes[i] = binaryString.charCodeAt(i);
+      }
+      const blob = new Blob([bytes], { type: "image/png" });
+      const file = new File([blob], filename, {
         type: "image/png",
         lastModified: Date.now(),
       });
-      
-      // Create preview URL
       const previewUrl = URL.createObjectURL(blob);
-      
-      // Set up the form for icon generation
-      setReferenceImage(file);
-      setImagePreview(previewUrl);
+
+      setMode(targetMode);
       setInputType("image");
-      setMode("icons");
-      
-      // Scroll to top to show the form
+
+      setTimeout(() => {
+        setReferenceImage(file);
+        setImagePreview(previewUrl);
+      }, 0);
+
       window.scrollTo({ top: 0, behavior: "smooth" });
     } catch (error) {
-      console.error("Error converting mockup to reference image:", error);
+      console.error("Error preparing reference image:", error);
+      alert("Failed to prepare reference image. Please try again.");
     }
+  };
+
+  const handleGenerateIconsFromMockup = (base64Data: string) => {
+    prepareReferenceFromBase64(base64Data, "mockup-reference.png", "icons");
+  };
+
+  const handleUseResultAsReference = (
+    result: ServiceResult,
+    targetMode: GenerationMode,
+  ) => {
+    const base64Source =
+      result.originalGridImageBase64 || result.icons?.[0]?.base64Data;
+
+    if (!base64Source) {
+      alert("Reference image is not available yet. Please wait for generation to finish.");
+      return;
+    }
+
+    let filename = "reference.png";
+    if (targetMode === "mockups") {
+      filename = "icon-grid-for-mockups.png";
+    } else if (targetMode === "labels") {
+      filename = "icon-grid-for-labels.png";
+    } else if (targetMode === "icons") {
+      filename = "mockup-reference.png";
+    }
+
+    prepareReferenceFromBase64(base64Source, filename, targetMode);
   };
 
   const renderGenerationResults = (generationNumber: number) => {
@@ -162,19 +202,49 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
                 )}
               </h3>
               {result.status === "success" && result.icons.length > 0 && (
-                <button
-                  onClick={() =>
-                    exportGeneration(
-                      currentResponse?.requestId || "",
-                      baseServiceId,
-                      result.generationIndex,
-                    )
-                  }
-                  className="px-3 py-1 bg-blue-50 text-blue-600 rounded text-sm hover:bg-blue-100"
-                  data-oid="xt-nyai"
-                >
-                  Export
-                </button>
+                <div className="flex items-center gap-2 sm:gap-3">
+                  {mode === "icons" && (
+                    <>
+                      <button
+                        onClick={() => handleUseResultAsReference(result, "mockups")}
+                        className={`${actionButtonBaseClass} gap-1`}
+                        title="Generate UI Mockup from these icons"
+                      >
+                        <span className="text-xs font-bold">UI</span>
+                      </button>
+                      <button
+                        onClick={() => handleUseResultAsReference(result, "labels")}
+                        className={`${actionButtonBaseClass} gap-1`}
+                        title="Generate Labels from these icons"
+                      >
+                        <span className="text-xs font-bold">T</span>
+                      </button>
+                    </>
+                  )}
+                  {mode === "mockups" && (
+                    <button
+                      onClick={() => handleUseResultAsReference(result, "icons")}
+                      className={`${actionButtonBaseClass} gap-1`}
+                      title="Generate Icons from this mockup"
+                    >
+                      <span className="text-xs font-bold">Icon</span>
+                    </button>
+                  )}
+                  <button
+                    onClick={() =>
+                      exportGeneration(
+                        currentResponse?.requestId || "",
+                        baseServiceId,
+                        result.generationIndex,
+                      )
+                    }
+                    className={`${actionButtonBaseClass} gap-2`}
+                    title="Export"
+                    data-oid="xt-nyai"
+                  >
+                    <Download className="w-4 h-4" />
+                  </button>
+                </div>
               )}
             </div>
             <p className="text-sm text-gray-600 mt-1" data-oid="6-u8r69">
