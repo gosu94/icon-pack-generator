@@ -103,13 +103,6 @@ const Navigation: React.FC<NavigationProps> = ({ useLoginPage = false }) => {
                 </span>
               </span>
             </Link>
-            <Image
-                src="/images/haloween.webp"
-                alt="Halloween"
-                width={24}
-                height={24}
-                className="ml-1"
-            />
           </div>
         </div>
 
