@@ -7,6 +7,7 @@ export interface UserAdminData {
   generatedIconsCount: number;
   generatedIllustrationsCount: number;
   generatedMockupsCount: number;
+  generatedLabelsCount: number;
   registeredAt: string;
   authProvider: string;
   isActive: boolean;
@@ -44,4 +45,13 @@ export interface UserMockup {
   description: string;
   serviceSource: string;
   requestId: string;
+}
+
+export interface UserLabel {
+  imageUrl: string;
+  labelText: string;
+  serviceSource: string;
+  requestId: string;
+  labelType: string;
+  theme: string;
 }

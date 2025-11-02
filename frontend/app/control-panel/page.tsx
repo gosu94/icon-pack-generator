@@ -11,6 +11,7 @@ import {
   UserIcon,
   UserIllustration,
   UserMockup,
+  UserLabel,
 } from "./types";
 import UsersTab from "./components/UsersTab";
 import EmailTab from "./components/EmailTab";
@@ -191,12 +192,15 @@ export default function ControlPanelPage() {
     []
   );
   const [userMockups, setUserMockups] = useState<UserMockup[]>([]);
+  const [userLabels, setUserLabels] = useState<UserLabel[]>([]);
   const [loadingIcons, setLoadingIcons] = useState(false);
   const [loadingIllustrations, setLoadingIllustrations] = useState(false);
   const [loadingMockups, setLoadingMockups] = useState(false);
+  const [loadingLabels, setLoadingLabels] = useState(false);
   const [showIconsModal, setShowIconsModal] = useState(false);
   const [showIllustrationsModal, setShowIllustrationsModal] = useState(false);
   const [showMockupsModal, setShowMockupsModal] = useState(false);
+  const [showLabelsModal, setShowLabelsModal] = useState(false);
   const [showSetCoinsModal, setShowSetCoinsModal] = useState(false);
   const [userForCoins, setUserForCoins] = useState<UserAdminData | null>(null);
   const [coins, setCoins] = useState(0);
@@ -283,6 +287,7 @@ export default function ControlPanelPage() {
         generatedIconsCount: "id", // We'll sort by id as proxy since counts are calculated
         generatedIllustrationsCount: "id",
         generatedMockupsCount: "id",
+        generatedLabelsCount: "id",
         registeredAt: "registeredAt",
         authProvider: "authProvider",
         isActive: "isActive",
@@ -383,6 +388,27 @@ export default function ControlPanelPage() {
     }
   };
 
+  const fetchUserLabels = async (userId: number) => {
+    setLoadingLabels(true);
+    try {
+      const response = await fetch(`/api/admin/users/${userId}/labels`, {
+        credentials: "include",
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch user labels");
+      }
+
+      const data: UserLabel[] = await response.json();
+      setUserLabels(data);
+    } catch (err: any) {
+      console.error("Error fetching user labels:", err);
+      setUserLabels([]);
+    } finally {
+      setLoadingLabels(false);
+    }
+  };
+
   const handleViewIcons = async (user: UserAdminData) => {
     setSelectedUser(user);
     setShowIconsModal(true);
@@ -401,6 +427,12 @@ export default function ControlPanelPage() {
     await fetchUserMockups(user.id);
   };
 
+  const handleViewLabels = async (user: UserAdminData) => {
+    setSelectedUser(user);
+    setShowLabelsModal(true);
+    await fetchUserLabels(user.id);
+  };
+
   const closeIconsModal = () => {
     setShowIconsModal(false);
     setSelectedUser(null);
@@ -417,6 +449,12 @@ export default function ControlPanelPage() {
     setShowMockupsModal(false);
     setSelectedUser(null);
     setUserMockups([]);
+  };
+
+  const closeLabelsModal = () => {
+    setShowLabelsModal(false);
+    setSelectedUser(null);
+    setUserLabels([]);
   };
 
   const handleOpenSetCoinsModal = (user: UserAdminData) => {
@@ -651,6 +689,7 @@ export default function ControlPanelPage() {
               onViewIcons={handleViewIcons}
               onViewIllustrations={handleViewIllustrations}
               onViewMockups={handleViewMockups}
+              onViewLabels={handleViewLabels}
               onOpenSetCoinsModal={handleOpenSetCoinsModal}
               formatDate={formatDate}
               totalElements={totalElements}
@@ -942,6 +981,74 @@ export default function ControlPanelPage() {
             <div className="flex justify-end p-6 border-t border-slate-200">
               <button
                 onClick={closeMockupsModal}
+                className="px-4 py-2 bg-slate-200 text-slate-700 rounded-lg hover:bg-slate-300 transition-colors"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Labels Modal */}
+      {showLabelsModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-6xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+            <div className="flex items-center justify-between p-6 border-b border-slate-200">
+              <div>
+                <h2 className="text-2xl font-bold text-slate-800">
+                  Labels for {selectedUser?.email}
+                </h2>
+                <p className="text-sm text-slate-600 mt-1">
+                  Total: {userLabels.length} labels
+                </p>
+              </div>
+              <button
+                onClick={closeLabelsModal}
+                className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
+              >
+                <X className="w-6 h-6 text-slate-600" />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-6">
+              {loadingLabels ? (
+                <div className="flex items-center justify-center py-12">
+                  <p className="text-slate-600">Loading labels...</p>
+                </div>
+              ) : userLabels.length === 0 ? (
+                <div className="flex items-center justify-center py-12">
+                  <p className="text-slate-600">
+                    No labels found for this user
+                  </p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                  {userLabels.map((label, index) => (
+                    <div
+                      key={index}
+                      className="border rounded-lg p-2 bg-white shadow-sm hover:shadow-md transition-shadow"
+                    >
+                      <img
+                        src={label.imageUrl}
+                        alt={label.labelText || "Generated Label"}
+                        className="w-full h-auto object-cover rounded-md"
+                      />
+                      <div className="mt-2 text-xs text-slate-600 truncate">
+                        {label.labelText}
+                      </div>
+                      <div className="mt-1 text-xs text-slate-400 truncate">
+                        {label.serviceSource}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="flex justify-end p-6 border-t border-slate-200">
+              <button
+                onClick={closeLabelsModal}
                 className="px-4 py-2 bg-slate-200 text-slate-700 rounded-lg hover:bg-slate-300 transition-colors"
               >
                 Close

@@ -19,4 +19,6 @@ public interface GeneratedLabelRepository extends JpaRepository<GeneratedLabel, 
     void deleteByRequestId(String requestId);
 
     List<GeneratedLabel> findByFilePathIn(List<String> filePaths);
+
+    Long countByUser(User user);
 }

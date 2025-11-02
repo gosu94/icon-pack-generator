@@ -1,5 +1,6 @@
 import { UserAdminData } from "../types";
 import { ReactNode } from "react";
+import { Image as ImageIcon, Paintbrush, Layout, Tag } from "lucide-react";
 
 interface UsersTabProps {
   users: UserAdminData[];
@@ -8,6 +9,7 @@ interface UsersTabProps {
   onViewIcons: (user: UserAdminData) => void;
   onViewIllustrations: (user: UserAdminData) => void;
   onViewMockups: (user: UserAdminData) => void;
+  onViewLabels: (user: UserAdminData) => void;
   onOpenSetCoinsModal: (user: UserAdminData) => void;
   formatDate: (dateString: string | null) => string;
   totalElements: number;
@@ -30,9 +32,10 @@ const columnConfig: Array<{
   { key: "lastLogin", label: "Last Login" },
   { key: "trialCoins", label: "Trial Coins" },
   { key: "coins", label: "Coins" },
-  { key: "generatedIconsCount", label: "Generated Icons" },
-  { key: "generatedIllustrationsCount", label: "Generated Illustrations" },
-  { key: "generatedMockupsCount", label: "Generated Mockups" },
+  { key: "generatedIconsCount", label: "IC" },
+  { key: "generatedIllustrationsCount", label: "IL" },
+  { key: "generatedMockupsCount", label: "MC" },
+  { key: "generatedLabelsCount", label: "LA" },
   { key: "registeredAt", label: "Registered" },
   { key: "authProvider", label: "Provider" },
 ];
@@ -44,6 +47,7 @@ export default function UsersTab({
   onViewIcons,
   onViewIllustrations,
   onViewMockups,
+  onViewLabels,
   onOpenSetCoinsModal,
   formatDate,
   totalElements,
@@ -100,28 +104,52 @@ export default function UsersTab({
                   </span>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm">
-                  <button
-                    onClick={() => onViewIcons(user)}
-                    className="inline-flex items-center px-3 py-1 rounded-md text-sm font-medium bg-gradient-to-r from-blue-600 to-purple-600 text-white hover:from-blue-700 hover:to-purple-700 transition-all duration-200"
-                  >
-                    View ({user.generatedIconsCount})
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => onViewIcons(user)}
+                      className="inline-flex items-center justify-center p-2 rounded-md bg-gradient-to-r from-blue-600 to-purple-600 text-white hover:from-blue-700 hover:to-purple-700 transition-all duration-200"
+                      title={`View ${user.generatedIconsCount} icons`}
+                    >
+                      <ImageIcon className="w-4 h-4" />
+                    </button>
+                    <span className="text-xs text-slate-600">{user.generatedIconsCount}</span>
+                  </div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm">
-                  <button
-                    onClick={() => onViewIllustrations(user)}
-                    className="inline-flex items-center px-3 py-1 rounded-md text-sm font-medium bg-gradient-to-r from-green-600 to-teal-600 text-white hover:from-green-700 hover:to-teal-700 transition-all duration-200"
-                  >
-                    View ({user.generatedIllustrationsCount})
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => onViewIllustrations(user)}
+                      className="inline-flex items-center justify-center p-2 rounded-md bg-gradient-to-r from-green-600 to-teal-600 text-white hover:from-green-700 hover:to-teal-700 transition-all duration-200"
+                      title={`View ${user.generatedIllustrationsCount} illustrations`}
+                    >
+                      <Paintbrush className="w-4 h-4" />
+                    </button>
+                    <span className="text-xs text-slate-600">{user.generatedIllustrationsCount}</span>
+                  </div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm">
-                  <button
-                    onClick={() => onViewMockups(user)}
-                    className="inline-flex items-center px-3 py-1 rounded-md text-sm font-medium bg-gradient-to-r from-pink-500 to-rose-500 text-white hover:from-pink-600 hover:to-rose-600 transition-all duration-200"
-                  >
-                    View ({user.generatedMockupsCount})
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => onViewMockups(user)}
+                      className="inline-flex items-center justify-center p-2 rounded-md bg-gradient-to-r from-pink-500 to-rose-500 text-white hover:from-pink-600 hover:to-rose-600 transition-all duration-200"
+                      title={`View ${user.generatedMockupsCount} mockups`}
+                    >
+                      <Layout className="w-4 h-4" />
+                    </button>
+                    <span className="text-xs text-slate-600">{user.generatedMockupsCount}</span>
+                  </div>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm">
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => onViewLabels(user)}
+                      className="inline-flex items-center justify-center p-2 rounded-md bg-gradient-to-r from-emerald-500 to-sky-500 text-white hover:from-emerald-600 hover:to-sky-600 transition-all duration-200"
+                      title={`View ${user.generatedLabelsCount} labels`}
+                    >
+                      <Tag className="w-4 h-4" />
+                    </button>
+                    <span className="text-xs text-slate-600">{user.generatedLabelsCount}</span>
+                  </div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600">
                   {formatDate(user.registeredAt)}

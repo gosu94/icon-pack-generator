@@ -18,6 +18,7 @@ public class UserAdminDto {
     private Long generatedIconsCount;
     private Long generatedIllustrationsCount;
     private Long generatedMockupsCount;
+    private Long generatedLabelsCount;
     private LocalDateTime registeredAt;
     private String authProvider;
     private Boolean isActive;

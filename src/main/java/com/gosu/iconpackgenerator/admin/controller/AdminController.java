@@ -10,6 +10,8 @@ import com.gosu.iconpackgenerator.domain.illustrations.dto.IllustrationDto;
 import com.gosu.iconpackgenerator.domain.illustrations.entity.GeneratedIllustration;
 import com.gosu.iconpackgenerator.domain.illustrations.repository.GeneratedIllustrationRepository;
 import com.gosu.iconpackgenerator.domain.labels.repository.GeneratedLabelRepository;
+import com.gosu.iconpackgenerator.domain.labels.dto.LabelDto;
+import com.gosu.iconpackgenerator.domain.labels.entity.GeneratedLabel;
 import com.gosu.iconpackgenerator.domain.mockups.dto.MockupDto;
 import com.gosu.iconpackgenerator.domain.mockups.entity.GeneratedMockup;
 import com.gosu.iconpackgenerator.domain.mockups.repository.GeneratedMockupRepository;
@@ -109,6 +111,7 @@ public class AdminController {
                     Long iconCount = generatedIconRepository.countByUser(u);
                     Long illustrationCount = generatedIllustrationRepository.countByUser(u);
                     long mockupCount = generatedMockupRepository.countByUser(u);
+                    Long labelCount = generatedLabelRepository.countByUser(u);
                     return new UserAdminDto(
                             u.getId(),
                             u.getEmail(),
@@ -118,6 +121,7 @@ public class AdminController {
                             iconCount,
                             illustrationCount,
                             mockupCount,
+                            labelCount,
                             u.getRegisteredAt(),
                             u.getAuthProvider(),
                             u.getIsActive()
@@ -248,6 +252,44 @@ public class AdminController {
 
         log.info("Admin user {} retrieved {} mockups for user {}", adminUser.getEmail(), mockupDtos.size(), targetUser.getEmail());
         return ResponseEntity.ok(mockupDtos);
+    }
+
+    /**
+     * Get labels for a specific user (admin only)
+     */
+    @GetMapping("/users/{userId}/labels")
+    public ResponseEntity<?> getUserLabels(@PathVariable Long userId, @AuthenticationPrincipal OAuth2User principal) {
+        if (!(principal instanceof CustomOAuth2User customUser)) {
+            return ResponseEntity.status(401).body(Map.of("error", "Unauthorized"));
+        }
+
+        User adminUser = customUser.getUser();
+        if (!adminService.isAdmin(adminUser)) {
+            log.warn("Non-admin user {} attempted to access admin endpoint", adminUser.getEmail());
+            return ResponseEntity.status(403).body(Map.of("error", "Forbidden - Admin access required"));
+        }
+
+        User targetUser = userRepository.findById(userId)
+                .orElse(null);
+
+        if (targetUser == null) {
+            return ResponseEntity.status(404).body(Map.of("error", "User not found"));
+        }
+
+        List<GeneratedLabel> labels = generatedLabelRepository.findByUserOrderByCreatedAtDesc(targetUser);
+        List<LabelDto> labelDtos = labels.stream()
+                .map(label -> new LabelDto(
+                        label.getFilePath(),
+                        label.getLabelText(),
+                        label.getServiceSource(),
+                        label.getRequestId(),
+                        label.getLabelType(),
+                        label.getTheme()
+                ))
+                .collect(Collectors.toList());
+
+        log.info("Admin user {} retrieved {} labels for user {}", adminUser.getEmail(), labelDtos.size(), targetUser.getEmail());
+        return ResponseEntity.ok(labelDtos);
     }
 
     /**
