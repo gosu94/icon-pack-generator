@@ -3,7 +3,10 @@ package com.gosu.iconpackgenerator.domain.mockups.service;
 import com.gosu.iconpackgenerator.domain.icons.service.FileStorageService;
 import com.gosu.iconpackgenerator.domain.mockups.dto.MockupGenerationRequest;
 import com.gosu.iconpackgenerator.domain.mockups.dto.MockupGenerationResponse;
+import com.gosu.iconpackgenerator.domain.mockups.dto.MockupGenerationResponse.MockupComponent;
 import com.gosu.iconpackgenerator.domain.mockups.entity.GeneratedMockup;
+import com.gosu.iconpackgenerator.domain.mockups.entity.GeneratedMockupComponent;
+import com.gosu.iconpackgenerator.domain.mockups.repository.GeneratedMockupComponentRepository;
 import com.gosu.iconpackgenerator.domain.mockups.repository.GeneratedMockupRepository;
 import com.gosu.iconpackgenerator.user.model.User;
 import lombok.RequiredArgsConstructor;
@@ -23,6 +26,7 @@ import java.util.List;
 public class MockupPersistenceService {
     
     private final GeneratedMockupRepository generatedMockupRepository;
+    private final GeneratedMockupComponentRepository generatedMockupComponentRepository;
     private final FileStorageService fileStorageService;
     
     /**
@@ -138,7 +142,8 @@ public class MockupPersistenceService {
                 user.getDirectoryPath(), requestId, mockupType, fileName);
         generatedMockup.setFileSize(fileSize);
         
-        generatedMockupRepository.save(generatedMockup);
+        GeneratedMockup savedMockup = generatedMockupRepository.save(generatedMockup);
+        persistComponents(requestId, user, mockupType, savedMockup, mockup);
     }
     
     /**
@@ -178,7 +183,8 @@ public class MockupPersistenceService {
                 user.getDirectoryPath(), requestId, mockupType, fileName);
         generatedMockup.setFileSize(fileSize);
         
-        generatedMockupRepository.save(generatedMockup);
+        GeneratedMockup savedMockup = generatedMockupRepository.save(generatedMockup);
+        persistComponents(requestId, user, mockupType, savedMockup, mockup);
     }
     
     /**
@@ -200,8 +206,53 @@ public class MockupPersistenceService {
             }
         }
         
-        // Default to generation 1 if not found
+        // Treat all mockup outputs for the combined GPT flow as generation 1
         return 1;
     }
-}
 
+    private void persistComponents(String requestId, User user, String mockupType,
+                                   GeneratedMockup generatedMockup,
+                                   MockupGenerationResponse.GeneratedMockup mockup) {
+        List<MockupComponent> components = mockup.getComponents();
+        if (components == null || components.isEmpty()) {
+            return;
+        }
+
+        for (MockupComponent component : components) {
+            if (component.getBase64Data() == null || component.getBase64Data().isEmpty()) {
+                continue;
+            }
+
+            String componentId = component.getId() != null ? component.getId() : java.util.UUID.randomUUID().toString();
+            String fileName = fileStorageService.generateMockupComponentFileName(componentId, component.getOrder());
+            String filePath = fileStorageService.saveMockupComponent(
+                    user.getDirectoryPath(),
+                    requestId,
+                    mockupType,
+                    generatedMockup.getMockupId(),
+                    fileName,
+                    component.getBase64Data()
+            );
+
+            GeneratedMockupComponent entity = new GeneratedMockupComponent();
+            entity.setComponentId(componentId);
+            entity.setMockup(generatedMockup);
+            entity.setRequestId(requestId);
+            entity.setFileName(fileName);
+            entity.setFilePath(filePath);
+            entity.setComponentOrder(component.getOrder());
+            entity.setLabel(component.getLabel());
+
+            long fileSize = fileStorageService.getMockupComponentFileSize(
+                    user.getDirectoryPath(),
+                    requestId,
+                    mockupType,
+                    generatedMockup.getMockupId(),
+                    fileName
+            );
+            entity.setFileSize(fileSize);
+
+            generatedMockupComponentRepository.save(entity);
+        }
+    }
+}

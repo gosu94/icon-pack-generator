@@ -517,8 +517,8 @@ const GeneratorForm: React.FC<GeneratorFormProps> = ({
                   {isAuthenticated && authState.user && (
                     <span className="flex items-center space-x-1 rounded-full bg-white/20 px-2 py-0.5 text-xs font-semibold">
                       {(() => {
-                        // For mockups, cost is always 1 (variations don't cost extra)
-                        const cost = mode === "mockups" ? 1 : (generateVariations ? 2 : 1);
+                        // Mockup generation now costs 2 coins flat
+                        const cost = mode === "mockups" ? 2 : (generateVariations ? 2 : 1);
                         const regularCoins = authState.user.coins || 0;
                         const trialCoins = authState.user.trialCoins || 0;
                         

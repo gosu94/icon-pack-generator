@@ -13,6 +13,7 @@ public class MockupGenerationResponse {
     private List<GeneratedMockup> mockups;
     private List<ServiceResults> bananaResults;
     private Long seed;
+    private List<MockupComponent> components;
     
     @Data
     public static class ServiceResults {
@@ -23,6 +24,7 @@ public class MockupGenerationResponse {
         private String originalImageBase64;
         private Long generationTimeMs;
         private Integer generationIndex;
+        private List<MockupComponent> components;
     }
     
     @Data
@@ -31,6 +33,16 @@ public class MockupGenerationResponse {
         private String base64Data;
         private String description;
         private String serviceSource;
+        private Integer generationIndex;
+        private List<MockupComponent> components;
+    }
+
+    @Data
+    public static class MockupComponent {
+        private String id;
+        private String base64Data;
+        private String label;
+        private Integer order;
+        private String sourceMockupId;
     }
 }
-

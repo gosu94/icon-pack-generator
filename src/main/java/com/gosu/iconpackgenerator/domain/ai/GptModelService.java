@@ -50,6 +50,24 @@ public class GptModelService implements AIModelService {
 
     private static final String GPT_TEXT_TO_IMAGE_ENDPOINT = "fal-ai/gpt-image-1/text-to-image/byok";
 
+    public static class ImageResult {
+        private final byte[] imageData;
+        private final String imageUrl;
+
+        public ImageResult(byte[] imageData, String imageUrl) {
+            this.imageData = imageData;
+            this.imageUrl = imageUrl;
+        }
+
+        public byte[] getImageData() {
+            return imageData;
+        }
+
+        public String getImageUrl() {
+            return imageUrl;
+        }
+    }
+
     @Override
     public CompletableFuture<byte[]> generateImage(String prompt) {
         return generateImage(prompt, null, PromptAugmentation.ICON);
@@ -70,6 +88,11 @@ public class GptModelService implements AIModelService {
      * Generate image with optional seed and configurable prompt augmentation.
      */
     public CompletableFuture<byte[]> generateImage(String prompt, Long seed, PromptAugmentation augmentation) {
+        return generateImageWithMetadata(prompt, seed, augmentation)
+                .thenApply(ImageResult::getImageData);
+    }
+
+    public CompletableFuture<ImageResult> generateImageWithMetadata(String prompt, Long seed, PromptAugmentation augmentation) {
         log.info("Generating image with GPT Image for prompt: {} (seed: {}, augmentation: {})", prompt, seed, augmentation);
 
         return generateGptImageAsync(prompt, seed, augmentation)
@@ -77,12 +100,12 @@ public class GptModelService implements AIModelService {
                     if (error != null) {
                         log.error("Error generating image with GPT Image", error);
                     } else {
-                        log.info("Successfully generated image with GPT Image, size: {} bytes", bytes.length);
+                        log.info("Successfully generated image with GPT Image, size: {} bytes", bytes.getImageData().length);
                     }
                 });
     }
 
-    private CompletableFuture<byte[]> generateGptImageAsync(String prompt, Long seed, PromptAugmentation augmentation) {
+    private CompletableFuture<ImageResult> generateGptImageAsync(String prompt, Long seed, PromptAugmentation augmentation) {
         return CompletableFuture.supplyAsync(() -> {
             Exception lastException;
 
@@ -122,7 +145,7 @@ public class GptModelService implements AIModelService {
         });
     }
 
-    private byte[] attemptGptGeneration(String prompt, Long seed, boolean isRetry, PromptAugmentation augmentation) throws Exception {
+    private ImageResult attemptGptGeneration(String prompt, Long seed, boolean isRetry, PromptAugmentation augmentation) throws Exception {
         log.info("Generating GPT image with endpoint: {} (seed: {}, retry: {}, augmentation: {})", GPT_TEXT_TO_IMAGE_ENDPOINT, seed, isRetry, augmentation);
 
         // Apply GPT-specific styling to the prompt with explicit constraints
@@ -179,6 +202,11 @@ public class GptModelService implements AIModelService {
      * Generate image using image-to-image functionality with optional seed.
      */
     public CompletableFuture<byte[]> generateImageToImage(String prompt, byte[] sourceImageData, Long seed) {
+        return generateImageToImageWithMetadata(prompt, sourceImageData, seed)
+                .thenApply(ImageResult::getImageData);
+    }
+
+    public CompletableFuture<ImageResult> generateImageToImageWithMetadata(String prompt, byte[] sourceImageData, Long seed) {
         log.info("Generating image-to-image with GPT Image for prompt: {}", prompt);
 
         return generateGptImageToImageAsync(prompt, sourceImageData, seed)
@@ -186,12 +214,12 @@ public class GptModelService implements AIModelService {
                     if (error != null) {
                         log.error("Error generating image-to-image with GPT Image", error);
                     } else {
-                        log.info("Successfully generated image-to-image with GPT Image, size: {} bytes", bytes.length);
+                        log.info("Successfully generated image-to-image with GPT Image, size: {} bytes", bytes.getImageData().length);
                     }
                 });
     }
 
-    private CompletableFuture<byte[]> generateGptImageToImageAsync(String prompt, byte[] sourceImageData, Long seed) {
+    private CompletableFuture<ImageResult> generateGptImageToImageAsync(String prompt, byte[] sourceImageData, Long seed) {
         return CompletableFuture.supplyAsync(() -> {
             Exception lastException;
 
@@ -231,7 +259,7 @@ public class GptModelService implements AIModelService {
     }
 
     //We have to use OpenAI API because fal.ai does not officially support transparent background option (at this point)
-    private byte[] attemptGptImageToImageGeneration(String prompt, byte[] sourceImageData, Long seed, boolean isRetry) throws Exception {
+    private ImageResult attemptGptImageToImageGeneration(String prompt, byte[] sourceImageData, Long seed, boolean isRetry) throws Exception {
         log.info("Generating GPT image-to-image with OpenAI API (seed: {}, retry: {})", seed, isRetry);
 
         validateOpenAIConfiguration();
@@ -285,7 +313,7 @@ public class GptModelService implements AIModelService {
     }
 
 
-    private byte[] extractImageFromResult(JsonNode result) {
+    private ImageResult extractImageFromResult(JsonNode result) {
         try {
             // GPT Image likely returns images in the 'images' array (following fal.ai pattern)
             JsonNode imagesNode = result.path("images");
@@ -295,14 +323,14 @@ public class GptModelService implements AIModelService {
 
                 if (!imageUrl.isEmpty()) {
                     log.info("Downloading image from GPT Image URL: {}", imageUrl);
-                    return downloadImageFromUrl(imageUrl);
+                    return new ImageResult(downloadImageFromUrl(imageUrl), imageUrl);
                 }
 
                 // Check if there's direct base64 data (alternative format)
                 String base64Data = firstImage.path("base64").asText();
                 if (!base64Data.isEmpty()) {
                     log.debug("Found base64 data in GPT Image response");
-                    return Base64.getDecoder().decode(base64Data);
+                    return new ImageResult(Base64.getDecoder().decode(base64Data), null);
                 }
 
                 // Check for data URL format
@@ -310,7 +338,7 @@ public class GptModelService implements AIModelService {
                 if (dataUrl.startsWith("data:image/")) {
                     log.debug("Found data URL in GPT Image response");
                     String base64Part = dataUrl.substring(dataUrl.indexOf(",") + 1);
-                    return Base64.getDecoder().decode(base64Part);
+                    return new ImageResult(Base64.getDecoder().decode(base64Part), null);
                 }
             }
 
@@ -320,7 +348,7 @@ public class GptModelService implements AIModelService {
                 String imageUrl = imageNode.path("url").asText();
                 if (!imageUrl.isEmpty()) {
                     log.info("Downloading image from GPT Image URL: {}", imageUrl);
-                    return downloadImageFromUrl(imageUrl);
+                    return new ImageResult(downloadImageFromUrl(imageUrl), imageUrl);
                 }
             }
 
@@ -337,7 +365,7 @@ public class GptModelService implements AIModelService {
      * Extract image data from OpenAI API response
      * gpt-image-1 always returns base64-encoded images directly
      */
-    private byte[] extractImageFromOpenAIResponse(JsonNode response) {
+    private ImageResult extractImageFromOpenAIResponse(JsonNode response) {
         try {
             // OpenAI API returns images in the 'data' array
             JsonNode dataNode = response.path("data");
@@ -348,14 +376,14 @@ public class GptModelService implements AIModelService {
                 String base64Data = firstImage.path("b64_json").asText();
                 if (!base64Data.isEmpty()) {
                     log.debug("Found base64 data in OpenAI response");
-                    return Base64.getDecoder().decode(base64Data);
+                    return new ImageResult(Base64.getDecoder().decode(base64Data), null);
                 }
                 
                 // For other models (dall-e-2, dall-e-3) that might return URLs
                 String imageUrl = firstImage.path("url").asText();
                 if (!imageUrl.isEmpty()) {
                     log.info("Downloading image from OpenAI URL: {}", imageUrl);
-                    return downloadImageFromUrl(imageUrl);
+                    return new ImageResult(downloadImageFromUrl(imageUrl), imageUrl);
                 }
             }
 

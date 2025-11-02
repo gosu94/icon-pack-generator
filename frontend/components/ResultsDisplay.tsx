@@ -132,10 +132,6 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
     }
   };
 
-  const handleGenerateIconsFromMockup = (base64Data: string) => {
-    prepareReferenceFromBase64(base64Data, "mockup-reference.png", "icons");
-  };
-
   const handleUseResultAsReference = (
     result: ServiceResult,
     targetMode: GenerationMode,
@@ -221,15 +217,6 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
                       </button>
                     </>
                   )}
-                  {mode === "mockups" && (
-                    <button
-                      onClick={() => handleUseResultAsReference(result, "icons")}
-                      className={`${actionButtonBaseClass} gap-1`}
-                      title="Generate Icons from this mockup"
-                    >
-                      <span className="text-xs font-bold">Icon</span>
-                    </button>
-                  )}
                   <button
                     onClick={() =>
                       exportGeneration(
@@ -259,7 +246,7 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
                   ? "grid gap-4 grid-cols-[repeat(auto-fit,minmax(160px,1fr))]"
                   : mode === "illustrations"
                   ? "grid grid-cols-1 sm:grid-cols-2 gap-6"
-                  : "flex justify-center items-center"
+                  : "grid gap-4 grid-cols-[repeat(auto-fit,minmax(140px,1fr))]"
               } 
               data-oid=".ge-1o5"
             >
@@ -278,7 +265,7 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
                       mode === "illustrations"
                         ? "aspect-[5/4] w-full max-w-[450px]"
                         : mode === "mockups"
-                        ? "aspect-video w-full max-w-[800px]"
+                        ? "max-h-[100px] h-[100px] w-auto flex items-center justify-center"
                         : mode === "labels"
                         ? "w-full max-w-[320px]"
                         : ""
@@ -293,7 +280,7 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
                           ? `Generated Illustration ${iconIndex + 1}`
                           : mode === "labels"
                           ? `Generated Label ${iconIndex + 1}`
-                          : `Generated UI Mockup`
+                          : `Mockup Component ${iconIndex + 1}`
                       }
                       onClick={() => handleImageClick(icon.base64Data)}
                       className={
@@ -301,7 +288,7 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
                           ? "w-full h-auto max-w-[128px] rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-shadow duration-200"
                           : mode === "labels"
                           ? "w-full h-auto max-w-[280px] rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-shadow duration-200"
-                          : "w-full h-full object-contain rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-shadow duration-200 cursor-pointer"
+                          : "h-full w-auto object-contain rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-shadow duration-200 cursor-pointer"
                       }
                       data-oid="3jhfiim"
                     />
@@ -311,44 +298,9 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
                     data-oid="bit9s0x"
                   />
                 </div>
-              ))}
-            </div>
-          )}
-
-          {result.status === "success" && uiState === "results" && mode === "mockups" && (
-            <div
-              className="mt-6 p-6 bg-white/60 backdrop-blur-lg rounded-2xl shadow-lg border border-blue-200/30"
-            >
-              <div
-                className="flex items-center justify-between mb-4"
-              >
-                <h4
-                  className="text-base font-semibold text-slate-800"
-                >
-                  Use Mockup as Reference
-                </h4>
-                <button
-                  onClick={() => {
-                    // Get the first icon (mockup image) from this result
-                    if (result.icons && result.icons.length > 0) {
-                      handleGenerateIconsFromMockup(result.icons[0].base64Data);
-                    }
-                  }}
-                  className="px-4 py-2 rounded-xl text-sm font-semibold text-white bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 transform hover:scale-105 shadow-md hover:shadow-lg transition-all duration-200"
-                >
-                  <div className="flex items-center justify-center space-x-2">
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                    </svg>
-                    <span>Generate Icons</span>
-                  </div>
-                </button>
-              </div>
-              <p className="text-xs text-slate-500">
-                Use this mockup as a reference to generate matching icon packs
-              </p>
-            </div>
-          )}
+          ))}
+        </div>
+      )}
 
           {result.status === "success" && uiState === "results" && (mode === "icons" || mode === "illustrations") && (
             <div

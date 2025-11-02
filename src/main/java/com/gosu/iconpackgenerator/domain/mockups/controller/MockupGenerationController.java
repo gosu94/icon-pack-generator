@@ -127,14 +127,13 @@ public class MockupGenerationController implements MockupGenerationControllerAPI
         response.put("requestId", requestId);
         
         // Frontend expects enabledServices for initialization
-        // Mockups only use Banana service
+        // Mockups now use GPT Image service
         Map<String, Boolean> enabledServices = new HashMap<>();
-        enabledServices.put("banana", true);
-        // Set other services to false for mockups
+        enabledServices.put("gpt", true);
+        enabledServices.put("banana", false);
         enabledServices.put("flux", false);
         enabledServices.put("recraft", false);
         enabledServices.put("photon", false);
-        enabledServices.put("gpt", false);
         response.put("enabledServices", enabledServices);
         
         return ResponseEntity.ok(response);
@@ -519,4 +518,3 @@ public class MockupGenerationController implements MockupGenerationControllerAPI
         return "Failed to generate mockups. Please try again or contact support if the issue persists.";
     }
 }
-

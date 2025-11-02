@@ -107,9 +107,8 @@ export default function Page() {
     setAnimatingIcons({});
     setOverallProgress(0);
     
-    // For mockups, always enable variations (they're free)
     if (mode === "mockups") {
-      setGenerateVariations(true);
+      setGenerateVariations(false);
     }
     
     // Clear any animation timers
@@ -570,8 +569,8 @@ export default function Page() {
       return false;
     }
     
-    // For mockups, cost is always 1 (variations are free)
-    const cost = mode === "mockups" ? 1 : (generateVariations ? 2 : 1);
+    // For mockups, flat cost of 2 coins
+    const cost = mode === "mockups" ? 2 : (generateVariations ? 2 : 1);
     if (authState.user) {
       const regularCoins = authState.user.coins || 0;
       const trialCoins = authState.user.trialCoins || 0;
@@ -647,7 +646,7 @@ export default function Page() {
     } else if (mode === "mockups") {
       formData = {
         mockupCount: 1,
-        generationsPerService: 2, // Mockups always generate variations (free)
+        generationsPerService: 1,
       };
     } else if (mode === "labels") {
       formData = {
@@ -833,12 +832,13 @@ export default function Page() {
     const enabledServicesList = allServices.filter(
       (service) => enabledServices[service.id],
     );
-    const generationsNum = generateVariations ? 2 : 1;
+    const generationsNum = mode === "mockups" ? 1 : generateVariations ? 2 : 1;
     enabledServicesList.forEach((service) => {
       for (let genIndex = 1; genIndex <= generationsNum; genIndex++) {
         const uniqueId = `${service.id}-gen${genIndex}`;
         newResults[uniqueId] = {
           icons: [],
+          components: [],
           generationTimeMs: 0,
           status: "started",
           message: "Progressing..",
@@ -863,6 +863,11 @@ export default function Page() {
         updated.icons = update.icons || [];
         updated.originalGridImageBase64 = update.originalGridImageBase64;
         updated.generationIndex = update.generationIndex;
+      }
+      if (update.components) {
+        updated.components = update.components;
+      } else if (current.components) {
+        updated.components = current.components;
       }
       return { ...prev, [serviceId]: updated };
     });
@@ -901,6 +906,7 @@ export default function Page() {
             updatedStreamingResults[serviceKey] = {
               ...updatedStreamingResults[serviceKey],
               icons: serviceIcons,
+              components: updatedStreamingResults[serviceKey].components,
               message: updatedStreamingResults[serviceKey].message + 
                       (isTrialMode ? " (Trial: 5 of 9 icons)" : "")
             };
@@ -1052,14 +1058,37 @@ export default function Page() {
           ? "label"
           : "mockup";
       const fileName = `${packType}-pack-${requestId}-${serviceName}-gen${generationIndex}.zip`;
-      const exportData = {
-        requestId: requestId,
-        serviceName: serviceName,
-        generationIndex: generationIndex,
-        formats: formats,
-        sizes: mode === "labels" ? undefined : sizes,
-        vectorizeSvg: vectorizeSvg ?? false,
+      const exportData: any = {
+        requestId,
+        serviceName,
+        generationIndex,
+        formats,
       };
+
+      if (mode === "illustrations" || mode === "mockups") {
+        exportData.sizes = sizes;
+      }
+
+      if (mode === "icons" || mode === "labels") {
+        exportData.vectorizeSvg = vectorizeSvg ?? false;
+      }
+
+      if (mode === "mockups") {
+        const serviceResult = getServiceResults(serviceName, generationIndex);
+        const componentIcons = serviceResult?.components && serviceResult.components.length > 0
+          ? serviceResult.components
+          : serviceResult?.icons || [];
+        if (componentIcons.length > 0) {
+          exportData.components = componentIcons.map((component, index) => ({
+            id: component.id ?? `component-${index + 1}`,
+            base64Data: component.base64Data,
+            label: "",
+            order: (component.gridPosition ?? index) + 1,
+            sourceMockupId: undefined,
+          }));
+        }
+      }
+
       setShowExportModal(false);
       downloadZip(exportData, fileName);
     }
@@ -1074,7 +1103,7 @@ export default function Page() {
         ? "illustrations"
         : mode === "labels"
         ? "labels"
-        : "mockups";
+        : "mockup components";
     setExportProgress({
       step: 1,
       message: "Preparing export request...",

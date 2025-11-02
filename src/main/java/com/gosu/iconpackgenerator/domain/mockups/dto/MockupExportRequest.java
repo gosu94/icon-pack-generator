@@ -10,7 +10,7 @@ public class MockupExportRequest {
     private String serviceName;
     private Integer generationIndex = 1;
     private List<MockupGenerationResponse.GeneratedMockup> mockups;
+    private List<MockupGenerationResponse.MockupComponent> components;
     private List<String> formats; // e.g., ["png", "jpg"]
     private List<Integer> sizes; // e.g., [1920, 2560] - widths in pixels
 }
-

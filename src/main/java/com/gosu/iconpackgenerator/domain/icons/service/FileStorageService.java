@@ -374,6 +374,13 @@ public class FileStorageService {
     public String generateMockupFileName(String mockupId) {
         return String.format("mockup_%s.png", mockupId.substring(0, 8));
     }
+
+    public String generateMockupComponentFileName(String componentId, Integer order) {
+        String orderSegment = (order != null && order > 0)
+                ? String.format("%02d", order)
+                : "component";
+        return String.format("%s_%s.png", orderSegment, componentId.substring(0, 8));
+    }
     
     /**
      * Get the relative web path for serving mockup files
@@ -383,6 +390,12 @@ public class FileStorageService {
         // The web path should be /user-mockups/userDirectoryPath/requestId/mockupType/fileName
         return String.format("/user-mockups/%s/%s/%s/%s", 
                            userDirectoryPath, requestId, mockupType, fileName);
+    }
+
+    private String getRelativeMockupComponentWebPath(String userDirectoryPath, String requestId,
+                                                     String mockupType, String mockupId, String fileName) {
+        return String.format("/user-mockups/%s/%s/%s/components/%s/%s",
+                userDirectoryPath, requestId, mockupType, mockupId, fileName);
     }
     
     /**
@@ -417,6 +430,40 @@ public class FileStorageService {
             return Files.readAllBytes(filePath);
         }
         throw new IOException("Mockup file not found: " + filePath.toString());
+    }
+
+    public String saveMockupComponent(String userDirectoryPath, String requestId,
+                                      String mockupType, String mockupId,
+                                      String fileName, String base64Data) {
+        try {
+            Path directoryPath = Paths.get(mockupsBasePath, userDirectoryPath, requestId, mockupType, "components", mockupId);
+            if (!Files.exists(directoryPath)) {
+                Files.createDirectories(directoryPath);
+                log.debug("Created mockup components directory: {}", directoryPath.toAbsolutePath());
+            }
+
+            Path filePath = directoryPath.resolve(fileName);
+            byte[] imageBytes = Base64.getDecoder().decode(base64Data);
+            Files.write(filePath, imageBytes);
+
+            return getRelativeMockupComponentWebPath(userDirectoryPath, requestId, mockupType, mockupId, fileName);
+        } catch (IOException e) {
+            log.error("Error saving mockup component to file system", e);
+            throw new RuntimeException("Failed to save mockup component: " + fileName, e);
+        }
+    }
+
+    public long getMockupComponentFileSize(String userDirectoryPath, String requestId,
+                                           String mockupType, String mockupId, String fileName) {
+        try {
+            Path filePath = Paths.get(mockupsBasePath, userDirectoryPath, requestId, mockupType, "components", mockupId, fileName);
+            if (Files.exists(filePath)) {
+                return Files.size(filePath);
+            }
+        } catch (IOException e) {
+            log.error("Error getting file size for mockup component: {}", fileName, e);
+        }
+        return 0L;
     }
     
     /**

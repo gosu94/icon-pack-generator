@@ -9,6 +9,8 @@ import lombok.NoArgsConstructor;
 import org.hibernate.annotations.CreationTimestamp;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Table(name = "generated_mockups")
@@ -57,8 +59,10 @@ public class GeneratedMockup {
     @Column(name = "mockup_type")
     private String mockupType; // "original" or "variation"
 
+    @OneToMany(mappedBy = "mockup", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<GeneratedMockupComponent> components = new ArrayList<>();
+
     public String getImageUrl() {
         return this.filePath;
     }
 }
-

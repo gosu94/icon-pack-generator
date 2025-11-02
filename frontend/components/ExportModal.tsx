@@ -69,8 +69,8 @@ const ExportModal: React.FC<ExportModalProps> = ({
       const selectedSizes = [1024];
       onConfirm(selectedFormats, selectedSizes);
     } else if (mode === "mockups") {
-      // For mockups, use original size (1920x1080 for 16:9)
-      const selectedSizes = [1920];
+      // Export extracted components at 100px height by default
+      const selectedSizes = [100];
       onConfirm(selectedFormats, selectedSizes);
     } else {
       const shouldVectorize = (mode === "icons" || mode === "labels") ? vectorizeSvg : false;

@@ -43,9 +43,13 @@ public class MockupExportController implements MockupExportControllerAPI {
             exportRequest.getMockups() != null ? exportRequest.getMockups().size() : 0);
         
         List<MockupGenerationResponse.GeneratedMockup> mockupsToExport = exportRequest.getMockups();
-        
-        // If mockups are not provided in request, fetch from stored response
-        if (mockupsToExport == null || mockupsToExport.isEmpty()) {
+        List<MockupGenerationResponse.MockupComponent> componentsToExport = exportRequest.getComponents();
+
+        boolean needFetchFromStore = (mockupsToExport == null || mockupsToExport.isEmpty())
+                && (componentsToExport == null || componentsToExport.isEmpty());
+
+        // If neither mockups nor components are provided, fetch from stored response
+        if (needFetchFromStore) {
             log.info("No mockups in request body, fetching from stored results for request ID: {}", 
                     exportRequest.getRequestId());
             
@@ -64,6 +68,12 @@ public class MockupExportController implements MockupExportControllerAPI {
                         if (result.getGenerationIndex() == exportRequest.getGenerationIndex() &&
                             result.getMockups() != null && !result.getMockups().isEmpty()) {
                             mockupsToExport.addAll(result.getMockups());
+                            if (result.getComponents() != null && !result.getComponents().isEmpty()) {
+                                if (componentsToExport == null) {
+                                    componentsToExport = new ArrayList<>();
+                                }
+                                componentsToExport.addAll(result.getComponents());
+                            }
                             log.info("Added {} mockups from generation {} batch",
                                     result.getMockups().size(), result.getGenerationIndex());
                         }
@@ -75,12 +85,21 @@ public class MockupExportController implements MockupExportControllerAPI {
             }
         }
         
-        if (mockupsToExport.isEmpty()) {
-            log.error("No mockups found for request: {}", exportRequest.getRequestId());
+        if ((mockupsToExport == null || mockupsToExport.isEmpty()) &&
+            (componentsToExport == null || componentsToExport.isEmpty())) {
+            log.error("No mockups or components found for request: {}", exportRequest.getRequestId());
             return ResponseEntity.notFound().build();
         }
         
+        if (mockupsToExport == null) {
+            mockupsToExport = new ArrayList<>();
+        }
+        if (componentsToExport == null) {
+            componentsToExport = new ArrayList<>();
+        }
+
         exportRequest.setMockups(mockupsToExport);
+        exportRequest.setComponents(componentsToExport);
         
         try {
             byte[] zipData = mockupExportService.createMockupPackZip(exportRequest);
@@ -169,4 +188,3 @@ public class MockupExportController implements MockupExportControllerAPI {
         }
     }
 }
-
