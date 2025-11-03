@@ -1,12 +1,12 @@
 "use client";
 
 import {useState} from "react";
-import Navigation from "../components/Navigation";
-import Footer from "../components/Footer";
+import Navigation from "../../components/Navigation";
+import Footer from "../../components/Footer";
 import Image from "next/image";
 import {Download, Rocket, Sparkles, Zap} from "lucide-react";
 import {useAuth} from "@/context/AuthContext";
-import LoginModal from "../components/LoginModal";
+import LoginModal from "../../components/LoginModal";
 
 export default function LandingPage() {
     const {authState} = useAuth();
