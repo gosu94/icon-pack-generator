@@ -1,17 +1,18 @@
 "use client";
 
 import {useState} from "react";
-import Navigation from "../../components/Navigation";
-import Footer from "../../components/Footer";
+import Navigation from "../components/Navigation";
+import Footer from "../components/Footer";
 import Image from "next/image";
 import {Download, Rocket, Sparkles, Zap} from "lucide-react";
 import {useAuth} from "@/context/AuthContext";
-import LoginModal from "../../components/LoginModal";
+import LoginModal from "../components/LoginModal";
 
 export default function LandingPage() {
     const {authState} = useAuth();
     const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
     const [isModalVisible, setIsModalVisible] = useState(false);
+    const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
     const openLoginModal = () => {
         setIsLoginModalOpen(true);
@@ -21,6 +22,14 @@ export default function LandingPage() {
     const closeLoginModal = () => {
         setIsModalVisible(false);
         setTimeout(() => setIsLoginModalOpen(false), 300);
+    };
+
+    const openImageModal = (image: string) => {
+        setSelectedImage(image);
+    };
+
+    const closeImageModal = () => {
+        setSelectedImage(null);
     };
 
     const handleStartCreating = () => {
@@ -84,24 +93,28 @@ export default function LandingPage() {
         "/images/gallery/icon36.webp",
     ];
 
+    const illustrationImages = [
+        "/images/illustrations/illustration1.webp",
+        "/images/illustrations/illustration2.webp",
+        "/images/illustrations/illustration3.webp",
+        "/images/illustrations/illustration4.webp",
+        "/images/illustrations/illustration5.webp",
+        "/images/illustrations/illustration6.webp",
+        "/images/illustrations/illustration7.webp",
+        "/images/illustrations/illustration8.webp",
+    ];
+
+    const mockupImages = [
+        "/images/mockups/mockup1.webp",
+        "/images/mockups/mockup2.webp",
+        "/images/mockups/mockup3.webp",
+        "/images/mockups/mockup4.webp",
+    ];
+
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50/30">
             <Navigation/>
-
-            {/* Product Hunt Banner */}
-            <section
-                className="bg-gradient-to-r from-blue-600 to-purple-600 text-white py-1 text-center text-sm">
-                <a
-                    href="https://www.producthunt.com/products/icon-pack-generator-2?launch=icon-pack-generator-2"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center justify-center space-x-2 hover:underline"
-                >
-                    <span>Find us on ProductHunt</span>
-                    <Rocket className="w-4 h-4"/>
-                </a>
-            </section>
 
             {/* Hero Section with Video Card */}
             <section className="px-6 py-12">
@@ -160,6 +173,7 @@ export default function LandingPage() {
                 </div>
             </section>
 
+
             {/* Features Section */}
             <section className="px-6 py-16">
                 <div className="max-w-7xl mx-auto">
@@ -185,7 +199,7 @@ export default function LandingPage() {
                                           d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z"/>
                                 </svg>
                             </div>
-                            <h3 className="text-xl font-bold text-slate-900 mb-4">Consistent Style</h3>
+                            <h3 className="text-xl font-bold text-slate-900 mb-4">Visually Consistent Style</h3>
                             <p className="text-slate-600 leading-relaxed">
                                 All icons in your pack maintain the same visual style, color palette, and design
                                 language. Perfect cohesion for professional applications and brand consistency.
@@ -208,14 +222,14 @@ export default function LandingPage() {
                             </div>
                             <h3 className="text-xl font-bold text-slate-900 mb-4">Try for Free</h3>
                             <p className="text-slate-600 leading-relaxed">
-                                Get started instantly with a free trial coin! Generate 5 professional icons at no cost
+                                Get started instantly with a free trial coin! Generate 5 professional icons or 2 illustrations at no cost
                                 and experience our AI-powered creation process.
                             </p>
                             <div className="mt-4 flex items-center space-x-2 text-sm text-green-600 font-semibold">
                                 <div className="w-4 h-4 bg-green-500 rounded-full flex items-center justify-center">
                                     <span className="text-white text-xs font-bold">T</span>
                                 </div>
-                                <span>1 Trial Coin = 5 Icons</span>
+                                <span>1 Trial Coin = 5 Icons (out of 9)</span>
                             </div>
                         </div>
 
@@ -230,7 +244,7 @@ export default function LandingPage() {
                             <div className="text-slate-600 leading-relaxed">
                                 <p className="mb-2">Download your icons in multiple formats and sizes:</p>
                                 <ul className="list-disc list-inside space-y-1 text-sm">
-                                    <li><span className="font-semibold">SVG embeded</span></li>
+                                    <li><span className="font-semibold">SVG</span> AI-vectorized</li>
                                     <li><span className="font-semibold">PNG:</span> 32, 64, 128, 256, 512px</li>
                                     <li><span className="font-semibold">WebP:</span> 32, 64, 128, 256, 512px</li>
                                     <li><span className="font-semibold">ICO:</span> 16, 32, 48, 64, 128, 256px</li>
@@ -279,6 +293,83 @@ export default function LandingPage() {
                                 fees.
                             </p>
                         </div>
+                    </div>
+                </div>
+            </section>
+
+            {/* Additional Features Section */}
+            <section className="px-6 py-16 bg-slate-50/50">
+                <div className="max-w-7xl mx-auto">
+                    <div className="text-center mb-12">
+                        <h2 className="text-4xl font-bold text-slate-900 mb-4">
+                            Additional Features
+                        </h2>
+                        <p className="text-xl text-slate-600 max-w-3xl mx-auto">
+                            Expand your creative possibilities with these powerful additions.
+                        </p>
+                    </div>
+
+                    <div className="grid md:grid-cols-1 lg:grid-cols-2 gap-8">
+
+                        {/* SVG Exports Card */}
+                        <div onClick={() => openImageModal('/images/features/feature_svg-exports.webp')}
+                             className="bg-white/80 backdrop-blur-md rounded-2xl shadow-lg border border-purple-200/30 flex flex-col md:flex-row overflow-hidden hover:shadow-xl transition-all duration-300 hover:scale-[1.02] cursor-pointer">
+                            <div className="md:w-1/2 p-8 flex flex-col justify-center">
+                                <h3 className="text-2xl font-bold text-slate-900 mb-4">📐 SVG Exports</h3>
+                                <p className="text-slate-600 leading-relaxed">
+                                    Export vector-perfect icons that scale to any size without a hint of blur.
+                                    Download AI-refined SVGs and keep your assets crisp across responsive apps, pitch decks, and high-DPI displays.
+                                </p>
+                            </div>
+                            <div className="md:w-1/2 p-4 flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100">
+                                <Image src="/images/features/feature_svg-exports.webp" alt="SVG exports feature" width={800} height={450} className="rounded-lg shadow-md object-cover aspect-video"/>
+                            </div>
+                        </div>
+
+                        {/* Label Card */}
+                        <div onClick={() => openImageModal('/images/features/feature_labels.webp')}
+                             className="bg-white/80 backdrop-blur-md rounded-2xl shadow-lg border border-purple-200/30 flex flex-col md:flex-row overflow-hidden hover:shadow-xl transition-all duration-300 hover:scale-[1.02] cursor-pointer">
+                            <div className="md:w-1/2 p-8 flex flex-col justify-center">
+                                <h3 className="text-2xl font-bold text-slate-900 mb-4">🏷️ Labels</h3>
+                                <p className="text-slate-600 leading-relaxed">
+                                    Add text that matches your design language.
+                                    Create custom labels that blend seamlessly with your icon style — whether you start from scratch or describe what you need in plain text.
+                                </p>
+                            </div>
+                            <div className="md:w-1/2 p-4 flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100">
+                                <Image src="/images/features/feature_labels.webp" alt="Label feature" width={800} height={450} className="rounded-lg shadow-md object-cover aspect-video"/>
+                            </div>
+                        </div>
+
+                        {/* Illustrations Card */}
+                        <div onClick={() => openImageModal('/images/features/feature_illustrations.webp')}
+                             className="bg-white/80 backdrop-blur-md rounded-2xl shadow-lg border border-purple-200/30 flex flex-col md:flex-row overflow-hidden hover:shadow-xl transition-all duration-300 hover:scale-[1.02] cursor-pointer">
+                            <div className="md:w-1/2 p-8 flex flex-col justify-center">
+                                <h3 className="text-2xl font-bold text-slate-900 mb-4">🎨 Illustrations</h3>
+                                <p className="text-slate-600 leading-relaxed">
+                                    Extend your visual system beyond icons.
+                                    Generate cohesive, on-brand illustrations that complement your icons and keep a consistent visual tone across your entire project.
+                                </p>
+                            </div>
+                            <div className="md:w-1/2 p-4 flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100">
+                                <Image src="/images/features/feature_illustrations.webp" alt="Illustrations feature" width={800} height={450} className="rounded-lg shadow-md object-cover aspect-video"/>
+                            </div>
+                        </div>
+
+                        {/* UI Mockups Card */}
+                        <div onClick={() => openImageModal('/images/features/feature_mockups.webp')}
+                             className="bg-white/80 backdrop-blur-md rounded-2xl shadow-lg border border-purple-200/30 flex flex-col md:flex-row overflow-hidden hover:shadow-xl transition-all duration-300 hover:scale-[1.02] cursor-pointer">
+                            <div className="md:w-1/2 p-8 flex flex-col justify-center">
+                                <h3 className="text-2xl font-bold text-slate-900 mb-4">🧩 UI Mockups</h3>
+                                <p className="text-slate-600 leading-relaxed">
+                                    Bring your style to full interfaces.
+                                    Generate complete UI mockups that match your icon aesthetic — or flip the process: start with a mockup and use it as the foundation for your icon set.                                </p>
+                            </div>
+                            <div className="md:w-1/2 p-4 flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100">
+                                <Image src="/images/features/feature_mockups.webp" alt="UI Mockups feature" width={800} height={450} className="rounded-lg shadow-md object-cover aspect-video"/>
+                            </div>
+                        </div>
+
                     </div>
                 </div>
             </section>
@@ -343,6 +434,60 @@ export default function LandingPage() {
                 </div>
             </section>
 
+            {/* Illustrations Gallery Section */}
+            <section className="px-6 py-16 bg-gradient-to-br from-pink-50/50 to-rose-50/50">
+                <div className="max-w-7xl mx-auto">
+                    <div className="text-center mb-12">
+                        <h2 className="text-4xl font-bold text-slate-900 mb-4">
+                            Generated Illustrations Gallery
+                        </h2>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+                        {illustrationImages.map((image, index) => (
+                            <div key={index}
+                                 onClick={() => openImageModal(image)}
+                                 className="group relative bg-white/80 backdrop-blur-md rounded-2xl p-6 shadow-lg border border-pink-200/30 hover:shadow-xl transition-all duration-300 hover:scale-[1.05] cursor-pointer">
+                                <div
+                                    className="relative aspect-[4/3] w-full bg-gradient-to-br from-slate-100 to-slate-200 rounded-xl flex items-center justify-center overflow-hidden">
+                                    <Image src={image} alt={`Illustration ${index + 1}`} layout="fill"
+                                           className="object-cover"/>
+                                </div>
+                                <div
+                                    className="absolute inset-0 bg-gradient-to-br from-rose-500/0 to-purple-500/0 group-hover:from-rose-500/10 group-hover:to-purple-500/10 rounded-2xl transition-all duration-300"></div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            </section>
+
+            {/* UI Mockups Gallery Section */}
+            <section className="px-6 py-16 bg-gradient-to-br from-teal-50/50 to-blue-50/50">
+                <div className="max-w-7xl mx-auto">
+                    <div className="text-center mb-12">
+                        <h2 className="text-4xl font-bold text-slate-900 mb-4">
+                            Generated UI Mockups Gallery
+                        </h2>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
+                        {mockupImages.map((image, index) => (
+                            <div key={index}
+                                 onClick={() => openImageModal(image)}
+                                 className="group relative bg-white/80 backdrop-blur-md rounded-2xl p-6 shadow-lg border border-teal-200/30 hover:shadow-xl transition-all duration-300 hover:scale-[1.05] cursor-pointer">
+                                <div
+                                    className="relative aspect-[16/9] w-full bg-gradient-to-br from-slate-100 to-slate-200 rounded-xl flex items-center justify-center overflow-hidden">
+                                    <Image src={image} alt={`UI Mockup ${index + 1}`} layout="fill"
+                                           className="object-cover"/>
+                                </div>
+                                <div
+                                    className="absolute inset-0 bg-gradient-to-br from-teal-500/0 to-blue-500/0 group-hover:from-teal-500/10 group-hover:to-blue-500/10 rounded-2xl transition-all duration-300"></div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            </section>
+
             {/* CTA Section */}
             <section className="px-6 py-16">
                 <div className="max-w-4xl mx-auto text-center">
@@ -380,6 +525,31 @@ export default function LandingPage() {
                 onClose={closeLoginModal}
                 onSuccess={handleLoginSuccess}
             />
+
+            {selectedImage && (
+                <div
+                    className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50"
+                    onClick={closeImageModal}
+                >
+                    <div className="relative max-w-4xl max-h-[90vh] p-4" onClick={(e) => e.stopPropagation()}>
+                        <Image
+                            src={selectedImage}
+                            alt="Full-size image"
+                            width={1920}
+                            height={1080}
+                            className="object-contain w-full h-full rounded-lg"
+                        />
+                        <button
+                            onClick={closeImageModal}
+                            className="absolute top-[-1rem] right-[-1rem] text-white bg-black/50 rounded-full p-2"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            )}
 
             <Footer/>
         </div>
