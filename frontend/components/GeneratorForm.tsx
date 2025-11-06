@@ -53,6 +53,8 @@ const GeneratorForm: React.FC<GeneratorFormProps> = ({
   const { authState } = useAuth();
   const [isDragOver, setIsDragOver] = useState(false);
   const isAuthenticated = authState.authenticated;
+  const showReferenceBanner =
+    inputType === "image" && (mode === "icons" || mode === "illustrations");
 
   // Automatically disable variations when user only has trial coins
   useEffect(() => {
@@ -389,6 +391,27 @@ const GeneratorForm: React.FC<GeneratorFormProps> = ({
                       </div>
                     )}
                   </div>
+                  {showReferenceBanner && (
+                    <div className="mt-4 flex items-start gap-3 rounded-xl border border-blue-200 bg-blue-50 p-4 text-sm text-blue-700">
+                      <svg
+                        className="mt-0.5 h-5 w-5 flex-shrink-0 text-blue-500"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                        aria-hidden="true"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                        />
+                      </svg>
+                      <p>
+                        For clearer {mode === "illustrations" ? "illustrations" : "icons"}, add individual descriptions alongside your reference image so each result stays distinct.
+                      </p>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
