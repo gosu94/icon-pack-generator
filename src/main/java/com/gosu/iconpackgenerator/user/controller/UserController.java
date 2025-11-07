@@ -7,6 +7,7 @@ import com.gosu.iconpackgenerator.domain.icons.repository.GeneratedIconRepositor
 import com.gosu.iconpackgenerator.user.model.User;
 import com.gosu.iconpackgenerator.user.repository.UserRepository;
 import com.gosu.iconpackgenerator.user.service.CustomOAuth2User;
+import com.gosu.iconpackgenerator.user.service.UserService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -32,6 +33,7 @@ public class UserController {
     private final GeneratedIconRepository generatedIconRepository;
     private final UserRepository userRepository;
     private final AdminService adminService;
+    private final UserService userService;
 
     @GetMapping("/auth/check")
     public ResponseEntity<Map<String, Object>> checkAuthenticationStatus(@AuthenticationPrincipal OAuth2User principal) {
@@ -105,5 +107,30 @@ public class UserController {
 
         User user = customUser.getUser();
         return ResponseEntity.ok(user.getTrialCoins() != null ? user.getTrialCoins() : 0);
+    }
+
+    @PostMapping("/user/unsubscribe")
+    public ResponseEntity<Map<String, Object>> unsubscribe(@AuthenticationPrincipal OAuth2User principal) {
+        Map<String, Object> response = new HashMap<>();
+        
+        if (!(principal instanceof CustomOAuth2User customUser)) {
+            response.put("success", false);
+            response.put("message", "Unauthorized");
+            return ResponseEntity.status(401).body(response);
+        }
+
+        Long userId = customUser.getUserId();
+        boolean success = userService.updateNotifications(userId, false);
+        
+        if (success) {
+            response.put("success", true);
+            response.put("message", "Successfully unsubscribed from notifications");
+            log.info("User {} unsubscribed from notifications", userId);
+        } else {
+            response.put("success", false);
+            response.put("message", "Failed to update notification preferences");
+        }
+        
+        return ResponseEntity.ok(response);
     }
 }

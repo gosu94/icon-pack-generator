@@ -66,6 +66,9 @@ public class User {
     @Column(name = "auth_provider")
     private String authProvider = "EMAIL"; // EMAIL, GOOGLE, etc.
     
+    @Column(name = "notifications")
+    private Boolean notifications = true; // Default to true for email notifications
+    
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<GeneratedIcon> generatedIcons;
 }

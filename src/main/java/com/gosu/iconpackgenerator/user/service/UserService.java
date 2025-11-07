@@ -301,4 +301,48 @@ public class UserService {
                 trialCoinsToDeduct, email, user.getTrialCoins());
         return true;
     }
+    
+    /**
+     * Update user's notification preferences
+     * @param userId the user ID
+     * @param enabled true to enable notifications, false to disable
+     * @return true if update was successful
+     */
+    @Transactional
+    public boolean updateNotifications(Long userId, boolean enabled) {
+        Optional<User> userOptional = userRepository.findById(userId);
+        if (userOptional.isEmpty()) {
+            log.error("User with ID {} not found", userId);
+            return false;
+        }
+        
+        User user = userOptional.get();
+        user.setNotifications(enabled);
+        userRepository.save(user);
+        
+        log.info("Updated notifications preference for user {} to {}", userId, enabled);
+        return true;
+    }
+    
+    /**
+     * Update user's notification preferences by email
+     * @param email the user email
+     * @param enabled true to enable notifications, false to disable
+     * @return true if update was successful
+     */
+    @Transactional
+    public boolean updateNotificationsByEmail(String email, boolean enabled) {
+        Optional<User> userOptional = userRepository.findByEmail(email);
+        if (userOptional.isEmpty()) {
+            log.error("User with email {} not found", email);
+            return false;
+        }
+        
+        User user = userOptional.get();
+        user.setNotifications(enabled);
+        userRepository.save(user);
+        
+        log.info("Updated notifications preference for user {} to {}", email, enabled);
+        return true;
+    }
 }
