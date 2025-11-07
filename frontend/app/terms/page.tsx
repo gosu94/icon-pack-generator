@@ -123,7 +123,23 @@ export default function TermsAndConditions() {
               </section>
 
               <section className="mb-8">
-                <h2 className="text-2xl font-semibold text-gray-900 mb-4">9. Limitation of Liability</h2>
+                <h2 className="text-2xl font-semibold text-gray-900 mb-4">9. Communications</h2>
+                <p className="mb-4">
+                  By creating an account and providing your email address, you agree that we may send you emails regarding:
+                </p>
+                <ul className="list-disc pl-6 mb-4">
+                  <li>New features and updates to our service</li>
+                  <li>Requests for feedback about your experience</li>
+                  <li>Important service announcements and changes</li>
+                  <li>Account-related notifications (as required for service operation)</li>
+                </ul>
+                <p className="mb-4">
+                  You can opt out of marketing and feedback emails at any time by following the unsubscribe instructions included in those emails or by contacting us directly. However, you may continue to receive essential account-related communications necessary for the operation of the service.
+                </p>
+              </section>
+
+              <section className="mb-8">
+                <h2 className="text-2xl font-semibold text-gray-900 mb-4">10. Limitation of Liability</h2>
                 <p className="mb-4">
                   To the fullest extent permitted by law, Icon Pack Generator and its operators shall not be liable for any indirect, incidental, special, or consequential damages arising from your use of the service, including but not limited to:
                 </p>
@@ -138,7 +154,7 @@ export default function TermsAndConditions() {
               </section>
 
               <section className="mb-8">
-                <h2 className="text-2xl font-semibold text-gray-900 mb-4">10. Account Termination</h2>
+                <h2 className="text-2xl font-semibold text-gray-900 mb-4">11. Account Termination</h2>
                 <p className="mb-4">
                   We may suspend or terminate your account at any time for violation of these terms or other reasonable cause. You may terminate your account at any time by contacting us. Upon termination:
                 </p>
@@ -150,21 +166,21 @@ export default function TermsAndConditions() {
               </section>
 
               <section className="mb-8">
-                <h2 className="text-2xl font-semibold text-gray-900 mb-4">11. Governing Law</h2>
+                <h2 className="text-2xl font-semibold text-gray-900 mb-4">12. Governing Law</h2>
                 <p className="mb-4">
                   These terms are governed by the laws of Poland. Any disputes arising from these terms or your use of the service shall be subject to the jurisdiction of Polish courts.
                 </p>
               </section>
 
               <section className="mb-8">
-                <h2 className="text-2xl font-semibold text-gray-900 mb-4">12. Changes to Terms</h2>
+                <h2 className="text-2xl font-semibold text-gray-900 mb-4">13. Changes to Terms</h2>
                 <p className="mb-4">
                   We reserve the right to modify these terms at any time. Material changes will be communicated via email or prominent notice on our service. Continued use of the service after changes constitutes acceptance of the new terms.
                 </p>
               </section>
 
               <section className="mb-8">
-                <h2 className="text-2xl font-semibold text-gray-900 mb-4">13. Contact Information</h2>
+                <h2 className="text-2xl font-semibold text-gray-900 mb-4">14. Contact Information</h2>
                 <div className="bg-gray-50 p-6 rounded-lg">
                   <p className="mb-2"><strong>Service Provider:</strong> Tomasz Pilarczyk</p>
                   <p className="mb-2"><strong>Address:</strong> Żwirki i Wigury 16, 66-620 Gubin, Poland</p>
@@ -177,7 +193,7 @@ export default function TermsAndConditions() {
               </section>
 
               <section className="mb-8">
-                <h2 className="text-2xl font-semibold text-gray-900 mb-4">14. Severability</h2>
+                <h2 className="text-2xl font-semibold text-gray-900 mb-4">15. Severability</h2>
                 <p className="mb-4">
                   If any provision of these terms is found to be unenforceable, the remaining provisions will continue to be valid and enforceable.
                 </p>
