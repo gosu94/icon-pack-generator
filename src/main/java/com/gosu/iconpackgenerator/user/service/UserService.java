@@ -8,6 +8,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Optional;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -343,6 +344,77 @@ public class UserService {
         userRepository.save(user);
         
         log.info("Updated notifications preference for user {} to {}", email, enabled);
+        return true;
+    }
+    
+    /**
+     * Generate or retrieve unsubscribe token for a user
+     * @param userId the user ID
+     * @return unsubscribe token
+     */
+    @Transactional
+    public String getOrGenerateUnsubscribeToken(Long userId) {
+        Optional<User> userOptional = userRepository.findById(userId);
+        if (userOptional.isEmpty()) {
+            log.error("User with ID {} not found", userId);
+            return null;
+        }
+        
+        User user = userOptional.get();
+        if (user.getUnsubscribeToken() == null || user.getUnsubscribeToken().isEmpty()) {
+            String token = UUID.randomUUID().toString();
+            user.setUnsubscribeToken(token);
+            userRepository.save(user);
+            log.info("Generated unsubscribe token for user {}", userId);
+            return token;
+        }
+        
+        return user.getUnsubscribeToken();
+    }
+    
+    /**
+     * Generate or retrieve unsubscribe token for a user by email
+     * @param email the user email
+     * @return unsubscribe token
+     */
+    @Transactional
+    public String getOrGenerateUnsubscribeTokenByEmail(String email) {
+        Optional<User> userOptional = userRepository.findByEmail(email);
+        if (userOptional.isEmpty()) {
+            log.error("User with email {} not found", email);
+            return null;
+        }
+        
+        User user = userOptional.get();
+        if (user.getUnsubscribeToken() == null || user.getUnsubscribeToken().isEmpty()) {
+            String token = UUID.randomUUID().toString();
+            user.setUnsubscribeToken(token);
+            userRepository.save(user);
+            log.info("Generated unsubscribe token for user {}", email);
+            return token;
+        }
+        
+        return user.getUnsubscribeToken();
+    }
+    
+    /**
+     * Unsubscribe user by token (public endpoint, no authentication required)
+     * @param token the unsubscribe token
+     * @return true if unsubscribe was successful
+     */
+    @Transactional
+    public boolean unsubscribeByToken(String token) {
+        Optional<User> userOptional = userRepository.findByUnsubscribeToken(token);
+        if (userOptional.isEmpty()) {
+            log.warn("Invalid unsubscribe token provided: {}", token);
+            return false;
+        }
+        
+        User user = userOptional.get();
+        user.setNotifications(false);
+        userRepository.save(user);
+        
+        log.info("User {} unsubscribed from notifications via token", user.getEmail());
         return true;
     }
 }

@@ -69,6 +69,9 @@ public class User {
     @Column(name = "notifications")
     private Boolean notifications = true; // Default to true for email notifications
     
+    @Column(name = "unsubscribe_token")
+    private String unsubscribeToken;
+    
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<GeneratedIcon> generatedIcons;
 }

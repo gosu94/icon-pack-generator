@@ -6,6 +6,7 @@ import com.gosu.iconpackgenerator.email.service.EmailService;
 import com.gosu.iconpackgenerator.user.model.User;
 import com.gosu.iconpackgenerator.user.repository.UserRepository;
 import com.gosu.iconpackgenerator.user.service.CustomOAuth2User;
+import com.gosu.iconpackgenerator.user.service.UserService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -31,6 +32,7 @@ public class EmailController {
     private final AdminService adminService;
     private final UserRepository userRepository;
     private final EmailService emailService;
+    private final UserService userService;
 
     @PostMapping
     public ResponseEntity<?> sendEmail(
@@ -86,7 +88,11 @@ public class EmailController {
 
         List<String> failedRecipients = new ArrayList<>();
         recipientSet.forEach(email -> {
-            boolean sent = emailService.sendCustomEmail(email, subject, htmlBody);
+            // Get or generate unsubscribe token for this user
+            String unsubscribeToken = userService.getOrGenerateUnsubscribeTokenByEmail(email);
+            // Inject unsubscribe link into email body
+            String personalizedHtmlBody = emailService.injectUnsubscribeLink(htmlBody, unsubscribeToken);
+            boolean sent = emailService.sendCustomEmail(email, subject, personalizedHtmlBody);
             if (!sent) {
                 failedRecipients.add(email);
             }

@@ -199,6 +199,27 @@ public class EmailService {
             return false;
         }
     }
+    
+    /**
+     * Inject unsubscribe link into email HTML body
+     * Replaces {{UNSUBSCRIBE_LINK}} placeholder with actual unsubscribe URL
+     * @param htmlBody the HTML email body
+     * @param unsubscribeToken the unsubscribe token for the user
+     * @return HTML body with unsubscribe link injected
+     */
+    public String injectUnsubscribeLink(String htmlBody, String unsubscribeToken) {
+        if (htmlBody == null || htmlBody.isBlank()) {
+            return htmlBody;
+        }
+        
+        if (unsubscribeToken == null || unsubscribeToken.isBlank()) {
+            log.warn("No unsubscribe token provided, removing unsubscribe placeholder");
+            return htmlBody.replace("{{UNSUBSCRIBE_LINK}}", "");
+        }
+        
+        String unsubscribeUrl = baseUrl + "/unsubscribe?token=" + unsubscribeToken;
+        return htmlBody.replace("{{UNSUBSCRIBE_LINK}}", unsubscribeUrl);
+    }
 
     private String htmlToPlainText(String html) {
         if (html == null || html.isBlank()) {

@@ -16,6 +16,7 @@ import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.Collections;
@@ -129,6 +130,28 @@ public class UserController {
         } else {
             response.put("success", false);
             response.put("message", "Failed to update notification preferences");
+        }
+        
+        return ResponseEntity.ok(response);
+    }
+    
+    /**
+     * Public endpoint to unsubscribe from notifications using a token
+     * This endpoint does not require authentication
+     */
+    @GetMapping("/user/unsubscribe")
+    public ResponseEntity<Map<String, Object>> unsubscribeByToken(@RequestParam String token) {
+        Map<String, Object> response = new HashMap<>();
+        
+        boolean success = userService.unsubscribeByToken(token);
+        
+        if (success) {
+            response.put("success", true);
+            response.put("message", "Successfully unsubscribed from notifications");
+            log.info("User unsubscribed via token");
+        } else {
+            response.put("success", false);
+            response.put("message", "Invalid or expired unsubscribe token");
         }
         
         return ResponseEntity.ok(response);

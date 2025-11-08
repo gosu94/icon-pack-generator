@@ -171,8 +171,9 @@ const DEFAULT_EMAIL_BODY = `<!DOCTYPE html>
             IconPackGen AI &bull; Crafted with creativity for designers and teams around the globe.
           </p>
           <p style="margin-top: 12px">
-            You’re receiving this email because you’re part of the IconPackGen community. If you want to
-            unsubscribe - just let me know.
+            You're receiving this email because you're part of the IconPackGen community. 
+            <a href="{{UNSUBSCRIBE_LINK}}" style="color: #6366f1; text-decoration: underline;">Unsubscribe</a> 
+            if you no longer wish to receive these emails.
           </p>
         </div>
       </div>
