@@ -192,7 +192,7 @@ function PasswordSetupContent() {
               height={40}
               className="mr-3"
             />
-            <h1 className="text-white text-xl font-bold">Icon Pack Generator</h1>
+            <h1 className="text-white text-xl font-bold">IconPackGen</h1>
           </div>
           <Lock className="w-12 h-12 text-white mx-auto mb-2" />
           <h2 className="text-2xl font-bold text-white mb-2">
