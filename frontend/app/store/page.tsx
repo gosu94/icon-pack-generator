@@ -138,7 +138,7 @@ export default function StorePage() {
                 </span>
                             </div>
                             <p className="mt-2 text-sm text-gray-500">
-                                Generates up to {plan.icons} icons and {plan.illustrations} illustrations.
+                                Generates up to {plan.icons} icons or {plan.illustrations} illustrations.
                             </p>
                             <button
                                 onClick={() => handlePurchase(plan.id)}
