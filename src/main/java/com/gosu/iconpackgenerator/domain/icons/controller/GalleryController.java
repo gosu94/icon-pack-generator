@@ -204,6 +204,7 @@ public class GalleryController implements GalleryControllerAPI {
     /**
      * Creates a 3x3 grid composition from first 9 icons of a specific request and icon type
      * This is used by the "Generate more" functionality
+     * @Deprecated no longer needed (we are composing grid on frontend - delete it at some point)
      */
     @PostMapping("/api/gallery/compose-grid")
     @ResponseBody

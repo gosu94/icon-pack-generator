@@ -52,6 +52,161 @@ type GroupedIllustrations = Record<string, { original: Illustration[]; variation
 type GroupedMockups = Record<string, { original: Mockup[]; variation: Mockup[] }>;
 type GroupedLabels = Record<string, { original: LabelItem[]; variation: LabelItem[] }>;
 
+type GridGenerationMode = "icons" | "mockups" | "labels";
+
+const GRID_SIZE = 3;
+const ICON_SIZE = 300;
+const LINE_WIDTH = 2;
+const GRID_LINE_COLOR = "rgba(0, 0, 0, 0.2)";
+const TOTAL_GRID_CELLS = GRID_SIZE * GRID_SIZE;
+
+const canvasToBlob = (canvas: HTMLCanvasElement): Promise<Blob> =>
+  new Promise((resolve, reject) => {
+    if (canvas.toBlob) {
+      canvas.toBlob((blob) => {
+        if (blob) {
+          resolve(blob);
+        } else {
+          reject(new Error("Failed to convert grid canvas to blob."));
+        }
+      }, "image/png");
+    } else {
+      try {
+        const dataUrl = canvas.toDataURL("image/png");
+        const base64 = dataUrl.split(",")[1];
+        const binary = atob(base64);
+        const bytes = new Uint8Array(binary.length);
+        for (let i = 0; i < binary.length; i++) {
+          bytes[i] = binary.charCodeAt(i);
+        }
+        resolve(new Blob([bytes], { type: "image/png" }));
+      } catch (error) {
+        reject(error instanceof Error ? error : new Error("Failed to convert canvas to blob."));
+      }
+    }
+  });
+
+const loadBlobAsImage = (blob: Blob) =>
+  new Promise<HTMLImageElement>((resolve, reject) => {
+    const objectUrl = URL.createObjectURL(blob);
+    const image = new Image();
+    image.decoding = "async";
+    image.onload = () => {
+      URL.revokeObjectURL(objectUrl);
+      resolve(image);
+    };
+    image.onerror = () => {
+      URL.revokeObjectURL(objectUrl);
+      reject(new Error("Failed to decode icon image."));
+    };
+    image.src = objectUrl;
+  });
+
+const fetchImageElement = async (imageUrl: string): Promise<HTMLImageElement> => {
+  const response = await fetch(imageUrl, { credentials: "include" });
+  if (!response.ok) {
+    throw new Error(`Failed to fetch icon image: ${response.status}`);
+  }
+  const blob = await response.blob();
+  return loadBlobAsImage(blob);
+};
+
+const drawPlaceholder = (ctx: CanvasRenderingContext2D, x: number, y: number) => {
+  ctx.fillStyle = "#f3f4f6";
+  ctx.fillRect(x, y, ICON_SIZE, ICON_SIZE);
+  ctx.strokeStyle = "#d1d5db";
+  ctx.lineWidth = 2;
+  ctx.strokeRect(x + 1, y + 1, ICON_SIZE - 2, ICON_SIZE - 2);
+  ctx.fillStyle = "#9ca3af";
+  ctx.font = "bold 36px sans-serif";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText("?", x + ICON_SIZE / 2, y + ICON_SIZE / 2);
+};
+
+const drawImageInCell = (
+  ctx: CanvasRenderingContext2D,
+  image: HTMLImageElement,
+  x: number,
+  y: number,
+) => {
+  const originalWidth = image.naturalWidth || image.width;
+  const originalHeight = image.naturalHeight || image.height;
+  if (!originalWidth || !originalHeight) {
+    drawPlaceholder(ctx, x, y);
+    return;
+  }
+
+  const scale = Math.min(ICON_SIZE / originalWidth, ICON_SIZE / originalHeight);
+  const scaledWidth = originalWidth * scale;
+  const scaledHeight = originalHeight * scale;
+  const offsetX = x + (ICON_SIZE - scaledWidth) / 2;
+  const offsetY = y + (ICON_SIZE - scaledHeight) / 2;
+
+  ctx.drawImage(image, offsetX, offsetY, scaledWidth, scaledHeight);
+};
+
+const composeGridFromIconUrls = async (iconUrls: string[]): Promise<Blob> => {
+  const imageCache = new Map<string, Promise<HTMLImageElement | null>>();
+  const images = await Promise.all(
+    iconUrls.map((url) => {
+      if (!imageCache.has(url)) {
+        imageCache.set(
+          url,
+          fetchImageElement(url).catch((error) => {
+            console.warn("Failed to load icon for grid", error);
+            return null;
+          }),
+        );
+      }
+      return imageCache.get(url)!;
+    }),
+  );
+
+  const totalWidth = GRID_SIZE * ICON_SIZE + (GRID_SIZE - 1) * LINE_WIDTH;
+  const totalHeight = totalWidth;
+  const canvas = document.createElement("canvas");
+  canvas.width = totalWidth;
+  canvas.height = totalHeight;
+  const ctx = canvas.getContext("2d");
+
+  if (!ctx) {
+    throw new Error("Unable to create drawing context for grid.");
+  }
+
+  ctx.clearRect(0, 0, totalWidth, totalHeight);
+
+  images.forEach((image, index) => {
+    const row = Math.floor(index / GRID_SIZE);
+    const col = index % GRID_SIZE;
+    const x = col * (ICON_SIZE + LINE_WIDTH);
+    const y = row * (ICON_SIZE + LINE_WIDTH);
+
+    if (image) {
+      drawImageInCell(ctx, image, x, y);
+    } else {
+      drawPlaceholder(ctx, x, y);
+    }
+  });
+
+  ctx.strokeStyle = GRID_LINE_COLOR;
+  ctx.lineWidth = LINE_WIDTH;
+  for (let i = 1; i < GRID_SIZE; i++) {
+    const linePosition = i * (ICON_SIZE + LINE_WIDTH) - LINE_WIDTH / 2;
+    ctx.beginPath();
+    ctx.moveTo(linePosition, 0);
+    ctx.lineTo(linePosition, totalHeight);
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.moveTo(0, linePosition);
+    ctx.lineTo(totalWidth, linePosition);
+    ctx.stroke();
+  }
+
+  return canvasToBlob(canvas);
+};
+
 export default function GalleryPage() {
   const router = useRouter();
   const [groupedIcons, setGroupedIcons] = useState<GroupedIcons>({});
@@ -94,6 +249,60 @@ export default function GalleryPage() {
 
   const closePreview = () => {
     setPreviewImage(null);
+  };
+
+  const composeGridImageUrl = async (iconType: string): Promise<string | null> => {
+    if (!selectedRequest) {
+      return null;
+    }
+
+    const selectedIconGroup = groupedIcons[selectedRequest];
+    if (!selectedIconGroup) {
+      alert("Could not find icons for the selected request.");
+      return null;
+    }
+
+    const icons = iconType === "original" ? selectedIconGroup.original : selectedIconGroup.variation;
+    if (!icons || icons.length === 0) {
+      alert("No icons available to create a grid. Please try another request.");
+      return null;
+    }
+
+    const availableUrls = icons
+      .map((icon) => icon.imageUrl)
+      .filter((url): url is string => Boolean(url));
+
+    if (availableUrls.length === 0) {
+      alert("Icon images are missing for this request.");
+      return null;
+    }
+
+    const gridIconUrls = availableUrls.slice(0, TOTAL_GRID_CELLS);
+    while (gridIconUrls.length < TOTAL_GRID_CELLS) {
+      gridIconUrls.push(availableUrls[gridIconUrls.length % availableUrls.length]);
+    }
+
+    try {
+      const gridBlob = await composeGridFromIconUrls(gridIconUrls);
+      return URL.createObjectURL(gridBlob);
+    } catch (error) {
+      console.error("Error creating grid composition:", error);
+      alert("Failed to create grid composition. Please try again.");
+      return null;
+    }
+  };
+
+  const handleGridNavigation = async (iconType: string, targetMode: GridGenerationMode) => {
+    const gridImageUrl = await composeGridImageUrl(iconType);
+    if (!gridImageUrl) {
+      return;
+    }
+
+    sessionStorage.setItem("generatedGridImage", gridImageUrl);
+    sessionStorage.setItem("generateMoreMode", "true");
+    sessionStorage.setItem("generationMode", targetMode);
+
+    router.push("/dashboard");
   };
 
   useEffect(() => {
@@ -285,142 +494,17 @@ export default function GalleryPage() {
 
   const handleGenerateMore = async (iconType: string) => {
     if (!selectedRequest) return;
-
-    try {
-      // Call the backend to create the grid composition
-      const response = await fetch("/api/gallery/compose-grid", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({
-          requestId: selectedRequest,
-          iconType: iconType,
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const data = await response.json();
-
-      if (data.status === "success" && data.gridImageBase64) {
-        // Convert base64 to blob and create URL
-        const binaryString = atob(data.gridImageBase64);
-        const bytes = new Uint8Array(binaryString.length);
-        for (let i = 0; i < binaryString.length; i++) {
-          bytes[i] = binaryString.charCodeAt(i);
-        }
-        const blob = new Blob([bytes], { type: "image/png" });
-
-        // Store the grid image data in sessionStorage for the dashboard to use
-        const gridImageUrl = URL.createObjectURL(blob);
-        sessionStorage.setItem("generatedGridImage", gridImageUrl);
-        sessionStorage.setItem("generateMoreMode", "true");
-        sessionStorage.setItem("generationMode", "icons");
-
-        // Navigate to dashboard
-        router.push("/dashboard");
-      } else {
-        console.error("Failed to create grid:", data.error);
-        alert("Failed to create grid composition. Please try again.");
-      }
-    } catch (error) {
-      console.error("Error creating grid composition:", error);
-      alert("Failed to create grid composition. Please try again.");
-    }
+    await handleGridNavigation(iconType, "icons");
   };
 
   const handleGenerateMockupFromIcons = async (iconType: string) => {
     if (!selectedRequest) return;
-
-    try {
-      // Call the backend to create the grid composition (same endpoint as generate more)
-      const response = await fetch("/api/gallery/compose-grid", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({
-          requestId: selectedRequest,
-          iconType: iconType,
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const data = await response.json();
-
-      if (data.status === "success" && data.gridImageBase64) {
-        // Convert base64 to blob and create URL
-        const binaryString = atob(data.gridImageBase64);
-        const bytes = new Uint8Array(binaryString.length);
-        for (let i = 0; i < binaryString.length; i++) {
-          bytes[i] = binaryString.charCodeAt(i);
-        }
-        const blob = new Blob([bytes], { type: "image/png" });
-
-        // Store the grid image data in sessionStorage for the dashboard to use
-        const gridImageUrl = URL.createObjectURL(blob);
-        sessionStorage.setItem("generatedGridImage", gridImageUrl);
-        sessionStorage.setItem("generateMoreMode", "true");
-        sessionStorage.setItem("generationMode", "mockups"); // Set to mockups mode
-
-        // Navigate to dashboard
-        router.push("/dashboard");
-      } else {
-        console.error("Failed to create grid:", data.error);
-        alert("Failed to create grid composition. Please try again.");
-      }
-    } catch (error) {
-      console.error("Error creating grid composition:", error);
-      alert("Failed to create grid composition. Please try again.");
-    }
+    await handleGridNavigation(iconType, "mockups");
   };
 
   const handleGenerateLabelsFromIcons = async (iconType: string) => {
     if (!selectedRequest) return;
-
-    try {
-      const response = await fetch("/api/gallery/compose-grid", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({
-          requestId: selectedRequest,
-          iconType: iconType,
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const data = await response.json();
-
-      if (data.status === "success" && data.gridImageBase64) {
-        const binaryString = atob(data.gridImageBase64);
-        const bytes = new Uint8Array(binaryString.length);
-        for (let i = 0; i < binaryString.length; i++) {
-          bytes[i] = binaryString.charCodeAt(i);
-        }
-        const blob = new Blob([bytes], { type: "image/png" });
-
-        const gridImageUrl = URL.createObjectURL(blob);
-        sessionStorage.setItem("generatedGridImage", gridImageUrl);
-        sessionStorage.setItem("generateMoreMode", "true");
-        sessionStorage.setItem("generationMode", "labels");
-
-        router.push("/dashboard");
-      } else {
-        console.error("Failed to create grid:", data.error);
-        alert("Failed to create grid composition. Please try again.");
-      }
-    } catch (error) {
-      console.error("Error creating grid composition:", error);
-      alert("Failed to create grid composition. Please try again.");
-    }
+    await handleGridNavigation(iconType, "labels");
   };
 
   const handleGenerateMoreIllustrations = async (illustrationType: string) => {
