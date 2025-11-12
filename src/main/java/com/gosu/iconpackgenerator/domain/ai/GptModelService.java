@@ -371,19 +371,19 @@ public class GptModelService implements AIModelService {
             JsonNode dataNode = response.path("data");
             if (dataNode.isArray() && !dataNode.isEmpty()) {
                 JsonNode firstImage = dataNode.get(0);
-                
-                // gpt-image-1 always returns base64 images directly in b64_json field
-                String base64Data = firstImage.path("b64_json").asText();
-                if (!base64Data.isEmpty()) {
-                    log.debug("Found base64 data in OpenAI response");
-                    return new ImageResult(Base64.getDecoder().decode(base64Data), null);
-                }
-                
+
                 // For other models (dall-e-2, dall-e-3) that might return URLs
                 String imageUrl = firstImage.path("url").asText();
                 if (!imageUrl.isEmpty()) {
                     log.info("Downloading image from OpenAI URL: {}", imageUrl);
                     return new ImageResult(downloadImageFromUrl(imageUrl), imageUrl);
+                }
+
+                // gpt-image-1 always returns base64 images directly in b64_json field
+                String base64Data = firstImage.path("b64_json").asText();
+                if (!base64Data.isEmpty()) {
+                    log.debug("Found base64 data in OpenAI response");
+                    return new ImageResult(Base64.getDecoder().decode(base64Data), null);
                 }
             }
 

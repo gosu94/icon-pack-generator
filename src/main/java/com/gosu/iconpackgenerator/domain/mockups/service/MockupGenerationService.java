@@ -149,14 +149,14 @@ public class MockupGenerationService {
         long startTime = System.currentTimeMillis();
 
         return generatePrimaryMockup(request, requestId, baseSeed)
-                .thenCompose(primaryData -> generateSecondaryMockup(request, requestId, baseSeed + 1, primaryData)
-                        .thenApply(secondaryData -> buildCombinedServiceResults(
+//                .thenCompose(primaryData -> generateSecondaryMockup(request, requestId, baseSeed + 1, primaryData)
+                        .thenApply(primaryData -> buildCombinedServiceResults(
                                 requestId,
                                 progressCallback,
                                 startTime,
                                 primaryData,
-                                secondaryData
-                        )))
+                                null //TODO: add second call
+                        ))
                 .exceptionally(error -> {
                     if (progressCallback != null) {
                         progressCallback.onUpdate(ServiceProgressUpdate.serviceFailed(
@@ -235,11 +235,11 @@ public class MockupGenerationService {
 
         List<GeneratedMockup> mockups = new ArrayList<>();
         mockups.add(primaryData.getMockup());
-        mockups.add(secondaryData.getMockup());
+//        mockups.add(secondaryData.getMockup());
 
         List<MockupComponent> combinedComponents = new ArrayList<>();
         combinedComponents.addAll(primaryData.getMockup().getComponents());
-        combinedComponents.addAll(secondaryData.getMockup().getComponents());
+//        combinedComponents.addAll(secondaryData.getMockup().getComponents());
 
         ServiceResults result = new ServiceResults();
         result.setServiceName("gpt");

@@ -34,46 +34,40 @@ public class MockupPromptGenerationService {
                     "No branding, no logos, no real-world content — only abstract UI shapes and elements.";
 
     private static final String PRIMARY_UI_ELEMENTS_PROMPT_TEMPLATE =
-            "Generate a single image containing exactly 8 UI element icons.\n" +
-            "\n" +
-            "General visual theme: %s\n" +
-            "\n" +
-            "Layout:\n" +
-            "Arrange the 8 items into a single horizontal row (or two neat rows of 4x4 if spatially helpful). Consistent baseline alignment and consistent visual padding. Allow natural width (do NOT force equal width tiles). Ensure every element fits fully inside the canvas with even outer margins—no cropping or cut-off edges. No labels or text in the image.\n" +
-            "\n" +
-            "Render these 8 items in this exact left-to-right order:\n" +
-            "\n" +
-            "1 rectangle_button\n" +
-            "2 rectangle_button_pressed\n" +
-            "3 text_field_empty\n" +
-            "4 text_field_focused\n" +
-            "5 dropdown_closed\n" +
-            "6 dropdown_open\n" +
-            "7 checkbox_unchecked\n" +
-            "8 checkbox_checked\n" +
-            "\n" +
-            "Flat orthographic front view. Plain transparent background. High clarity vector-like edges. No scene context.";
+            "Create a 2x2 arrangement of clean, modern UI elements in a consistent style with no labels or text. \n" +
+                    "Each element should appear noticeably wider than tall — around a 6:1 to 8:1 width-to-height ratio — to look sleek and realistic. \n" +
+                    "Each element should be contained within its own equal-sized rectangular area, with equal spacing between them. \n" +
+                    "Background should be white or transparent. \n" +
+                    "\n" +
+                    "Visual theme: %s, no borders or separators between elements, no grid lines, no labels, no captions. \n" +
+                    "Each element should have appropriate padding within its area and be clearly distinguishable from the others. \n" +
+                    "\n" +
+                    "Elements to include (arranged left to right, top to bottom): \n" +
+                    "1. rectangle_button \n" +
+                    "2. rectangle_button_pressed \n" +
+                    "3. text_field_empty \n" +
+                    "4. text_field_focused \n" +
+                    "\n" +
+                    "Style guidelines: high-detail, professional, modern UI design using a cohesive color palette. \n" +
+                    "Ensure elements are horizontally elongated, slim, and visually balanced — not tall or bulky.";
 
     private static final String PRIMARY_UI_ELEMENTS_REFERENCE_PROMPT =
-            "Generate a single image containing exactly 8 UI element icons.\n" +
-            "\n" +
-            "General visual theme: match the reference image style precisely (palette, materials, bevels, highlight logic). Do not invent a new style.\n" +
-            "\n" +
-            "Layout:\n" +
-            "Arrange the 8 items into a single horizontal row (or two rows of 4x4 if spacing requires it). Maintain consistent baseline alignment and consistent visual padding between items. Allow each element to have its natural width (do NOT force equal sized tiles). Ensure every element fits fully inside the canvas with even outer margins—no cropping or cut-off edges. No labels or text in the image.\n" +
-            "\n" +
-            "Render these 8 elements in this exact left-to-right order:\n" +
-            "\n" +
-            "1 rectangle_button\n" +
-            "2 rectangle_button_pressed\n" +
-            "3 text_field_empty\n" +
-            "4 text_field_focused\n" +
-            "5 dropdown_closed\n" +
-            "6 dropdown_open\n" +
-            "7 checkbox_unchecked\n" +
-            "8 checkbox_checked\n" +
-            "\n" +
-            "Flat orthographic front view. Plain transparent background. High clarity, sharp edges, vector-like look. No scene context, no hands, no usage context.";
+            "Create a 2x2 arrangement of clean, modern UI elements in a consistent style with no labels or text. \n" +
+                    "Each element should appear noticeably wider than tall — around a 6:1 to 8:1 width-to-height ratio — to look sleek and realistic. \n" +
+                    "Each element should be contained within its own equal-sized rectangular area, with equal spacing between them. \n" +
+                    "Background should be white or transparent. \n" +
+                    "\n" +
+                    "Visual theme: match the reference image style precisely (palette, materials, bevels, highlight logic), no borders or separators between elements, no grid lines, no labels, no captions. \n" +
+                    "Each element should have appropriate padding within its area and be clearly distinguishable from the others. \n" +
+                    "\n" +
+                    "Elements to include (arranged left to right, top to bottom): \n" +
+                    "1. rectangle_button \n" +
+                    "2. rectangle_button_pressed \n" +
+                    "3. text_field_empty \n" +
+                    "4. text_field_focused \n" +
+                    "\n" +
+                    "Style guidelines: high-detail, professional, modern UI design using a cohesive color palette. \n" +
+                    "Ensure elements are horizontally elongated, slim, and visually balanced — not tall or bulky.";
 
     private static final String SECONDARY_UI_ELEMENTS_PROMPT_HEADER =
             "Generate a single image containing exactly 6 UI element icons.\n" +
@@ -93,7 +87,7 @@ public class MockupPromptGenerationService {
             "13 slider_knob\n" +
             "14 vertical_scrollbar_thumb\n" +
             "\n" +
-            "Flat orthographic front view. Plain transparent background. High clarity vector-like edges.";
+            "Flat orthographic front view. High clarity vector-like edges.";
 
     public static final String SECOND_GENERATION_VARIATION =
             " with professional color palette refined design aesthetics and enhanced visual appeal";
