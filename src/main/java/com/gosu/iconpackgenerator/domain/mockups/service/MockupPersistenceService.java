@@ -1,6 +1,6 @@
 package com.gosu.iconpackgenerator.domain.mockups.service;
 
-import com.gosu.iconpackgenerator.domain.icons.service.FileStorageService;
+import com.gosu.iconpackgenerator.util.FileStorageService;
 import com.gosu.iconpackgenerator.domain.mockups.dto.MockupGenerationRequest;
 import com.gosu.iconpackgenerator.domain.mockups.dto.MockupGenerationResponse;
 import com.gosu.iconpackgenerator.domain.mockups.entity.GeneratedMockup;

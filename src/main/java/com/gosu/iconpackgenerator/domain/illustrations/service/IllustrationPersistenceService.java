@@ -1,6 +1,6 @@
 package com.gosu.iconpackgenerator.domain.illustrations.service;
 
-import com.gosu.iconpackgenerator.domain.icons.service.FileStorageService;
+import com.gosu.iconpackgenerator.util.FileStorageService;
 import com.gosu.iconpackgenerator.domain.illustrations.dto.IllustrationGenerationRequest;
 import com.gosu.iconpackgenerator.domain.illustrations.dto.IllustrationGenerationResponse;
 import com.gosu.iconpackgenerator.domain.illustrations.entity.GeneratedIllustration;

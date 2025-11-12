@@ -8,7 +8,7 @@ import com.gosu.iconpackgenerator.domain.icons.dto.IconGenerationResponse;
 import com.gosu.iconpackgenerator.domain.icons.entity.GeneratedIcon;
 import com.gosu.iconpackgenerator.domain.icons.repository.GeneratedIconRepository;
 import com.gosu.iconpackgenerator.domain.icons.service.CoinManagementService;
-import com.gosu.iconpackgenerator.domain.icons.service.FileStorageService;
+import com.gosu.iconpackgenerator.util.FileStorageService;
 import com.gosu.iconpackgenerator.domain.icons.service.IconExportService;
 import com.gosu.iconpackgenerator.user.model.User;
 import com.gosu.iconpackgenerator.user.service.CustomOAuth2User;

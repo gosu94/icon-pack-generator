@@ -2,7 +2,7 @@ package com.gosu.iconpackgenerator.domain.labels.controller;
 
 import com.gosu.iconpackgenerator.domain.icons.component.StreamingStateStore;
 import com.gosu.iconpackgenerator.domain.icons.service.CoinManagementService;
-import com.gosu.iconpackgenerator.domain.icons.service.FileStorageService;
+import com.gosu.iconpackgenerator.util.FileStorageService;
 import com.gosu.iconpackgenerator.domain.labels.dto.LabelExportRequest;
 import com.gosu.iconpackgenerator.domain.labels.dto.LabelGalleryExportRequest;
 import com.gosu.iconpackgenerator.domain.labels.dto.LabelGenerationResponse;

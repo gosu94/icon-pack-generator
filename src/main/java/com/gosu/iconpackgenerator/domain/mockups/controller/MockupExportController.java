@@ -1,7 +1,7 @@
 package com.gosu.iconpackgenerator.domain.mockups.controller;
 
 import com.gosu.iconpackgenerator.domain.icons.component.StreamingStateStore;
-import com.gosu.iconpackgenerator.domain.icons.service.FileStorageService;
+import com.gosu.iconpackgenerator.util.FileStorageService;
 import com.gosu.iconpackgenerator.domain.mockups.controller.api.MockupExportControllerAPI;
 import com.gosu.iconpackgenerator.domain.mockups.dto.GalleryMockupExportRequest;
 import com.gosu.iconpackgenerator.domain.mockups.dto.MockupExportRequest;

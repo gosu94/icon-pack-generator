@@ -1,6 +1,6 @@
 package com.gosu.iconpackgenerator.domain.labels.service;
 
-import com.gosu.iconpackgenerator.domain.icons.service.FileStorageService;
+import com.gosu.iconpackgenerator.util.FileStorageService;
 import com.gosu.iconpackgenerator.domain.labels.dto.LabelGenerationRequest;
 import com.gosu.iconpackgenerator.domain.labels.dto.LabelGenerationResponse;
 import com.gosu.iconpackgenerator.domain.labels.entity.GeneratedLabel;

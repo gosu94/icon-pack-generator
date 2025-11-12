@@ -1,7 +1,7 @@
 package com.gosu.iconpackgenerator.domain.illustrations.controller;
 
 import com.gosu.iconpackgenerator.domain.icons.component.StreamingStateStore;
-import com.gosu.iconpackgenerator.domain.icons.service.FileStorageService;
+import com.gosu.iconpackgenerator.util.FileStorageService;
 import com.gosu.iconpackgenerator.domain.illustrations.controller.api.IllustrationExportControllerAPI;
 import com.gosu.iconpackgenerator.domain.illustrations.dto.GalleryIllustrationExportRequest;
 import com.gosu.iconpackgenerator.domain.illustrations.dto.IllustrationExportRequest;

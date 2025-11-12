@@ -52,6 +52,9 @@ dependencies {
 
     implementation 'dev.matrixlab.webp4j:webp4j:1.2.0'
 
+	// JavaCV for video processing
+	implementation 'org.bytedeco:javacv-platform:1.5.9'
+
 	compileOnly 'org.projectlombok:lombok'
 	developmentOnly 'org.springframework.boot:spring-boot-devtools'
 	annotationProcessor 'org.projectlombok:lombok'

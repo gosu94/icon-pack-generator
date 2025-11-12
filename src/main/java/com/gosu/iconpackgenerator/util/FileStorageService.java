@@ -1,4 +1,4 @@
-package com.gosu.iconpackgenerator.domain.icons.service;
+package com.gosu.iconpackgenerator.util;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
