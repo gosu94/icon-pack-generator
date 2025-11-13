@@ -41,7 +41,7 @@ public class MinimaxVideoModelService {
      * @return CompletableFuture containing the generated video as byte array
      */
     public CompletableFuture<byte[]> generateVideo(String prompt, String imageUrl) {
-        log.info("Generating video with Minimax for prompt: {} with image URL: {}", prompt, imageUrl);
+        log.info("Generating video with Minimax for prompt: {}", prompt);
         
         return generateMinimaxVideoAsync(prompt, imageUrl)
                 .whenComplete((bytes, error) -> {

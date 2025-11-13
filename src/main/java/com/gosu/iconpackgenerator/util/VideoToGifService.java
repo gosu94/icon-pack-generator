@@ -121,8 +121,8 @@ public class VideoToGifService {
                 frameCount++;
 
                 // Limit number of frames to prevent very large GIFs
-                if (frames.size() >= 100) {
-                    log.warn("Reached maximum frame limit (100), stopping conversion");
+                if (frames.size() >= 150) {
+                    log.warn("Reached maximum frame limit (150), stopping conversion");
                     break;
                 }
             }
@@ -322,4 +322,3 @@ public class VideoToGifService {
         return scaledImage;
     }
 }
-

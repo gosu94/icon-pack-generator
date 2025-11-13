@@ -5,6 +5,7 @@ import com.gosu.iconpackgenerator.domain.icons.controller.api.IconExportControll
 import com.gosu.iconpackgenerator.domain.icons.dto.GalleryExportRequest;
 import com.gosu.iconpackgenerator.domain.icons.dto.IconExportRequest;
 import com.gosu.iconpackgenerator.domain.icons.dto.IconGenerationResponse;
+import com.gosu.iconpackgenerator.domain.icons.dto.GifGalleryExportRequest;
 import com.gosu.iconpackgenerator.domain.icons.entity.GeneratedIcon;
 import com.gosu.iconpackgenerator.domain.icons.repository.GeneratedIconRepository;
 import com.gosu.iconpackgenerator.domain.icons.service.CoinManagementService;
@@ -24,12 +25,16 @@ import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.ResponseBody;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
 import java.util.UUID;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Paths;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipOutputStream;
 
 @Controller
 @RequiredArgsConstructor
@@ -228,6 +233,83 @@ public class IconExportController implements IconExportControllerAPI {
             log.error("Error creating icon pack export from gallery", e);
             return ResponseEntity.internalServerError()
                     .body("Error creating icon pack".getBytes());
+        }
+    }
+
+    @Override
+    @ResponseBody
+    public ResponseEntity<byte[]> exportGifsFromGallery(@RequestBody GifGalleryExportRequest gifExportRequest,
+                                                        @AuthenticationPrincipal OAuth2User principal) {
+        if (gifExportRequest.getGifFilePaths() == null || gifExportRequest.getGifFilePaths().isEmpty()) {
+            return ResponseEntity.badRequest()
+                    .body("No GIF file paths provided".getBytes(StandardCharsets.UTF_8));
+        }
+
+        if (!(principal instanceof CustomOAuth2User customUser)) {
+            log.warn("Unauthorized GIF export attempt: no authenticated user");
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body("User not authenticated".getBytes(StandardCharsets.UTF_8));
+        }
+
+        User user = customUser.getUser();
+        List<GeneratedIcon> generatedGifs = generatedIconRepository.findByFilePathIn(gifExportRequest.getGifFilePaths());
+        List<GeneratedIcon> userGifs = generatedGifs.stream()
+                .filter(icon -> icon.getUser().getId().equals(user.getId()))
+                .filter(icon -> icon.getFileName() != null && icon.getFileName().toLowerCase().endsWith(".gif"))
+                .toList();
+
+        if (userGifs.isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
+
+        try {
+            if (userGifs.size() == 1) {
+                GeneratedIcon gifIcon = userGifs.get(0);
+                byte[] gifData = fileStorageService.readIcon(gifIcon.getFilePath());
+                String fileName = gifIcon.getFileName() != null ? gifIcon.getFileName() : "gallery-animation.gif";
+
+                HttpHeaders headers = new HttpHeaders();
+                headers.setContentType(MediaType.IMAGE_GIF);
+                headers.setContentDispositionFormData("attachment", fileName);
+                headers.setContentLength(gifData.length);
+                return ResponseEntity.ok()
+                        .headers(headers)
+                        .body(gifData);
+            }
+
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            try (ZipOutputStream zos = new ZipOutputStream(baos)) {
+                for (GeneratedIcon gifIcon : userGifs) {
+                    try {
+                        byte[] gifData = fileStorageService.readIcon(gifIcon.getFilePath());
+                        String entryName = gifIcon.getFileName();
+                        if (entryName == null || entryName.isBlank()) {
+                            entryName = gifIcon.getIconId() + ".gif";
+                        }
+                        zos.putNextEntry(new ZipEntry(entryName));
+                        zos.write(gifData);
+                        zos.closeEntry();
+                    } catch (IOException e) {
+                        log.error("Error reading GIF file {} for export", gifIcon.getFilePath(), e);
+                    }
+                }
+                zos.finish();
+            }
+
+            byte[] zipData = baos.toByteArray();
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_OCTET_STREAM);
+            headers.setContentDispositionFormData("attachment",
+                    "gallery-gifs-" + System.currentTimeMillis() + ".zip");
+            headers.setContentLength(zipData.length);
+            return ResponseEntity.ok()
+                    .headers(headers)
+                    .body(zipData);
+
+        } catch (IOException e) {
+            log.error("Failed to export GIFs from gallery", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Failed to export GIFs".getBytes(StandardCharsets.UTF_8));
         }
     }
 }

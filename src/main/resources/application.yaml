@@ -1,4 +1,3 @@
-
 spring:
   application:
     name: icon-pack-generator
@@ -9,6 +8,10 @@ spring:
       cache:
         period: 0
       static-locations: ${STATIC_LOCATIONS}
+  devtools:
+    restart:
+      additional-exclude: org/bytedeco/**,**/javacpp-*.jar,**/ffmpeg-*.jar
+      enabled: false
   mvc:
     async:
       request-timeout: 300000

@@ -156,7 +156,7 @@ const GeneratorForm: React.FC<GeneratorFormProps> = ({
         ></div>
         <div className="relative z-10">
           {/* Mode Tabs */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-6">
+          <div className="grid grid-cols-2 gap-3 mb-6">
             <button
               type="button"
               onClick={() => setMode("icons")}

@@ -170,6 +170,7 @@ public class AdminController {
         List<IconDto> iconDtos = icons.stream()
                 .map(icon -> new IconDto(
                         icon.getFilePath(),
+                        icon.getIconId(),
                         icon.getDescription(),
                         icon.getServiceSource(),
                         icon.getRequestId(),

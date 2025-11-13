@@ -1,15 +1,18 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Navigation from "../../components/Navigation";
 import ExportModal from "../../components/ExportModal";
 import ProgressModal from "../../components/ProgressModal";
 import { Download, Sparkles } from "lucide-react";
+import { useAuth } from "@/context/AuthContext";
+import { GifAsset, GifProgressUpdate } from "@/lib/types";
 
 // Local Icon type for the gallery page, matching the backend DTO
 interface Icon {
   id: number;
+  iconId: string;
   imageUrl: string;
   description: string;
   serviceSource: string;
@@ -47,7 +50,27 @@ interface LabelItem {
   theme: string;
 }
 
-type GroupedIcons = Record<string, { original: Icon[]; variation: Icon[] }>;
+interface IconGroup {
+  original: Icon[];
+  variation: Icon[];
+  gifs: Icon[];
+}
+
+type GroupedIcons = Record<string, IconGroup>;
+
+interface GifModalState {
+  requestId: string;
+  iconType: "original" | "variation";
+  icons: Icon[];
+}
+
+interface GifModalProgress {
+  status: string;
+  message: string;
+  total: number;
+  completed: number;
+  percent: number;
+}
 type GroupedIllustrations = Record<string, { original: Illustration[]; variation: Illustration[] }>;
 type GroupedMockups = Record<string, { original: Mockup[]; variation: Mockup[] }>;
 type GroupedLabels = Record<string, { original: LabelItem[]; variation: LabelItem[] }>;
@@ -209,6 +232,7 @@ const composeGridFromIconUrls = async (iconUrls: string[]): Promise<Blob> => {
 
 export default function GalleryPage() {
   const router = useRouter();
+  const { authState } = useAuth();
   const [groupedIcons, setGroupedIcons] = useState<GroupedIcons>({});
   const [groupedIllustrations, setGroupedIllustrations] = useState<GroupedIllustrations>({});
   const [groupedMockups, setGroupedMockups] = useState<GroupedMockups>({});
@@ -225,6 +249,22 @@ export default function GalleryPage() {
   const [illustrationsToExport, setIllustrationsToExport] = useState<Illustration[]>([]);
   const [mockupsToExport, setMockupsToExport] = useState<Mockup[]>([]);
   const [labelsToExport, setLabelsToExport] = useState<LabelItem[]>([]);
+  const gifEventSourceRef = useRef<EventSource | null>(null);
+  const [gifRefreshToken, setGifRefreshToken] = useState(0);
+  const [gifModalState, setGifModalState] = useState<GifModalState | null>(null);
+  const [selectedGifIcons, setSelectedGifIcons] = useState<Set<string>>(() => new Set<string>());
+  const [gifProgress, setGifProgress] = useState<GifModalProgress>({
+    status: "idle",
+    message: "",
+    total: 0,
+    completed: 0,
+    percent: 0,
+  });
+  const [gifResults, setGifResults] = useState<GifAsset[]>([]);
+  const [gifError, setGifError] = useState<string | null>(null);
+  const [isGifSubmitting, setIsGifSubmitting] = useState(false);
+  const availableCoins = authState?.user?.coins ?? 0;
+  const trialCoins = authState?.user?.trialCoins ?? 0;
 
   const [exportProgress, setExportProgress] = useState({
     step: 1,
@@ -250,6 +290,225 @@ export default function GalleryPage() {
   const closePreview = () => {
     setPreviewImage(null);
   };
+
+  const gifSelectedCount = selectedGifIcons.size;
+  const gifEstimatedCost = gifSelectedCount * 2;
+  const insufficientGifBalance =
+    gifEstimatedCost > 0 && availableCoins < gifEstimatedCost && trialCoins <= 0;
+
+  const cleanupGifEventSource = () => {
+    if (gifEventSourceRef.current) {
+      gifEventSourceRef.current.close();
+      gifEventSourceRef.current = null;
+    }
+  };
+
+  const resetGifState = () => {
+    setSelectedGifIcons(new Set<string>());
+    setGifProgress({
+      status: "idle",
+      message: "",
+      total: 0,
+      completed: 0,
+      percent: 0,
+    });
+    setGifResults([]);
+    setGifError(null);
+    setIsGifSubmitting(false);
+  };
+
+  const closeGifModal = () => {
+    resetGifState();
+    cleanupGifEventSource();
+    setGifModalState(null);
+  };
+
+  const appendGifAssets = (assets?: GifAsset[]) => {
+    if (!assets || assets.length === 0) {
+      return;
+    }
+    setGifResults((prev) => {
+      const merged = new Map<string, GifAsset>();
+      const keyFor = (asset: GifAsset) => asset.iconId || asset.filePath || asset.fileName;
+      prev.forEach((asset) => {
+        const key = keyFor(asset);
+        if (key) {
+          merged.set(key, asset);
+        }
+      });
+      assets.forEach((asset) => {
+        const key = keyFor(asset);
+        if (key) {
+          merged.set(key, asset);
+        }
+      });
+      return Array.from(merged.values());
+    });
+  };
+
+  const handleGifUpdate = (update: GifProgressUpdate) => {
+    const total = update.totalIcons || gifModalState?.icons.length || gifProgress.total;
+    const completed =
+      typeof update.completedIcons === "number" ? update.completedIcons : gifProgress.completed;
+    const percent = total > 0 ? Math.min(100, Math.round((completed / total) * 100)) : gifProgress.percent;
+    setGifProgress({
+      status: update.status,
+      message: update.message,
+      total,
+      completed,
+      percent,
+    });
+    appendGifAssets(update.gifs);
+  };
+
+  const appendError = (message: string) => {
+    setGifError(message);
+    setIsGifSubmitting(false);
+  };
+
+  const attachGifEventSource = (gifRequestId: string) => {
+    cleanupGifEventSource();
+    const eventSource = new EventSource(`/api/icons/gif/stream/${gifRequestId}`);
+    gifEventSourceRef.current = eventSource;
+
+    eventSource.addEventListener("gif_progress", (event) => {
+      try {
+        handleGifUpdate(JSON.parse(event.data));
+      } catch (error) {
+        console.error("Failed to parse GIF progress event", error);
+      }
+    });
+
+    eventSource.addEventListener("gif_complete", (event) => {
+      try {
+        handleGifUpdate(JSON.parse(event.data));
+        setIsGifSubmitting(false);
+      } catch (error) {
+        console.error("Failed to parse GIF completion event", error);
+      } finally {
+        cleanupGifEventSource();
+      }
+    });
+
+    eventSource.addEventListener("gif_error", (event) => {
+      try {
+        const update: GifProgressUpdate = JSON.parse(event.data);
+        setGifError(update.message || "Failed to generate GIFs. Please try again.");
+        handleGifUpdate(update);
+      } catch (error) {
+        setGifError("Failed to generate GIFs. Please try again.");
+      } finally {
+        setIsGifSubmitting(false);
+        cleanupGifEventSource();
+      }
+    });
+
+    eventSource.onerror = () => {
+      appendError("GIF generation connection lost. Please try again.");
+      cleanupGifEventSource();
+    };
+  };
+
+  const openGifModal = (iconType: "original" | "variation") => {
+    if (!selectedRequest) {
+      setGifError("Please select a request first.");
+      return;
+    }
+    const group = groupedIcons[selectedRequest];
+    if (!group) {
+      setGifError("Icons not found for this request.");
+      return;
+    }
+    const icons = iconType === "original" ? group.original : group.variation;
+    if (!icons || icons.length === 0) {
+      setGifError("No icons available for GIF generation.");
+      return;
+    }
+    resetGifState();
+    setGifModalState({
+      requestId: selectedRequest,
+      iconType,
+      icons,
+    });
+  };
+
+  const toggleGifSelection = (iconId: string) => {
+    setSelectedGifIcons((prev) => {
+      const next = new Set(prev);
+      if (next.has(iconId)) {
+        next.delete(iconId);
+      } else {
+        next.add(iconId);
+      }
+      return next;
+    });
+  };
+
+  const handleGenerateGifs = async () => {
+    if (!gifModalState) {
+      appendError("Please select icons to animate.");
+      return;
+    }
+    if (selectedGifIcons.size === 0) {
+      appendError("Select at least one icon to animate.");
+      return;
+    }
+
+    setIsGifSubmitting(true);
+    setGifError(null);
+    setGifProgress((prev) => ({
+      ...prev,
+      status: "starting",
+      message: "Submitting GIF generation request...",
+      total: selectedGifIcons.size,
+      percent: Math.max(prev.percent, 5),
+    }));
+
+    try {
+      const response = await fetch("/api/icons/gif/start", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          requestId: gifModalState.requestId,
+          iconIds: Array.from(selectedGifIcons),
+        }),
+      });
+      const payload = await response.json().catch(() => ({}));
+
+      if (!response.ok || payload.status === "error" || !payload.gifRequestId) {
+        const message = payload.message || "Failed to start GIF generation.";
+        appendError(message);
+        return;
+      }
+
+      setGifProgress((prev) => ({
+        ...prev,
+        status: "in_progress",
+        message: "Waiting for animation service...",
+        total: payload.totalIcons || prev.total,
+        percent: Math.max(prev.percent, 10),
+      }));
+
+      attachGifEventSource(payload.gifRequestId);
+    } catch (error) {
+      console.error("Failed to start GIF generation", error);
+      appendError("Failed to start GIF generation. Please try again.");
+    }
+  };
+
+  useEffect(() => {
+    return () => {
+      cleanupGifEventSource();
+    };
+  }, []);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setGifRefreshToken((token) => (token + 1) % 100000);
+    }, 4000);
+    return () => clearInterval(interval);
+  }, []);
 
   const composeGridImageUrl = async (iconType: string): Promise<string | null> => {
     if (!selectedRequest) {
@@ -320,9 +579,12 @@ export default function GalleryPage() {
 
         const grouped = data.reduce((acc, icon) => {
           if (!acc[icon.requestId]) {
-            acc[icon.requestId] = { original: [], variation: [] };
+            acc[icon.requestId] = { original: [], variation: [], gifs: [] };
           }
-          if (icon.iconType === "original") {
+          const isGif = icon.imageUrl?.toLowerCase().endsWith(".gif");
+          if (isGif) {
+            acc[icon.requestId].gifs.push(icon);
+          } else if (icon.iconType === "original") {
             acc[icon.requestId].original.push(icon);
           } else if (icon.iconType === "variation") {
             acc[icon.requestId].variation.push(icon);
@@ -694,6 +956,51 @@ export default function GalleryPage() {
     }
   };
 
+  const handleExportGifs = async (gifIcons: Icon[]) => {
+    if (!gifIcons || gifIcons.length === 0) {
+      return;
+    }
+    try {
+      const response = await fetch("/api/gallery/export-gifs", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          gifFilePaths: gifIcons.map((icon) => icon.imageUrl),
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to export GIFs (${response.status})`);
+      }
+
+      const blob = await response.blob();
+      const downloadUrl = URL.createObjectURL(blob);
+      const contentDisposition = response.headers.get("content-disposition");
+      let filename = gifIcons.length === 1
+        ? `gallery-gif-${Date.now()}.gif`
+        : `gallery-gifs-${Date.now()}.zip`;
+
+      if (contentDisposition) {
+        const match = contentDisposition.match(/filename=\"?([^\";]+)\"?/i);
+        if (match?.[1]) {
+          filename = match[1];
+        }
+      }
+
+      const link = document.createElement("a");
+      link.href = downloadUrl;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(downloadUrl);
+    } catch (err) {
+      console.error("Failed to export GIFs:", err);
+      setError("Failed to export GIFs. Please try again.");
+    }
+  };
+
   const selectedIconGroup = selectedRequest
     ? groupedIcons[selectedRequest]
     : null;
@@ -880,18 +1187,25 @@ export default function GalleryPage() {
                                 >
                                   <span className="text-xs font-bold">UI</span>
                                 </button>
-                                <button
-                                  onClick={() => handleGenerateLabelsFromIcons("original")}
-                                  className={`${actionButtonBaseClass} gap-1`}
-                                  title="Generate Labels from these icons"
-                                >
-                                  <span className="text-xs font-bold">T</span>
-                                </button>
-                                <button
-                                  onClick={() =>
-                                    openExportModal(
-                                      selectedIconGroup.original
-                                    )
+                              <button
+                                onClick={() => handleGenerateLabelsFromIcons("original")}
+                                className={`${actionButtonBaseClass} gap-1`}
+                                title="Generate Labels from these icons"
+                              >
+                                <span className="text-xs font-bold">T</span>
+                              </button>
+                              <button
+                                onClick={() => openGifModal("original")}
+                                className={`${actionButtonBaseClass} gap-1`}
+                                title="Generate GIFs from these icons"
+                              >
+                                <span className="text-xs font-bold">GIF</span>
+                              </button>
+                              <button
+                                onClick={() =>
+                                  openExportModal(
+                                    selectedIconGroup.original
+                                  )
                                   }
                                   className={`${actionButtonBaseClass} gap-2`}
                                   title="Export"
@@ -942,18 +1256,25 @@ export default function GalleryPage() {
                                 >
                                   <span className="text-xs font-bold">UI</span>
                                 </button>
-                                <button
-                                  onClick={() => handleGenerateLabelsFromIcons("variation")}
-                                  className={`${actionButtonBaseClass} gap-1`}
-                                  title="Generate Labels from these icons"
-                                >
-                                  <span className="text-xs font-bold">T</span>
-                                </button>
-                                <button
-                                  onClick={() =>
-                                    openExportModal(
-                                      selectedIconGroup.variation
-                                    )
+                              <button
+                                onClick={() => handleGenerateLabelsFromIcons("variation")}
+                                className={`${actionButtonBaseClass} gap-1`}
+                                title="Generate Labels from these icons"
+                              >
+                                <span className="text-xs font-bold">T</span>
+                              </button>
+                              <button
+                                onClick={() => openGifModal("variation")}
+                                className={`${actionButtonBaseClass} gap-1`}
+                                title="Generate GIFs from these icons"
+                              >
+                                <span className="text-xs font-bold">GIF</span>
+                              </button>
+                              <button
+                                onClick={() =>
+                                  openExportModal(
+                                    selectedIconGroup.variation
+                                  )
                                   }
                                   className={`${actionButtonBaseClass} gap-2`}
                                 >
@@ -978,6 +1299,46 @@ export default function GalleryPage() {
                                   </div>
                                 )
                               )}
+                            </div>
+                          </div>
+                        )}
+
+                        {selectedIconGroup.gifs.length > 0 && (
+                          <div className="p-4 rounded-lg border border-amber-200 bg-white/60 shadow-lg shadow-amber-100/60">
+                            <div className="flex items-center justify-between mb-4">
+                              <div>
+                                <h3 className="text-xl font-semibold text-amber-700">
+                                  Animated GIFs
+                                </h3>
+                                <span className="text-sm font-semibold text-amber-700">
+                                  {selectedIconGroup.gifs.length} file
+                                  {selectedIconGroup.gifs.length === 1 ? "" : "s"}
+                                </span>
+                              </div>
+                              <button
+                                onClick={() => handleExportGifs(selectedIconGroup.gifs)}
+                                className={`${actionButtonBaseClass} gap-2`}
+                                title="Export GIFs"
+                              >
+                                <Download className="w-4 h-4" />
+                              </button>
+                            </div>
+                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                              {selectedIconGroup.gifs.map((icon, index) => (
+                                <div
+                                  key={`gif-${icon.id}-${index}`}
+                                  className="border rounded-lg p-2 bg-white shadow-sm space-y-2"
+                                >
+                                  <img
+                                    src={`${icon.imageUrl}?loop=${gifRefreshToken}`}
+                                    alt={icon.description || "Animated GIF"}
+                                    className="w-full h-auto rounded-md"
+                                  />
+                                  <p className="text-xs text-slate-500 truncate">
+                                    {icon.description || "Looping animation"}
+                                  </p>
+                                </div>
+                              ))}
                             </div>
                           </div>
                         )}
@@ -1603,6 +1964,155 @@ export default function GalleryPage() {
       />
 
       <ProgressModal show={showProgressModal} progress={exportProgress} />
+
+      {gifModalState?.icons && (
+        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center px-4 py-10">
+          <div className="w-full max-w-4xl bg-white rounded-3xl shadow-2xl border border-slate-100 p-6 max-h-[90vh] overflow-y-auto">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <div>
+                <p className="text-sm uppercase tracking-wide text-slate-500 font-semibold">
+                  Animated GIFs
+                </p>
+                <h2 className="text-2xl font-bold text-slate-900">
+                  Request {gifModalState.requestId} · {gifModalState.iconType === "original" ? "Original" : "Variations"}
+                </h2>
+                <p className="text-sm text-slate-600 mt-1">
+                  Select icons to animate. Each GIF costs 2 coins.
+                </p>
+              </div>
+              <button
+                onClick={closeGifModal}
+                className="self-end text-slate-600 hover:text-slate-900 transition-colors"
+                aria-label="Close GIF modal"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 mt-6">
+              {gifModalState.icons.map((icon) => {
+                const isSelectable = Boolean(icon.iconId);
+                const isSelected = !!icon.iconId && selectedGifIcons.has(icon.iconId);
+                return (
+                  <button
+                    key={icon.iconId || icon.id}
+                    type="button"
+                    disabled={!isSelectable}
+                    onClick={() => icon.iconId && toggleGifSelection(icon.iconId)}
+                    className={`relative border rounded-2xl p-2 transition-all hover:shadow-md ${
+                      isSelected ? "border-blue-500 shadow-lg" : "border-slate-200"
+                    } ${!isSelectable ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
+                  >
+                    <img
+                      src={icon.imageUrl}
+                      alt={icon.description || "Icon"}
+                      className="w-full h-auto rounded-xl"
+                    />
+                    {isSelected && (
+                      <span className="absolute top-3 right-3 text-xs font-semibold bg-blue-600 text-white px-2 py-0.5 rounded-full">
+                        Selected
+                      </span>
+                    )}
+                    {!isSelectable && (
+                      <span className="absolute top-3 right-3 text-xs font-semibold bg-slate-400 text-white px-2 py-0.5 rounded-full">
+                        N/A
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="mt-6 text-sm text-slate-600 space-y-1">
+              <p>
+                Selected icons: <span className="font-semibold text-slate-900">{gifSelectedCount}</span>
+              </p>
+              <p>
+                Cost:{" "}
+                <span className="font-semibold text-slate-900">{gifEstimatedCost}</span> coins (2 per icon)
+              </p>
+              <p>
+                Balance: <span className="font-semibold text-slate-900">{availableCoins}</span> coins · Trial coins:{" "}
+                <span className="font-semibold text-slate-900">{trialCoins}</span>
+              </p>
+              {insufficientGifBalance && (
+                <p className="text-red-500 font-medium">Not enough coins. Please purchase more coins to continue.</p>
+              )}
+            </div>
+
+            {gifProgress.status !== "idle" && (
+              <div className="mt-6">
+                <div className="w-full h-3 bg-slate-100 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-gradient-to-r from-blue-500 to-purple-500 transition-all duration-300"
+                    style={{ width: `${gifProgress.percent}%` }}
+                  />
+                </div>
+                <div className="mt-2 flex flex-col sm:flex-row sm:items-center sm:justify-between text-sm text-slate-600 gap-2">
+                  <span>{gifProgress.message}</span>
+                  {gifProgress.total > 0 && (
+                    <span>
+                      {gifProgress.completed} / {gifProgress.total} completed
+                    </span>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {gifResults.length > 0 && (
+              <div className="mt-6">
+                <h3 className="text-lg font-semibold text-slate-900 mb-3">Generated GIFs</h3>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                  {gifResults.map((asset) => (
+                    <div
+                      key={asset.iconId || asset.fileName}
+                      className="border border-slate-200 rounded-2xl p-3 shadow-sm bg-white space-y-2"
+                    >
+                      <img
+                        src={`${asset.filePath}?loop=${gifRefreshToken}`}
+                        alt={asset.fileName}
+                        className="w-full h-auto rounded-xl border border-slate-100"
+                      />
+                      <a
+                        href={asset.filePath}
+                        download
+                        className="inline-flex items-center justify-center gap-2 px-3 py-1.5 rounded-xl text-xs font-semibold bg-[#ffffff] text-[#3C4BFF] border border-[#E6E8FF] hover:bg-[#F5F6FF] transition-colors"
+                      >
+                        <Download className="w-4 h-4" />
+                        Download
+                      </a>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {gifError && <p className="text-sm text-red-500 mt-4">{gifError}</p>}
+
+            <div className="mt-6 flex flex-col sm:flex-row sm:justify-end gap-3">
+              <button
+                onClick={closeGifModal}
+                className="px-4 py-2 rounded-xl border border-slate-200 text-slate-700 hover:bg-slate-50 font-semibold"
+              >
+                Close
+              </button>
+              <button
+                onClick={handleGenerateGifs}
+                disabled={isGifSubmitting || gifSelectedCount === 0 || insufficientGifBalance}
+                className={`px-4 py-2 rounded-xl font-semibold text-white transition-all ${
+                  isGifSubmitting || gifSelectedCount === 0 || insufficientGifBalance
+                    ? "bg-slate-300 cursor-not-allowed"
+                    : "bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 shadow-lg"
+                }`}
+              >
+                {isGifSubmitting ? "Generating..." : "Generate GIFs"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Full-size image preview modal */}
       {previewImage && (

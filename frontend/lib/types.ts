@@ -1,6 +1,9 @@
 export interface Icon {
+  id?: string;
   base64Data: string;
   description?: string;
+  gridPosition?: number;
+  serviceSource?: string;
 }
 
 export interface Label {
@@ -35,6 +38,29 @@ export interface GenerationResponse {
   photonResults?: ServiceResult[];
   gptResults?: ServiceResult[];
   bananaResults?: ServiceResult[];
+}
+
+export interface GifAsset {
+  id?: number;
+  iconId: string;
+  fileName: string;
+  filePath: string;
+  iconType?: string;
+  serviceSource?: string;
+  gridPosition?: number;
+  generationIndex?: number;
+}
+
+export interface GifProgressUpdate {
+  gifRequestId: string;
+  requestId: string;
+  totalIcons: number;
+  completedIcons: number;
+  status: string;
+  message: string;
+  eventType: string;
+  currentIconId?: string;
+  gifs?: GifAsset[];
 }
 
 export type UIState = "initial" | "streaming" | "error" | "results";

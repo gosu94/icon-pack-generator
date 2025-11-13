@@ -9,6 +9,7 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class IconDto {
     private String imageUrl;
+    private String iconId;
     private String description;
     private String serviceSource;
     private String requestId;

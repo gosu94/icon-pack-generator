@@ -72,6 +72,7 @@ public class EmailController {
             }
         } else {
             userRepository.findAll().stream()
+                    .filter(User::getNotifications)
                     .map(User::getEmail)
                     .filter(Objects::nonNull)
                     .map(String::trim)

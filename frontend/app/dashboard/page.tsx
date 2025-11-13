@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { GenerationMode } from "@/lib/types";
 import Navigation from "../../components/Navigation";
 import GeneratorForm from "../../components/GeneratorForm";
@@ -16,6 +16,14 @@ import { useExportFlow } from "./hooks/useExportFlow";
 export default function Page() {
   const { authState, checkAuthenticationStatus } = useAuth();
   const [mode, setMode] = useState<GenerationMode>("icons");
+  const [gifRefreshToken, setGifRefreshToken] = useState(0);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setGifRefreshToken((token) => (token + 1) % 100000);
+    }, 4000);
+    return () => clearInterval(interval);
+  }, []);
 
   const iconAnimations = useIconAnimations();
   const formState = useDashboardFormState({ mode });
@@ -148,6 +156,9 @@ export default function Page() {
           setInputType={setInputType}
           setReferenceImage={setReferenceImage}
           setImagePreview={setImagePreview}
+          availableCoins={authState?.user?.coins ?? 0}
+          trialCoins={authState?.user?.trialCoins ?? 0}
+          gifRefreshToken={gifRefreshToken}
         />
       </div>
       <ExportModal

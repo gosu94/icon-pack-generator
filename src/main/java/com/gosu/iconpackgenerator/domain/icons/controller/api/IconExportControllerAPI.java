@@ -1,6 +1,7 @@
 package com.gosu.iconpackgenerator.domain.icons.controller.api;
 
 import com.gosu.iconpackgenerator.domain.icons.dto.GalleryExportRequest;
+import com.gosu.iconpackgenerator.domain.icons.dto.GifGalleryExportRequest;
 import com.gosu.iconpackgenerator.domain.icons.dto.IconExportRequest;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -25,4 +26,10 @@ public interface IconExportControllerAPI {
     @ResponseBody
     ResponseEntity<byte[]> exportFromGallery(@RequestBody GalleryExportRequest galleryExportRequest,
                                              @AuthenticationPrincipal OAuth2User principal);
+
+    @Operation(summary = "Export GIF files from gallery", description = "Downloads selected GIF files as either a single GIF or ZIP archive.")
+    @PostMapping("/api/gallery/export-gifs")
+    @ResponseBody
+    ResponseEntity<byte[]> exportGifsFromGallery(@RequestBody GifGalleryExportRequest gifExportRequest,
+                                                 @AuthenticationPrincipal OAuth2User principal);
 }
