@@ -156,12 +156,13 @@ const GeneratorForm: React.FC<GeneratorFormProps> = ({
         ></div>
         <div className="relative z-10">
           {/* Mode Tabs */}
-          <div className="grid grid-cols-2 gap-3 mb-6">
+          <div className="grid grid-cols-4 gap-3 mb-6">
             <button
               type="button"
               onClick={() => setMode("icons")}
               disabled={isGenerating}
-              className={`px-4 py-3 rounded-lg text-sm font-semibold transition-all duration-200 ${
+              title="Icons"
+              className={`px-3 py-3 rounded-lg transition-all duration-200 flex items-center justify-center ${
                 mode === "icons"
                   ? "bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-md"
                   : isGenerating
@@ -169,13 +170,26 @@ const GeneratorForm: React.FC<GeneratorFormProps> = ({
                   : "bg-gray-100 text-gray-600 hover:bg-gray-200"
               }`}
             >
-              Icons
+              <svg
+                className="w-5 h-5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M4 5a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM14 5a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1V5zM4 15a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1v-4zM14 15a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z"
+                />
+              </svg>
             </button>
             <button
               type="button"
               onClick={() => setMode("illustrations")}
               disabled={isGenerating}
-              className={`px-4 py-3 rounded-lg text-sm font-semibold transition-all duration-200 ${
+              title="Illustrations"
+              className={`px-3 py-3 rounded-lg transition-all duration-200 flex items-center justify-center ${
                 mode === "illustrations"
                   ? "bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-md"
                   : isGenerating
@@ -183,13 +197,26 @@ const GeneratorForm: React.FC<GeneratorFormProps> = ({
                   : "bg-gray-100 text-gray-600 hover:bg-gray-200"
               }`}
             >
-              Illustrations
+              <svg
+                className="w-5 h-5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                />
+              </svg>
             </button>
             <button
               type="button"
               onClick={() => setMode("mockups")}
               disabled={isGenerating}
-              className={`relative overflow-hidden px-4 py-3 rounded-lg text-sm font-semibold transition-all duration-200 ${
+              title="UI Mockups"
+              className={`px-3 py-3 rounded-lg transition-all duration-200 flex items-center justify-center ${
                 mode === "mockups"
                   ? "bg-gradient-to-r from-blue-600 to-pink-600 text-white shadow-md"
                   : isGenerating
@@ -197,13 +224,26 @@ const GeneratorForm: React.FC<GeneratorFormProps> = ({
                   : "bg-gray-100 text-gray-600 hover:bg-gray-200"
               }`}
             >
-              UI
+              <svg
+                className="w-5 h-5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2"
+                />
+              </svg>
             </button>
             <button
               type="button"
               onClick={() => setMode("labels")}
               disabled={isGenerating}
-              className={`px-4 py-3 rounded-lg text-sm font-semibold transition-all duration-200 ${
+              title="Labels"
+              className={`px-3 py-3 rounded-lg transition-all duration-200 flex items-center justify-center ${
                 mode === "labels"
                   ? "bg-gradient-to-r from-emerald-500 to-sky-500 text-white shadow-md"
                   : isGenerating
@@ -211,7 +251,19 @@ const GeneratorForm: React.FC<GeneratorFormProps> = ({
                   : "bg-gray-100 text-gray-600 hover:bg-gray-200"
               }`}
             >
-              Labels
+              <svg
+                className="w-5 h-5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"
+                />
+              </svg>
             </button>
           </div>
 
