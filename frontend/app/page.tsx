@@ -326,6 +326,27 @@ export default function LandingPage() {
                             </div>
                         </div>
 
+                        {/* GIFs Card */}
+                        <div onClick={() => openImageModal('/images/features/feature_gifs.gif')}
+                             className="bg-white/80 backdrop-blur-md rounded-2xl shadow-lg border border-purple-200/30 flex flex-col md:flex-row overflow-hidden hover:shadow-xl transition-all duration-300 hover:scale-[1.02] cursor-pointer">
+                            <div className="md:w-1/2 p-8 flex flex-col justify-center">
+                                <h3 className="text-2xl font-bold text-slate-900 mb-4">✨ Gifs</h3>
+                                <p className="text-slate-600 leading-relaxed">
+                                    Bring your icons to life with AI-powered motion. Generate looping animations that preserve your icon style, then export ready-to-share GIFs for product shots, walkthroughs, and socials.
+                                </p>
+                            </div>
+                            <div className="md:w-1/2 p-4 flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100">
+                                <Image
+                                    src="/images/features/feature_gifs.gif"
+                                    alt="GIF animation feature"
+                                    width={800}
+                                    height={450}
+                                    unoptimized
+                                    className="rounded-lg shadow-md object-cover aspect-video"
+                                />
+                            </div>
+                        </div>
+
                         {/* Label Card */}
                         <div onClick={() => openImageModal('/images/features/feature_labels.webp')}
                              className="bg-white/80 backdrop-blur-md rounded-2xl shadow-lg border border-purple-200/30 flex flex-col md:flex-row overflow-hidden hover:shadow-xl transition-all duration-300 hover:scale-[1.02] cursor-pointer">
@@ -358,7 +379,7 @@ export default function LandingPage() {
 
                         {/* UI Mockups Card */}
                         <div onClick={() => openImageModal('/images/features/feature_mockups.webp')}
-                             className="bg-white/80 backdrop-blur-md rounded-2xl shadow-lg border border-purple-200/30 flex flex-col md:flex-row overflow-hidden hover:shadow-xl transition-all duration-300 hover:scale-[1.02] cursor-pointer">
+                             className="bg-white/80 backdrop-blur-md rounded-2xl shadow-lg border border-purple-200/30 flex flex-col md:flex-row overflow-hidden hover:shadow-xl transition-all duration-300 hover:scale-[1.02] cursor-pointer lg:col-span-2 lg:max-w-3xl lg:mx-auto">
                             <div className="md:w-1/2 p-8 flex flex-col justify-center">
                                 <h3 className="text-2xl font-bold text-slate-900 mb-4">🧩 UI Mockups</h3>
                                 <p className="text-slate-600 leading-relaxed">
