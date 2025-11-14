@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { useAuth } from "../context/AuthContext";
 import { GenerationMode } from "@/lib/types";
 
@@ -53,21 +54,18 @@ const GeneratorForm: React.FC<GeneratorFormProps> = ({
   const { authState } = useAuth();
   const [isDragOver, setIsDragOver] = useState(false);
   const isAuthenticated = authState.authenticated;
+  const regularCoins = authState.user?.coins ?? 0;
+  const trialCoins = authState.user?.trialCoins ?? 0;
+  const isTrialOnly = regularCoins === 0 && trialCoins > 0;
   const showReferenceBanner =
     inputType === "image" && (mode === "icons" || mode === "illustrations");
 
   // Automatically disable variations when user only has trial coins
   useEffect(() => {
-    if (authState.user) {
-      const regularCoins = authState.user.coins || 0;
-      const trialCoins = authState.user.trialCoins || 0;
-      const isTrialOnly = regularCoins === 0 && trialCoins > 0;
-      
-      if (isTrialOnly && generateVariations) {
-        setGenerateVariations(false);
-      }
+    if (isTrialOnly && generateVariations) {
+      setGenerateVariations(false);
     }
-  }, [authState.user, generateVariations, setGenerateVariations]);
+  }, [isTrialOnly, generateVariations, setGenerateVariations]);
 
   const handleDragEnter = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
@@ -488,62 +486,40 @@ const GeneratorForm: React.FC<GeneratorFormProps> = ({
                   Additional Variation
                 </label>
                 <div className="flex items-center space-x-2">
-                  {(() => {
-                    const regularCoins = authState.user?.coins || 0;
-                    const trialCoins = authState.user?.trialCoins || 0;
-                    const isTrialOnly = regularCoins === 0 && trialCoins > 0;
-                    
-                    if (isTrialOnly) {
-                      return (
-                        <span className="flex items-center space-x-1 rounded-full bg-orange-100 px-2 py-0.5 text-xs font-semibold text-orange-700">
-                          <span>Not available with trial coin</span>
-                        </span>
-                      );
-                    } else if (generateVariations) {
-                      return (
-                        <span className="flex items-center space-x-1 rounded-full bg-gray-200 px-2 py-0.5 text-xs font-semibold text-gray-700">
-                          <span>+1</span>
-                          <Image
-                            src="/images/coin.webp"
-                            alt="Coin"
-                            width={16}
-                            height={16}
-                          />
-                        </span>
-                      );
-                    }
-                    return null;
-                  })()}
+                  {isTrialOnly ? (
+                    <span className="flex items-center space-x-1 rounded-full bg-orange-100 px-2 py-0.5 text-xs font-semibold text-orange-700">
+                      <span>Not available with trial coin</span>
+                    </span>
+                  ) : (
+                    generateVariations && (
+                      <span className="flex items-center space-x-1 rounded-full bg-gray-200 px-2 py-0.5 text-xs font-semibold text-gray-700">
+                        <span>+1</span>
+                        <Image
+                          src="/images/coin.webp"
+                          alt="Coin"
+                          width={16}
+                          height={16}
+                        />
+                      </span>
+                    )
+                  )}
                   <button
                     id="variations-switch"
                     type="button"
                     role="switch"
                     aria-checked={generateVariations}
-                    disabled={(() => {
-                      const regularCoins = authState.user?.coins || 0;
-                      const trialCoins = authState.user?.trialCoins || 0;
-                      return regularCoins === 0 && trialCoins > 0;
-                    })()}
+                    disabled={isTrialOnly}
                     onClick={() => {
-                      const regularCoins = authState.user?.coins || 0;
-                      const trialCoins = authState.user?.trialCoins || 0;
-                      const isTrialOnly = regularCoins === 0 && trialCoins > 0;
-                      
                       if (!isTrialOnly) {
                         setGenerateVariations(!generateVariations);
                       }
                     }}
                     className={`${
-                      (() => {
-                        const regularCoins = authState.user?.coins || 0;
-                        const trialCoins = authState.user?.trialCoins || 0;
-                        const isTrialOnly = regularCoins === 0 && trialCoins > 0;
-                        
-                        if (isTrialOnly) {
-                          return 'bg-gray-300 cursor-not-allowed';
-                        }
-                        return generateVariations ? 'bg-purple-600' : 'bg-gray-200';
-                      })()
+                      isTrialOnly
+                        ? "bg-gray-300 cursor-not-allowed"
+                        : generateVariations
+                        ? "bg-purple-600"
+                        : "bg-gray-200"
                     } relative inline-flex h-6 w-11 flex-shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2`}
                   >
                     <span
@@ -553,6 +529,43 @@ const GeneratorForm: React.FC<GeneratorFormProps> = ({
                       } pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out`}
                     />
                   </button>
+                </div>
+              </div>
+            )}
+
+            {isTrialOnly && (mode === "icons" || mode === "illustrations") && (
+              <div className="flex items-start gap-2 rounded-xl border border-blue-200/80 bg-blue-50/80 px-3 py-3 text-xs text-blue-900">
+                <svg
+                  className="mt-0.5 h-4 w-4 flex-shrink-0 text-blue-500"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                  aria-hidden="true"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                  />
+                </svg>
+                <div>
+                  <p className="text-xs font-semibold text-blue-900">
+                    Trial coin limitation
+                  </p>
+                  <p className="text-[11px] text-blue-800">
+                    {mode === "icons"
+                      ? "Trial generation is limited to 5 (out of 9) icons. "
+                      : "Trial generation is limited to 2 (out of 4) illustrations. "}
+                      Visit the{" "}
+                      <Link
+                          href="/store"
+                          className="font-semibold underline decoration-dotted underline-offset-2 hover:text-blue-900"
+                      >
+                          store
+                      </Link>{" "}
+                      to buy coins.
+                  </p>
                 </div>
               </div>
             )}
@@ -594,9 +607,7 @@ const GeneratorForm: React.FC<GeneratorFormProps> = ({
                       {(() => {
                         // For mockups, cost is always 1 (variations don't cost extra)
                         const cost = mode === "mockups" ? 1 : (generateVariations ? 2 : 1);
-                        const regularCoins = authState.user.coins || 0;
-                        const trialCoins = authState.user.trialCoins || 0;
-                        
+
                         // Prioritize regular coins (same logic as backend)
                         if (regularCoins >= cost) {
                           return (

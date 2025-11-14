@@ -57,6 +57,8 @@ const Navigation: React.FC<NavigationProps> = ({ useLoginPage = false }) => {
     authState.authenticated && authState.user ? authState.user.coins : 0;
   const displayTrialCoins = 
     authState.authenticated && authState.user ? authState.user.trialCoins : 0;
+  const shouldShowStoreHint =
+    authState.authenticated && (authState.user?.coins ?? 0) === 0;
 
   // Handle clicking outside mobile menu to close it
   useEffect(() => {
@@ -148,7 +150,25 @@ const Navigation: React.FC<NavigationProps> = ({ useLoginPage = false }) => {
                 >
                   <ImageIcon className="w-5 h-5 text-gray-700" />
                 </Link>
-                <Link href="/store" className="p-2 hover:bg-gray-100 rounded-lg">
+                <Link
+                  href="/store"
+                  className="relative p-2 hover:bg-gray-100 rounded-lg"
+                  aria-label="Store"
+                  title="Store"
+                >
+                  {shouldShowStoreHint && (
+                    <span
+                      className="absolute -top-0.5 -right-0 flex h-4 w-4 items-center justify-center rounded-full border border-white bg-white shadow-sm"
+                      aria-hidden="true"
+                    >
+                      <Image
+                        src="/images/coin.webp"
+                        alt=""
+                        width={12}
+                        height={12}
+                      />
+                    </span>
+                  )}
                   <Store className="w-5 h-5 text-gray-700" />
                 </Link>
                 <Link href="/feedback" className="p-2 hover:bg-gray-100 rounded-lg">
@@ -207,7 +227,20 @@ const Navigation: React.FC<NavigationProps> = ({ useLoginPage = false }) => {
                         onClick={() => setIsMobileMenuOpen(false)}
                       >
                         <Store className="w-4 h-4 text-gray-700" />
-                        <span className="text-sm font-medium text-gray-700">Store</span>
+                        <span className="text-sm font-medium text-gray-700 flex-1">Store</span>
+                        {shouldShowStoreHint && (
+                          <span
+                            className="flex h-3 w-3 items-center justify-center rounded-full border border-gray-200 bg-white shadow-sm"
+                            aria-hidden="true"
+                          >
+                            <Image
+                              src="/images/coin.webp"
+                              alt=""
+                              width={12}
+                              height={12}
+                            />
+                          </span>
+                        )}
                       </Link>
                       <Link 
                         href="/feedback" 
