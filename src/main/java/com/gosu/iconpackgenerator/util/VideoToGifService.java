@@ -33,7 +33,7 @@ import java.util.List;
 public class VideoToGifService {
 
     private static final int DEFAULT_FPS = 30;
-    private static final int DEFAULT_SCALE_WIDTH = 512;
+    private static final int DEFAULT_SCALE_WIDTH = 300;
 
     /**
      * Converts an MP4 video file to GIF format

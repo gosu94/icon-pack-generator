@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { Download } from "lucide-react";
+import GifModal, { GifModalProgress } from "./GifModal";
 import {
   UIState,
   ServiceResult,
@@ -64,14 +65,6 @@ interface GifModalState {
   generationIndex: number;
   icons: Icon[];
   requestId: string;
-}
-
-interface GifModalProgress {
-  status: string;
-  message: string;
-  total: number;
-  completed: number;
-  percent: number;
 }
 
 const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
@@ -931,161 +924,36 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
       </div>
 
       {/* GIF generation modal */}
-      {gifModalState?.isOpen && (
-        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center px-4 py-10">
-          <div className="w-full max-w-4xl bg-white rounded-3xl shadow-2xl border border-slate-100 p-6 max-h-[90vh] overflow-y-auto">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-              <div>
-                <p className="text-sm uppercase tracking-wide text-slate-500 font-semibold">
-                  Animated GIFs
-                </p>
-                <h2 className="text-2xl font-bold text-slate-900">
-                  {gifModalState.serviceName} · Generation {gifModalState.generationIndex}
-                </h2>
-                <p className="text-sm text-slate-600 mt-1">
-                  Select icons to animate. Each GIF costs 2 coins.
-                </p>
-              </div>
-              <button
-                onClick={closeGifModal}
-                className="self-end text-slate-600 hover:text-slate-900 transition-colors"
-                aria-label="Close GIF modal"
-              >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 mt-6">
-              {gifModalState.icons.map((icon, index) => {
-                const iconId = icon.id || `${gifModalState.serviceId}-${index}`;
-                const isSelectable = Boolean(icon.id);
-                const isSelected = !!icon.id && selectedGifIcons.has(icon.id);
-                return (
-                  <button
-                    type="button"
-                    key={iconId}
-                    disabled={!isSelectable}
-                    onClick={() => icon.id && toggleGifSelection(icon.id)}
-                    className={`relative border rounded-2xl p-2 transition-all hover:shadow-md ${
-                      isSelected ? "border-blue-500 shadow-lg" : "border-slate-200"
-                    } ${!isSelectable ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
-                  >
-                    <img
-                      src={`data:image/png;base64,${icon.base64Data}`}
-                      alt={icon.description || `Icon ${index + 1}`}
-                      className="w-full h-auto rounded-xl"
-                    />
-                    {isSelected && (
-                      <span className="absolute top-3 right-3 text-xs font-semibold bg-blue-600 text-white px-2 py-0.5 rounded-full">
-                        Selected
-                      </span>
-                    )}
-                    {!isSelectable && (
-                      <span className="absolute top-3 right-3 text-xs font-semibold bg-slate-400 text-white px-2 py-0.5 rounded-full">
-                        N/A
-                      </span>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-
-            <div className="mt-6 text-sm text-slate-600 space-y-1">
-              <p>
-                Selected icons:{" "}
-                <span className="font-semibold text-slate-900">{gifSelectedCount}</span>
-              </p>
-              <p>
-                Cost:{" "}
-                <span className="font-semibold text-slate-900">{gifEstimatedCost}</span> coins
-                (2 per icon)
-              </p>
-              <p>
-                Balance:{" "}
-                <span className="font-semibold text-slate-900">{availableCoins}</span> coins · Trial coins:{" "}
-                <span className="font-semibold text-slate-900">{trialCoins}</span>
-              </p>
-              {insufficientGifBalance && (
-                <p className="text-red-500 font-medium">
-                  Not enough coins. Please purchase more coins to continue.
-                </p>
-              )}
-            </div>
-
-            {gifProgress.status !== "idle" && (
-              <div className="mt-6">
-                <div className="w-full h-3 bg-slate-100 rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-gradient-to-r from-blue-500 to-purple-500 transition-all duration-300"
-                    style={{ width: `${gifProgress.percent}%` }}
-                  />
-                </div>
-                <div className="mt-2 flex flex-col sm:flex-row sm:items-center sm:justify-between text-sm text-slate-600 gap-2">
-                  <span>{gifProgress.message}</span>
-                  {gifProgress.total > 0 && (
-                    <span>
-                      {gifProgress.completed} / {gifProgress.total} completed
-                    </span>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {gifResults.length > 0 && (
-              <div className="mt-6">
-                <h3 className="text-lg font-semibold text-slate-900 mb-3">Generated GIFs</h3>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                  {gifResults.map((asset) => (
-                    <div
-                      key={asset.iconId || asset.fileName}
-                      className="border border-slate-200 rounded-2xl p-3 shadow-sm bg-white space-y-2"
-                    >
-                      <img
-                        src={`${asset.filePath}?loop=${gifRefreshToken}`}
-                        alt={asset.fileName}
-                        className="w-full h-auto rounded-xl border border-slate-100"
-                      />
-                      <a
-                        href={asset.filePath}
-                        download
-                        className="inline-flex items-center justify-center gap-2 px-3 py-1.5 rounded-xl text-xs font-semibold bg-[#ffffff] text-[#3C4BFF] border border-[#E6E8FF] hover:bg-[#F5F6FF] transition-colors"
-                      >
-                        <Download className="w-4 h-4" />
-                        Download
-                      </a>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {gifError && <p className="text-sm text-red-500 mt-4">{gifError}</p>}
-
-            <div className="mt-6 flex flex-col sm:flex-row sm:justify-end gap-3">
-              <button
-                onClick={closeGifModal}
-                className="px-4 py-2 rounded-xl border border-slate-200 text-slate-700 hover:bg-slate-50 font-semibold"
-              >
-                Close
-              </button>
-              <button
-                onClick={handleGenerateGifs}
-                disabled={
-                  isGifSubmitting || gifSelectedCount === 0 || insufficientGifBalance
-                }
-                className={`px-4 py-2 rounded-xl font-semibold text-white transition-all ${
-                  isGifSubmitting || gifSelectedCount === 0 || insufficientGifBalance
-                    ? "bg-slate-300 cursor-not-allowed"
-                    : "bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 shadow-lg"
-                }`}
-              >
-                {isGifSubmitting ? "Generating..." : "Generate GIFs"}
-              </button>
-            </div>
-          </div>
-        </div>
+      {gifModalState && gifModalState.isOpen && (
+        <GifModal
+          title={`${gifModalState.serviceName} · Generation ${gifModalState.generationIndex}`}
+          icons={gifModalState.icons.map((icon, index) => {
+            const fallbackId = `${gifModalState.serviceId}-${index}`;
+            const iconId = icon.id || fallbackId;
+            const selectableId = icon.id;
+            const isSelectable = Boolean(selectableId);
+            return {
+              id: iconId,
+              imageSrc: `data:image/png;base64,${icon.base64Data}`,
+              description: icon.description || `Icon ${index + 1}`,
+              selectable: isSelectable,
+              isSelected: Boolean(selectableId && selectedGifIcons.has(selectableId)),
+              onToggle: selectableId ? () => toggleGifSelection(selectableId) : undefined,
+            };
+          })}
+          selectedCount={gifSelectedCount}
+          estimatedCost={gifEstimatedCost}
+          availableCoins={availableCoins}
+          trialCoins={trialCoins}
+          insufficientBalance={insufficientGifBalance}
+          progress={gifProgress}
+          gifResults={gifResults}
+          gifRefreshToken={gifRefreshToken}
+          gifError={gifError}
+          isSubmitting={isGifSubmitting}
+          onClose={closeGifModal}
+          onGenerate={handleGenerateGifs}
+        />
       )}
 
       {/* Full-size image preview modal */}
