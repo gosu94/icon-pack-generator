@@ -110,7 +110,6 @@ public class IconPersistenceService {
         
         // Generate file name
         String fileName = fileStorageService.generateIconFileName(
-                icon.getServiceSource(), 
                 icon.getId(), 
                 icon.getGridPosition()
         );
@@ -153,8 +152,7 @@ public class IconPersistenceService {
                                User user, String iconType, String generalDescription, int generationIndex) {
         
         // Generate file name for more icons
-        String fileName = String.format("%s_%s_%d.png",
-                icon.getServiceSource(),
+        String fileName = String.format("icon_%s_%d.png",
                 icon.getId().substring(0, 8),
                 icon.getGridPosition());
         

@@ -66,13 +66,12 @@ public class FileStorageService {
     
     /**
      * Generate filename for an icon
-     * @param serviceSource The AI service (e.g., "gpt", "flux")
      * @param iconId The icon ID
      * @param gridPosition The position in the grid (0-8)
      * @return The formatted filename
      */
-    public String generateIconFileName(String serviceSource, String iconId, int gridPosition) {
-        return String.format("%s_%s_%d.png", serviceSource, iconId.substring(0, 8), gridPosition);
+    public String generateIconFileName(String iconId, int gridPosition) {
+        return String.format("icon_%s_%d.png", iconId.substring(0, 8), gridPosition);
     }
     
     /**
