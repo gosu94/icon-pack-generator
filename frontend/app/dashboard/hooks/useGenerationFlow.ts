@@ -14,6 +14,8 @@ import {
   IconAnimationController,
 } from "./useIconAnimations";
 
+const MAX_ARTIFICIAL_PROGRESS = 95;
+
 interface AuthStateLike {
   user?: {
     coins?: number;
@@ -137,11 +139,30 @@ export function useGenerationFlow({
   }, []);
 
   const calculateTimeRemaining = useCallback(() => {
-    if (overallProgress >= 100) return "0s";
+    if (overallProgress >= MAX_ARTIFICIAL_PROGRESS) return "0s";
     const remainingMs = totalDuration * (1 - overallProgress / 100);
     const remainingSeconds = Math.round(remainingMs / 1000);
     return `${remainingSeconds}s`;
   }, [overallProgress, totalDuration]);
+
+  const startOverallProgressTimer = useCallback(
+    (duration: number) => {
+      stopOverallProgressTimer();
+      setTotalDuration(duration);
+      const increment = MAX_ARTIFICIAL_PROGRESS / (duration / 100);
+      overallProgressTimerRef.current = setInterval(() => {
+        setOverallProgress((prev) => {
+          const newProgress = prev + increment;
+          if (newProgress >= MAX_ARTIFICIAL_PROGRESS) {
+            stopOverallProgressTimer();
+            return MAX_ARTIFICIAL_PROGRESS;
+          }
+          return newProgress;
+        });
+      }, 100);
+    },
+    [stopOverallProgressTimer],
+  );
 
   const saveGenerationState = useCallback(
     (requestId: string, request: any) => {
@@ -680,25 +701,13 @@ export function useGenerationFlow({
     setOverallProgress(0);
 
     isRecoveredRef.current = false;
-    stopOverallProgressTimer();
     clearAllAnimations();
 
     let duration = 40000;
     if (inputType === "image") {
       duration = 70000;
     }
-    setTotalDuration(duration);
-    const increment = 100 / (duration / 100);
-    overallProgressTimerRef.current = setInterval(() => {
-      setOverallProgress((prev) => {
-        const newProgress = prev + increment;
-        if (newProgress >= 100) {
-          stopOverallProgressTimer();
-          return 100;
-        }
-        return newProgress;
-      });
-    }, 100);
+    startOverallProgressTimer(duration);
 
     const count =
       mode === "illustrations"
@@ -905,6 +914,7 @@ export function useGenerationFlow({
     saveGenerationState,
     setErrorMessage,
     setShowResultsPanes,
+    startOverallProgressTimer,
     stopOverallProgressTimer,
     validateForm,
   ]);
@@ -992,21 +1002,9 @@ export function useGenerationFlow({
 
       setIsGenerating(true);
       setOverallProgress(0);
-      stopOverallProgressTimer();
 
       const duration = 35000;
-      setTotalDuration(duration);
-      const increment = 100 / (duration / 100);
-      overallProgressTimerRef.current = setInterval(() => {
-        setOverallProgress((prev) => {
-          const newProgress = prev + increment;
-          if (newProgress >= 100) {
-            stopOverallProgressTimer();
-            return 100;
-          }
-          return newProgress;
-        });
-      }, 100);
+      startOverallProgressTimer(duration);
 
       setStreamingResults((prev) => ({
         ...prev,
@@ -1107,6 +1105,7 @@ export function useGenerationFlow({
       hideMoreIconsForm,
       moreIconsDescriptions,
       setAnimatingIcons,
+      startOverallProgressTimer,
       stopOverallProgressTimer,
       streamingResults,
     ],
@@ -1137,21 +1136,9 @@ export function useGenerationFlow({
 
       setIsGenerating(true);
       setOverallProgress(0);
-      stopOverallProgressTimer();
 
       const duration = 35000;
-      setTotalDuration(duration);
-      const increment = 100 / (duration / 100);
-      overallProgressTimerRef.current = setInterval(() => {
-        setOverallProgress((prev) => {
-          const newProgress = prev + increment;
-          if (newProgress >= 100) {
-            stopOverallProgressTimer();
-            return 100;
-          }
-          return newProgress;
-        });
-      }, 100);
+      startOverallProgressTimer(duration);
 
       setStreamingResults((prev) => ({
         ...prev,
@@ -1255,6 +1242,7 @@ export function useGenerationFlow({
       hideMoreIconsForm,
       moreIconsDescriptions,
       setAnimatingIcons,
+      startOverallProgressTimer,
       stopOverallProgressTimer,
       streamingResults,
     ],
