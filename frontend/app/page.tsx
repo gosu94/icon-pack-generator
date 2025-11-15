@@ -102,15 +102,15 @@ export default function LandingPage() {
         "/images/illustrations/illustration6.webp",
         "/images/illustrations/illustration7.webp",
         "/images/illustrations/illustration8.webp",
+        "/images/illustrations/illustration9.webp",
+        "/images/illustrations/illustration10.webp",
+        "/images/illustrations/illustration11.webp",
+        "/images/illustrations/illustration12.webp",
+        "/images/illustrations/illustration13.webp",
+        "/images/illustrations/illustration14.webp",
+        "/images/illustrations/illustration15.webp",
+        "/images/illustrations/illustration16.webp",
     ];
-
-    const mockupImages = [
-        "/images/mockups/mockup1.webp",
-        "/images/mockups/mockup2.webp",
-        "/images/mockups/mockup3.webp",
-        "/images/mockups/mockup4.webp",
-    ];
-
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50/30">
@@ -476,33 +476,6 @@ export default function LandingPage() {
                                 </div>
                                 <div
                                     className="absolute inset-0 bg-gradient-to-br from-rose-500/0 to-purple-500/0 group-hover:from-rose-500/10 group-hover:to-purple-500/10 rounded-2xl transition-all duration-300"></div>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            </section>
-
-            {/* UI Mockups Gallery Section */}
-            <section className="px-6 py-16 bg-gradient-to-br from-teal-50/50 to-blue-50/50">
-                <div className="max-w-7xl mx-auto">
-                    <div className="text-center mb-12">
-                        <h2 className="text-4xl font-bold text-slate-900 mb-4">
-                            Generated UI Mockups Gallery
-                        </h2>
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
-                        {mockupImages.map((image, index) => (
-                            <div key={index}
-                                 onClick={() => openImageModal(image)}
-                                 className="group relative bg-white/80 backdrop-blur-md rounded-2xl p-6 shadow-lg border border-teal-200/30 hover:shadow-xl transition-all duration-300 hover:scale-[1.05] cursor-pointer">
-                                <div
-                                    className="relative aspect-[16/9] w-full bg-gradient-to-br from-slate-100 to-slate-200 rounded-xl flex items-center justify-center overflow-hidden">
-                                    <Image src={image} alt={`UI Mockup ${index + 1}`} layout="fill"
-                                           className="object-cover"/>
-                                </div>
-                                <div
-                                    className="absolute inset-0 bg-gradient-to-br from-teal-500/0 to-blue-500/0 group-hover:from-teal-500/10 group-hover:to-blue-500/10 rounded-2xl transition-all duration-300"></div>
                             </div>
                         ))}
                     </div>
