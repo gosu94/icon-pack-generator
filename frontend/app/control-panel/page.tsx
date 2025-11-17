@@ -4,7 +4,14 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Navigation from "../../components/Navigation";
 import { useAuth } from "../../context/AuthContext";
-import { X, ChevronUp, ChevronDown, ChevronsUpDown } from "lucide-react";
+import {
+  X,
+  ChevronUp,
+  ChevronDown,
+  ChevronsUpDown,
+  Loader2,
+  CheckCircle2,
+} from "lucide-react";
 import {
   UserAdminData,
   PagedResponse,
@@ -12,6 +19,7 @@ import {
   UserIllustration,
   UserMockup,
   UserLabel,
+  GenerationStatus,
 } from "./types";
 import UsersTab from "./components/UsersTab";
 import EmailTab from "./components/EmailTab";
@@ -230,6 +238,8 @@ export default function ControlPanelPage() {
   const [emailSending, setEmailSending] = useState(false);
   const [emailStatus, setEmailStatus] = useState<string | null>(null);
   const [emailError, setEmailError] = useState<string | null>(null);
+  const [generationStatus, setGenerationStatus] =
+    useState<GenerationStatus | null>(null);
 
   useEffect(() => {
     // Check if user is admin
@@ -275,6 +285,39 @@ export default function ControlPanelPage() {
 
       fetchStats();
     }
+  }, [authState.authenticated, authState.user?.isAdmin]);
+
+  useEffect(() => {
+    let isMounted = true;
+    let intervalId: ReturnType<typeof setInterval> | undefined;
+
+    const fetchGenerationStatus = async () => {
+      try {
+        const response = await fetch("/api/status/generation");
+        if (!response.ok) {
+          throw new Error("Failed to fetch generation status");
+        }
+        const status: GenerationStatus = await response.json();
+        if (isMounted) {
+          setGenerationStatus(status);
+        }
+      } catch (err) {
+        // Keep last known status on failure to avoid flicker; log for debugging
+        console.error("Error fetching generation status", err);
+      }
+    };
+
+    if (authState.authenticated && authState.user?.isAdmin) {
+      fetchGenerationStatus();
+      intervalId = setInterval(fetchGenerationStatus, 10000);
+    }
+
+    return () => {
+      isMounted = false;
+      if (intervalId) {
+        clearInterval(intervalId);
+      }
+    };
   }, [authState.authenticated, authState.user?.isAdmin]);
 
   const fetchUsers = async () => {
@@ -592,6 +635,28 @@ export default function ControlPanelPage() {
     return date.toLocaleDateString() + " " + date.toLocaleTimeString();
   };
 
+  const formatGenerationSummary = () => {
+    if (!generationStatus || !generationStatus.activeGenerations.length) {
+      return "";
+    }
+
+    return generationStatus.activeGenerations
+      .map((generation) => {
+        const shortId =
+          generation.requestId.length > 8
+            ? `${generation.requestId.slice(0, 8)}...`
+            : generation.requestId;
+        const started =
+          generation.startedAt && !Number.isNaN(new Date(generation.startedAt).getTime())
+            ? new Date(generation.startedAt).toLocaleTimeString()
+            : "unknown time";
+        const label =
+          generation.type.charAt(0).toUpperCase() + generation.type.slice(1);
+        return `${label} ${shortId} (since ${started})`;
+      })
+      .join(", ");
+  };
+
   // Sorting handler (server-side)
   const handleSort = (column: keyof UserAdminData) => {
     if (sortColumn === column) {
@@ -622,6 +687,10 @@ export default function ControlPanelPage() {
       <ChevronDown className="w-4 h-4 ml-1 text-slate-700" />
     );
   };
+
+  const generationSummary = formatGenerationSummary();
+  const isStatusKnown = generationStatus !== null;
+  const statusInProgress = generationStatus?.inProgress;
 
   if (loading) {
     return (
@@ -656,6 +725,63 @@ export default function ControlPanelPage() {
           <p className="text-slate-600">
             Manage users, view system statistics, and send email updates.
           </p>
+        </div>
+
+        <div
+          className={`mb-6 flex items-start gap-3 rounded-lg border px-4 py-3 ${
+            statusInProgress
+              ? "border-amber-200 bg-amber-50"
+              : isStatusKnown
+              ? "border-emerald-200 bg-emerald-50"
+              : "border-slate-200 bg-slate-50"
+          }`}
+        >
+          {statusInProgress ? (
+            <Loader2 className="h-5 w-5 mt-0.5 text-amber-600 animate-spin" />
+          ) : isStatusKnown ? (
+            <CheckCircle2 className="h-5 w-5 mt-0.5 text-emerald-600" />
+          ) : (
+            <Loader2 className="h-5 w-5 mt-0.5 text-slate-500 animate-spin" />
+          )}
+          <div>
+            <p
+              className={`text-sm font-semibold ${
+                statusInProgress
+                  ? "text-amber-800"
+                  : isStatusKnown
+                  ? "text-emerald-800"
+                  : "text-slate-700"
+              }`}
+            >
+              {statusInProgress
+                ? "Asset generation in progress"
+                : isStatusKnown
+                ? "No generation in progress"
+                : "Loading generation status"}
+            </p>
+            <p
+              className={`text-sm ${
+                statusInProgress
+                  ? "text-amber-700"
+                  : isStatusKnown
+                  ? "text-emerald-700"
+                  : "text-slate-600"
+              }`}
+            >
+              {statusInProgress
+                ? `${generationStatus?.activeCount ?? 0} active generation${
+                    (generationStatus?.activeCount ?? 0) === 1 ? "" : "s"
+                  } running. Avoid restarting the app until they finish.`
+                : isStatusKnown
+                ? "Safe to restart the app."
+                : "Checking current generation activity..."}
+            </p>
+            {statusInProgress && generationSummary && (
+              <p className="text-xs text-amber-600 mt-1">
+                Active: {generationSummary}
+              </p>
+            )}
+          </div>
         </div>
 
         <div className="bg-white/50 rounded-lg border border-slate-200/80 shadow-lg shadow-slate-200/50 overflow-hidden">

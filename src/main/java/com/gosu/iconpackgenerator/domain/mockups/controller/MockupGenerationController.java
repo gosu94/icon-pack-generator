@@ -12,6 +12,7 @@ import com.gosu.iconpackgenerator.domain.mockups.dto.MoreMockupsResponse;
 import com.gosu.iconpackgenerator.domain.mockups.service.MockupGenerationService;
 import com.gosu.iconpackgenerator.domain.mockups.service.MockupPersistenceService;
 import com.gosu.iconpackgenerator.domain.mockups.service.MockupPromptGenerationService;
+import com.gosu.iconpackgenerator.domain.status.GenerationStatusService;
 import com.gosu.iconpackgenerator.user.model.User;
 import com.gosu.iconpackgenerator.user.service.CustomOAuth2User;
 import jakarta.annotation.PreDestroy;
@@ -46,6 +47,7 @@ public class MockupGenerationController implements MockupGenerationControllerAPI
     private final MockupPromptGenerationService mockupPromptGenerationService;
     private final MockupPersistenceService mockupPersistenceService;
     private final CoinManagementService coinManagementService;
+    private final GenerationStatusService generationStatusService;
     
     private final ScheduledExecutorService heartbeatScheduler = Executors.newScheduledThreadPool(5);
     
@@ -89,8 +91,11 @@ public class MockupGenerationController implements MockupGenerationControllerAPI
                 request.getDescription());
         }
         
+        final String trackingId = generationStatusService.markGenerationStart("mockups");
+
         return mockupGenerationService.generateMockups(request, user)
             .whenComplete((response, error) -> {
+                generationStatusService.markGenerationComplete(trackingId);
                 if (error != null) {
                     log.error("Error generating mockups", error);
                 } else {
@@ -168,9 +173,10 @@ public class MockupGenerationController implements MockupGenerationControllerAPI
         
         return emitter;
     }
-    
+
     private void processStreamingGeneration(String requestId, MockupGenerationRequest request, User user) {
         ScheduledFuture<?> heartbeatTask = null;
+        final String trackingId = generationStatusService.markGenerationStart("mockups", requestId);
         
         try {
             if (!request.isValid()) {
@@ -216,9 +222,10 @@ public class MockupGenerationController implements MockupGenerationControllerAPI
                         if (finalHeartbeatTask != null && !finalHeartbeatTask.isCancelled()) {
                             finalHeartbeatTask.cancel(false);
                         }
-                    }
                 }
+            }
             }, user).whenComplete((response, error) -> {
+                generationStatusService.markGenerationComplete(trackingId);
                 if (finalHeartbeatTask != null && !finalHeartbeatTask.isCancelled()) {
                     finalHeartbeatTask.cancel(false);
                 }
@@ -258,6 +265,7 @@ public class MockupGenerationController implements MockupGenerationControllerAPI
             
         } catch (Exception e) {
             log.error("Error in processStreamingGeneration for mockups: {}", requestId, e);
+            generationStatusService.markGenerationComplete(trackingId);
             
             if (heartbeatTask != null && !heartbeatTask.isCancelled()) {
                 heartbeatTask.cancel(false);
@@ -364,16 +372,39 @@ public class MockupGenerationController implements MockupGenerationControllerAPI
         byte[] originalImageData = Base64.getDecoder().decode(request.getOriginalImageBase64());
         
         String prompt = mockupPromptGenerationService.generatePromptForReferenceImage(request.getDescription());
-        
+        final String trackingId = generationStatusService.markGenerationStart("mockups_more", request.getOriginalRequestId());
+
         mockupGenerationService.generateMoreMockupsFromImage(originalImageData, prompt, seed)
-            .thenAccept(mockups -> {
+            .whenComplete((mockups, error) -> {
+                generationStatusService.markGenerationComplete(trackingId);
+
+                if (error != null) {
+                    log.error("Error generating more mockups", error);
+
+                    // Refund coins on error
+                    try {
+                        coinManagementService.refundCoins(user, 1, isTrialMode);
+                        log.info("Refunded 1 coin to user {} due to more mockups generation error", user.getEmail());
+                    } catch (Exception refundException) {
+                        log.error("Failed to refund coins to user {}", user.getEmail(), refundException);
+                    }
+
+                    MoreMockupsResponse errorResponse = new MoreMockupsResponse();
+                    errorResponse.setRequestId(request.getOriginalRequestId());
+                    errorResponse.setStatus("error");
+                    errorResponse.setMessage("Failed to generate more mockups: " + error.getMessage());
+                    errorResponse.setMockups(new ArrayList<>());
+                    deferredResult.setResult(errorResponse);
+                    return;
+                }
+
                 MoreMockupsResponse response = new MoreMockupsResponse();
                 response.setRequestId(request.getOriginalRequestId());
                 response.setStatus("success");
                 response.setMessage("Successfully generated more mockups");
                 response.setMockups(mockups);
                 response.setSeed(seed);
-                
+
                 // Persist more mockups
                 try {
                     mockupPersistenceService.persistMoreMockups(
@@ -388,27 +419,8 @@ public class MockupGenerationController implements MockupGenerationControllerAPI
                 }
                 
                 deferredResult.setResult(response);
-            })
-            .exceptionally(error -> {
-                log.error("Error generating more mockups", error);
-                
-                // Refund coins on error
-                try {
-                    coinManagementService.refundCoins(user, 1, isTrialMode);
-                    log.info("Refunded 1 coin to user {} due to more mockups generation error", user.getEmail());
-                } catch (Exception refundException) {
-                    log.error("Failed to refund coins to user {}", user.getEmail(), refundException);
-                }
-                
-                MoreMockupsResponse errorResponse = new MoreMockupsResponse();
-                errorResponse.setRequestId(request.getOriginalRequestId());
-                errorResponse.setStatus("error");
-                errorResponse.setMessage("Failed to generate more mockups: " + error.getMessage());
-                errorResponse.setMockups(new ArrayList<>());
-                deferredResult.setResult(errorResponse);
-                return null;
             });
-        
+
         return deferredResult;
     }
     
@@ -519,4 +531,3 @@ public class MockupGenerationController implements MockupGenerationControllerAPI
         return "Failed to generate mockups. Please try again or contact support if the issue persists.";
     }
 }
-

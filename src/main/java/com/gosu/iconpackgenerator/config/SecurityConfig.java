@@ -67,6 +67,8 @@ public class SecurityConfig {
                 .requestMatchers("/", "/error", "/favicon.ico").permitAll()
                 .requestMatchers("/static/**", "/_next/**").permitAll()
                 .requestMatchers("/webjars/**", "/css/**", "/js/**", "/images/**").permitAll()
+                // System status endpoints - public
+                .requestMatchers("/api/status/generation").permitAll()
                 // Public frontend pages - no authentication required
                 .requestMatchers("/privacy/**", "/terms/**").permitAll()
                 .requestMatchers("/payment/**").permitAll()

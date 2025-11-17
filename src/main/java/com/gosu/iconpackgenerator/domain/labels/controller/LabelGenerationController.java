@@ -7,6 +7,7 @@ import com.gosu.iconpackgenerator.domain.labels.controller.api.LabelGenerationCo
 import com.gosu.iconpackgenerator.domain.labels.dto.LabelGenerationRequest;
 import com.gosu.iconpackgenerator.domain.labels.dto.LabelGenerationResponse;
 import com.gosu.iconpackgenerator.domain.labels.service.LabelGenerationService;
+import com.gosu.iconpackgenerator.domain.status.GenerationStatusService;
 import com.gosu.iconpackgenerator.user.model.User;
 import com.gosu.iconpackgenerator.user.service.CustomOAuth2User;
 import jakarta.annotation.PreDestroy;
@@ -40,6 +41,7 @@ public class LabelGenerationController implements LabelGenerationControllerAPI {
     private final LabelGenerationService labelGenerationService;
     private final StreamingStateStore streamingStateStore;
     private final ObjectMapper objectMapper;
+    private final GenerationStatusService generationStatusService;
 
     private final ScheduledExecutorService heartbeatScheduler = Executors.newScheduledThreadPool(2);
 
@@ -73,8 +75,11 @@ public class LabelGenerationController implements LabelGenerationControllerAPI {
         User user = customUser.getUser();
         log.info("Label generation request from user {}", user.getEmail());
 
+        final String trackingId = generationStatusService.markGenerationStart("labels");
+
         return labelGenerationService.generateLabels(request, user)
                 .whenComplete((response, error) -> {
+                    generationStatusService.markGenerationComplete(trackingId);
                     if (error != null) {
                         log.error("Error generating label for user {}", user.getEmail(), error);
                     } else {
@@ -188,6 +193,7 @@ public class LabelGenerationController implements LabelGenerationControllerAPI {
 
     private void processStreamingGeneration(String requestId, LabelGenerationRequest request, User user) {
         ScheduledFuture<?> heartbeatTask = null;
+        final String trackingId = generationStatusService.markGenerationStart("labels", requestId);
         try {
             heartbeatTask = startHeartbeat(requestId);
             final ScheduledFuture<?> finalHeartbeatTask = heartbeatTask;
@@ -222,6 +228,7 @@ public class LabelGenerationController implements LabelGenerationControllerAPI {
                     }
                 }
             }, user).whenComplete((response, error) -> {
+                generationStatusService.markGenerationComplete(trackingId);
                 if (finalHeartbeatTask != null && !finalHeartbeatTask.isCancelled()) {
                     finalHeartbeatTask.cancel(false);
                 }
@@ -258,6 +265,7 @@ public class LabelGenerationController implements LabelGenerationControllerAPI {
 
         } catch (Exception e) {
             log.error("Unexpected error while processing streaming label generation {}", requestId, e);
+            generationStatusService.markGenerationComplete(trackingId);
             if (heartbeatTask != null && !heartbeatTask.isCancelled()) {
                 heartbeatTask.cancel(false);
             }

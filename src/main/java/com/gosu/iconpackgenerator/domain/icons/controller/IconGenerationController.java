@@ -20,6 +20,7 @@ import com.gosu.iconpackgenerator.domain.ai.PhotonModelService;
 import com.gosu.iconpackgenerator.domain.icons.service.PromptGenerationService;
 import com.gosu.iconpackgenerator.domain.ai.RecraftModelService;
 import com.gosu.iconpackgenerator.domain.icons.service.ServiceFailureHandler;
+import com.gosu.iconpackgenerator.domain.status.GenerationStatusService;
 import com.gosu.iconpackgenerator.user.model.User;
 import com.gosu.iconpackgenerator.user.service.CustomOAuth2User;
 import jakarta.annotation.PreDestroy;
@@ -67,6 +68,7 @@ public class IconGenerationController implements IconGenerationControllerAPI {
     private final CoinManagementService coinManagementService;
     private final ServiceFailureHandler serviceFailureHandler;
     private final IconPersistenceService iconPersistenceService;
+    private final GenerationStatusService generationStatusService;
 
     private final ScheduledExecutorService heartbeatScheduler = Executors.newScheduledThreadPool(5);
 
@@ -119,8 +121,11 @@ public class IconGenerationController implements IconGenerationControllerAPI {
             request.getIndividualDescriptions().add("");
         }
 
+        final String trackingId = generationStatusService.markGenerationStart("icons");
+
         return iconGenerationService.generateIcons(request, user)
                 .whenComplete((response, error) -> {
+                    generationStatusService.markGenerationComplete(trackingId);
                     if (error != null) {
                         log.error("Error generating icons", error);
                     } else {
@@ -202,6 +207,7 @@ public class IconGenerationController implements IconGenerationControllerAPI {
 
     private void processStreamingGeneration(String requestId, IconGenerationRequest request, User user) {
         ScheduledFuture<?> heartbeatTask = null;
+        final String trackingId = generationStatusService.markGenerationStart("icons", requestId);
 
         try {
             if (!request.isValid()) {
@@ -266,6 +272,7 @@ public class IconGenerationController implements IconGenerationControllerAPI {
                     }
                 }
             }, user).whenComplete((response, error) -> {
+                generationStatusService.markGenerationComplete(trackingId);
                 // Ensure heartbeat is stopped
                 if (finalHeartbeatTask != null && !finalHeartbeatTask.isCancelled()) {
                     finalHeartbeatTask.cancel(false);
@@ -301,6 +308,7 @@ public class IconGenerationController implements IconGenerationControllerAPI {
 
         } catch (Exception e) {
             log.error("Error in processStreamingGeneration for request: {}", requestId, e);
+            generationStatusService.markGenerationComplete(trackingId);
 
             // Ensure heartbeat is stopped on exception
             if (heartbeatTask != null && !heartbeatTask.isCancelled()) {
@@ -331,6 +339,7 @@ public class IconGenerationController implements IconGenerationControllerAPI {
                 request.getGenerationIndex());
 
         DeferredResult<MoreIconsResponse> deferredResult = new DeferredResult<>(300000L);
+        final String trackingId = generationStatusService.markGenerationStart("icons_more", request.getOriginalRequestId());
 
         CompletableFuture.supplyAsync(() -> {
             long startTime = System.currentTimeMillis();
@@ -413,6 +422,7 @@ public class IconGenerationController implements IconGenerationControllerAPI {
                 return createErrorResponse(request, "Failed to generate more icons: " + errorMessage, startTime);
             }
         }).whenComplete((result, throwable) -> {
+            generationStatusService.markGenerationComplete(trackingId);
             if (throwable != null) {
                 log.error("Async error in generate more icons", throwable);
                 deferredResult.setErrorResult(createErrorResponse(request, "Internal server error: " + throwable.getMessage(), System.currentTimeMillis()));

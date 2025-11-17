@@ -55,3 +55,15 @@ export interface UserLabel {
   labelType: string;
   theme: string;
 }
+
+export interface GenerationInProgress {
+  requestId: string;
+  type: string;
+  startedAt: string;
+}
+
+export interface GenerationStatus {
+  inProgress: boolean;
+  activeCount: number;
+  activeGenerations: GenerationInProgress[];
+}

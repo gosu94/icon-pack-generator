@@ -11,6 +11,7 @@ import com.gosu.iconpackgenerator.domain.illustrations.dto.MoreIllustrationsRequ
 import com.gosu.iconpackgenerator.domain.illustrations.dto.MoreIllustrationsResponse;
 import com.gosu.iconpackgenerator.domain.illustrations.service.IllustrationGenerationServiceV2;
 import com.gosu.iconpackgenerator.domain.illustrations.service.IllustrationPersistenceService;
+import com.gosu.iconpackgenerator.domain.status.GenerationStatusService;
 import com.gosu.iconpackgenerator.user.model.User;
 import com.gosu.iconpackgenerator.user.service.CustomOAuth2User;
 import jakarta.annotation.PreDestroy;
@@ -49,6 +50,7 @@ public class IllustrationGenerationController implements IllustrationGenerationC
     private final StreamingStateStore streamingStateStore;
     private final IllustrationPersistenceService illustrationPersistenceService;
     private final CoinManagementService coinManagementService;
+    private final GenerationStatusService generationStatusService;
 
 
     private final ScheduledExecutorService heartbeatScheduler = Executors.newScheduledThreadPool(5);
@@ -101,9 +103,11 @@ public class IllustrationGenerationController implements IllustrationGenerationC
         while (request.getIndividualDescriptions().size() < request.getIllustrationCount()) {
             request.getIndividualDescriptions().add("");
         }
-        
+        final String trackingId = generationStatusService.markGenerationStart("illustrations");
+
         return illustrationGenerationService.generateIllustrations(request, user)
             .whenComplete((response, error) -> {
+                generationStatusService.markGenerationComplete(trackingId);
                 if (error != null) {
                     log.error("Error generating illustrations", error);
                 } else {
@@ -205,6 +209,7 @@ public class IllustrationGenerationController implements IllustrationGenerationC
     
     private void processStreamingGeneration(String requestId, IllustrationGenerationRequest request, User user) {
         ScheduledFuture<?> heartbeatTask = null;
+        final String trackingId = generationStatusService.markGenerationStart("illustrations", requestId);
         
         try {
             if (!request.isValid()) {
@@ -273,6 +278,7 @@ public class IllustrationGenerationController implements IllustrationGenerationC
                     }
                 }
             }, user).whenComplete((response, error) -> {
+                generationStatusService.markGenerationComplete(trackingId);
                 if (finalHeartbeatTask != null && !finalHeartbeatTask.isCancelled()) {
                     finalHeartbeatTask.cancel(false);
                 }
@@ -325,6 +331,7 @@ public class IllustrationGenerationController implements IllustrationGenerationC
             
         } catch (Exception e) {
             log.error("Error in processStreamingGeneration for illustrations: {}", requestId, e);
+            generationStatusService.markGenerationComplete(trackingId);
             
             if (heartbeatTask != null && !heartbeatTask.isCancelled()) {
                 heartbeatTask.cancel(false);
@@ -479,6 +486,7 @@ public class IllustrationGenerationController implements IllustrationGenerationC
                 request.getGenerationIndex());
 
         DeferredResult<MoreIllustrationsResponse> deferredResult = new DeferredResult<>(300000L);
+        final String trackingId = generationStatusService.markGenerationStart("illustrations_more", request.getOriginalRequestId());
 
         CompletableFuture.supplyAsync(() -> {
             long startTime = System.currentTimeMillis();
@@ -571,6 +579,7 @@ public class IllustrationGenerationController implements IllustrationGenerationC
                 return createErrorResponse(request, sanitizedError, startTime);
             }
         }).whenComplete((response, throwable) -> {
+            generationStatusService.markGenerationComplete(trackingId);
             if (throwable != null) {
                 log.error("Error in more illustrations generation future", throwable);
                 
@@ -709,4 +718,3 @@ public class IllustrationGenerationController implements IllustrationGenerationC
         return "Failed to generate illustrations. Please try again or contact support if the issue persists.";
     }
 }
-
