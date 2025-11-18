@@ -1,5 +1,6 @@
 package com.gosu.iconpackgenerator.email.service;
 
+import com.gosu.iconpackgenerator.singal.SignalMessageService;
 import com.sendgrid.Method;
 import com.sendgrid.Request;
 import com.sendgrid.Response;
@@ -26,13 +27,15 @@ public class EmailService {
     @Value("${app.base-url}")
     private String baseUrl;
 
+    private SignalMessageService signalMessageService;
+
     private SendGrid getSendGridClient() {
         return new SendGrid(sendGridApiKey);
     }
 
     public boolean sendPasswordSetupEmail(String toEmail, String token) {
         try {
-            String subject = "Set up your Icon Pack Generator password";
+            String subject = "Set up your Icon Pack Gen password";
             String setupUrl = baseUrl + "/password-setup/index.html?token=" + token;
             
             String htmlBody = String.format("""
@@ -79,7 +82,7 @@ public class EmailService {
                         <p>If you didn't request this account, you can safely ignore this email.</p>
                         
                         <div class="footer">
-                            <p>Best regards,<br>The Icon Pack Generator Team</p>
+                            <p>Best regards,<br>The IconPackGen Team</p>
                         </div>
                     </div>
                 </body>
@@ -87,7 +90,7 @@ public class EmailService {
                 """, setupUrl, setupUrl, setupUrl);
 
             String textBody = String.format("""
-                Welcome to Icon Pack Generator!
+                Welcome to IconPackGen!
                 
                 You're almost ready to start creating amazing icons! To complete your account setup, 
                 please set up your password by visiting this link:
@@ -99,7 +102,7 @@ public class EmailService {
                 If you didn't request this account, you can safely ignore this email.
                 
                 Best regards,
-                The Icon Pack Generator Team
+                The IconPackGen Team
                 """, setupUrl);
 
             return sendEmail(toEmail, subject, htmlBody, textBody);
@@ -111,7 +114,7 @@ public class EmailService {
 
     public boolean sendPasswordResetEmail(String toEmail, String token) {
         try {
-            String subject = "Reset your Icon Pack Generator password";
+            String subject = "Reset your IconPackGen password";
             String resetUrl = baseUrl + "/password-setup/index.html?token=" + token + "&reset=true";
             
             String htmlBody = String.format("""
@@ -158,7 +161,7 @@ public class EmailService {
                         <p>If you didn't request this password reset, you can safely ignore this email.</p>
                         
                         <div class="footer">
-                            <p>Best regards,<br>The Icon Pack Generator Team</p>
+                            <p>Best regards,<br>The IconPackGen Team</p>
                         </div>
                     </div>
                 </body>
@@ -168,7 +171,7 @@ public class EmailService {
             String textBody = String.format("""
                 Password Reset Request
                 
-                We received a request to reset your password for your Icon Pack Generator account.
+                We received a request to reset your password for your IconPackGen account.
                 
                 To reset your password, visit this link:
                 %s
@@ -178,7 +181,7 @@ public class EmailService {
                 If you didn't request this password reset, you can safely ignore this email.
                 
                 Best regards,
-                The Icon Pack Generator Team
+                The IconPackGen Team
                 """, resetUrl);
 
             return sendEmail(toEmail, subject, htmlBody, textBody);
@@ -264,8 +267,10 @@ public class EmailService {
                 log.info("Email sent successfully to {} with status code: {}", toEmail, response.getStatusCode());
                 return true;
             } else {
+                signalMessageService.sendSignalMessage("[IconPackGen]: Failed to send email to " + toEmail);
                 log.error("Failed to send email to {}. Status code: {}, Response: {}", 
                     toEmail, response.getStatusCode(), response.getBody());
+                log.info("To send it manually here's all the data: toEmail {}, subject: {}, htmlBody {}, textBody: {}", toEmail, subject, htmlBody, textBody);
                 return false;
             }
             
