@@ -1,5 +1,6 @@
 package com.gosu.iconpackgenerator.user.service;
 
+import com.gosu.iconpackgenerator.singal.SignalMessageService;
 import com.gosu.iconpackgenerator.user.model.User;
 import com.gosu.iconpackgenerator.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -16,7 +17,8 @@ import java.util.UUID;
 public class UserService {
     
     private final UserRepository userRepository;
-    
+    private final SignalMessageService signalMessageService;
+
     /**
      * Get user's current coin balance
      */
@@ -407,6 +409,7 @@ public class UserService {
         Optional<User> userOptional = userRepository.findByUnsubscribeToken(token);
         if (userOptional.isEmpty()) {
             log.warn("Invalid unsubscribe token provided: {}", token);
+            signalMessageService.sendSignalMessage("Invalid unsubscribe token provided");
             return false;
         }
         
@@ -415,6 +418,8 @@ public class UserService {
         userRepository.save(user);
         
         log.info("User {} unsubscribed from notifications via token", user.getEmail());
+        signalMessageService.sendSignalMessage("User " + user.getEmail() + " unsubscribed from notifications via token");
+
         return true;
     }
 }
