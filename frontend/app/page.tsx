@@ -83,16 +83,53 @@ export default function LandingPage() {
 
             {/* Hero Section */}
             <section className="relative pt-32 pb-20 lg:pt-40 lg:pb-32 overflow-hidden">
-                {/* Animated Gradient Background */}
-                <div className="absolute inset-0 overflow-hidden pointer-events-none">
-                    <div className="absolute -inset-[10%] opacity-50">
+                {/* Background Layers */}
+                <div className="absolute inset-0 overflow-hidden pointer-events-none select-none">
+                    {/* Layer 1: Gradient Blobs */}
+                    <div className="absolute -inset-[10%] opacity-40 z-0">
                          <div className="absolute top-0 left-1/4 w-[500px] h-[500px] bg-blue-400/30 rounded-full mix-blend-multiply filter blur-[80px] animate-blob"></div>
                          <div className="absolute top-0 right-1/4 w-[500px] h-[500px] bg-purple-400/30 rounded-full mix-blend-multiply filter blur-[80px] animate-blob animation-delay-2000"></div>
                          <div className="absolute -bottom-32 left-1/3 w-[500px] h-[500px] bg-indigo-400/30 rounded-full mix-blend-multiply filter blur-[80px] animate-blob animation-delay-4000"></div>
                     </div>
+
+                    {/* Layer 2: Icon Marquee */}
+                    <div className="absolute inset-0 z-0 opacity-50 flex flex-col justify-center gap-10 scale-110 origin-center">
+                         <div className="flex w-max animate-scroll-left-to-right-fast">
+                            {[...galleryImagesRow1, ...galleryImagesRow1, ...galleryImagesRow1, ...galleryImagesRow1].map((image, index) => (
+                                <div key={`hero-row1-${index}`} className="mx-4 w-24 h-24 md:w-32 md:h-32 bg-white rounded-2xl shadow-sm border border-slate-200/60 flex items-center justify-center p-4">
+                                    <Image src={image} alt="" width={128} height={128} className="w-full h-full object-contain transition-all" />
+                                </div>
+                            ))}
+                        </div>
+                        <div className="flex w-max animate-scroll-left-to-right">
+                            {[...galleryImagesRow2, ...galleryImagesRow2, ...galleryImagesRow2, ...galleryImagesRow2].map((image, index) => (
+                                <div key={`hero-row2-${index}`} className="mx-4 w-24 h-24 md:w-32 md:h-32 bg-white rounded-2xl shadow-sm border border-slate-200/60 flex items-center justify-center p-4">
+                                    <Image src={image} alt="" width={128} height={128} className="w-full h-full object-contain transition-all" />
+                                </div>
+                            ))}
+                        </div>
+                        <div className="flex w-max animate-scroll-left-to-right-slow">
+                            {[...galleryImagesRow3, ...galleryImagesRow3, ...galleryImagesRow3, ...galleryImagesRow3].map((image, index) => (
+                                <div key={`hero-row3-${index}`} className="mx-4 w-24 h-24 md:w-32 md:h-32 bg-white rounded-2xl shadow-sm border border-slate-200/60 flex items-center justify-center p-4">
+                                    <Image src={image} alt="" width={128} height={128} className="w-full h-full object-contain transition-all" />
+                                </div>
+                            ))}
+                        </div>
+                        {/* Extra row to ensure coverage */}
+                        <div className="flex w-max animate-scroll-left-to-right-fast">
+                            {[...galleryImagesRow2, ...galleryImagesRow2, ...galleryImagesRow2, ...galleryImagesRow2].map((image, index) => (
+                                <div key={`hero-row4-${index}`} className="mx-4 w-24 h-24 md:w-32 md:h-32 bg-white rounded-2xl shadow-sm border border-slate-200/60 flex items-center justify-center p-4">
+                                    <Image src={image} alt="" width={128} height={128} className="w-full h-full object-contain transition-all" />
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Layer 3: Fade Overlay */}
+                    <div className="absolute inset-0 bg-gradient-to-b from-slate-50/40 via-slate-50/70 to-slate-50 z-10"></div>
                 </div>
 
-                <div className="container mx-auto px-6 relative z-10">
+                <div className="container mx-auto px-6 relative z-20">
                     <div className="flex flex-col items-center text-center max-w-4xl mx-auto">
                         <div className="inline-flex items-center space-x-2 bg-white/50 backdrop-blur-sm border border-slate-200/50 rounded-full px-4 py-1.5 mb-8 shadow-sm hover:shadow-md transition-all duration-300">
                             <Sparkles className="w-4 h-4 text-purple-600" />
@@ -381,44 +418,6 @@ export default function LandingPage() {
                         </div>
                     </div>
 
-                </div>
-            </section>
-
-            {/* Gallery Section */}
-            <section className="py-24 bg-slate-900 overflow-hidden text-center relative">
-                <div className="absolute inset-0 bg-[url('/images/grid.svg')] opacity-10"></div>
-                <div className="relative z-10 mb-16 px-6">
-                    <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">Generated by AI, Curated by You</h2>
-                    <p className="text-slate-400 text-lg">Explore what our community is creating</p>
-                </div>
-
-                {/* Marquee Rows */}
-                <div className="space-y-8 relative">
-                    {/* Gradient Masks */}
-                    <div className="absolute left-0 top-0 bottom-0 w-12 md:w-32 bg-gradient-to-r from-slate-900 to-transparent z-20 pointer-events-none"></div>
-                    <div className="absolute right-0 top-0 bottom-0 w-12 md:w-32 bg-gradient-to-l from-slate-900 to-transparent z-20 pointer-events-none"></div>
-
-                    <div className="flex w-max animate-scroll-left-to-right-fast hover:[animation-play-state:paused]">
-                        {[...galleryImagesRow1, ...galleryImagesRow1].map((image, index) => (
-                            <div key={`row1-${index}`} className="mx-4 w-24 h-24 md:w-32 md:h-32 bg-slate-800 rounded-xl overflow-hidden border border-slate-700/50 shadow-lg hover:scale-105 transition-transform cursor-pointer">
-                                <Image src={image} alt="Gallery Icon" width={128} height={128} className="w-full h-full object-cover" />
-                            </div>
-                        ))}
-                    </div>
-                    <div className="flex w-max animate-scroll-left-to-right hover:[animation-play-state:paused]">
-                        {[...galleryImagesRow2, ...galleryImagesRow2].map((image, index) => (
-                            <div key={`row2-${index}`} className="mx-4 w-24 h-24 md:w-32 md:h-32 bg-slate-800 rounded-xl overflow-hidden border border-slate-700/50 shadow-lg hover:scale-105 transition-transform cursor-pointer">
-                                <Image src={image} alt="Gallery Icon" width={128} height={128} className="w-full h-full object-cover" />
-                            </div>
-                        ))}
-                    </div>
-                    <div className="flex w-max animate-scroll-left-to-right-slow hover:[animation-play-state:paused]">
-                        {[...galleryImagesRow3, ...galleryImagesRow3].map((image, index) => (
-                            <div key={`row3-${index}`} className="mx-4 w-24 h-24 md:w-32 md:h-32 bg-slate-800 rounded-xl overflow-hidden border border-slate-700/50 shadow-lg hover:scale-105 transition-transform cursor-pointer">
-                                <Image src={image} alt="Gallery Icon" width={128} height={128} className="w-full h-full object-cover" />
-                            </div>
-                        ))}
-                    </div>
                 </div>
             </section>
 
