@@ -126,7 +126,7 @@ export default function LandingPage() {
                         <div className="relative rounded-2xl overflow-hidden shadow-2xl border border-slate-200/50 bg-slate-900/5 aspect-video">
                             <div className="absolute inset-0 bg-gradient-to-tr from-purple-500/10 to-blue-500/10 z-10 pointer-events-none"></div>
                             <iframe
-                                src="https://player.vimeo.com/video/1122340216?badge=0&amp;autopause=0&amp;player_id=0&amp;app_id=58479"
+                                src="https://player.vimeo.com/video/1138289366?badge=0&amp;autopause=0&amp;player_id=0&amp;app_id=58479"
                                 allow="autoplay; fullscreen; picture-in-picture; clipboard-write"
                                 className="w-full h-full"
                                 title="Icon Pack Generator Promo Video"
