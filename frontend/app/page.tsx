@@ -1,15 +1,15 @@
 "use client";
 
-import {useState} from "react";
+import { useState } from "react";
 import Navigation from "../components/Navigation";
 import Footer from "../components/Footer";
 import Image from "next/image";
-import {Download, Rocket, Sparkles, Zap} from "lucide-react";
-import {useAuth} from "@/context/AuthContext";
+import { Download, Rocket, Sparkles, Zap, Palette, Monitor, Layers, ChevronRight, Play, CheckCircle2, Tag, PenTool, Home, User, Settings } from "lucide-react";
+import { useAuth } from "@/context/AuthContext";
 import LoginModal from "../components/LoginModal";
 
 export default function LandingPage() {
-    const {authState} = useAuth();
+    const { authState } = useAuth();
     const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
     const [isModalVisible, setIsModalVisible] = useState(false);
     const [selectedImage, setSelectedImage] = useState<string | null>(null);
@@ -34,485 +34,458 @@ export default function LandingPage() {
 
     const handleStartCreating = () => {
         if (authState.authenticated) {
-            // If user is authenticated, redirect to main generator page
             window.location.href = "/dashboard/index.html";
         } else {
-            // If not authenticated, open login modal
             openLoginModal();
         }
     };
 
     const handleLoginSuccess = () => {
-        // After successful login, redirect to dashboard
         window.location.href = "/dashboard/index.html";
     };
 
-    // Sample gallery images - you can replace these with actual generated icons
+    // Gallery Data
     const galleryImagesRow1 = [
-        "/images/gallery/icon1.webp",
-        "/images/gallery/icon2.webp",
-        "/images/gallery/icon3.webp",
-        "/images/gallery/icon10.webp",
-        "/images/gallery/icon11.webp",
-        "/images/gallery/icon12.webp",
-        "/images/gallery/icon19.webp",
-        "/images/gallery/icon20.webp",
-        "/images/gallery/icon21.webp",
-        "/images/gallery/icon28.webp",
-        "/images/gallery/icon29.webp",
-        "/images/gallery/icon30.webp",
+        "/images/gallery/icon1.webp", "/images/gallery/icon2.webp", "/images/gallery/icon3.webp",
+        "/images/gallery/icon10.webp", "/images/gallery/icon11.webp", "/images/gallery/icon12.webp",
+        "/images/gallery/icon19.webp", "/images/gallery/icon20.webp", "/images/gallery/icon21.webp",
+        "/images/gallery/icon28.webp", "/images/gallery/icon29.webp", "/images/gallery/icon30.webp",
     ];
 
     const galleryImagesRow2 = [
-        "/images/gallery/icon4.webp",
-        "/images/gallery/icon5.webp",
-        "/images/gallery/icon6.webp",
-        "/images/gallery/icon13.webp",
-        "/images/gallery/icon14.webp",
-        "/images/gallery/icon15.webp",
-        "/images/gallery/icon22.webp",
-        "/images/gallery/icon23.webp",
-        "/images/gallery/icon24.webp",
-        "/images/gallery/icon31.webp",
-        "/images/gallery/icon32.webp",
-        "/images/gallery/icon33.webp",
+        "/images/gallery/icon4.webp", "/images/gallery/icon5.webp", "/images/gallery/icon6.webp",
+        "/images/gallery/icon13.webp", "/images/gallery/icon14.webp", "/images/gallery/icon15.webp",
+        "/images/gallery/icon22.webp", "/images/gallery/icon23.webp", "/images/gallery/icon24.webp",
+        "/images/gallery/icon31.webp", "/images/gallery/icon32.webp", "/images/gallery/icon33.webp",
     ];
 
     const galleryImagesRow3 = [
-        "/images/gallery/icon7.webp",
-        "/images/gallery/icon8.webp",
-        "/images/gallery/icon9.webp",
-        "/images/gallery/icon16.webp",
-        "/images/gallery/icon17.webp",
-        "/images/gallery/icon18.webp",
-        "/images/gallery/icon25.webp",
-        "/images/gallery/icon26.webp",
-        "/images/gallery/icon27.webp",
-        "/images/gallery/icon34.webp",
-        "/images/gallery/icon35.webp",
-        "/images/gallery/icon36.webp",
+        "/images/gallery/icon7.webp", "/images/gallery/icon8.webp", "/images/gallery/icon9.webp",
+        "/images/gallery/icon16.webp", "/images/gallery/icon17.webp", "/images/gallery/icon18.webp",
+        "/images/gallery/icon25.webp", "/images/gallery/icon26.webp", "/images/gallery/icon27.webp",
+        "/images/gallery/icon34.webp", "/images/gallery/icon35.webp", "/images/gallery/icon36.webp",
     ];
 
     const illustrationImages = [
-        "/images/illustrations/illustration1.webp",
-        "/images/illustrations/illustration2.webp",
-        "/images/illustrations/illustration3.webp",
-        "/images/illustrations/illustration4.webp",
-        "/images/illustrations/illustration5.webp",
-        "/images/illustrations/illustration6.webp",
-        "/images/illustrations/illustration7.webp",
-        "/images/illustrations/illustration8.webp",
-        "/images/illustrations/illustration9.webp",
-        "/images/illustrations/illustration10.webp",
-        "/images/illustrations/illustration11.webp",
-        "/images/illustrations/illustration12.webp",
-        "/images/illustrations/illustration13.webp",
-        "/images/illustrations/illustration14.webp",
-        "/images/illustrations/illustration15.webp",
-        "/images/illustrations/illustration16.webp",
+        "/images/illustrations/illustration1.webp", "/images/illustrations/illustration2.webp",
+        "/images/illustrations/illustration3.webp", "/images/illustrations/illustration4.webp",
+        "/images/illustrations/illustration5.webp", "/images/illustrations/illustration6.webp",
+        "/images/illustrations/illustration7.webp", "/images/illustrations/illustration8.webp",
+        "/images/illustrations/illustration9.webp", "/images/illustrations/illustration10.webp",
+        "/images/illustrations/illustration11.webp", "/images/illustrations/illustration12.webp",
+        "/images/illustrations/illustration13.webp", "/images/illustrations/illustration14.webp",
+        "/images/illustrations/illustration15.webp", "/images/illustrations/illustration16.webp",
     ];
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50/30">
-            <Navigation/>
+        <div className="min-h-screen bg-slate-50 text-slate-900 font-sans selection:bg-purple-100 selection:text-purple-900">
+            <Navigation />
 
-            {/* Hero Section with Video Card */}
-            <section className="px-6 py-12">
-                <div className="max-w-7xl mx-auto">
-                    <h1 className="sr-only">Generate icons with AI</h1>
-                    <div
-                        className="bg-white/80 backdrop-blur-md rounded-3xl shadow-2xl border border-purple-200/50 overflow-hidden">
-                        <div className="flex flex-col lg:flex-row">
-                            {/* Video Section - 3/4 width */}
-                            <div
-                                className="lg:w-3/4 relative bg-gradient-to-br from-blue-600 to-purple-600 p-6 md:p-8 flex items-center justify-center min-h-[280px] md:min-h-[400px]">
-                                <div className="relative w-full h-full flex items-center justify-center">
-                                    <div
-                                        className="relative w-full max-w-2xl aspect-video bg-black/20 rounded-2xl flex items-center justify-center backdrop-blur-sm border border-white/20 overflow-hidden">
-                                        <iframe
-                                            src="https://player.vimeo.com/video/1122340216?badge=0&amp;autopause=0&amp;player_id=0&amp;app_id=58479"
-                                            allow="autoplay; fullscreen; picture-in-picture; clipboard-write"
-                                            className="w-full h-full"
-                                            title="Icon Pack Generator Promo Video"
-                                        ></iframe>
-                                    </div>
-                                </div>
-                            </div>
+            {/* Hero Section */}
+            <section className="relative pt-32 pb-20 lg:pt-40 lg:pb-32 overflow-hidden">
+                {/* Animated Gradient Background */}
+                <div className="absolute inset-0 overflow-hidden pointer-events-none">
+                    <div className="absolute -inset-[10%] opacity-50">
+                         <div className="absolute top-0 left-1/4 w-[500px] h-[500px] bg-blue-400/30 rounded-full mix-blend-multiply filter blur-[80px] animate-blob"></div>
+                         <div className="absolute top-0 right-1/4 w-[500px] h-[500px] bg-purple-400/30 rounded-full mix-blend-multiply filter blur-[80px] animate-blob animation-delay-2000"></div>
+                         <div className="absolute -bottom-32 left-1/3 w-[500px] h-[500px] bg-indigo-400/30 rounded-full mix-blend-multiply filter blur-[80px] animate-blob animation-delay-4000"></div>
+                    </div>
+                </div>
 
-                            {/* Caption Section - 1/4 width */}
-                            <div
-                                className="lg:w-1/4 p-6 md:p-8 flex flex-col justify-center bg-gradient-to-br from-white/50 to-purple-50/50">
-                                <div className="space-y-6">
-                                    <div className="flex items-center space-x-2">
-                                        <Sparkles className="w-6 h-6 text-purple-600"/>
-                                        <span
-                                            className="text-sm font-semibold text-purple-600 uppercase tracking-wide">AI-Powered</span>
-                                    </div>
-
-                                    <h1 className="text-3xl font-bold text-slate-900 leading-tight">
-                                        Create Stunning Icon Packs in Minutes
-                                    </h1>
-
-                                    <p className="text-slate-600 leading-relaxed">
-                                        Transform your ideas into professional icon packs using cutting-edge AI
-                                        technology. Generate, and export high-quality icons for your projects.
-                                    </p>
-
-                                    <div className="flex flex-col space-y-3">
-                                        <button
-                                            onClick={handleStartCreating}
-                                            className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold py-3 px-6 rounded-xl shadow-lg hover:shadow-xl transform hover:scale-[1.02] transition-all duration-200"
-                                        >
-                                            Start Creating
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
+                <div className="container mx-auto px-6 relative z-10">
+                    <div className="flex flex-col items-center text-center max-w-4xl mx-auto">
+                        <div className="inline-flex items-center space-x-2 bg-white/50 backdrop-blur-sm border border-slate-200/50 rounded-full px-4 py-1.5 mb-8 shadow-sm hover:shadow-md transition-all duration-300">
+                            <Sparkles className="w-4 h-4 text-purple-600" />
+                            <span className="text-sm font-medium text-slate-600">
+                                AI-Powered Icon Generation
+                            </span>
                         </div>
+
+                        <h1 className="text-5xl md:text-7xl font-bold tracking-tight mb-6 bg-clip-text text-transparent bg-gradient-to-r from-slate-900 via-slate-800 to-slate-600">
+                            Create Stunning <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-purple-600">Icon Packs</span> in Seconds
+                        </h1>
+
+                        <p className="text-lg md:text-xl text-slate-600 mb-10 max-w-2xl leading-relaxed">
+                            Transform your ideas into professional, consistent icon sets using cutting-edge AI.
+                            Export vector-ready assets for your next big project.
+                        </p>
+
+                        <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
+                            <button
+                                onClick={handleStartCreating}
+                                className="group relative inline-flex items-center justify-center px-8 py-4 text-lg font-semibold text-white transition-all duration-200 bg-gradient-to-r from-blue-600 to-purple-600 rounded-full hover:from-blue-700 hover:to-purple-700 shadow-lg hover:shadow-purple-500/25 ring-offset-2 focus:ring-2 focus:ring-purple-600"
+                            >
+                                Start Creating Free
+                                <ChevronRight className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" />
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* Hero Video / Visual */}
+                    <div id="demo-video" className="mt-20 relative max-w-5xl mx-auto">
+                        <div className="relative rounded-2xl overflow-hidden shadow-2xl border border-slate-200/50 bg-slate-900/5 aspect-video">
+                            <div className="absolute inset-0 bg-gradient-to-tr from-purple-500/10 to-blue-500/10 z-10 pointer-events-none"></div>
+                            <iframe
+                                src="https://player.vimeo.com/video/1122340216?badge=0&amp;autopause=0&amp;player_id=0&amp;app_id=58479"
+                                allow="autoplay; fullscreen; picture-in-picture; clipboard-write"
+                                className="w-full h-full"
+                                title="Icon Pack Generator Promo Video"
+                            ></iframe>
+                        </div>
+                        {/* Decorative elements behind video */}
+                        <div className="absolute -top-10 -right-10 w-32 h-32 bg-gradient-to-br from-blue-400 to-purple-400 rounded-full blur-3xl opacity-20 -z-10"></div>
+                        <div className="absolute -bottom-10 -left-10 w-40 h-40 bg-gradient-to-br from-purple-400 to-pink-400 rounded-full blur-3xl opacity-20 -z-10"></div>
                     </div>
                 </div>
             </section>
 
-
-            {/* Features Section */}
-            <section className="px-6 py-16">
-                <div className="max-w-7xl mx-auto">
-                    <div className="text-center mb-12">
-                        <h2 className="text-4xl font-bold text-slate-900 mb-4">
-                            Powerful Features for Icon Creation
-                        </h2>
-                        <p className="text-xl text-slate-600 max-w-3xl mx-auto">
-                            Everything you need to create professional icon packs with AI assistance
+            {/* Core Features - Bento Grid Style */}
+            <section className="py-24 bg-white">
+                <div className="container mx-auto px-6">
+                    <div className="text-center mb-16">
+                        <h2 className="text-3xl md:text-4xl font-bold text-slate-900 mb-4">Everything You Need</h2>
+                        <p className="text-slate-600 text-lg max-w-2xl mx-auto">
+                            Built for designers, developers, and creators who value quality and efficiency.
                         </p>
                     </div>
 
-                    <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-
-                        {/* Feature 5 */}
-                        <div
-                            className="bg-white/80 backdrop-blur-md rounded-2xl p-8 shadow-lg border border-purple-200/30 hover:shadow-xl transition-all duration-300 hover:scale-[1.02]">
-                            <div
-                                className="w-12 h-12 bg-gradient-to-br from-blue-500 to-indigo-500 rounded-xl flex items-center justify-center mb-6">
-                                <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor"
-                                     viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                                          d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z"/>
-                                </svg>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-6xl mx-auto">
+                        {/* Large Card - Consistency */}
+                        <div className="md:col-span-2 bg-gradient-to-br from-slate-50 to-slate-100 rounded-3xl p-8 border border-slate-200 hover:border-purple-200 transition-all group">
+                            <div className="w-12 h-12 bg-blue-100 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+                                <Palette className="w-6 h-6 text-blue-600" />
                             </div>
-                            <h3 className="text-xl font-bold text-slate-900 mb-4">Visually Consistent Style</h3>
-                            <p className="text-slate-600 leading-relaxed">
-                                All icons in your pack maintain the same visual style, color palette, and design
-                                language. Perfect cohesion for professional applications and brand consistency.
+                            <h3 className="text-2xl font-bold text-slate-900 mb-3">Visually Consistent Style</h3>
+                            <p className="text-slate-600 leading-relaxed mb-6">
+                                Our AI ensures every icon in your pack maintains the exact same visual language, line weight, and color palette. 
+                                Perfect for cohesive brand identities.
                             </p>
-                        </div>
+                            <div className="h-32 bg-white rounded-xl border border-slate-100 shadow-sm relative overflow-hidden flex items-center justify-center px-4">
+                                <div className="relative w-full max-w-xl h-16">
+                                    {/* Layer 1: Inconsistent / Messy Icons */}
+                                    <div className="absolute inset-0 flex items-center justify-between px-8 opacity-60">
+                                        <div className="relative">
+                                            <Home className="w-12 h-12 text-slate-400" strokeWidth={0.75} />
+                                            <div className="absolute -top-1 -right-1 w-2 h-2 bg-red-400 rounded-full animate-pulse"></div>
+                                        </div>
+                                        <div className="relative">
+                                            <User className="w-12 h-12 text-slate-500" strokeWidth={2.5} />
+                                            <div className="absolute -bottom-1 -right-1 w-2 h-2 bg-red-400 rounded-full animate-pulse delay-100"></div>
+                                        </div>
+                                        <div className="relative">
+                                            <Settings className="w-12 h-12 text-slate-400" strokeWidth={1} />
+                                            <div className="absolute -top-1 -left-1 w-2 h-2 bg-red-400 rounded-full animate-pulse delay-200"></div>
+                                        </div>
+                                    </div>
 
-                        {/* Feature 2 */}
-                        <div
-                            className="bg-white/80 backdrop-blur-md rounded-2xl p-8 shadow-lg border border-green-200/50 hover:shadow-xl transition-all duration-300 hover:scale-[1.02] relative overflow-hidden">
-                            {/* Free badge */}
-                            <div
-                                className="absolute top-4 right-4 bg-gradient-to-r from-green-500 to-emerald-500 text-white text-xs font-bold px-2 py-1 rounded-full">
-                                FREE
-                            </div>
-                            <div
-                                className="w-12 h-12 bg-gradient-to-br from-green-500 to-emerald-500 rounded-xl flex items-center justify-center mb-6">
-                                <div className="w-6 h-6 bg-white rounded-full flex items-center justify-center">
-                                    <span className="text-green-600 text-xs font-bold">T</span>
+                                    {/* Layer 2: Consistent / Clean Icons (Revealed) */}
+                                    <div className="absolute inset-0 flex items-center justify-between px-8 text-blue-600 animate-reveal-consistency bg-gradient-to-r from-white/95 via-white/80 to-transparent backdrop-blur-[1px]">
+                                        <Home className="w-12 h-12 drop-shadow-sm" strokeWidth={1.5} />
+                                        <User className="w-12 h-12 drop-shadow-sm" strokeWidth={1.5} />
+                                        <Settings className="w-12 h-12 drop-shadow-sm" strokeWidth={1.5} />
+                                    </div>
                                 </div>
                             </div>
-                            <h3 className="text-xl font-bold text-slate-900 mb-4">Try for Free</h3>
-                            <p className="text-slate-600 leading-relaxed">
-                                Get started instantly with a free trial coin! Generate 5 professional icons or 2 illustrations at no cost
-                                and experience our AI-powered creation process.
+                        </div>
+
+                        {/* Tall Card - Lightning Fast */}
+                        <div className="md:row-span-2 bg-gradient-to-br from-purple-900 to-slate-900 rounded-3xl p-8 text-white flex flex-col relative overflow-hidden group">
+                             <div className="absolute top-0 right-0 w-64 h-64 bg-purple-500/20 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 group-hover:bg-purple-500/30 transition-colors"></div>
+                             <div className="w-12 h-12 bg-white/10 backdrop-blur-sm rounded-2xl flex items-center justify-center mb-6 group-hover:rotate-12 transition-transform">
+                                <Zap className="w-6 h-6 text-yellow-300" />
+                            </div>
+                            <h3 className="text-2xl font-bold mb-3">Lightning Fast</h3>
+                            <p className="text-slate-300 leading-relaxed mb-auto">
+                                Generate complete icon packs in under two minutes. Stop wasting hours searching for matching assets.
                             </p>
-                            <div className="mt-4 flex items-center space-x-2 text-sm text-green-600 font-semibold">
-                                <div className="w-4 h-4 bg-green-500 rounded-full flex items-center justify-center">
-                                    <span className="text-white text-xs font-bold">T</span>
+                            <div className="mt-8 bg-white/5 rounded-xl p-4 backdrop-blur-sm border border-white/10">
+                                <div className="flex items-center justify-between text-sm mb-2">
+                                    <span className="text-slate-300">Generation Speed</span>
+                                    <span className="text-green-400 font-mono">&lt; 120s</span>
                                 </div>
-                                <span>1 Trial Coin = 5 Icons (out of 9)</span>
+                                <div className="w-full h-2 bg-white/10 rounded-full overflow-hidden">
+                                    <div className="h-full bg-gradient-to-r from-green-400 to-emerald-500 w-11/12 rounded-full"></div>
+                                </div>
                             </div>
                         </div>
 
-                        {/* Feature 3 */}
-                        <div
-                            className="bg-white/80 backdrop-blur-md rounded-2xl p-8 shadow-lg border border-purple-200/30 hover:shadow-xl transition-all duration-300 hover:scale-[1.02]">
-                            <div
-                                className="w-12 h-12 bg-gradient-to-br from-green-500 to-blue-500 rounded-xl flex items-center justify-center mb-6">
-                                <Download className="w-6 h-6 text-white"/>
+                        {/* Standard Card - Export */}
+                        <div className="bg-white rounded-3xl p-8 border border-slate-200 hover:shadow-lg transition-all group">
+                            <div className="w-12 h-12 bg-green-100 rounded-2xl flex items-center justify-center mb-6">
+                                <Download className="w-6 h-6 text-green-600" />
                             </div>
-                            <h3 className="text-xl font-bold text-slate-900 mb-4">Export Ready Files</h3>
-                            <div className="text-slate-600 leading-relaxed">
-                                <p className="mb-2">Download your icons in multiple formats and sizes:</p>
-                                <ul className="list-disc list-inside space-y-1 text-sm">
-                                    <li><span className="font-semibold">SVG</span> AI-vectorized</li>
-                                    <li><span className="font-semibold">PNG:</span> 32, 64, 128, 256, 512px</li>
-                                    <li><span className="font-semibold">WebP:</span> 32, 64, 128, 256, 512px</li>
-                                    <li><span className="font-semibold">ICO:</span> 16, 32, 48, 64, 128, 256px</li>
-                                </ul>
-                            </div>
-                        </div>
-
-                        {/* Feature 4 */}
-                        <div
-                            className="bg-white/80 backdrop-blur-md rounded-2xl p-8 shadow-lg border border-purple-200/30 hover:shadow-xl transition-all duration-300 hover:scale-[1.02]">
-                            <div
-                                className="w-12 h-12 bg-gradient-to-br from-orange-500 to-red-500 rounded-xl flex items-center justify-center mb-6">
-                                <Sparkles className="w-6 h-6 text-white"/>
-                            </div>
-                            <h3 className="text-xl font-bold text-slate-900 mb-4">Style Variations</h3>
-                            <p className="text-slate-600 leading-relaxed">
-                                Use the 'Additional Variation' option to enrich your set with an alternate style.
-                                Get more choices and find the perfect look for your project.
+                            <h3 className="text-xl font-bold text-slate-900 mb-3">Export Ready</h3>
+                            <p className="text-slate-600 text-sm">
+                                PNG, WebP, ICO, and fully editable SVGs. Ready for web, mobile, and print.
                             </p>
                         </div>
 
-                        {/* Feature 1 */}
-                        <div
-                            className="bg-white/80 backdrop-blur-md rounded-2xl p-8 shadow-lg border border-purple-200/30 hover:shadow-xl transition-all duration-300 hover:scale-[1.02]">
-                            <div
-                                className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-500 rounded-xl flex items-center justify-center mb-6">
-                                <Zap className="w-6 h-6 text-white"/>
+                        {/* Standard Card - Free Trial */}
+                        <div className="bg-white rounded-3xl p-8 border border-slate-200 hover:shadow-lg transition-all group relative overflow-hidden">
+                            <div className="absolute top-4 right-4 bg-green-100 text-green-700 text-xs font-bold px-2 py-1 rounded-full">FREE</div>
+                             <div className="w-12 h-12 bg-orange-100 rounded-2xl flex items-center justify-center mb-6">
+                                <Sparkles className="w-6 h-6 text-orange-600" />
                             </div>
-                            <h3 className="text-xl font-bold text-slate-900 mb-4">Lightning Fast Generation</h3>
-                            <p className="text-slate-600 leading-relaxed">
-                                Generate complete icon packs in under two minutes using our advanced AI models. No more
-                                waiting hours for custom designs.
-                            </p>
-                        </div>
-
-                        {/* Feature 6 */}
-                        <div
-                            className="bg-white/80 backdrop-blur-md rounded-2xl p-8 shadow-lg border border-purple-200/30 hover:shadow-xl transition-all duration-300 hover:scale-[1.02]">
-                            <div
-                                className="w-12 h-12 bg-gradient-to-br from-indigo-500 to-purple-500 rounded-xl flex items-center justify-center mb-6">
-                                <Image src="/images/coin.webp" alt="Coins" width={24} height={24}/>
-                            </div>
-                            <h3 className="text-xl font-bold text-slate-900 mb-4">Flexible Pricing</h3>
-                            <p className="text-slate-600 leading-relaxed">
-                                Pay only for what you use with our coin-based system. No monthly subscriptions or hidden
-                                fees.
+                            <h3 className="text-xl font-bold text-slate-900 mb-3">Try for Free</h3>
+                            <p className="text-slate-600 text-sm">
+                                Get started with a free trial coin. Generate 5 professional icons at no cost.
                             </p>
                         </div>
                     </div>
                 </div>
             </section>
 
-            {/* Additional Features Section */}
-            <section className="px-6 py-16 bg-slate-50/50">
-                <div className="max-w-7xl mx-auto">
-                    <div className="text-center mb-12">
-                        <h2 className="text-4xl font-bold text-slate-900 mb-4">
-                            Additional Features
-                        </h2>
-                        <p className="text-xl text-slate-600 max-w-3xl mx-auto">
-                            Expand your creative possibilities with these powerful additions.
-                        </p>
-                    </div>
-
-                    <div className="grid md:grid-cols-1 lg:grid-cols-2 gap-8">
-
-                        {/* SVG Exports Card */}
-                        <div onClick={() => openImageModal('/images/features/feature_svg-exports.webp')}
-                             className="bg-white/80 backdrop-blur-md rounded-2xl shadow-lg border border-purple-200/30 flex flex-col md:flex-row overflow-hidden hover:shadow-xl transition-all duration-300 hover:scale-[1.02] cursor-pointer">
-                            <div className="md:w-1/2 p-8 flex flex-col justify-center">
-                                <h3 className="text-2xl font-bold text-slate-900 mb-4">📐 SVG Exports</h3>
-                                <p className="text-slate-600 leading-relaxed">
-                                    Export vector-perfect icons that scale to any size without a hint of blur.
-                                    Download AI-refined SVGs and keep your assets crisp across responsive apps, pitch decks, and high-DPI displays.
-                                </p>
-                            </div>
-                            <div className="md:w-1/2 p-4 flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100">
-                                <Image src="/images/features/feature_svg-exports.webp" alt="SVG exports feature" width={800} height={450} className="rounded-lg shadow-md object-cover aspect-video"/>
-                            </div>
-                        </div>
-
-                        {/* GIFs Card */}
-                        <div onClick={() => openImageModal('/images/features/feature_gifs.gif')}
-                             className="bg-white/80 backdrop-blur-md rounded-2xl shadow-lg border border-purple-200/30 flex flex-col md:flex-row overflow-hidden hover:shadow-xl transition-all duration-300 hover:scale-[1.02] cursor-pointer">
-                            <div className="md:w-1/2 p-8 flex flex-col justify-center">
-                                <h3 className="text-2xl font-bold text-slate-900 mb-4">✨ Gifs</h3>
-                                <p className="text-slate-600 leading-relaxed">
-                                    Bring your icons to life with AI-powered motion. Generate looping animations that preserve your icon style, then export ready-to-share GIFs for product shots, walkthroughs, and socials.
-                                </p>
-                            </div>
-                            <div className="md:w-1/2 p-4 flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100">
-                                <Image
-                                    src="/images/features/feature_gifs.gif"
-                                    alt="GIF animation feature"
-                                    width={800}
-                                    height={450}
-                                    unoptimized
-                                    className="rounded-lg shadow-md object-cover aspect-video"
+            {/* Feature Deep Dives - Alternating Layout */}
+            <section className="py-24 bg-slate-50/80 overflow-hidden">
+                <div className="container mx-auto px-6 space-y-24">
+                    
+                    {/* Feature 1: SVG Exports */}
+                    <div className="flex flex-col lg:flex-row items-center gap-12 lg:gap-20">
+                        <div className="lg:w-1/2 order-2 lg:order-1">
+                            <div className="relative group cursor-pointer" onClick={() => openImageModal('/images/features/feature_svg-exports.webp')}>
+                                <div className="absolute inset-0 bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl blur opacity-20 group-hover:opacity-30 transition-opacity"></div>
+                                <Image 
+                                    src="/images/features/feature_svg-exports.webp" 
+                                    alt="SVG Exports" 
+                                    width={600} 
+                                    height={400} 
+                                    className="relative rounded-2xl shadow-xl border border-white/50 w-full"
                                 />
                             </div>
                         </div>
-
-                        {/* Label Card */}
-                        <div onClick={() => openImageModal('/images/features/feature_labels.webp')}
-                             className="bg-white/80 backdrop-blur-md rounded-2xl shadow-lg border border-purple-200/30 flex flex-col md:flex-row overflow-hidden hover:shadow-xl transition-all duration-300 hover:scale-[1.02] cursor-pointer">
-                            <div className="md:w-1/2 p-8 flex flex-col justify-center">
-                                <h3 className="text-2xl font-bold text-slate-900 mb-4">🏷️ Labels</h3>
-                                <p className="text-slate-600 leading-relaxed">
-                                    Add text that matches your design language.
-                                    Create custom labels that blend seamlessly with your icon style — whether you start from scratch or describe what you need in plain text.
-                                </p>
+                        <div className="lg:w-1/2 order-1 lg:order-2">
+                            <div className="bg-blue-100 w-12 h-12 rounded-xl flex items-center justify-center mb-6">
+                                <Monitor className="w-6 h-6 text-blue-600" />
                             </div>
-                            <div className="md:w-1/2 p-4 flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100">
-                                <Image src="/images/features/feature_labels.webp" alt="Label feature" width={800} height={450} className="rounded-lg shadow-md object-cover aspect-video"/>
-                            </div>
+                            <h3 className="text-3xl font-bold text-slate-900 mb-4">Vector-Perfect SVG Exports</h3>
+                            <p className="text-lg text-slate-600 leading-relaxed mb-6">
+                                Say goodbye to pixelated icons. Our AI generates refined vector paths that scale infinitely. 
+                                Perfect for high-DPI displays, responsive web design, and large-format printing.
+                            </p>
+                            <ul className="space-y-3">
+                                {['Crisp at any resolution', 'Editable paths', 'Optimized file size'].map((item, i) => (
+                                    <li key={i} className="flex items-center text-slate-700">
+                                        <CheckCircle2 className="w-5 h-5 text-blue-500 mr-3" />
+                                        {item}
+                                    </li>
+                                ))}
+                            </ul>
                         </div>
-
-                        {/* Illustrations Card */}
-                        <div onClick={() => openImageModal('/images/features/feature_illustrations.webp')}
-                             className="bg-white/80 backdrop-blur-md rounded-2xl shadow-lg border border-purple-200/30 flex flex-col md:flex-row overflow-hidden hover:shadow-xl transition-all duration-300 hover:scale-[1.02] cursor-pointer">
-                            <div className="md:w-1/2 p-8 flex flex-col justify-center">
-                                <h3 className="text-2xl font-bold text-slate-900 mb-4">🎨 Illustrations</h3>
-                                <p className="text-slate-600 leading-relaxed">
-                                    Extend your visual system beyond icons.
-                                    Generate cohesive, on-brand illustrations that complement your icons and keep a consistent visual tone across your entire project.
-                                </p>
-                            </div>
-                            <div className="md:w-1/2 p-4 flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100">
-                                <Image src="/images/features/feature_illustrations.webp" alt="Illustrations feature" width={800} height={450} className="rounded-lg shadow-md object-cover aspect-video"/>
-                            </div>
-                        </div>
-
-                        {/* UI Mockups Card */}
-                        <div onClick={() => openImageModal('/images/features/feature_mockups.webp')}
-                             className="bg-white/80 backdrop-blur-md rounded-2xl shadow-lg border border-purple-200/30 flex flex-col md:flex-row overflow-hidden hover:shadow-xl transition-all duration-300 hover:scale-[1.02] cursor-pointer lg:col-span-2 lg:max-w-3xl lg:mx-auto">
-                            <div className="md:w-1/2 p-8 flex flex-col justify-center">
-                                <h3 className="text-2xl font-bold text-slate-900 mb-4">🧩 UI Mockups</h3>
-                                <p className="text-slate-600 leading-relaxed">
-                                    Bring your style to full interfaces.
-                                    Generate complete UI mockups that match your icon aesthetic — or flip the process: start with a mockup and use it as the foundation for your icon set.                                </p>
-                            </div>
-                            <div className="md:w-1/2 p-4 flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100">
-                                <Image src="/images/features/feature_mockups.webp" alt="UI Mockups feature" width={800} height={450} className="rounded-lg shadow-md object-cover aspect-video"/>
-                            </div>
-                        </div>
-
                     </div>
+
+                    {/* Feature 2: Illustrations (Moved up) */}
+                    <div className="flex flex-col lg:flex-row items-center gap-12 lg:gap-20">
+                         <div className="lg:w-1/2">
+                            <div className="bg-pink-100 w-12 h-12 rounded-xl flex items-center justify-center mb-6">
+                                <PenTool className="w-6 h-6 text-pink-600" />
+                            </div>
+                            <h3 className="text-3xl font-bold text-slate-900 mb-4">Cohesive Illustrations</h3>
+                            <p className="text-lg text-slate-600 leading-relaxed mb-6">
+                                Extend your visual system beyond icons. Generate cohesive, on-brand illustrations that 
+                                complement your icons and keep a consistent visual tone across your entire project.
+                            </p>
+                        </div>
+                         <div className="lg:w-1/2">
+                            <div className="relative group cursor-pointer" onClick={() => openImageModal('/images/features/feature_illustrations.webp')}>
+                                <div className="absolute inset-0 bg-gradient-to-r from-pink-500 to-rose-500 rounded-2xl blur opacity-20 group-hover:opacity-30 transition-opacity"></div>
+                                <Image 
+                                    src="/images/features/feature_illustrations.webp" 
+                                    alt="Illustrations" 
+                                    width={600} 
+                                    height={400} 
+                                    className="relative rounded-2xl shadow-xl border border-white/50 w-full"
+                                />
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Feature 3: GIFs */}
+                    <div className="flex flex-col lg:flex-row items-center gap-12 lg:gap-20">
+                        <div className="lg:w-1/2 order-2 lg:order-1">
+                            <div className="relative group cursor-pointer" onClick={() => openImageModal('/images/features/feature_gifs.gif')}>
+                                <div className="absolute inset-0 bg-gradient-to-l from-purple-600 to-pink-600 rounded-2xl blur opacity-20 group-hover:opacity-30 transition-opacity"></div>
+                                <Image 
+                                    src="/images/features/feature_gifs.gif" 
+                                    alt="GIF Icons" 
+                                    width={600} 
+                                    height={400} 
+                                    unoptimized
+                                    className="relative rounded-2xl shadow-xl border border-white/50 w-full"
+                                />
+                            </div>
+                        </div>
+                        <div className="lg:w-1/2 order-1 lg:order-2">
+                            <div className="bg-purple-100 w-12 h-12 rounded-xl flex items-center justify-center mb-6">
+                                <Play className="w-6 h-6 text-purple-600" />
+                            </div>
+                            <h3 className="text-3xl font-bold text-slate-900 mb-4">Animated GIF Icons</h3>
+                            <p className="text-lg text-slate-600 leading-relaxed mb-6">
+                                Bring your interface to life with motion. Generate seamless looping animations that retain 
+                                your specific style. Great for loading states, micro-interactions, and social media.
+                            </p>
+                            <button onClick={() => openImageModal('/images/features/feature_gifs.gif')} className="text-purple-600 font-semibold hover:underline inline-flex items-center">
+                                View Animation Examples <ChevronRight className="w-4 h-4 ml-1" />
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* Feature 4: Labels */}
+                    <div className="flex flex-col lg:flex-row items-center gap-12 lg:gap-20">
+                        <div className="lg:w-1/2">
+                            <div className="bg-indigo-100 w-12 h-12 rounded-xl flex items-center justify-center mb-6">
+                                <Tag className="w-6 h-6 text-indigo-600" />
+                            </div>
+                            <h3 className="text-3xl font-bold text-slate-900 mb-4">Custom Labels</h3>
+                            <p className="text-lg text-slate-600 leading-relaxed mb-6">
+                                Add text that matches your design language. Create custom labels that blend seamlessly 
+                                with your icon style — whether you start from scratch or describe what you need in plain text.
+                            </p>
+                        </div>
+                        <div className="lg:w-1/2">
+                            <div className="relative group cursor-pointer" onClick={() => openImageModal('/images/features/feature_labels.webp')}>
+                                <div className="absolute inset-0 bg-gradient-to-r from-indigo-500 to-blue-500 rounded-2xl blur opacity-20 group-hover:opacity-30 transition-opacity"></div>
+                                <Image 
+                                    src="/images/features/feature_labels.webp" 
+                                    alt="Custom Labels" 
+                                    width={600} 
+                                    height={400} 
+                                    className="relative rounded-2xl shadow-xl border border-white/50 w-full"
+                                />
+                            </div>
+                        </div>
+                    </div>
+
+                     {/* Feature 5: Mockups */}
+                     <div className="flex flex-col lg:flex-row items-center gap-12 lg:gap-20">
+                        <div className="lg:w-1/2 order-2 lg:order-1">
+                            <div className="relative group cursor-pointer" onClick={() => openImageModal('/images/features/feature_mockups.webp')}>
+                                <div className="absolute inset-0 bg-gradient-to-r from-emerald-500 to-teal-500 rounded-2xl blur opacity-20 group-hover:opacity-30 transition-opacity"></div>
+                                <Image 
+                                    src="/images/features/feature_mockups.webp" 
+                                    alt="UI Mockups" 
+                                    width={600} 
+                                    height={400} 
+                                    className="relative rounded-2xl shadow-xl border border-white/50 w-full"
+                                />
+                            </div>
+                        </div>
+                        <div className="lg:w-1/2 order-1 lg:order-2">
+                            <div className="bg-emerald-100 w-12 h-12 rounded-xl flex items-center justify-center mb-6">
+                                <Layers className="w-6 h-6 text-emerald-600" />
+                            </div>
+                            <h3 className="text-3xl font-bold text-slate-900 mb-4">Instant UI Mockups</h3>
+                            <p className="text-lg text-slate-600 leading-relaxed mb-6">
+                                Visualize your icons in context immediately. Generate full UI mockups that match your 
+                                icon pack's aesthetic, helping you present your work better.
+                            </p>
+                        </div>
+                    </div>
+
                 </div>
             </section>
 
             {/* Gallery Section */}
-            <section className="px-6 py-16 bg-gradient-to-br from-purple-50/50 to-blue-50/50 overflow-hidden">
-                <div className="max-w-7xl mx-auto">
-                    <div className="text-center mb-12">
-                        <h2 className="text-4xl font-bold text-slate-900 mb-4">
-                            Generated Icon Gallery
-                        </h2>
-                        <p className="text-xl text-slate-600 max-w-3xl mx-auto">
-                            Explore stunning icons created by our AI models. Each one unique and ready for your
-                            projects.
-                        </p>
-                    </div>
-
-                    <div className="relative flex flex-col gap-6">
-                        <div className="flex w-max animate-scroll-left-to-right-fast">
-                            {[...galleryImagesRow1, ...galleryImagesRow1].map((image, index) => (
-                                <div key={index}
-                                     className="group relative bg-white/80 backdrop-blur-md rounded-2xl p-6 shadow-lg border border-purple-200/30 hover:shadow-xl transition-all duration-300 hover:scale-[1.05] cursor-pointer mx-3">
-                                    <div
-                                        className="relative aspect-square w-32 h-32 bg-gradient-to-br from-slate-100 to-slate-200 rounded-xl flex items-center justify-center overflow-hidden">
-                                        <Image src={image} alt={`Gallery icon ${index + 1}`} layout="fill"
-                                               className="object-cover"/>
-                                    </div>
-                                    <div
-                                        className="absolute inset-0 bg-gradient-to-br from-blue-600/0 to-purple-600/0 group-hover:from-blue-600/10 group-hover:to-purple-600/10 rounded-2xl transition-all duration-300"></div>
-                                </div>
-                            ))}
-                        </div>
-                        <div className="flex w-max animate-scroll-left-to-right">
-                            {[...galleryImagesRow2, ...galleryImagesRow2].map((image, index) => (
-                                <div key={index}
-                                     className="group relative bg-white/80 backdrop-blur-md rounded-2xl p-6 shadow-lg border border-purple-200/30 hover:shadow-xl transition-all duration-300 hover:scale-[1.05] cursor-pointer mx-3">
-                                    <div
-                                        className="relative aspect-square w-32 h-32 bg-gradient-to-br from-slate-100 to-slate-200 rounded-xl flex items-center justify-center overflow-hidden">
-                                        <Image src={image} alt={`Gallery icon ${index + 1}`} layout="fill"
-                                               className="object-cover"/>
-                                    </div>
-                                    <div
-                                        className="absolute inset-0 bg-gradient-to-br from-blue-600/0 to-purple-600/0 group-hover:from-blue-600/10 group-hover:to-purple-600/10 rounded-2xl transition-all duration-300"></div>
-                                </div>
-                            ))}
-                        </div>
-                        <div className="flex w-max animate-scroll-left-to-right-slow">
-                            {[...galleryImagesRow3, ...galleryImagesRow3].map((image, index) => (
-                                <div key={index}
-                                     className="group relative bg-white/80 backdrop-blur-md rounded-2xl p-6 shadow-lg border border-purple-200/30 hover:shadow-xl transition-all duration-300 hover:scale-[1.05] cursor-pointer mx-3">
-                                    <div
-                                        className="relative aspect-square w-32 h-32 bg-gradient-to-br from-slate-100 to-slate-200 rounded-xl flex items-center justify-center overflow-hidden">
-                                        <Image src={image} alt={`Gallery icon ${index + 1}`} layout="fill"
-                                               className="object-cover"/>
-                                    </div>
-                                    <div
-                                        className="absolute inset-0 bg-gradient-to-br from-blue-600/0 to-purple-600/0 group-hover:from-blue-600/10 group-hover:to-purple-600/10 rounded-2xl transition-all duration-300"></div>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
+            <section className="py-24 bg-slate-900 overflow-hidden text-center relative">
+                <div className="absolute inset-0 bg-[url('/images/grid.svg')] opacity-10"></div>
+                <div className="relative z-10 mb-16 px-6">
+                    <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">Generated by AI, Curated by You</h2>
+                    <p className="text-slate-400 text-lg">Explore what our community is creating</p>
                 </div>
-            </section>
 
-            {/* Illustrations Gallery Section */}
-            <section className="px-6 py-16 bg-gradient-to-br from-pink-50/50 to-rose-50/50">
-                <div className="max-w-7xl mx-auto">
-                    <div className="text-center mb-12">
-                        <h2 className="text-4xl font-bold text-slate-900 mb-4">
-                            Generated Illustrations Gallery
-                        </h2>
+                {/* Marquee Rows */}
+                <div className="space-y-8 relative">
+                    {/* Gradient Masks */}
+                    <div className="absolute left-0 top-0 bottom-0 w-12 md:w-32 bg-gradient-to-r from-slate-900 to-transparent z-20 pointer-events-none"></div>
+                    <div className="absolute right-0 top-0 bottom-0 w-12 md:w-32 bg-gradient-to-l from-slate-900 to-transparent z-20 pointer-events-none"></div>
+
+                    <div className="flex w-max animate-scroll-left-to-right-fast hover:[animation-play-state:paused]">
+                        {[...galleryImagesRow1, ...galleryImagesRow1].map((image, index) => (
+                            <div key={`row1-${index}`} className="mx-4 w-24 h-24 md:w-32 md:h-32 bg-slate-800 rounded-xl overflow-hidden border border-slate-700/50 shadow-lg hover:scale-105 transition-transform cursor-pointer">
+                                <Image src={image} alt="Gallery Icon" width={128} height={128} className="w-full h-full object-cover" />
+                            </div>
+                        ))}
                     </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
-                        {illustrationImages.map((image, index) => (
-                            <div key={index}
-                                 onClick={() => openImageModal(image)}
-                                 className="group relative bg-white/80 backdrop-blur-md rounded-2xl p-6 shadow-lg border border-pink-200/30 hover:shadow-xl transition-all duration-300 hover:scale-[1.05] cursor-pointer">
-                                <div
-                                    className="relative aspect-[4/3] w-full bg-gradient-to-br from-slate-100 to-slate-200 rounded-xl flex items-center justify-center overflow-hidden">
-                                    <Image src={image} alt={`Illustration ${index + 1}`} layout="fill"
-                                           className="object-cover"/>
-                                </div>
-                                <div
-                                    className="absolute inset-0 bg-gradient-to-br from-rose-500/0 to-purple-500/0 group-hover:from-rose-500/10 group-hover:to-purple-500/10 rounded-2xl transition-all duration-300"></div>
+                    <div className="flex w-max animate-scroll-left-to-right hover:[animation-play-state:paused]">
+                        {[...galleryImagesRow2, ...galleryImagesRow2].map((image, index) => (
+                            <div key={`row2-${index}`} className="mx-4 w-24 h-24 md:w-32 md:h-32 bg-slate-800 rounded-xl overflow-hidden border border-slate-700/50 shadow-lg hover:scale-105 transition-transform cursor-pointer">
+                                <Image src={image} alt="Gallery Icon" width={128} height={128} className="w-full h-full object-cover" />
+                            </div>
+                        ))}
+                    </div>
+                    <div className="flex w-max animate-scroll-left-to-right-slow hover:[animation-play-state:paused]">
+                        {[...galleryImagesRow3, ...galleryImagesRow3].map((image, index) => (
+                            <div key={`row3-${index}`} className="mx-4 w-24 h-24 md:w-32 md:h-32 bg-slate-800 rounded-xl overflow-hidden border border-slate-700/50 shadow-lg hover:scale-105 transition-transform cursor-pointer">
+                                <Image src={image} alt="Gallery Icon" width={128} height={128} className="w-full h-full object-cover" />
                             </div>
                         ))}
                     </div>
                 </div>
             </section>
 
+             {/* Illustrations Gallery Section */}
+             <section className="py-24 bg-white">
+                <div className="container mx-auto px-6">
+                    <div className="flex flex-col md:flex-row justify-between items-end mb-12 gap-6">
+                        <div>
+                            <h2 className="text-3xl md:text-4xl font-bold text-slate-900 mb-4">Beautiful Illustrations</h2>
+                            <p className="text-slate-600 text-lg max-w-xl">
+                                Need more than just icons? Generate full-scene illustrations in the same coherent style.
+                            </p>
+                        </div>
+                        <button 
+                            onClick={handleStartCreating}
+                            className="text-purple-600 font-semibold hover:text-purple-700 flex items-center"
+                        >
+                            Start Generating Illustrations <ChevronRight className="w-4 h-4 ml-1" />
+                        </button>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                        {illustrationImages.map((image, index) => (
+                            <div key={index} 
+                                onClick={() => openImageModal(image)}
+                                className="group relative rounded-2xl overflow-hidden aspect-[4/3] cursor-pointer shadow-md hover:shadow-xl transition-all hover:-translate-y-1"
+                            >
+                                <Image src={image} alt={`Illustration ${index}`} fill className="object-cover transition-transform duration-500 group-hover:scale-110" />
+                                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-6">
+                                    <span className="text-white font-medium">View Illustration</span>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+             </section>
+
             {/* CTA Section */}
-            <section className="px-6 py-16">
-                <div className="max-w-4xl mx-auto text-center">
-                    <div
-                        className="bg-gradient-to-br from-blue-600 to-purple-600 rounded-3xl p-12 text-white relative overflow-hidden">
-                        {/* Background decorations */}
-                        <div className="absolute top-0 left-0 w-32 h-32 bg-white/10 rounded-full blur-3xl"></div>
-                        <div
-                            className="absolute bottom-0 right-0 w-40 h-40 bg-purple-300/20 rounded-full blur-3xl"></div>
+            <section className="py-20 px-6">
+                <div className="max-w-5xl mx-auto">
+                    <div className="relative bg-slate-900 rounded-[2.5rem] p-12 md:p-20 text-center overflow-hidden shadow-2xl">
+                        {/* Background Glows */}
+                        <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
+                            <div className="absolute top-0 left-1/4 w-96 h-96 bg-purple-600/30 rounded-full blur-[100px]"></div>
+                            <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-blue-600/30 rounded-full blur-[100px]"></div>
+                        </div>
 
                         <div className="relative z-10">
-                            <h2 className="text-4xl font-bold mb-6">
-                                Ready to Create Amazing Icons?
+                            <h2 className="text-4xl md:text-5xl font-bold text-white mb-6 tracking-tight">
+                                Ready to elevate your design?
                             </h2>
-                            <p className="text-xl mb-8 text-blue-100">
-                                Join designers and developers who trust our AI-powered icon generator
+                            <p className="text-slate-300 text-lg md:text-xl mb-10 max-w-2xl mx-auto">
+                                Join thousands of creators saving time and building better products with AI-generated assets.
                             </p>
-                            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                                <button
-                                    onClick={handleStartCreating}
-                                    className="bg-white text-blue-600 hover:bg-blue-50 font-semibold py-4 px-8 rounded-xl shadow-lg hover:shadow-xl transform hover:scale-[1.02] transition-all duration-200"
-                                >
-                                    Start Generating Icons
-                                </button>
-                            </div>
+                            <button
+                                onClick={handleStartCreating}
+                                className="bg-white text-slate-900 hover:bg-slate-50 font-bold py-4 px-10 rounded-full shadow-[0_0_20px_rgba(255,255,255,0.3)] hover:shadow-[0_0_30px_rgba(255,255,255,0.4)] transform transition-all hover:scale-105 text-lg"
+                            >
+                                Start Generating Now
+                            </button>
+                            <p className="mt-6 text-slate-400 text-sm">No credit card required for free trial.</p>
                         </div>
                     </div>
                 </div>
             </section>
 
-            {/* Login Modal - Using shared component */}
+            {/* Modals */}
             <LoginModal
                 isOpen={isLoginModalOpen}
                 isVisible={isModalVisible}
@@ -522,22 +495,22 @@ export default function LandingPage() {
 
             {selectedImage && (
                 <div
-                    className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50"
+                    className="fixed inset-0 bg-slate-900/90 backdrop-blur-md flex items-center justify-center z-[100] p-4"
                     onClick={closeImageModal}
                 >
-                    <div className="relative max-w-4xl max-h-[90vh] p-4" onClick={(e) => e.stopPropagation()}>
+                    <div className="relative max-w-6xl max-h-[90vh] w-full h-full flex items-center justify-center" onClick={(e) => e.stopPropagation()}>
                         <Image
                             src={selectedImage}
-                            alt="Full-size image"
+                            alt="Preview"
                             width={1920}
                             height={1080}
-                            className="object-contain w-full h-full rounded-lg"
+                            className="object-contain max-h-full rounded-lg shadow-2xl"
                         />
                         <button
                             onClick={closeImageModal}
-                            className="absolute top-[-1rem] right-[-1rem] text-white bg-black/50 rounded-full p-2"
+                            className="absolute top-4 right-4 md:-top-12 md:-right-12 text-white/70 hover:text-white bg-black/20 hover:bg-black/40 rounded-full p-2 transition-colors"
                         >
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                             </svg>
                         </button>
@@ -545,7 +518,7 @@ export default function LandingPage() {
                 </div>
             )}
 
-            <Footer/>
+            <Footer />
         </div>
     );
 }
