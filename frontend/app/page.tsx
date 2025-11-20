@@ -360,9 +360,6 @@ export default function LandingPage() {
                                 Bring your interface to life with motion. Generate seamless looping animations that retain 
                                 your specific style. Great for loading states, micro-interactions, and social media.
                             </p>
-                            <button onClick={() => openImageModal('/images/features/feature_gifs.gif')} className="text-purple-600 font-semibold hover:underline inline-flex items-center">
-                                View Animation Examples <ChevronRight className="w-4 h-4 ml-1" />
-                            </button>
                         </div>
                     </div>
 
@@ -413,7 +410,7 @@ export default function LandingPage() {
                             <h3 className="text-3xl font-bold text-slate-900 mb-4">Instant UI Mockups</h3>
                             <p className="text-lg text-slate-600 leading-relaxed mb-6">
                                 Visualize your icons in context immediately. Generate full UI mockups that match your 
-                                icon pack's aesthetic, helping you present your work better.
+                                icon pack's aesthetic, helping you present your work better - or flip the process: start with a mockup and use it as the foundation for your icon set.
                             </p>
                         </div>
                     </div>
