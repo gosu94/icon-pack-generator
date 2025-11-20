@@ -511,7 +511,7 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
             <div 
               className={
                 mode === "icons" || mode === "labels"
-                  ? "grid gap-4 grid-cols-[repeat(auto-fit,minmax(160px,1fr))]"
+                  ? "grid gap-4 grid-cols-2 sm:grid-cols-[repeat(auto-fit,minmax(160px,1fr))]"
                   : mode === "illustrations"
                   ? "grid grid-cols-1 sm:grid-cols-2 gap-6"
                   : "flex justify-center items-center"
