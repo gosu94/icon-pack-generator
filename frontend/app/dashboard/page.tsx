@@ -60,6 +60,8 @@ export default function Page() {
     handleImageSelect,
     removeImage,
     formatFileSize,
+    enhancePrompt,
+    setEnhancePrompt,
   } = formState;
 
   const {
@@ -127,6 +129,8 @@ export default function Page() {
           removeImage={removeImage}
           fileInputRef={fileInputRef}
           formatFileSize={formatFileSize}
+          enhancePrompt={enhancePrompt}
+          setEnhancePrompt={setEnhancePrompt}
         />
 
         <ResultsDisplay

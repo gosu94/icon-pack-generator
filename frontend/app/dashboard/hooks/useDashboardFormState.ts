@@ -30,6 +30,7 @@ export function useDashboardFormState({
   >([]);
   const [referenceImage, setReferenceImage] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string>("");
+  const [enhancePrompt, setEnhancePrompt] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -56,7 +57,16 @@ export function useDashboardFormState({
     if (mode === "mockups") {
       setGenerateVariations(true);
     }
-  }, [mode, resetFormForMode]);
+    if (mode !== "icons" && enhancePrompt) {
+      setEnhancePrompt(false);
+    }
+  }, [mode, resetFormForMode, enhancePrompt]);
+
+  useEffect(() => {
+    if (inputType === "image" && enhancePrompt) {
+      setEnhancePrompt(false);
+    }
+  }, [inputType, enhancePrompt]);
 
   const handleImageSelect = useCallback(
     (event: ChangeEvent<HTMLInputElement>) => {
@@ -198,6 +208,8 @@ export function useDashboardFormState({
     removeImage,
     fileToBase64,
     formatFileSize,
+    enhancePrompt,
+    setEnhancePrompt,
     validateForm,
   };
 }

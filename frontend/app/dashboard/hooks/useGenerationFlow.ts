@@ -52,6 +52,7 @@ export function useGenerationFlow({
     setImagePreview,
     fileToBase64,
     validateForm,
+    enhancePrompt,
   } = formState;
   const {
     animatingIcons,
@@ -754,6 +755,9 @@ export function useGenerationFlow({
         formData.generalTheme = generalDescription.trim();
       } else {
         formData.generalDescription = generalDescription.trim();
+        if (mode === "icons") {
+          formData.enhancePrompt = enhancePrompt;
+        }
       }
     } else if (inputType === "image" && referenceImage) {
       try {

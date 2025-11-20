@@ -26,6 +26,8 @@ interface GeneratorFormProps {
   removeImage: () => void;
   fileInputRef: React.RefObject<HTMLInputElement>;
   formatFileSize: (bytes: number) => string;
+  enhancePrompt: boolean;
+  setEnhancePrompt: (value: boolean) => void;
 }
 
 const GeneratorForm: React.FC<GeneratorFormProps> = ({
@@ -50,6 +52,8 @@ const GeneratorForm: React.FC<GeneratorFormProps> = ({
   removeImage,
   fileInputRef,
   formatFileSize,
+  enhancePrompt,
+  setEnhancePrompt,
 }) => {
   const { authState } = useAuth();
   const [isDragOver, setIsDragOver] = useState(false);
@@ -379,6 +383,39 @@ const GeneratorForm: React.FC<GeneratorFormProps> = ({
                         : "Describe the general theme for your icon pack... (e.g., minimalist business icons, colorful social media icons, etc.)"
                     }
                   />
+                  {mode === "icons" && (
+                    <label
+                      className={`mt-3 flex items-center justify-between gap-3 rounded-xl border ${
+                        enhancePrompt ? "border-blue-200 bg-white shadow-sm" : "border-slate-200 bg-white/80"
+                      } px-3 py-2 transition-all duration-200 cursor-pointer select-none`}
+                    >
+                      <div className="text-xs leading-tight">
+                        <span className="block text-sm font-semibold text-slate-900">Enhance prompt</span>
+                        <span className="text-slate-500">
+                          Let our AI model expand your theme with rich stylistic details
+                        </span>
+                      </div>
+                      <div className="relative inline-flex items-center">
+                        <input
+                          type="checkbox"
+                          className="sr-only peer"
+                          checked={enhancePrompt}
+                          onChange={(e) => setEnhancePrompt(e.target.checked)}
+                          disabled={isGenerating}
+                        />
+                        <div
+                          className={`h-6 w-11 rounded-full transition-all duration-200 ${
+                            enhancePrompt ? "bg-blue-600" : "bg-slate-300"
+                          } ${isGenerating ? "opacity-50" : ""}`}
+                        ></div>
+                        <div
+                          className={`absolute left-1 top-1 h-4 w-4 rounded-full bg-white transition-transform duration-200 ${
+                            enhancePrompt ? "translate-x-5" : ""
+                          }`}
+                        ></div>
+                      </div>
+                    </label>
+                  )}
                 </div>
               ) : (
                 <div>

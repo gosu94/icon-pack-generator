@@ -56,6 +56,9 @@ public class GeneratedIcon {
     
     @Column(name = "file_size")
     private Long fileSize;
+
+    @Column(name = "used_prompt_enhancer")
+    private Boolean usedPromptEnhancer = false;
     
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)

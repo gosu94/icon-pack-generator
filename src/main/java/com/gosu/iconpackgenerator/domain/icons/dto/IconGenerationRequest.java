@@ -36,6 +36,12 @@ public class IconGenerationRequest {
     @Min(value = 1, message = "Minimum 1 generation per service")
     @Max(value = 2, message = "Maximum 2 generations per service") 
     private int generationsPerService = 1;
+
+    /**
+     * When true, the backend should attempt to enhance the user's general theme prompt
+     * before generating icons.
+     */
+    private boolean enhancePrompt;
     
     /**
      * Custom validation to ensure either generalDescription or referenceImageBase64 is provided

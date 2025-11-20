@@ -137,6 +137,7 @@ public class IconPersistenceService {
         generatedIcon.setIconCount(request.getIconCount());
         generatedIcon.setGenerationIndex(generationIndex);
         generatedIcon.setIconType(iconType);
+        generatedIcon.setUsedPromptEnhancer(request.isEnhancePrompt());
         
         // Calculate file size
         long fileSize = fileStorageService.getFileSize(user.getDirectoryPath(), requestId, iconType, fileName);
@@ -179,6 +180,7 @@ public class IconPersistenceService {
         generatedIcon.setIconCount(9); // More icons always generates 9 icons
         generatedIcon.setGenerationIndex(generationIndex);
         generatedIcon.setIconType(iconType);
+        generatedIcon.setUsedPromptEnhancer(false);
         
         // Calculate file size
         long fileSize = fileStorageService.getFileSize(user.getDirectoryPath(), requestId, iconType, fileName);

@@ -1,15 +1,16 @@
 package com.gosu.iconpackgenerator.domain.icons.service;
 
 import com.gosu.iconpackgenerator.config.AIServicesConfig;
-import com.gosu.iconpackgenerator.domain.icons.dto.IconGenerationRequest;
-import com.gosu.iconpackgenerator.domain.icons.dto.IconGenerationResponse;
-import com.gosu.iconpackgenerator.domain.icons.dto.ServiceProgressUpdate;
 import com.gosu.iconpackgenerator.domain.ai.AIModelService;
+import com.gosu.iconpackgenerator.domain.ai.AnyLlmModelService;
 import com.gosu.iconpackgenerator.domain.ai.BananaModelService;
 import com.gosu.iconpackgenerator.domain.ai.FluxModelService;
 import com.gosu.iconpackgenerator.domain.ai.GptModelService;
 import com.gosu.iconpackgenerator.domain.ai.PhotonModelService;
 import com.gosu.iconpackgenerator.domain.ai.RecraftModelService;
+import com.gosu.iconpackgenerator.domain.icons.dto.IconGenerationRequest;
+import com.gosu.iconpackgenerator.domain.icons.dto.IconGenerationResponse;
+import com.gosu.iconpackgenerator.domain.icons.dto.ServiceProgressUpdate;
 import com.gosu.iconpackgenerator.exception.FalAiException;
 import com.gosu.iconpackgenerator.user.model.User;
 import com.gosu.iconpackgenerator.util.ErrorMessageSanitizer;
@@ -30,6 +31,9 @@ import static com.gosu.iconpackgenerator.domain.icons.service.PromptGenerationSe
 @Slf4j
 public class IconGenerationService {
 
+    private static final String PROMPT_ENHANCER_SYSTEM_PROMPT = "You are an art director specializing in crafting vivid, cohesive icon pack prompts. Rewrite the user input into a clear, descriptive but concise creative brief. Mention color palette, tone, shapes, and stylistic cues. Keep it under 80 words and in natural sentences without bullet points.";
+    private static final String PROMPT_ENHANCER_USER_TEMPLATE = "Original description: \"%s\". Rewrite this so it guides an AI model to design a cohesive 3x3 icon pack with a unified style, colors, materials, and lighting.";
+
     private final FluxModelService fluxModelService;
     private final RecraftModelService recraftModelService;
     private final PhotonModelService photonModelService;
@@ -43,6 +47,7 @@ public class IconGenerationService {
     private final IconPersistenceService iconPersistenceService;
     private final TrialModeService trialModeService;
     private final ErrorMessageSanitizer errorMessageSanitizer;
+    private final AnyLlmModelService anyLlmModelService;
 
     public CompletableFuture<IconGenerationResponse> generateIcons(IconGenerationRequest request, User user) {
         return generateIcons(request, UUID.randomUUID().toString(), null, user);
@@ -72,6 +77,8 @@ public class IconGenerationService {
 
         // Generate or use provided seed for consistent results across services
         Long seed = request.getSeed() != null ? request.getSeed() : generateRandomSeed();
+
+        applyPromptEnhancementIfRequested(request);
 
         log.info("Starting icon generation for {} icons with theme: {} using enabled services: {} (seed: {}, trial mode: {}, coin priority: {})",
                 request.getIconCount(), request.getGeneralDescription(), enabledServices, seed, isTrialMode, isTrialMode ? "trial coins used as fallback" : "regular coins used");
@@ -645,8 +652,41 @@ public class IconGenerationService {
         if (originalRequest.hasReferenceImage()) {
             modifiedRequest.setReferenceImageBase64(originalRequest.getReferenceImageBase64());
         }
+        modifiedRequest.setEnhancePrompt(false);
 
         return modifiedRequest;
+    }
+
+    private void applyPromptEnhancementIfRequested(IconGenerationRequest request) {
+        if (!request.isEnhancePrompt() || request.hasReferenceImage()) {
+            return;
+        }
+
+        String originalDescription = request.getGeneralDescription();
+        if (originalDescription == null) {
+            return;
+        }
+
+        String trimmed = originalDescription.trim();
+        if (trimmed.isEmpty()) {
+            return;
+        }
+
+        try {
+            log.info("Enhancing icon prompt with AnyLlmModelService");
+            String detailedPrompt = anyLlmModelService
+                    .generateCompletion(String.format(PROMPT_ENHANCER_USER_TEMPLATE, trimmed), PROMPT_ENHANCER_SYSTEM_PROMPT)
+                    .join();
+            if (detailedPrompt != null) {
+                String cleaned = detailedPrompt.trim();
+                if (!cleaned.isEmpty()) {
+                    log.debug("Prompt enhanced from '{}' to '{}'", trimmed, cleaned);
+                    request.setGeneralDescription(cleaned);
+                }
+            }
+        } catch (Exception e) {
+            log.warn("Failed to enhance icon prompt, falling back to original description", e);
+        }
     }
 
     private IconGenerationResponse.ServiceResults createDisabledServiceResult(String serviceName) {
