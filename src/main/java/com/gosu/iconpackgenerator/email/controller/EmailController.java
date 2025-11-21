@@ -22,12 +22,17 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.regex.Pattern;
 
 @RestController
 @RequestMapping("/api/admin/email")
 @RequiredArgsConstructor
 @Slf4j
 public class EmailController {
+
+    private static final Pattern EMAIL_PATTERN = Pattern.compile(
+            "^[A-Z0-9._%+-]+@[A-Z0-9.-]+\\.[A-Z]{2,}$",
+            Pattern.CASE_INSENSITIVE);
 
     private final AdminService adminService;
     private final UserRepository userRepository;
@@ -61,10 +66,19 @@ public class EmailController {
         }
 
         AdminEmailRequest.RecipientScope scope = request.getRecipientScopeOrDefault();
+        String manualEmail = request.getManualEmail() != null ? request.getManualEmail().trim() : null;
 
         LinkedHashSet<String> recipientSet = new LinkedHashSet<>();
         String configuredAdminEmail = adminService.getConfiguredAdminEmail();
-        if (scope == AdminEmailRequest.RecipientScope.ME) {
+        if (scope == AdminEmailRequest.RecipientScope.SPECIFIC) {
+            if (manualEmail == null || manualEmail.isBlank()) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Recipient email is required"));
+            }
+            if (!EMAIL_PATTERN.matcher(manualEmail).matches()) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Recipient email is invalid"));
+            }
+            recipientSet.add(manualEmail);
+        } else if (scope == AdminEmailRequest.RecipientScope.ME) {
             if (configuredAdminEmail != null) {
                 recipientSet.add(configuredAdminEmail);
             } else if (adminUser.getEmail() != null) {
@@ -90,7 +104,9 @@ public class EmailController {
         List<String> failedRecipients = new ArrayList<>();
         recipientSet.forEach(email -> {
             // Get or generate unsubscribe token for this user
-            String unsubscribeToken = userService.getOrGenerateUnsubscribeTokenByEmail(email);
+            String unsubscribeToken = userRepository.existsByEmail(email)
+                    ? userService.getOrGenerateUnsubscribeTokenByEmail(email)
+                    : null;
             // Inject unsubscribe link into email body
             String personalizedHtmlBody = emailService.injectUnsubscribeLink(htmlBody, unsubscribeToken);
             boolean sent = emailService.sendCustomEmail(email, subject, personalizedHtmlBody);

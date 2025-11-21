@@ -3,13 +3,17 @@ import { ChangeEvent } from "react";
 interface EmailTabProps {
   emailSubject: string;
   emailBody: string;
-  emailRecipientScope: "ME" | "EVERYBODY";
+  emailRecipientScope: "ME" | "EVERYBODY" | "SPECIFIC";
+  manualEmail: string;
+  requiresManualEmail: boolean;
+  isManualEmailValid: boolean;
   emailStatus: string | null;
   emailError: string | null;
   isEmailFormValid: boolean;
   onSubjectChange: (value: string) => void;
   onBodyChange: (value: string) => void;
-  onRecipientChange: (value: "ME" | "EVERYBODY") => void;
+  onRecipientChange: (value: "ME" | "EVERYBODY" | "SPECIFIC") => void;
+  onManualEmailChange: (value: string) => void;
   onRequestSend: () => void;
   onReset: () => void;
 }
@@ -18,12 +22,16 @@ export default function EmailTab({
   emailSubject,
   emailBody,
   emailRecipientScope,
+  manualEmail,
+  requiresManualEmail,
+  isManualEmailValid,
   emailStatus,
   emailError,
   isEmailFormValid,
   onSubjectChange,
   onBodyChange,
   onRecipientChange,
+  onManualEmailChange,
   onRequestSend,
   onReset,
 }: EmailTabProps) {
@@ -36,7 +44,11 @@ export default function EmailTab({
   };
 
   const handleRecipientChange = (event: ChangeEvent<HTMLSelectElement>) => {
-    onRecipientChange(event.target.value as "ME" | "EVERYBODY");
+    onRecipientChange(event.target.value as "ME" | "EVERYBODY" | "SPECIFIC");
+  };
+
+  const handleManualEmailChange = (event: ChangeEvent<HTMLInputElement>) => {
+    onManualEmailChange(event.target.value);
   };
 
   return (
@@ -85,8 +97,40 @@ export default function EmailTab({
             >
               <option value="ME">Me</option>
               <option value="EVERYBODY">Everybody</option>
+              <option value="SPECIFIC">Specific email address</option>
             </select>
           </div>
+          {requiresManualEmail && (
+            <div>
+              <label
+                htmlFor="manualEmail"
+                className="block text-sm font-medium text-slate-700"
+              >
+                Recipient Email
+              </label>
+              <input
+                id="manualEmail"
+                type="email"
+                autoComplete="email"
+                value={manualEmail}
+                onChange={handleManualEmailChange}
+                className={`mt-1 block w-full rounded-md border ${
+                  manualEmail.trim().length > 0 && !isManualEmailValid
+                    ? "border-red-400 focus:border-red-500 focus:ring-red-200"
+                    : "border-slate-300 focus:border-indigo-500 focus:ring-indigo-500"
+                } bg-white px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2`}
+                placeholder="user@example.com"
+              />
+              <p className="mt-1 text-xs text-slate-500">
+                Enter a single email address to send this message to a specific recipient.
+              </p>
+              {manualEmail.trim().length > 0 && !isManualEmailValid && (
+                <p className="mt-1 text-xs text-red-600">
+                  Please enter a valid email address.
+                </p>
+              )}
+            </div>
+          )}
           <div>
             <label
               htmlFor="emailBody"

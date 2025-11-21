@@ -10,6 +10,7 @@ public class AdminEmailRequest {
     private String subject;
     private String htmlBody;
     private RecipientScope recipientScope;
+    private String manualEmail;
 
     public RecipientScope getRecipientScopeOrDefault() {
         return recipientScope != null ? recipientScope : RecipientScope.ME;
@@ -17,6 +18,7 @@ public class AdminEmailRequest {
 
     public enum RecipientScope {
         ME,
-        EVERYBODY
+        EVERYBODY,
+        SPECIFIC
     }
 }

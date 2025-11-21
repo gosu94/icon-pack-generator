@@ -24,6 +24,8 @@ import {
 import UsersTab from "./components/UsersTab";
 import EmailTab from "./components/EmailTab";
 
+type EmailRecipientScope = "ME" | "EVERYBODY" | "SPECIFIC";
+
 const DEFAULT_EMAIL_BODY = `<!DOCTYPE html>
 <html lang="en">
   <head>
@@ -231,9 +233,9 @@ export default function ControlPanelPage() {
   const [activeTab, setActiveTab] = useState<"users" | "email">("users");
   const [emailSubject, setEmailSubject] = useState("");
   const [emailBody, setEmailBody] = useState(DEFAULT_EMAIL_BODY);
-  const [emailRecipientScope, setEmailRecipientScope] = useState<
-    "ME" | "EVERYBODY"
-  >("ME");
+  const [emailRecipientScope, setEmailRecipientScope] =
+    useState<EmailRecipientScope>("ME");
+  const [manualEmail, setManualEmail] = useState("");
   const [showEmailConfirmModal, setShowEmailConfirmModal] = useState(false);
   const [emailSending, setEmailSending] = useState(false);
   const [emailStatus, setEmailStatus] = useState<string | null>(null);
@@ -566,13 +568,18 @@ export default function ControlPanelPage() {
     resetEmailStatusMessages();
   };
 
-  const handleEmailRecipientScopeChange = (value: "ME" | "EVERYBODY") => {
+  const handleEmailRecipientScopeChange = (value: EmailRecipientScope) => {
     setEmailRecipientScope(value);
     resetEmailStatusMessages();
   };
 
+  const handleManualEmailChange = (value: string) => {
+    setManualEmail(value);
+    resetEmailStatusMessages();
+  };
+
   const handleConfirmSendEmail = () => {
-    if (emailSubject.trim().length === 0 || emailBody.trim().length === 0) {
+    if (!isEmailFormValid) {
       return;
     }
     resetEmailStatusMessages();
@@ -587,6 +594,7 @@ export default function ControlPanelPage() {
     setEmailSubject("");
     setEmailBody(DEFAULT_EMAIL_BODY);
     setEmailRecipientScope("ME");
+    setManualEmail("");
   };
 
   const handleSendEmail = async () => {
@@ -605,6 +613,8 @@ export default function ControlPanelPage() {
           subject: emailSubject.trim(),
           htmlBody: emailBody,
           recipientScope: emailRecipientScope,
+          manualEmail:
+            emailRecipientScope === "SPECIFIC" ? manualEmail.trim() : null,
         }),
       });
 
@@ -626,8 +636,19 @@ export default function ControlPanelPage() {
     }
   };
 
+  const isValidEmail = (email: string) => {
+    if (!email) return false;
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  };
+
+  const requiresManualEmail = emailRecipientScope === "SPECIFIC";
+  const isManualEmailValid =
+    !requiresManualEmail || isValidEmail(manualEmail.trim());
+
   const isEmailFormValid =
-    emailSubject.trim().length > 0 && emailBody.trim().length > 0;
+    emailSubject.trim().length > 0 &&
+    emailBody.trim().length > 0 &&
+    isManualEmailValid;
 
   const formatDate = (dateString: string | null) => {
     if (!dateString) return "Never";
@@ -837,14 +858,18 @@ export default function ControlPanelPage() {
               emailSubject={emailSubject}
               emailBody={emailBody}
               emailRecipientScope={emailRecipientScope}
+              manualEmail={manualEmail}
               emailStatus={emailStatus}
               emailError={emailError}
               isEmailFormValid={isEmailFormValid}
               onSubjectChange={handleEmailSubjectChange}
               onBodyChange={handleEmailBodyChange}
               onRecipientChange={handleEmailRecipientScopeChange}
+              onManualEmailChange={handleManualEmailChange}
               onRequestSend={handleConfirmSendEmail}
               onReset={resetEmailForm}
+              isManualEmailValid={isManualEmailValid}
+              requiresManualEmail={requiresManualEmail}
             />
           )}
         </div>
@@ -1199,7 +1224,9 @@ export default function ControlPanelPage() {
                 <span className="font-semibold">
                   {emailRecipientScope === "EVERYBODY"
                     ? "all users"
-                    : "yourself"}
+                    : emailRecipientScope === "SPECIFIC"
+                      ? manualEmail.trim() || "the specified email"
+                      : "yourself"}
                 </span>
                 .
               </p>
