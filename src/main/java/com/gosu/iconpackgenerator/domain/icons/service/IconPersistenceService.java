@@ -26,17 +26,25 @@ public class IconPersistenceService {
     private final GeneratedIconRepository generatedIconRepository;
     private final FileStorageService fileStorageService;
     
+    @Transactional
+    public void persistGeneratedIcons(String requestId, IconGenerationRequest request,
+                                      IconGenerationResponse response, User user) {
+        persistGeneratedIcons(requestId, request, response, user, null);
+    }
+
     /**
      * Persists all icons from an icon generation response to database and file system
-     * 
-     * @param requestId The request ID
-     * @param request The original generation request
-     * @param response The generation response containing icons to persist
-     * @param user The user who requested the generation
+     *
+     * @param requestId       The request ID
+     * @param request         The original generation request
+     * @param response        The generation response containing icons to persist
+     * @param user            The user who requested the generation
+     * @param trialLimitResult Optional limitation metadata describing which icons should be persisted
      */
     @Transactional
-    public void persistGeneratedIcons(String requestId, IconGenerationRequest request, 
-                                    IconGenerationResponse response, User user) {
+    public void persistGeneratedIcons(String requestId, IconGenerationRequest request,
+                                      IconGenerationResponse response, User user,
+                                      TrialModeService.TrialLimitationResult trialLimitResult) {
         try {
             log.info("Persisting {} icons for request {}", response.getIcons().size(), requestId);
             
@@ -48,14 +56,19 @@ public class IconPersistenceService {
             allServiceResults.addAll(response.getGptResults());
             allServiceResults.addAll(response.getBananaResults());
             
-            // Save individual icons
+            int persistedCount = 0;
             for (IconGenerationResponse.GeneratedIcon icon : response.getIcons()) {
+                if (!shouldPersistIcon(icon, trialLimitResult)) {
+                    continue;
+                }
+
                 if (icon.getBase64Data() != null && !icon.getBase64Data().isEmpty()) {
                     persistSingleIcon(requestId, request, icon, allServiceResults, user);
+                    persistedCount++;
                 }
             }
             
-            log.info("Successfully persisted {} icons for request {}", response.getIcons().size(), requestId);
+            log.info("Successfully persisted {} icons for request {}", persistedCount, requestId);
             
         } catch (Exception e) {
             log.error("Error persisting icons for request {}", requestId, e);
@@ -200,5 +213,22 @@ public class IconPersistenceService {
                 .map(IconGenerationResponse.ServiceResults::getGenerationIndex)
                 .findFirst()
                 .orElse(1);
+    }
+
+    private boolean shouldPersistIcon(IconGenerationResponse.GeneratedIcon icon, TrialModeService.TrialLimitationResult trialLimitResult) {
+        if (icon == null) {
+            return true;
+        }
+
+        if (trialLimitResult == null || !trialLimitResult.hasAllowedIconIds()) {
+            return true;
+        }
+
+        String serviceSource = icon.getServiceSource();
+        if (trialLimitResult.isServiceLimited(serviceSource)) {
+            return trialLimitResult.isIconAllowed(icon.getId());
+        }
+
+        return true;
     }
 }

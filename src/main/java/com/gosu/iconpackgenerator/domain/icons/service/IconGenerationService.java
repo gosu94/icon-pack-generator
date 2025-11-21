@@ -32,7 +32,7 @@ import static com.gosu.iconpackgenerator.domain.icons.service.PromptGenerationSe
 public class IconGenerationService {
 
     private static final String PROMPT_ENHANCER_SYSTEM_PROMPT = "You are an art director specializing in crafting vivid, cohesive icon pack prompts. Rewrite the user input into a clear, descriptive but concise creative brief. Mention color palette, tone, shapes, and stylistic cues. Keep it under 80 words and in natural sentences without bullet points.";
-    private static final String PROMPT_ENHANCER_USER_TEMPLATE = "Original description: \"%s\". Rewrite this so it guides an AI model to design a cohesive 3x3 icon pack with a unified style, colors, materials, and lighting.";
+    private static final String PROMPT_ENHANCER_USER_TEMPLATE = "Original description: \"%s\". Rewrite this so it guides an AI model to design a cohesive icon pack with a unified style, colors, materials, and lighting.";
 
     private final FluxModelService fluxModelService;
     private final RecraftModelService recraftModelService;
@@ -151,6 +151,7 @@ public class IconGenerationService {
                     List<IconGenerationResponse.ServiceResults> bananaResults = bananaFuture.join();
 
                     IconGenerationResponse finalResponse = createCombinedResponse(requestId, falAiResults, recraftResults, photonResults, gptResults, bananaResults, seed);
+                    TrialModeService.TrialLimitationResult trialLimitationResult = null;
 
                     // Check if all enabled services failed due to temporary unavailability and refund coins if needed
                     if ("error".equals(finalResponse.getStatus())) {
@@ -171,13 +172,13 @@ public class IconGenerationService {
                     // Apply trial mode limitations if using trial coins
                     if (isTrialMode && "success".equals(finalResponse.getStatus())) {
                         log.info("Applying trial mode limitations to response for request {}", requestId);
-                        trialModeService.applyTrialLimitations(finalResponse);
+                        trialLimitationResult = trialModeService.applyTrialLimitations(finalResponse);
                     }
 
                     // Persist generated icons to database and file system
                     if ("success".equals(finalResponse.getStatus())) {
                         try {
-                            iconPersistenceService.persistGeneratedIcons(requestId, request, finalResponse, user);
+                            iconPersistenceService.persistGeneratedIcons(requestId, request, finalResponse, user, trialLimitationResult);
                             log.info("Successfully persisted {} icons for request {} (trial mode: {})",
                                     finalResponse.getIcons().size(), requestId, isTrialMode);
                         } catch (Exception e) {
