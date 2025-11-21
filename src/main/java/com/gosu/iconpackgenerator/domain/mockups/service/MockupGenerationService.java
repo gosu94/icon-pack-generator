@@ -47,7 +47,7 @@ public class MockupGenerationService {
             MockupGenerationRequest request, String requestId, 
             ProgressUpdateCallback progressCallback, User user) {
         
-        int cost = Math.max(1, request.getGenerationsPerService());
+        int cost = 1;
         
         // Deduct coins
         CoinManagementService.CoinDeductionResult coinResult = 
