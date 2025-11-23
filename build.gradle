@@ -51,6 +51,8 @@ dependencies {
     implementation 'com.twelvemonkeys.imageio:imageio-metadata:3.10.1'
 
     implementation 'dev.matrixlab.webp4j:webp4j:1.2.0'
+    implementation 'org.apache.xmlgraphics:batik-transcoder:1.17'
+    implementation 'org.apache.xmlgraphics:batik-codec:1.17'
 
 	// JavaCV for video processing
     implementation("org.bytedeco:javacv:1.5.9")

@@ -825,7 +825,12 @@ export default function GalleryPage() {
     }
   };
 
-  const confirmGalleryExport = (formats: string[], sizes?: number[], vectorizeSvg?: boolean) => {
+  const confirmGalleryExport = (
+    formats: string[],
+    sizes?: number[],
+    vectorizeSvg?: boolean,
+    hqUpscale?: boolean,
+  ) => {
     if (iconsToExport.length > 0) {
       const iconFilePaths = iconsToExport.map((icon) => icon.imageUrl);
       const fileName = `icon-pack-gallery-${new Date().getTime()}.zip`;
@@ -833,6 +838,7 @@ export default function GalleryPage() {
         iconFilePaths,
         formats,
         vectorizeSvg: vectorizeSvg ?? false,
+        hqUpscale: hqUpscale ?? false,
       };
       setShowExportModal(false);
       downloadZip(exportData, fileName, "/api/export-gallery");

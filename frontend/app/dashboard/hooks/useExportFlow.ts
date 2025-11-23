@@ -129,7 +129,12 @@ export function useExportFlow({
   );
 
   const confirmExport = useCallback(
-    (formats: string[], sizes?: number[], vectorizeSvg?: boolean) => {
+    (
+      formats: string[],
+      sizes?: number[],
+      vectorizeSvg?: boolean,
+      hqUpscale?: boolean,
+    ) => {
       if (!exportContext) {
         return;
       }
@@ -150,6 +155,7 @@ export function useExportFlow({
         formats,
         sizes: mode === "labels" ? undefined : sizes,
         vectorizeSvg: vectorizeSvg ?? false,
+        hqUpscale: hqUpscale ?? false,
       };
       setShowExportModal(false);
       void downloadZip(exportData, fileName);

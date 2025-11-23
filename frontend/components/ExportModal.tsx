@@ -2,11 +2,17 @@ import React, { useState, useEffect } from "react";
 import Image from "next/image";
 import { Switch } from "@/components/ui/switch";
 import { GenerationMode } from "../lib/types";
+import { useAuth } from "../context/AuthContext";
 
 interface ExportModalProps {
   show: boolean;
   onClose: () => void;
-  onConfirm: (formats: string[], sizes?: number[], vectorizeSvg?: boolean) => void;
+  onConfirm: (
+    formats: string[],
+    sizes?: number[],
+    vectorizeSvg?: boolean,
+    hqUpscale?: boolean,
+  ) => void;
   iconCount: number;
   mode: GenerationMode;
 }
@@ -18,7 +24,10 @@ const ExportModal: React.FC<ExportModalProps> = ({
   iconCount,
   mode,
 }) => {
-  const [formats, setFormats] = useState(
+  const { authState } = useAuth();
+  const availableCoins = authState?.user?.coins ?? 0;
+
+  const [formats, setFormats] = useState<Record<string, boolean>>(
     mode === "icons"
       ? {
           png: true,
@@ -31,6 +40,7 @@ const ExportModal: React.FC<ExportModalProps> = ({
         }
   );
   const [vectorizeSvg, setVectorizeSvg] = useState(false);
+  const [hqUpscale, setHqUpscale] = useState(false);
 
   useEffect(() => {
     setFormats(
@@ -46,11 +56,13 @@ const ExportModal: React.FC<ExportModalProps> = ({
         }
     );
     setVectorizeSvg(false);
+    setHqUpscale(false);
   }, [mode]);
 
   useEffect(() => {
     if (!show) {
       setVectorizeSvg(false);
+      setHqUpscale(false);
     }
   }, [show]);
 
@@ -58,6 +70,43 @@ const ExportModal: React.FC<ExportModalProps> = ({
     setFormats((prev) => ({ ...prev, [format]: !prev[format] }));
   };
 
+  const handleHqToggle = () => {
+    setHqUpscale((prev) => {
+      const next = !prev;
+      if (next) {
+        setVectorizeSvg(false);
+      }
+      return next;
+    });
+  };
+
+  const handleVectorToggle = () => {
+    setVectorizeSvg((prev) => {
+      const next = !prev;
+      if (next && mode === "icons") {
+        setHqUpscale(false);
+      }
+      return next;
+    });
+  };
+
+  const totalVectorCost = Math.ceil(Math.max(iconCount, 1) / 9);
+  const labelVectorCost = 1;
+  const showVectorOption = mode === "icons" || mode === "labels";
+  const showHqOption = mode === "icons" && (formats.png || formats.webp || formats.ico);
+  const totalHqCost = Math.ceil(Math.max(iconCount, 1) / 9);
+  const vectorDisabled = mode === "icons" && hqUpscale;
+  const hqDisabled = mode === "icons" && vectorizeSvg;
+  const vectorCoinCost = mode === "labels" ? labelVectorCost : totalVectorCost;
+  const premiumCost =
+    (vectorizeSvg ? vectorCoinCost : 0) + (hqUpscale ? totalHqCost : 0);
+  const hasPremiumBalance = premiumCost === 0 || availableCoins >= premiumCost;
+
+  useEffect(() => {
+    if (!showHqOption && hqUpscale) {
+      setHqUpscale(false);
+    }
+  }, [showHqOption, hqUpscale]);
   
 
   const handleConfirm = () => {
@@ -73,16 +122,13 @@ const ExportModal: React.FC<ExportModalProps> = ({
       const selectedSizes = [1920];
       onConfirm(selectedFormats, selectedSizes);
     } else {
-      const shouldVectorize = (mode === "icons" || mode === "labels") ? vectorizeSvg : false;
-      onConfirm(selectedFormats, undefined, shouldVectorize);
+      const shouldVectorize = showVectorOption ? vectorizeSvg : false;
+      const shouldUpscale = mode === "icons" ? hqUpscale : false;
+      onConfirm(selectedFormats, undefined, shouldVectorize, shouldUpscale);
     }
   };
 
   if (!show) return null;
-
-  const totalVectorCost = Math.ceil(Math.max(iconCount, 1) / 9);
-  const labelVectorCost = 1;
-  const showVectorOption = mode === "icons" || mode === "labels";
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -145,11 +191,42 @@ const ExportModal: React.FC<ExportModalProps> = ({
                           checked={formats[format as keyof typeof formats]}
                           onCheckedChange={() => handleFormatChange(format as keyof typeof formats)}
                         />
-                        <label htmlFor={format} className="text-sm font-medium text-gray-700 uppercase cursor-pointer">
+                        <label
+                          htmlFor={format}
+                          className="text-sm font-medium text-gray-700 uppercase cursor-pointer"
+                        >
                           {format}
                         </label>
                       </div>
                     ))}
+                    {showHqOption && (
+                      <div
+                        className={`col-span-2 rounded-lg border border-pink-100 bg-white/70 p-3 sm:flex sm:items-center sm:justify-between gap-3 ${
+                          hqDisabled ? "opacity-60" : ""
+                        }`}
+                      >
+                        <div className="space-y-1">
+                          <p className="text-sm font-semibold text-pink-900">
+                            HQ Upscaled
+                          </p>
+                          <p className="text-xs text-pink-700">
+                            Adds a 1024×1024 PNG/WebP size.
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-3 mt-3 sm:mt-0">
+                          <span className="flex items-center space-x-1 rounded-full bg-pink-100 px-2 py-0.5 text-xs font-semibold text-pink-800">
+                            <span>+{totalHqCost}</span>
+                            <Image src="/images/coin.webp" alt="Coin" width={16} height={16} />
+                          </span>
+                          <Switch
+                            id="hq-upscale"
+                            checked={hqUpscale}
+                            onCheckedChange={handleHqToggle}
+                            disabled={hqDisabled}
+                          />
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -157,7 +234,11 @@ const ExportModal: React.FC<ExportModalProps> = ({
               </div>
             </div>
             {showVectorOption && (
-              <div className="rounded-lg border border-blue-100 bg-gradient-to-r from-purple-50 to-blue-50 p-4 mt-3">
+              <div
+                className={`rounded-lg border border-blue-100 bg-gradient-to-r from-purple-50 to-blue-50 p-4 mt-3 ${
+                  vectorDisabled ? "opacity-60" : ""
+                }`}
+              >
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex-1 space-y-2">
                     <div className="flex items-center justify-between">
@@ -173,7 +254,7 @@ const ExportModal: React.FC<ExportModalProps> = ({
                     </div>
                     <p className="text-xs text-indigo-700">
                       {mode === "icons"
-                        ? `Toggle to receive crisp, editable SVGs processed with AI. Costs 1 coin per 9 icons (this export: ${totalVectorCost} coin${totalVectorCost === 1 ? "" : "s"}).`
+                        ? `Toggle to receive crisp, editable SVGs processed with AI. Costs 1 coin per 9 icons (this export: ${totalVectorCost} coin${totalVectorCost === 1 ? "" : "s"}). Cannot be combined with HQ Upscaled.`
                         : "Toggle to receive a crisp, editable SVG version processed with AI. Costs 1 coin for this export."}
                     </p>
                     <div className="flex items-start space-x-2 rounded-md bg-indigo-200/60 px-3 py-2">
@@ -188,7 +269,8 @@ const ExportModal: React.FC<ExportModalProps> = ({
                   <Switch
                     id="vectorize-svg"
                     checked={vectorizeSvg}
-                    onCheckedChange={() => setVectorizeSvg((prev) => !prev)}
+                    onCheckedChange={handleVectorToggle}
+                    disabled={vectorDisabled}
                   />
                 </div>
               </div>
@@ -196,7 +278,13 @@ const ExportModal: React.FC<ExportModalProps> = ({
           </div>
         </div>
         
-        <div className="flex justify-end space-x-3 mt-6">
+        {!hasPremiumBalance && premiumCost > 0 && (
+          <p className="mt-4 text-sm text-red-600">
+            You don't have enough coins for the selected premium options.
+          </p>
+        )}
+
+        <div className="flex justify-end space-x-3 mt-4">
           <button
             onClick={onClose}
             className="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300"
@@ -205,7 +293,12 @@ const ExportModal: React.FC<ExportModalProps> = ({
           </button>
           <button
             onClick={handleConfirm}
-            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+            disabled={!hasPremiumBalance}
+            className={`px-4 py-2 rounded-md ${
+              hasPremiumBalance
+                ? "bg-blue-600 text-white hover:bg-blue-700"
+                : "bg-gray-300 text-gray-500 cursor-not-allowed"
+            }`}
           >
             Download ZIP
           </button>

@@ -13,5 +13,6 @@ public class IconExportRequest {
     private List<IconGenerationResponse.GeneratedIcon> icons;
     private List<String> formats;
     private boolean vectorizeSvg;
+    private boolean hqUpscale;
 
 }

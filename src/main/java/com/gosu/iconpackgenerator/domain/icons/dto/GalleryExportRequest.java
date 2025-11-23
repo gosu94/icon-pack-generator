@@ -8,4 +8,5 @@ public class GalleryExportRequest {
     private List<String> iconFilePaths;
     private List<String> formats;
     private boolean vectorizeSvg;
+    private boolean hqUpscale;
 }

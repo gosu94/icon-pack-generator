@@ -104,23 +104,28 @@ public class IconExportController implements IconExportControllerAPI {
 
         exportRequest.setIcons(iconsToExport);
 
-        if (exportRequest.isVectorizeSvg()) {
-            int iconCount = Math.max(iconsToExport.size(), 1);
-            int coinCost = (int) Math.ceil(iconCount / 9.0);
-            CoinManagementService.CoinDeductionResult coinResult = coinManagementService.deductCoinsForGeneration(user, coinCost);
+        int iconCount = Math.max(iconsToExport.size(), 1);
+        int vectorCoinCost = exportRequest.isVectorizeSvg() ? (int) Math.ceil(iconCount / 9.0) : 0;
+        int hqCoinCost = exportRequest.isHqUpscale() ? (int) Math.ceil(iconCount / 9.0) : 0;
+        int totalCoinCost = vectorCoinCost + hqCoinCost;
+
+        if (totalCoinCost > 0) {
+            CoinManagementService.CoinDeductionResult coinResult = coinManagementService.deductCoinsForGeneration(user, totalCoinCost);
             if (!coinResult.isSuccess()) {
-                log.warn("Insufficient coins for vectorized export by user {}: {}", user.getEmail(), coinResult.getErrorMessage());
+                log.warn("Insufficient coins for premium export options by user {}: {}", user.getEmail(), coinResult.getErrorMessage());
                 String errorMessage = coinResult.getErrorMessage() != null
                         ? coinResult.getErrorMessage()
-                        : "Insufficient coins for vectorized export.";
+                        : "Insufficient coins for premium export options.";
                 return ResponseEntity.status(HttpStatus.PAYMENT_REQUIRED)
                         .body(errorMessage.getBytes(StandardCharsets.UTF_8));
             }
-            log.info("Vectorized SVG export coin deduction for user {}: deducted {} {} coin(s) (requested cost: {}, icon count: {})",
+            log.info("Export coin deduction for user {}: deducted {} {} coin(s) (total cost: {}, vector: {}, hq: {}, icon count: {})",
                     user.getEmail(),
                     coinResult.getDeductedAmount(),
                     coinResult.isUsedTrialCoins() ? "trial" : "regular",
-                    coinCost,
+                    totalCoinCost,
+                    vectorCoinCost,
+                    hqCoinCost,
                     iconsToExport.size());
         }
 
@@ -194,24 +199,30 @@ public class IconExportController implements IconExportControllerAPI {
             exportRequest.setGenerationIndex(1);
             exportRequest.setFormats(galleryExportRequest.getFormats()); // Pass formats from gallery request
             exportRequest.setVectorizeSvg(galleryExportRequest.isVectorizeSvg());
+            exportRequest.setHqUpscale(galleryExportRequest.isHqUpscale());
 
-            if (exportRequest.isVectorizeSvg()) {
-                int iconCount = Math.max(iconsToExport.size(), 1);
-                int coinCost = (int) Math.ceil(iconCount / 9.0);
-                CoinManagementService.CoinDeductionResult coinResult = coinManagementService.deductCoinsForGeneration(user, coinCost);
+            int iconCount = Math.max(iconsToExport.size(), 1);
+            int galleryVectorCost = exportRequest.isVectorizeSvg() ? (int) Math.ceil(iconCount / 9.0) : 0;
+            int galleryHqCost = exportRequest.isHqUpscale() ? (int) Math.ceil(iconCount / 9.0) : 0;
+            int galleryTotalCost = galleryVectorCost + galleryHqCost;
+
+            if (galleryTotalCost > 0) {
+                CoinManagementService.CoinDeductionResult coinResult = coinManagementService.deductCoinsForGeneration(user, galleryTotalCost);
                 if (!coinResult.isSuccess()) {
-                    log.warn("Insufficient coins for gallery vectorized export by user {}: {}", user.getEmail(), coinResult.getErrorMessage());
+                    log.warn("Insufficient coins for gallery premium export options by user {}: {}", user.getEmail(), coinResult.getErrorMessage());
                     String errorMessage = coinResult.getErrorMessage() != null
                             ? coinResult.getErrorMessage()
-                            : "Insufficient coins for vectorized export.";
+                            : "Insufficient coins for premium export options.";
                     return ResponseEntity.status(HttpStatus.PAYMENT_REQUIRED)
                             .body(errorMessage.getBytes(StandardCharsets.UTF_8));
                 }
-                log.info("Gallery vectorized SVG export coin deduction for user {}: deducted {} {} coin(s) (requested cost: {}, icon count: {})",
+                log.info("Gallery export coin deduction for user {}: deducted {} {} coin(s) (total cost: {}, vector: {}, hq: {}, icon count: {})",
                         user.getEmail(),
                         coinResult.getDeductedAmount(),
                         coinResult.isUsedTrialCoins() ? "trial" : "regular",
-                        coinCost,
+                        galleryTotalCost,
+                        galleryVectorCost,
+                        galleryHqCost,
                         iconsToExport.size());
             }
 

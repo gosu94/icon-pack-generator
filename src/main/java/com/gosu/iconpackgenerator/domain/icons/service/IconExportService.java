@@ -6,6 +6,10 @@ import com.gosu.iconpackgenerator.domain.vectorization.SvgVectorizationService;
 import dev.matrixlab.webp4j.NativeWebP;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.batik.transcoder.TranscoderException;
+import org.apache.batik.transcoder.TranscoderInput;
+import org.apache.batik.transcoder.TranscoderOutput;
+import org.apache.batik.transcoder.image.PNGTranscoder;
 import org.springframework.stereotype.Service;
 
 import javax.imageio.ImageIO;
@@ -15,10 +19,15 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Base64;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.stream.Collectors;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
@@ -35,6 +44,9 @@ public class IconExportService {
     
     // Comprehensive ICO sizes for modern applications and high-DPI displays
     private static final int[] ICO_SIZES = {32, 48, 64, 128, 256};
+
+    private static final int HQ_ADDITIONAL_SIZE = 1024;
+    private static final int HQ_THREAD_POOL_SIZE = 9;
     
     // Cache for WebP4j availability to avoid repeated checks
     private Boolean webp4jAvailable = null;
@@ -57,28 +69,36 @@ public class IconExportService {
              ZipOutputStream zos = new ZipOutputStream(baos)) {
 
             List<PreparedIcon> preparedIcons = prepareIcons(exportRequest.getIcons());
-            Map<String, byte[]> vectorizedSvgs = exportRequest.isVectorizeSvg()
+            boolean needsVectorization = exportRequest.isVectorizeSvg() || exportRequest.isHqUpscale();
+            Map<String, byte[]> vectorizedSvgs = needsVectorization
                     ? svgVectorizationService.vectorizeImages(
                     preparedIcons.stream()
                             .collect(Collectors.toMap(PreparedIcon::baseName, PreparedIcon::originalData)))
                     : Collections.emptyMap();
+            Map<String, byte[]> hqIconData = exportRequest.isHqUpscale()
+                    ? processIconsForHighQuality(preparedIcons, vectorizedSvgs)
+                    : Collections.emptyMap();
+            int[] rasterSizes = getRasterSizes(exportRequest.isHqUpscale());
 
             for (PreparedIcon preparedIcon : preparedIcons) {
                 String iconBase64Data = preparedIcon.icon().getBase64Data();
                 byte[] originalIconData = preparedIcon.originalData();
                 String baseName = preparedIcon.baseName();
+                byte[] workingIconData = exportRequest.isHqUpscale()
+                        ? hqIconData.getOrDefault(baseName, originalIconData)
+                        : originalIconData;
 
                 if (formats.contains("svg")) {
                     createSvgVersion(zos, iconBase64Data, baseName);
                 }
                 if (formats.contains("png")) {
-                    createPngVersions(zos, originalIconData, baseName);
+                    createPngVersions(zos, workingIconData, baseName, rasterSizes);
                 }
                 if (formats.contains("webp") && isWebp4jAvailable()) {
-                    createWebpVersions(zos, originalIconData, baseName);
+                    createWebpVersions(zos, workingIconData, baseName, rasterSizes);
                 }
                 if (formats.contains("ico")) {
-                    createIcoVersion(zos, originalIconData, baseName);
+                    createIcoVersion(zos, workingIconData, baseName);
                 }
                 if (exportRequest.isVectorizeSvg()) {
                     byte[] vectorizedSvg = vectorizedSvgs.get(baseName);
@@ -156,9 +176,9 @@ public class IconExportService {
         }
     }
     
-    private void createPngVersions(ZipOutputStream zos, byte[] originalIconData, String baseName) throws IOException {
+    private void createPngVersions(ZipOutputStream zos, byte[] iconData, String baseName, int[] targetSizes) throws IOException {
         try {
-            ByteArrayInputStream bais = new ByteArrayInputStream(originalIconData);
+            ByteArrayInputStream bais = new ByteArrayInputStream(iconData);
             BufferedImage originalImage = ImageIO.read(bais);
             
             if (originalImage == null) {
@@ -166,7 +186,7 @@ public class IconExportService {
                 return;
             }
             
-            for (int size : PNG_SIZES) {
+            for (int size : targetSizes) {
                 BufferedImage resizedImage = resizeImage(originalImage, size, size);
                 byte[] resizedImageData = imageToBytes(resizedImage, "png");
                 
@@ -200,12 +220,12 @@ public class IconExportService {
         return webp4jAvailable;
     }
 
-    private void createWebpVersions(ZipOutputStream zos, byte[] originalIconData, String baseName) throws IOException {
+    private void createWebpVersions(ZipOutputStream zos, byte[] iconData, String baseName, int[] targetSizes) throws IOException {
         // This method should only be called when WebP4j is available
         // The availability check is done in the calling method
         
         try {
-            ByteArrayInputStream bais = new ByteArrayInputStream(originalIconData);
+            ByteArrayInputStream bais = new ByteArrayInputStream(iconData);
             BufferedImage originalImage = ImageIO.read(bais);
 
             if (originalImage == null) {
@@ -213,7 +233,7 @@ public class IconExportService {
                 return;
             }
 
-            for (int size : PNG_SIZES) {
+            for (int size : targetSizes) {
                 BufferedImage resizedImage = resizeImage(originalImage, size, size);
                 
                 try {
@@ -243,9 +263,9 @@ public class IconExportService {
         }
     }
     
-    private void createIcoVersion(ZipOutputStream zos, byte[] originalIconData, String baseName) throws IOException {
+    private void createIcoVersion(ZipOutputStream zos, byte[] iconData, String baseName) throws IOException {
         try {
-            ByteArrayInputStream bais = new ByteArrayInputStream(originalIconData);
+            ByteArrayInputStream bais = new ByteArrayInputStream(iconData);
             BufferedImage originalImage = ImageIO.read(bais);
             
             if (originalImage == null) {
@@ -413,6 +433,70 @@ public class IconExportService {
         }
         
         return output;
+    }
+
+    private int[] getRasterSizes(boolean includeHqSize) {
+        if (!includeHqSize) {
+            return PNG_SIZES;
+        }
+        int[] sizes = Arrays.copyOf(PNG_SIZES, PNG_SIZES.length + 1);
+        sizes[sizes.length - 1] = HQ_ADDITIONAL_SIZE;
+        return sizes;
+    }
+
+    private Map<String, byte[]> processIconsForHighQuality(List<PreparedIcon> preparedIcons,
+                                                           Map<String, byte[]> vectorizedSvgs) {
+        if (preparedIcons.isEmpty() || vectorizedSvgs.isEmpty()) {
+            log.warn("HQ vector rendering requested but vectorized SVG data is unavailable.");
+            return Collections.emptyMap();
+        }
+
+        Map<String, byte[]> processedIcons = new ConcurrentHashMap<>();
+        log.info("Starting HQ vector rendering for {} icons", preparedIcons.size());
+        ExecutorService executor = Executors.newFixedThreadPool(HQ_THREAD_POOL_SIZE);
+
+        try {
+            List<CompletableFuture<Void>> tasks = preparedIcons.stream()
+                    .map(icon -> CompletableFuture.runAsync(() -> {
+                        byte[] svgData = vectorizedSvgs.get(icon.baseName());
+                        if (svgData == null || svgData.length == 0) {
+                            log.warn("Vectorized SVG missing for icon {}. Falling back to original raster.", icon.baseName());
+                            processedIcons.put(icon.baseName(), icon.originalData());
+                            return;
+                        }
+
+                        try {
+                            byte[] renderedPng = convertSvgToPng(svgData, HQ_ADDITIONAL_SIZE);
+                            processedIcons.put(icon.baseName(), renderedPng);
+                        } catch (Exception e) {
+                            log.error("HQ vector rendering failed for icon {}. Using original raster.", icon.baseName(), e);
+                            processedIcons.put(icon.baseName(), icon.originalData());
+                        }
+                    }, executor))
+                    .collect(Collectors.toList());
+
+            CompletableFuture.allOf(tasks.toArray(new CompletableFuture[0])).join();
+        } finally {
+            executor.shutdown();
+            log.info("Completed HQ vector rendering for {} icons", processedIcons.size());
+        }
+
+        return processedIcons;
+    }
+
+    private byte[] convertSvgToPng(byte[] svgBytes, int size) throws IOException, TranscoderException {
+        PNGTranscoder transcoder = new PNGTranscoder();
+        transcoder.addTranscodingHint(PNGTranscoder.KEY_WIDTH, (float) size);
+        transcoder.addTranscodingHint(PNGTranscoder.KEY_HEIGHT, (float) size);
+        transcoder.addTranscodingHint(PNGTranscoder.KEY_BACKGROUND_COLOR, new Color(0, 0, 0, 0));
+
+        try (ByteArrayInputStream bais = new ByteArrayInputStream(svgBytes);
+             ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
+            TranscoderInput input = new TranscoderInput(bais);
+            TranscoderOutput output = new TranscoderOutput(baos);
+            transcoder.transcode(input, output);
+            return baos.toByteArray();
+        }
     }
 
     private String createBaseName(IconGenerationResponse.GeneratedIcon icon, int index) {
