@@ -242,6 +242,8 @@ export default function ControlPanelPage() {
   const [emailError, setEmailError] = useState<string | null>(null);
   const [generationStatus, setGenerationStatus] =
     useState<GenerationStatus | null>(null);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
     // Check if user is admin
@@ -259,7 +261,7 @@ export default function ControlPanelPage() {
     if (authState.authenticated && authState.user?.isAdmin) {
       fetchUsers();
     }
-  }, [authState, router, currentPage, itemsPerPage, sortColumn, sortDirection]);
+  }, [authState, router, currentPage, itemsPerPage, sortColumn, sortDirection, searchQuery]);
 
   useEffect(() => {
     if (authState.authenticated && authState.user?.isAdmin) {
@@ -322,6 +324,25 @@ export default function ControlPanelPage() {
     };
   }, [authState.authenticated, authState.user?.isAdmin]);
 
+  useEffect(() => {
+    const trimmed = searchTerm.trim();
+
+    if (trimmed === searchQuery) {
+      return;
+    }
+
+    const handler = setTimeout(() => {
+      setSearchQuery((prevQuery) => {
+        if (prevQuery !== trimmed) {
+          setCurrentPage(0);
+        }
+        return trimmed;
+      });
+    }, 400);
+
+    return () => clearTimeout(handler);
+  }, [searchTerm, searchQuery]);
+
   const fetchUsers = async () => {
     try {
       // Map frontend column names to backend field names
@@ -346,6 +367,10 @@ export default function ControlPanelPage() {
         sortBy: sortField,
         direction: sortDirection,
       });
+
+      if (searchQuery) {
+        params.append("search", searchQuery);
+      }
 
       const response = await fetch(`/api/admin/users?${params}`, {
         credentials: "include",
@@ -709,6 +734,20 @@ export default function ControlPanelPage() {
     );
   };
 
+  const handleSearchTermChange = (value: string) => {
+    setSearchTerm(value);
+  };
+
+  const handleClearSearch = () => {
+    setSearchTerm("");
+    setSearchQuery((prevQuery) => {
+      if (prevQuery !== "") {
+        setCurrentPage(0);
+      }
+      return "";
+    });
+  };
+
   const generationSummary = formatGenerationSummary();
   const isStatusKnown = generationStatus !== null;
   const statusInProgress = generationStatus?.inProgress;
@@ -850,6 +889,10 @@ export default function ControlPanelPage() {
               totalIllustrations={totalIllustrations}
               totalMockups={totalMockups}
               totalLabels={totalLabels}
+              searchTerm={searchTerm}
+              activeSearchQuery={searchQuery}
+              onSearchTermChange={handleSearchTermChange}
+              onClearSearch={handleClearSearch}
             />
           )}
 

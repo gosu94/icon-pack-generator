@@ -31,7 +31,14 @@ const Footer: React.FC = () => {
               Create stunning icon packs with AI-powered technology. Generate professional-quality icons in seconds, not hours.
             </p>
             <div className="flex items-center space-x-2 text-sm text-slate-400">
-              <span>© 2025 Icon Pack Gen. All rights reserved.</span>
+              <span>© 2025 Icon Pack Gen. All rights reserved.
+                                <Image
+                                    src="/favicon.ico"
+                                    alt="Icon Pack Generator"
+                                    width={16}
+                                    height={16}
+                                />
+              </span>
             </div>
           </div>
 

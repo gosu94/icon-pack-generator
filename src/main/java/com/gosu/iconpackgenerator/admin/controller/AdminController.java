@@ -27,6 +27,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.core.user.OAuth2User;
+import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -82,6 +83,7 @@ public class AdminController {
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(defaultValue = "id") String sortBy,
             @RequestParam(defaultValue = "asc") String direction,
+            @RequestParam(required = false) String search,
             @AuthenticationPrincipal OAuth2User principal) {
         
         if (!(principal instanceof CustomOAuth2User customUser)) {
@@ -102,8 +104,12 @@ public class AdminController {
         // Create pageable object
         Pageable pageable = PageRequest.of(page, size, sort);
         
+        String trimmedSearch = search != null ? search.trim() : "";
+
         // Fetch paginated users
-        Page<User> userPage = userRepository.findAll(pageable);
+        Page<User> userPage = StringUtils.hasText(trimmedSearch)
+                ? userRepository.searchUsers(trimmedSearch, pageable)
+                : userRepository.findAll(pageable);
         
         // Map to DTOs
         List<UserAdminDto> userDtos = userPage.getContent().stream()
@@ -140,7 +146,9 @@ public class AdminController {
                 userPage.isLast()
         );
 
-        log.info("Admin user {} retrieved page {} of users (total: {})", user.getEmail(), page, userPage.getTotalElements());
+        log.info("Admin user {} retrieved page {} of users (total: {}, search: {})",
+                user.getEmail(), page, userPage.getTotalElements(),
+                StringUtils.hasText(trimmedSearch) ? trimmedSearch : "<none>");
         return ResponseEntity.ok(response);
     }
 

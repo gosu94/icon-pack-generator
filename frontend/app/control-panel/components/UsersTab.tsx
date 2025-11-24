@@ -1,6 +1,6 @@
 import { UserAdminData } from "../types";
 import { ReactNode } from "react";
-import { Image as ImageIcon, Paintbrush, Layout, Tag } from "lucide-react";
+import { Image as ImageIcon, Paintbrush, Layout, Tag, Search, X } from "lucide-react";
 
 interface UsersTabProps {
   users: UserAdminData[];
@@ -22,6 +22,10 @@ interface UsersTabProps {
   totalIllustrations: number;
   totalMockups: number;
   totalLabels: number;
+  searchTerm: string;
+  activeSearchQuery: string;
+  onSearchTermChange: (value: string) => void;
+  onClearSearch: () => void;
 }
 
 const columnConfig: Array<{
@@ -60,9 +64,41 @@ export default function UsersTab({
   totalIllustrations,
   totalMockups,
   totalLabels,
+  searchTerm,
+  activeSearchQuery,
+  onSearchTermChange,
+  onClearSearch,
 }: UsersTabProps) {
   return (
     <>
+      <div className="px-6 py-4 border-b border-slate-200 bg-white flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="relative w-full sm:max-w-xs">
+          <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+          <input
+            type="text"
+            value={searchTerm}
+            onChange={(e) => onSearchTermChange(e.target.value)}
+            placeholder="Search by email"
+            className="w-full pl-9 pr-10 py-2 text-sm border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+            aria-label="Search users"
+          />
+          {searchTerm && (
+            <button
+              type="button"
+              onClick={onClearSearch}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+              aria-label="Clear search"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          )}
+        </div>
+        {activeSearchQuery && (
+          <p className="text-sm text-slate-500">
+            Filtering email by <span className="font-medium text-slate-700">{activeSearchQuery}</span>
+          </p>
+        )}
+      </div>
       <div className="overflow-x-auto">
         <table className="w-full">
           <thead className="bg-purple-50 border-b border-slate-200">
