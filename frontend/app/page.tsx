@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Navigation from "../components/Navigation";
 import Footer from "../components/Footer";
 import Image from "next/image";
@@ -13,6 +13,23 @@ export default function LandingPage() {
     const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
     const [isModalVisible, setIsModalVisible] = useState(false);
     const [selectedImage, setSelectedImage] = useState<string | null>(null);
+
+    useEffect(() => {
+        const existingLink = document.querySelector<HTMLLinkElement>("link[rel='icon']");
+        if (existingLink) {
+            existingLink.href = "/favicon.ico";
+            return;
+        }
+
+        const link = document.createElement("link");
+        link.rel = "icon";
+        link.href = "/favicon.ico";
+        document.head.appendChild(link);
+
+        return () => {
+            document.head.removeChild(link);
+        };
+    }, []);
 
     const openLoginModal = () => {
         setIsLoginModalOpen(true);
