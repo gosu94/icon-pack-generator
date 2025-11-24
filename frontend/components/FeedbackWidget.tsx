@@ -204,20 +204,22 @@ export default function FeedbackWidget() {
         </div>
       )}
 
-      {showThankYouBadge && (
-        <div className="rounded-full bg-emerald-500 px-4 py-1 text-xs font-semibold text-white shadow-lg">
-          Thanks for your feedback!
-        </div>
-      )}
+      <div className="flex flex-col items-end gap-2">
+        {showThankYouBadge && (
+          <div className="rounded-full bg-emerald-500 px-4 py-1 text-xs font-semibold text-white shadow-lg">
+            Thanks for your feedback!
+          </div>
+        )}
 
-      <button
-        type="button"
-        onClick={toggleWidget}
-        aria-label="Open feedback widget"
-        className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-xl transition hover:scale-105 hover:from-blue-700 hover:to-purple-700"
-      >
-        <MessageSquare className="h-4 w-4" />
-      </button>
+        <button
+          type="button"
+          onClick={toggleWidget}
+          aria-label="Open feedback widget"
+          className="group relative right-[-24px] flex h-16 w-10 items-center justify-center rounded-l-full border border-white/30 bg-gradient-to-b from-blue-600 to-purple-600 text-white shadow-xl transition hover:from-blue-700 hover:to-purple-700"
+        >
+          <MessageSquare className="h-5 w-5 transition group-hover:scale-110" />
+        </button>
+      </div>
     </div>
   );
 }
