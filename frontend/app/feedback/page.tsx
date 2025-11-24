@@ -1,16 +1,52 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Navigation from '../../components/Navigation';
+
+const FEEDBACK_STORAGE_KEY = 'feedback:lastSubmittedAt';
 
 export default function FeedbackPage() {
   const [feedback, setFeedback] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submissionStatus, setSubmissionStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [errorMessage, setErrorMessage] = useState('');
+  const [hasSubmittedToday, setHasSubmittedToday] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const stored = localStorage.getItem(FEEDBACK_STORAGE_KEY);
+    if (!stored) {
+      setHasSubmittedToday(false);
+      return;
+    }
+    const storedDate = new Date(stored);
+    if (Number.isNaN(storedDate.getTime())) {
+      localStorage.removeItem(FEEDBACK_STORAGE_KEY);
+      setHasSubmittedToday(false);
+      return;
+    }
+    if (storedDate.toDateString() === new Date().toDateString()) {
+      setHasSubmittedToday(true);
+    } else {
+      localStorage.removeItem(FEEDBACK_STORAGE_KEY);
+      setHasSubmittedToday(false);
+    }
+  }, []);
+
+  const markSubmittedToday = () => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(FEEDBACK_STORAGE_KEY, new Date().toISOString());
+    }
+    setHasSubmittedToday(true);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (hasSubmittedToday) {
+      setErrorMessage('You have already submitted feedback today. Please try again tomorrow.');
+      setSubmissionStatus('error');
+      return;
+    }
     if (!feedback.trim()) {
       setErrorMessage('Please enter your feedback.');
       setSubmissionStatus('error');
@@ -34,10 +70,14 @@ export default function FeedbackPage() {
       if (response.ok) {
         setSubmissionStatus('success');
         setFeedback('');
+        markSubmittedToday();
       } else {
         const errorData = await response.json();
         setErrorMessage(errorData.message || 'An error occurred while submitting your feedback.');
         setSubmissionStatus('error');
+        if (response.status === 429) {
+          markSubmittedToday();
+        }
       }
     } catch (error) {
       setErrorMessage('An unexpected error occurred. Please try again later.');
@@ -72,6 +112,11 @@ export default function FeedbackPage() {
             )}
 
             <form onSubmit={handleSubmit}>
+              {hasSubmittedToday && (
+                <div className="mb-4 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                  You have already submitted feedback today. Please come back tomorrow to share more thoughts.
+                </div>
+              )}
               <div className="mb-6">
                 <label htmlFor="feedback" className="block text-slate-700 font-medium mb-2">Your Feedback</label>
                 <textarea
@@ -81,7 +126,7 @@ export default function FeedbackPage() {
                   placeholder="Enter your feedback here..."
                   value={feedback}
                   onChange={(e) => setFeedback(e.target.value)}
-                  disabled={isSubmitting}
+                  disabled={isSubmitting || hasSubmittedToday}
                 ></textarea>
               </div>
 
@@ -89,9 +134,9 @@ export default function FeedbackPage() {
                 <button
                   type="submit"
                   className="px-6 py-3 text-white font-semibold rounded-lg bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 transform hover:scale-[1.02] shadow-lg hover:shadow-xl transition-all duration-200 disabled:bg-gray-400 disabled:cursor-not-allowed"
-                  disabled={isSubmitting}
+                  disabled={isSubmitting || hasSubmittedToday}
                 >
-                  {isSubmitting ? 'Submitting...' : 'Submit Feedback'}
+                  {hasSubmittedToday ? 'Come back tomorrow' : isSubmitting ? 'Submitting...' : 'Submit Feedback'}
                 </button>
               </div>
             </form>

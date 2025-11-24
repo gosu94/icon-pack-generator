@@ -7,6 +7,7 @@ import GeneratorForm from "../../components/GeneratorForm";
 import ResultsDisplay from "../../components/ResultsDisplay";
 import ExportModal from "../../components/ExportModal";
 import ProgressModal from "../../components/ProgressModal";
+import FeedbackWidget from "../../components/FeedbackWidget";
 import { useAuth } from "@/context/AuthContext";
 import { useIconAnimations } from "./hooks/useIconAnimations";
 import { useDashboardFormState } from "./hooks/useDashboardFormState";
@@ -174,6 +175,7 @@ export default function Page() {
       />
 
       <ProgressModal show={showProgressModal} progress={exportProgress} />
+      <FeedbackWidget />
     </div>
   );
 }
