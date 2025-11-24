@@ -3,10 +3,15 @@
 import React from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
+import Head from 'next/head';
 
 const Footer: React.FC = () => {
   return (
-    <footer className="bg-slate-900 text-white">
+    <>
+      <Head>
+        <link rel="icon" href="/favicon.ico" />
+      </Head>
+      <footer className="bg-slate-900 text-white">
       <div className="max-w-7xl mx-auto px-6 py-12">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           {/* Brand Section */}
@@ -23,7 +28,7 @@ const Footer: React.FC = () => {
               </span>
             </div>
             <p className="text-slate-300 mb-6 max-w-md">
-              Create stunning icon packs with AI-powered technology. Generate professional-quality icons in minutes, not hours.
+              Create stunning icon packs with AI-powered technology. Generate professional-quality icons in seconds, not hours.
             </p>
             <div className="flex items-center space-x-2 text-sm text-slate-400">
               <span>© 2025 Icon Pack Gen. All rights reserved.</span>
@@ -87,8 +92,8 @@ const Footer: React.FC = () => {
         </div>
       </div>
     </footer>
+    </>
   );
 };
 
 export default Footer;
-
