@@ -3,6 +3,7 @@ package com.gosu.iconpackgenerator.user.service;
 import com.gosu.iconpackgenerator.singal.SignalMessageService;
 import com.gosu.iconpackgenerator.user.model.User;
 import com.gosu.iconpackgenerator.user.repository.UserRepository;
+import com.gosu.iconpackgenerator.util.EmailMasker;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Profile;
@@ -86,7 +87,7 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
             createUserDirectoryStructure(user.getDirectoryPath());
             
             log.info("Created new user: {} (ID: {}) with 0 regular coins and 1 trial coin", email, user.getId());
-            signalMessageService.sendSignalMessage("[IconPackGen] Creating new user for email " + email);
+            signalMessageService.sendSignalMessage("[IconPackGen] Creating new user for email " + EmailMasker.maskEmail(email));
 
             return user;
         } catch (Exception e) {

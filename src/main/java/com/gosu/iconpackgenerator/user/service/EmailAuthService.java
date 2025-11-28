@@ -4,6 +4,7 @@ import com.gosu.iconpackgenerator.email.service.EmailService;
 import com.gosu.iconpackgenerator.singal.SignalMessageService;
 import com.gosu.iconpackgenerator.user.model.User;
 import com.gosu.iconpackgenerator.user.repository.UserRepository;
+import com.gosu.iconpackgenerator.util.EmailMasker;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -266,7 +267,7 @@ public class EmailAuthService {
             createUserDirectoryStructure(user.getDirectoryPath());
 
             log.info("Created new user for email password setup: {} (ID: {})", email, user.getId());
-            signalMessageService.sendSignalMessage("[IconPackGen] Creating new user for email " + email);
+            signalMessageService.sendSignalMessage("[IconPackGen] Creating new user for email " + EmailMasker.maskEmail(email));
 
             return user;
         } catch (Exception e) {
