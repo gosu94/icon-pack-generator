@@ -22,9 +22,31 @@ type CombinedDataPoint = {
   icons: number;
 };
 
+type SeriesKey = "registrations" | "icons";
+
 const rangeOptions: { value: StatsRange; label: string; description: string }[] = [
   { value: "week", label: "Last 7 days", description: "Rolling weekly view" },
   { value: "month", label: "Last 30 days", description: "Rolling monthly view" },
+];
+
+const seriesOptions: {
+  key: SeriesKey;
+  label: string;
+  dotClass: string;
+  accentClass: string;
+}[] = [
+  {
+    key: "registrations",
+    label: "New accounts",
+    dotClass: "bg-purple-500",
+    accentClass: "text-purple-600",
+  },
+  {
+    key: "icons",
+    label: "Icons generated",
+    dotClass: "bg-emerald-500",
+    accentClass: "text-emerald-600",
+  },
 ];
 
 const StatisticsTab = ({
@@ -54,10 +76,28 @@ const StatisticsTab = ({
     () =>
       new Intl.DateTimeFormat(undefined, {
         month: "short",
-        day: "numeric",
-      }),
+      day: "numeric",
+    }),
     []
   );
+
+  const [visibleSeries, setVisibleSeries] = useState<Record<SeriesKey, boolean>>({
+    registrations: true,
+    icons: true,
+  });
+
+  const activeSeries = useMemo<SeriesKey[]>(() => {
+    return (Object.entries(visibleSeries) as [SeriesKey, boolean][])
+      .filter(([, isVisible]) => isVisible)
+      .map(([key]) => key);
+  }, [visibleSeries]);
+
+  const toggleSeries = (series: SeriesKey) => {
+    setVisibleSeries((prev) => ({
+      ...prev,
+      [series]: !prev[series],
+    }));
+  };
 
   const longDateFormatter = useMemo(
     () =>
@@ -207,15 +247,36 @@ const StatisticsTab = ({
           <BarChart3 className="h-6 w-6 text-purple-500" />
         </div>
 
-        <div className="mt-4 flex flex-wrap gap-6 text-sm text-slate-500">
-          <div className="flex items-center gap-2">
-            <span className="h-2 w-2 rounded-full bg-purple-500" />
-            New accounts
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="h-2 w-2 rounded-full bg-emerald-500" />
-            Icons generated
-          </div>
+        <div className="mt-4 flex flex-wrap gap-3 text-sm text-slate-500">
+          {seriesOptions.map((series) => {
+            const isActive = visibleSeries[series.key];
+            return (
+              <button
+                key={series.key}
+                type="button"
+                onClick={() => toggleSeries(series.key)}
+                aria-pressed={isActive}
+                className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-semibold transition ${
+                  isActive
+                    ? "border-slate-300 bg-slate-100 text-slate-700"
+                    : "border-dashed border-slate-200 bg-white text-slate-400"
+                }`}
+              >
+                <span
+                  className={`h-2 w-2 rounded-full ${series.dotClass} ${
+                    isActive ? "" : "opacity-30"
+                  }`}
+                />
+                <span
+                  className={`${
+                    isActive ? series.accentClass : "text-slate-400"
+                  }`}
+                >
+                  {series.label}
+                </span>
+              </button>
+            );
+          })}
         </div>
 
         <div className="mt-6">
@@ -223,6 +284,7 @@ const StatisticsTab = ({
             data={combinedData}
             formatLabel={(value) => dateFormatter.format(new Date(value))}
             formatTooltipLabel={(value) => longDateFormatter.format(new Date(value))}
+            activeSeries={activeSeries}
           />
         </div>
       </div>
@@ -270,10 +332,12 @@ const StatisticsChart = ({
   data,
   formatLabel,
   formatTooltipLabel,
+  activeSeries,
 }: {
   data: CombinedDataPoint[];
   formatLabel: (value: string) => string;
   formatTooltipLabel: (value: string) => string;
+  activeSeries: SeriesKey[];
 }) => {
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
   const svgRef = useRef<SVGSVGElement | null>(null);
@@ -286,11 +350,26 @@ const StatisticsChart = ({
     );
   }
 
+  if (activeSeries.length === 0) {
+    return (
+      <div className="rounded-lg border border-dashed border-slate-200 bg-slate-50/80 py-10 text-center text-sm text-slate-500">
+        Enable at least one statistic to display the chart.
+      </div>
+    );
+  }
+
+  const activeSeriesSet = new Set(activeSeries);
   const maxValue =
-    data.reduce(
-      (max, item) => Math.max(max, item.registrations, item.icons),
-      0
-    ) || 1;
+    data.reduce((max, item) => {
+      let localMax = max;
+      if (activeSeriesSet.has("registrations")) {
+        localMax = Math.max(localMax, item.registrations);
+      }
+      if (activeSeriesSet.has("icons")) {
+        localMax = Math.max(localMax, item.icons);
+      }
+      return localMax;
+    }, 0) || 1;
   const width = Math.max((data.length - 1) * 80 + 80, 320);
   const height = 240;
   const padding = 24;
@@ -309,8 +388,12 @@ const StatisticsChart = ({
       })
       .join(" ");
 
-  const registrationPoints = buildPoints("registrations");
-  const iconPoints = buildPoints("icons");
+  const registrationPoints = activeSeriesSet.has("registrations")
+    ? buildPoints("registrations")
+    : "";
+  const iconPoints = activeSeriesSet.has("icons")
+    ? buildPoints("icons")
+    : "";
   const hoveredPoint =
     hoveredIndex !== null ? data[hoveredIndex] : null;
   const hoveredX =
@@ -354,15 +437,25 @@ const StatisticsChart = ({
             <p className="text-sm font-semibold text-slate-800">
               {formatTooltipLabel(hoveredPoint.date)}
             </p>
-            <div className="mt-1 flex justify-between gap-2">
-              <span className="flex items-center gap-1 text-purple-600">
-                <span className="h-2 w-2 rounded-full bg-purple-500" />
-                {hoveredPoint.registrations.toLocaleString()}
-              </span>
-              <span className="flex items-center gap-1 text-emerald-600">
-                <span className="h-2 w-2 rounded-full bg-emerald-500" />
-                {hoveredPoint.icons.toLocaleString()}
-              </span>
+            <div
+              className={`mt-1 ${
+                activeSeriesSet.size > 1
+                  ? "flex justify-between gap-2"
+                  : "flex gap-2"
+              }`}
+            >
+              {activeSeriesSet.has("registrations") && (
+                <span className="flex items-center gap-1 text-purple-600">
+                  <span className="h-2 w-2 rounded-full bg-purple-500" />
+                  {hoveredPoint.registrations.toLocaleString()}
+                </span>
+              )}
+              {activeSeriesSet.has("icons") && (
+                <span className="flex items-center gap-1 text-emerald-600">
+                  <span className="h-2 w-2 rounded-full bg-emerald-500" />
+                  {hoveredPoint.icons.toLocaleString()}
+                </span>
+              )}
             </div>
           </div>
         )}
@@ -398,56 +491,62 @@ const StatisticsChart = ({
               strokeDasharray="4"
             />
           )}
-          <polyline
-            points={registrationPoints}
-            fill="none"
-            stroke="#7c3aed"
-            strokeWidth="3"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-          <polyline
-            points={iconPoints}
-            fill="none"
-            stroke="#10b981"
-            strokeWidth="3"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-          {data.map((point, index) => {
-            const ratio = (point.registrations || 0) / maxValue;
-            const x = padding + xStep * index;
-            const y = padding + (1 - ratio) * chartHeight;
-            const isHovered = hoveredIndex === index;
-            return (
-              <circle
-                key={`reg-${point.date}`}
-                cx={x}
-                cy={y}
-                r={isHovered ? 5 : 4}
-                fill="#7c3aed"
-                stroke="#fff"
-                strokeWidth="2"
-              />
-            );
-          })}
-          {data.map((point, index) => {
-            const ratio = (point.icons || 0) / maxValue;
-            const x = padding + xStep * index;
-            const y = padding + (1 - ratio) * chartHeight;
-            const isHovered = hoveredIndex === index;
-            return (
-              <circle
-                key={`icon-${point.date}`}
-                cx={x}
-                cy={y}
-                r={isHovered ? 5 : 4}
-                fill="#10b981"
-                stroke="#fff"
-                strokeWidth="2"
-              />
-            );
-          })}
+          {activeSeriesSet.has("registrations") && (
+            <polyline
+              points={registrationPoints}
+              fill="none"
+              stroke="#7c3aed"
+              strokeWidth="3"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          )}
+          {activeSeriesSet.has("icons") && (
+            <polyline
+              points={iconPoints}
+              fill="none"
+              stroke="#10b981"
+              strokeWidth="3"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          )}
+          {activeSeriesSet.has("registrations") &&
+            data.map((point, index) => {
+              const ratio = (point.registrations || 0) / maxValue;
+              const x = padding + xStep * index;
+              const y = padding + (1 - ratio) * chartHeight;
+              const isHovered = hoveredIndex === index;
+              return (
+                <circle
+                  key={`reg-${point.date}`}
+                  cx={x}
+                  cy={y}
+                  r={isHovered ? 5 : 4}
+                  fill="#7c3aed"
+                  stroke="#fff"
+                  strokeWidth="2"
+                />
+              );
+            })}
+          {activeSeriesSet.has("icons") &&
+            data.map((point, index) => {
+              const ratio = (point.icons || 0) / maxValue;
+              const x = padding + xStep * index;
+              const y = padding + (1 - ratio) * chartHeight;
+              const isHovered = hoveredIndex === index;
+              return (
+                <circle
+                  key={`icon-${point.date}`}
+                  cx={x}
+                  cy={y}
+                  r={isHovered ? 5 : 4}
+                  fill="#10b981"
+                  stroke="#fff"
+                  strokeWidth="2"
+                />
+              );
+            })}
         </svg>
       </div>
       <div
