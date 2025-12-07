@@ -40,4 +40,14 @@ public interface GeneratedIconRepository extends JpaRepository<GeneratedIcon, Lo
     void deleteByRequestId(String requestId);
     
     List<GeneratedIcon> findByFilePathIn(List<String> filePaths);
+
+    @Query("""
+            SELECT FUNCTION('date', g.createdAt) AS generationDate, COUNT(g)
+            FROM GeneratedIcon g
+            WHERE g.createdAt >= :startDate AND g.createdAt < :endDate
+            GROUP BY FUNCTION('date', g.createdAt)
+            ORDER BY FUNCTION('date', g.createdAt)
+            """)
+    List<Object[]> countGeneratedIconsByDateRange(@Param("startDate") LocalDateTime startDate,
+                                                  @Param("endDate") LocalDateTime endDate);
 }

@@ -1,5 +1,7 @@
 package com.gosu.iconpackgenerator.admin.controller;
 
+import com.gosu.iconpackgenerator.admin.dto.ActivityStatsResponse;
+import com.gosu.iconpackgenerator.admin.dto.DailyCountDto;
 import com.gosu.iconpackgenerator.admin.dto.PagedResponse;
 import com.gosu.iconpackgenerator.admin.dto.UserAdminDto;
 import com.gosu.iconpackgenerator.admin.service.AdminService;
@@ -36,6 +38,12 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.sql.Date;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.YearMonth;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -367,5 +375,108 @@ public class AdminController {
 
         log.info("Admin user {} retrieved system stats.", user.getEmail());
         return ResponseEntity.ok(stats);
+    }
+
+    /**
+     * Get registration and generation stats grouped by day for the requested range.
+     */
+    @GetMapping("/stats/activity")
+    public ResponseEntity<?> getActivityStats(
+            @RequestParam(defaultValue = "week") String range,
+            @RequestParam(required = false) String month,
+            @AuthenticationPrincipal OAuth2User principal) {
+        if (!(principal instanceof CustomOAuth2User customUser)) {
+            return ResponseEntity.status(401).body(Map.of("error", "Unauthorized"));
+        }
+
+        User user = customUser.getUser();
+        if (!adminService.isAdmin(user)) {
+            log.warn("Non-admin user {} attempted to access admin activity stats endpoint", user.getEmail());
+            return ResponseEntity.status(403).body(Map.of("error", "Forbidden - Admin access required"));
+        }
+
+        String normalizedRange = range != null ? range.toLowerCase() : "week";
+        LocalDate today = LocalDate.now(ZoneId.systemDefault());
+        LocalDate startDate;
+        LocalDate endDate;
+
+        if (month != null && !month.isBlank()) {
+            try {
+                YearMonth yearMonth = YearMonth.parse(month);
+                startDate = yearMonth.atDay(1);
+                endDate = yearMonth.atEndOfMonth();
+                normalizedRange = "month";
+            } catch (Exception e) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Invalid month format. Use YYYY-MM."));
+            }
+        } else {
+            int days = switch (normalizedRange) {
+                case "month" -> 30;
+                default -> 7;
+            };
+            normalizedRange = days == 30 ? "month" : "week";
+            endDate = today;
+            startDate = endDate.minusDays(days - 1L);
+        }
+
+        LocalDateTime startDateTime = startDate.atStartOfDay();
+        LocalDateTime endDateTime = endDate.plusDays(1L).atStartOfDay();
+
+        Map<LocalDate, Long> registrationMap = toDailyCountMap(
+                userRepository.countRegistrationsByDateRange(startDateTime, endDateTime)
+        );
+        Map<LocalDate, Long> iconMap = toDailyCountMap(
+                generatedIconRepository.countGeneratedIconsByDateRange(startDateTime, endDateTime)
+        );
+
+        LocalDate seriesEnd = (month != null && !month.isBlank()) ? endDate : today;
+        List<DailyCountDto> registrationSeries = buildDailySeries(startDate, seriesEnd, registrationMap);
+        List<DailyCountDto> iconSeries = buildDailySeries(startDate, seriesEnd, iconMap);
+
+        long totalRegistrations = registrationSeries.stream().mapToLong(DailyCountDto::getCount).sum();
+        long totalIcons = iconSeries.stream().mapToLong(DailyCountDto::getCount).sum();
+
+        ActivityStatsResponse response = new ActivityStatsResponse(
+                normalizedRange,
+                registrationSeries,
+                iconSeries,
+                totalRegistrations,
+                totalIcons
+        );
+
+        log.info("Admin user {} retrieved {} activity stats window starting {} ending {}", user.getEmail(), normalizedRange, startDate, endDate);
+        return ResponseEntity.ok(response);
+    }
+
+    private Map<LocalDate, Long> toDailyCountMap(List<Object[]> rows) {
+        Map<LocalDate, Long> result = new HashMap<>();
+        for (Object[] row : rows) {
+            if (row == null || row.length < 2 || row[0] == null || row[1] == null) {
+                continue;
+            }
+            Object dateObj = row[0];
+            LocalDate date;
+            if (dateObj instanceof LocalDate localDate) {
+                date = localDate;
+            } else if (dateObj instanceof Date sqlDate) {
+                date = sqlDate.toLocalDate();
+            } else {
+                date = LocalDate.parse(dateObj.toString());
+            }
+            long count = ((Number) row[1]).longValue();
+            result.put(date, count);
+        }
+        return result;
+    }
+
+    private List<DailyCountDto> buildDailySeries(LocalDate start, LocalDate end, Map<LocalDate, Long> counts) {
+        List<DailyCountDto> series = new ArrayList<>();
+        LocalDate cursor = start;
+        while (!cursor.isAfter(end)) {
+            long count = counts.getOrDefault(cursor, 0L);
+            series.add(new DailyCountDto(cursor, count));
+            cursor = cursor.plusDays(1);
+        }
+        return series;
     }
 }

@@ -67,3 +67,18 @@ export interface GenerationStatus {
   activeCount: number;
   activeGenerations: GenerationInProgress[];
 }
+
+export type StatsRange = "week" | "month";
+
+export interface DailyStat {
+  date: string;
+  count: number;
+}
+
+export interface ActivityStats {
+  range: StatsRange;
+  registrations: DailyStat[];
+  icons: DailyStat[];
+  totalRegistrations: number;
+  totalIcons: number;
+}

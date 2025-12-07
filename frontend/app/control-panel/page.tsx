@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Navigation from "../../components/Navigation";
 import { useAuth } from "../../context/AuthContext";
@@ -20,9 +20,12 @@ import {
   UserMockup,
   UserLabel,
   GenerationStatus,
+  ActivityStats,
+  StatsRange,
 } from "./types";
 import UsersTab from "./components/UsersTab";
 import EmailTab from "./components/EmailTab";
+import StatisticsTab from "./components/StatisticsTab";
 
 type EmailRecipientScope = "ME" | "EVERYBODY" | "SPECIFIC";
 
@@ -230,7 +233,14 @@ export default function ControlPanelPage() {
   const [totalIllustrations, setTotalIllustrations] = useState(0);
   const [totalMockups, setTotalMockups] = useState(0);
   const [totalLabels, setTotalLabels] = useState(0);
-  const [activeTab, setActiveTab] = useState<"users" | "email">("users");
+  const [activeTab, setActiveTab] = useState<"users" | "email" | "stats">(
+    "users"
+  );
+  const [statsRange, setStatsRange] = useState<StatsRange>("week");
+  const [statsData, setStatsData] = useState<ActivityStats | null>(null);
+  const [statsLoading, setStatsLoading] = useState(false);
+  const [statsError, setStatsError] = useState<string | null>(null);
+  const [statsMonth, setStatsMonth] = useState<string | null>(null);
   const [emailSubject, setEmailSubject] = useState("");
   const [emailBody, setEmailBody] = useState(DEFAULT_EMAIL_BODY);
   const [emailRecipientScope, setEmailRecipientScope] =
@@ -244,6 +254,16 @@ export default function ControlPanelPage() {
     useState<GenerationStatus | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
+  const latestStatsRange = useRef<StatsRange>(statsRange);
+  const latestStatsMonth = useRef<string | null>(statsMonth);
+
+  useEffect(() => {
+    latestStatsRange.current = statsRange;
+  }, [statsRange]);
+
+  useEffect(() => {
+    latestStatsMonth.current = statsMonth;
+  }, [statsMonth]);
 
   useEffect(() => {
     // Check if user is admin
@@ -343,6 +363,63 @@ export default function ControlPanelPage() {
     return () => clearTimeout(handler);
   }, [searchTerm, searchQuery]);
 
+  const fetchActivityStats = useCallback(
+    async (rangeToLoad: StatsRange, monthValue?: string | null) => {
+      setStatsLoading(true);
+      setStatsError(null);
+      try {
+        const params = new URLSearchParams({
+          range: rangeToLoad,
+        });
+        if (monthValue) {
+          params.append("month", monthValue);
+        }
+
+        const response = await fetch(`/api/admin/stats/activity?${params}`, {
+          credentials: "include",
+        });
+
+        if (response.status === 403) {
+          router.push("/dashboard");
+          return;
+        }
+
+        if (!response.ok) {
+          throw new Error("Failed to fetch activity statistics");
+        }
+
+        const payload: ActivityStats = await response.json();
+        const normalizedMonth = monthValue ?? null;
+        if (
+          latestStatsRange.current === rangeToLoad &&
+          latestStatsMonth.current === normalizedMonth
+        ) {
+          setStatsData(payload);
+        }
+      } catch (err: any) {
+        console.error("Error fetching activity stats:", err);
+        setStatsError(
+          err?.message ?? "Failed to fetch activity statistics"
+        );
+      } finally {
+        setStatsLoading(false);
+      }
+    },
+    [router]
+  );
+
+  useEffect(() => {
+    if (authState.authenticated && authState.user?.isAdmin) {
+      fetchActivityStats(statsRange, statsMonth);
+    }
+  }, [
+    authState.authenticated,
+    authState.user?.isAdmin,
+    statsRange,
+    statsMonth,
+    fetchActivityStats,
+  ]);
+
   const fetchUsers = async () => {
     try {
       // Map frontend column names to backend field names
@@ -394,6 +471,26 @@ export default function ControlPanelPage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleStatsRangeChange = (range: StatsRange) => {
+    if (range !== statsRange || statsMonth) {
+      setStatsMonth(null);
+      setStatsRange(range);
+    }
+  };
+
+  const handleRetryStats = () => {
+    fetchActivityStats(statsRange, statsMonth);
+  };
+
+  const handleMonthFilterChange = (value: string) => {
+    if (!value) {
+      setStatsMonth(null);
+      return;
+    }
+    setStatsRange("month");
+    setStatsMonth(value);
   };
 
   const fetchUserIcons = async (userId: number) => {
@@ -866,6 +963,16 @@ export default function ControlPanelPage() {
             >
               Email
             </button>
+            <button
+              onClick={() => setActiveTab("stats")}
+              className={`rounded-md px-4 py-2 text-sm font-semibold transition-colors ${
+                activeTab === "stats"
+                  ? "bg-purple-600 text-white shadow"
+                  : "text-slate-600 hover:bg-purple-100"
+              }`}
+            >
+              Statistics
+            </button>
           </div>
 
           {activeTab === "users" && (
@@ -913,6 +1020,19 @@ export default function ControlPanelPage() {
               onReset={resetEmailForm}
               isManualEmailValid={isManualEmailValid}
               requiresManualEmail={requiresManualEmail}
+            />
+          )}
+
+          {activeTab === "stats" && (
+            <StatisticsTab
+              data={statsData}
+              loading={statsLoading}
+              error={statsError}
+              range={statsRange}
+              onRangeChange={handleStatsRangeChange}
+              onRetry={handleRetryStats}
+              monthFilter={statsMonth}
+              onMonthChange={handleMonthFilterChange}
             />
           )}
         </div>
