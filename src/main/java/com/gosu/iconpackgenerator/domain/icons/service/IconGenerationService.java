@@ -86,60 +86,65 @@ public class IconGenerationService {
         // Send initial progress updates only for enabled services
         if (progressCallback != null) {
             if (aiServicesConfig.isFluxAiEnabled()) {
-                progressCallback.onUpdate(ServiceProgressUpdate.serviceStarted(requestId, "flux", 1));
-                if (request.getGenerationsPerService() > 1)
-                    progressCallback.onUpdate(ServiceProgressUpdate.serviceStarted(requestId, "flux", 2));
+                notifyProgressUpdate(progressCallback, ServiceProgressUpdate.serviceStarted(requestId, "flux", 1), isTrialMode);
+                if (request.getGenerationsPerService() > 1) {
+                    notifyProgressUpdate(progressCallback, ServiceProgressUpdate.serviceStarted(requestId, "flux", 2), isTrialMode);
+                }
             }
 
             if (aiServicesConfig.isRecraftEnabled()) {
-                progressCallback.onUpdate(ServiceProgressUpdate.serviceStarted(requestId, "recraft", 1));
-                if (request.getGenerationsPerService() > 1)
-                    progressCallback.onUpdate(ServiceProgressUpdate.serviceStarted(requestId, "recraft", 2));
+                notifyProgressUpdate(progressCallback, ServiceProgressUpdate.serviceStarted(requestId, "recraft", 1), isTrialMode);
+                if (request.getGenerationsPerService() > 1) {
+                    notifyProgressUpdate(progressCallback, ServiceProgressUpdate.serviceStarted(requestId, "recraft", 2), isTrialMode);
+                }
             }
 
             if (aiServicesConfig.isPhotonEnabled()) {
-                progressCallback.onUpdate(ServiceProgressUpdate.serviceStarted(requestId, "photon", 1));
-                if (request.getGenerationsPerService() > 1)
-                    progressCallback.onUpdate(ServiceProgressUpdate.serviceStarted(requestId, "photon", 2));
+                notifyProgressUpdate(progressCallback, ServiceProgressUpdate.serviceStarted(requestId, "photon", 1), isTrialMode);
+                if (request.getGenerationsPerService() > 1) {
+                    notifyProgressUpdate(progressCallback, ServiceProgressUpdate.serviceStarted(requestId, "photon", 2), isTrialMode);
+                }
             }
 
             if (aiServicesConfig.isGptEnabled()) {
-                progressCallback.onUpdate(ServiceProgressUpdate.serviceStarted(requestId, "gpt", 1));
-                if (request.getGenerationsPerService() > 1)
-                    progressCallback.onUpdate(ServiceProgressUpdate.serviceStarted(requestId, "gpt", 2));
+                notifyProgressUpdate(progressCallback, ServiceProgressUpdate.serviceStarted(requestId, "gpt", 1), isTrialMode);
+                if (request.getGenerationsPerService() > 1) {
+                    notifyProgressUpdate(progressCallback, ServiceProgressUpdate.serviceStarted(requestId, "gpt", 2), isTrialMode);
+                }
             }
 
             if (aiServicesConfig.isBananaEnabled()) {
-                progressCallback.onUpdate(ServiceProgressUpdate.serviceStarted(requestId, "banana", 1));
-                if (request.getGenerationsPerService() > 1)
-                    progressCallback.onUpdate(ServiceProgressUpdate.serviceStarted(requestId, "banana", 2));
+                notifyProgressUpdate(progressCallback, ServiceProgressUpdate.serviceStarted(requestId, "banana", 1), isTrialMode);
+                if (request.getGenerationsPerService() > 1) {
+                    notifyProgressUpdate(progressCallback, ServiceProgressUpdate.serviceStarted(requestId, "banana", 2), isTrialMode);
+                }
             }
         }
 
         // Generate multiple generations for each enabled service
         CompletableFuture<List<IconGenerationResponse.ServiceResults>> falAiFuture =
                 aiServicesConfig.isFluxAiEnabled() ?
-                        generateMultipleGenerationsWithService(request, requestId, fluxModelService, "flux", seed, progressCallback) :
+                        generateMultipleGenerationsWithService(request, requestId, fluxModelService, "flux", seed, progressCallback, isTrialMode) :
                         CompletableFuture.completedFuture(List.of(createDisabledServiceResult("flux")));
 
         CompletableFuture<List<IconGenerationResponse.ServiceResults>> recraftFuture =
                 aiServicesConfig.isRecraftEnabled() ?
-                        generateMultipleGenerationsWithService(request, requestId, recraftModelService, "recraft", seed, progressCallback) :
+                        generateMultipleGenerationsWithService(request, requestId, recraftModelService, "recraft", seed, progressCallback, isTrialMode) :
                         CompletableFuture.completedFuture(List.of(createDisabledServiceResult("recraft")));
 
         CompletableFuture<List<IconGenerationResponse.ServiceResults>> photonFuture =
                 aiServicesConfig.isPhotonEnabled() ?
-                        generateMultipleGenerationsWithService(request, requestId, photonModelService, "photon", seed, progressCallback) :
+                        generateMultipleGenerationsWithService(request, requestId, photonModelService, "photon", seed, progressCallback, isTrialMode) :
                         CompletableFuture.completedFuture(List.of(createDisabledServiceResult("photon")));
 
         CompletableFuture<List<IconGenerationResponse.ServiceResults>> gptFuture =
                 aiServicesConfig.isGptEnabled() ?
-                        generateMultipleGenerationsWithService(request, requestId, gptModelService, "gpt", seed, progressCallback) :
+                        generateMultipleGenerationsWithService(request, requestId, gptModelService, "gpt", seed, progressCallback, isTrialMode) :
                         CompletableFuture.completedFuture(List.of(createDisabledServiceResult("gpt")));
 
         CompletableFuture<List<IconGenerationResponse.ServiceResults>> bananaFuture =
                 aiServicesConfig.isBananaEnabled() ?
-                        generateMultipleGenerationsWithService(request, requestId, bananaModelService, "banana", seed, progressCallback) :
+                        generateMultipleGenerationsWithService(request, requestId, bananaModelService, "banana", seed, progressCallback, isTrialMode) :
                         CompletableFuture.completedFuture(List.of(createDisabledServiceResult("banana")));
 
         return CompletableFuture.allOf(falAiFuture, recraftFuture, photonFuture, gptFuture, bananaFuture)
@@ -151,6 +156,7 @@ public class IconGenerationService {
                     List<IconGenerationResponse.ServiceResults> bananaResults = bananaFuture.join();
 
                     IconGenerationResponse finalResponse = createCombinedResponse(requestId, falAiResults, recraftResults, photonResults, gptResults, bananaResults, seed);
+                    finalResponse.setTrialMode(isTrialMode);
                     TrialModeService.TrialLimitationResult trialLimitationResult = null;
 
                     // Check if all enabled services failed due to temporary unavailability and refund coins if needed
@@ -188,16 +194,18 @@ public class IconGenerationService {
                     }
 
                     // Send final completion update with limited icons
-                    if (progressCallback != null) {
-                        progressCallback.onUpdate(ServiceProgressUpdate.allCompleteWithIcons(
-                                requestId, finalResponse.getMessage(), finalResponse.getIcons()));
-                    }
+                    notifyProgressUpdate(progressCallback,
+                            ServiceProgressUpdate.allCompleteWithIcons(
+                                    requestId, finalResponse.getMessage(), finalResponse.getIcons()),
+                            isTrialMode);
 
                     return finalResponse;
                 })
                 .exceptionally(error -> {
                     log.error("Error generating icons for request {}", requestId, error);
-                    return createErrorResponse(requestId, "Failed to generate icons: " + error.getMessage());
+                    IconGenerationResponse errorResponse = createErrorResponse(requestId, "Failed to generate icons: " + error.getMessage());
+                    errorResponse.setTrialMode(isTrialMode);
+                    return errorResponse;
                 });
     }
 
@@ -205,7 +213,8 @@ public class IconGenerationService {
      * Generate multiple independent generations for a single service
      */
     private CompletableFuture<List<IconGenerationResponse.ServiceResults>> generateMultipleGenerationsWithService(
-            IconGenerationRequest request, String requestId, AIModelService aiService, String serviceName, Long baseSeed, ProgressUpdateCallback progressCallback) {
+            IconGenerationRequest request, String requestId, AIModelService aiService, String serviceName, Long baseSeed,
+            ProgressUpdateCallback progressCallback, boolean isTrialMode) {
 
         int generationsCount = request.getGenerationsPerService();
         log.info("Generating {} independent generations for service: {}", generationsCount, serviceName);
@@ -232,14 +241,23 @@ public class IconGenerationService {
                         if (progressCallback != null) {
                             String serviceGenName = serviceName + "-gen" + generationIndex;
                             if (error != null) {
-                                progressCallback.onUpdate(ServiceProgressUpdate.serviceFailed(
-                                        requestId, serviceGenName, getDetailedErrorMessage(error, serviceName), result != null ? result.getGenerationTimeMs() : 0L, generationIndex));
+                                notifyProgressUpdate(progressCallback,
+                                        ServiceProgressUpdate.serviceFailed(
+                                                requestId, serviceGenName, getDetailedErrorMessage(error, serviceName),
+                                                result != null ? result.getGenerationTimeMs() : 0L, generationIndex),
+                                        isTrialMode);
                             } else if ("success".equals(result.getStatus())) {
-                                progressCallback.onUpdate(ServiceProgressUpdate.serviceCompleted(
-                                        requestId, serviceGenName, result.getIcons(), result.getOriginalGridImageBase64(), result.getGenerationTimeMs(), generationIndex));
+                                notifyProgressUpdate(progressCallback,
+                                        ServiceProgressUpdate.serviceCompleted(
+                                                requestId, serviceGenName, result.getIcons(), result.getOriginalGridImageBase64(),
+                                                result.getGenerationTimeMs(), generationIndex),
+                                        isTrialMode);
                             } else if ("error".equals(result.getStatus())) {
-                                progressCallback.onUpdate(ServiceProgressUpdate.serviceFailed(
-                                        requestId, serviceGenName, result.getMessage(), result.getGenerationTimeMs(), generationIndex));
+                                notifyProgressUpdate(progressCallback,
+                                        ServiceProgressUpdate.serviceFailed(
+                                                requestId, serviceGenName, result.getMessage(), result.getGenerationTimeMs(),
+                                                generationIndex),
+                                        isTrialMode);
                             }
                         }
                     });
@@ -634,6 +652,16 @@ public class IconGenerationService {
         }
 
         return errorMessageSanitizer.sanitizeErrorMessage(originalMessage, serviceName);
+    }
+
+    private void notifyProgressUpdate(ProgressUpdateCallback progressCallback,
+                                      ServiceProgressUpdate update,
+                                      boolean isTrialMode) {
+        if (progressCallback == null || update == null) {
+            return;
+        }
+        update.setTrialMode(isTrialMode);
+        progressCallback.onUpdate(update);
     }
 
     /**

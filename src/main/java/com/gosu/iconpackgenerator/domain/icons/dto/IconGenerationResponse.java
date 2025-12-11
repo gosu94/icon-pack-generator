@@ -16,6 +16,7 @@ public class IconGenerationResponse {
     private List<ServiceResults> photonResults;
     private List<ServiceResults> gptResults;
     private List<ServiceResults> bananaResults;
+    private boolean trialMode;
     
     /**
      * The seed used for generation. Can be reused for consistent results in related requests.

@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { Download } from "lucide-react";
 import GifModal, { GifModalProgress } from "./GifModal";
 import {
@@ -30,6 +31,7 @@ interface ResultsDisplayProps {
     generationIndex: number,
   ) => void;
   currentResponse: GenerationResponse | null;
+  isTrialResult: boolean;
   moreIconsVisible: { [key: string]: boolean };
   showMoreIconsForm: (uniqueId: string) => void;
   hideMoreIconsForm: (uniqueId: string) => void;
@@ -81,6 +83,7 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
   animatingIcons,
   exportGeneration,
   currentResponse,
+  isTrialResult,
   moreIconsVisible,
   showMoreIconsForm,
   hideMoreIconsForm,
@@ -856,6 +859,52 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
                   {renderGenerationResults(1)}
                 </div>
               )}
+              {uiState === "results" &&
+                (mode === "icons" || mode === "illustrations") &&
+                isTrialResult &&
+                (currentResponse?.icons?.length ?? 0) > 0 && (
+                  <div className="mt-8 relative group overflow-hidden rounded-2xl">
+                    <div className="absolute inset-0 bg-gradient-to-r from-amber-200 via-orange-100 to-amber-50 opacity-50"></div>
+                    <div className="relative p-6 sm:p-8 border border-amber-200/60 rounded-2xl bg-white/40 backdrop-blur-sm">
+                      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
+                        <div className="space-y-3 flex-1">
+                          <div className="flex items-center gap-2">
+                            <div className="p-2 bg-amber-100 text-amber-600 rounded-lg">
+                              <Image src="/images/coin.webp" alt="Coins" width={16} height={16} />
+                            </div>
+                            <h3 className="text-lg font-bold text-slate-800">
+                              Unlock Full Potential
+                            </h3>
+                          </div>
+                          <p className="text-slate-600 text-sm leading-relaxed">
+                            Loving these results? Get <span className="font-semibold text-amber-700">Premium Coins</span> to access:
+                          </p>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-2 gap-x-4 text-sm">
+                            {["Crisp SVG & HQ Exports", "GIF Animations", "Extra Variations", "Larger Packs"].map((feature, i) => (
+                              <div key={i} className="flex items-center gap-2 text-slate-700">
+                                <svg className="w-4 h-4 text-green-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                </svg>
+                                <span>{feature}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                        <div className="flex-shrink-0 w-full sm:w-auto">
+                          <Link
+                            href="/store"
+                            className="w-full sm:w-auto inline-flex items-center justify-center px-6 py-3 rounded-xl text-sm font-bold text-white bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all duration-200 gap-2 group-hover:ring-2 group-hover:ring-amber-500/20"
+                          >
+                            <span>Visit Store</span>
+                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
+                            </svg>
+                          </Link>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
             </div>
           </div>
         </div>

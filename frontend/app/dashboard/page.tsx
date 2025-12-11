@@ -71,6 +71,7 @@ export default function Page() {
     isGenerating,
     setIsGenerating,
     currentResponse,
+    isTrialResult,
     streamingResults,
     showResultsPanes,
     overallProgress,
@@ -148,6 +149,7 @@ export default function Page() {
           animatingIcons={animatingIcons}
           exportGeneration={exportGeneration}
           currentResponse={currentResponse}
+          isTrialResult={isTrialResult}
           moreIconsVisible={moreIconsVisible}
           showMoreIconsForm={showMoreIconsForm}
           hideMoreIconsForm={hideMoreIconsForm}

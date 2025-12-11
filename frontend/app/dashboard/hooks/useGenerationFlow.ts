@@ -73,6 +73,7 @@ export function useGenerationFlow({
     {},
   );
   const [showResultsPanes, setShowResultsPanes] = useState(false);
+  const [isTrialResult, setIsTrialResult] = useState(false);
 
   const [moreIconsVisible, setMoreIconsVisible] = useState<
     Record<string, boolean>
@@ -104,6 +105,7 @@ export function useGenerationFlow({
     setUiState("initial");
     setErrorMessage("");
     setShowResultsPanes(false);
+    setIsTrialResult(false);
     setMoreIconsVisible({});
     setMoreIconsDescriptions({});
     clearAllAnimations();
@@ -306,6 +308,13 @@ export function useGenerationFlow({
       setOverallProgress(100);
       setShowResultsPanes(true);
 
+      const isTrialMode =
+        typeof update.trialMode === "boolean"
+          ? update.trialMode
+          : typeof update.message === "string" &&
+            update.message.toLowerCase().includes("trial");
+      setIsTrialResult(Boolean(isTrialMode));
+
       setStreamingResults((latestStreamingResults) => {
         const finalIcons =
           update.icons && update.icons.length > 0 ? update.icons : null;
@@ -327,8 +336,6 @@ export function useGenerationFlow({
             });
 
             if (serviceIcons.length > 0) {
-              const isTrialMode =
-                update.message && update.message.includes("Trial Mode");
               updatedStreamingResults[serviceKey] = {
                 ...updatedStreamingResults[serviceKey],
                 icons: serviceIcons,
@@ -374,6 +381,7 @@ export function useGenerationFlow({
             icons: finalIcons,
             ...groupedResults,
             requestId: update.requestId,
+            trialMode: Boolean(isTrialMode),
           });
 
           setTimeout(() => {
@@ -441,6 +449,7 @@ export function useGenerationFlow({
             icons: allIcons,
             ...groupedResults,
             requestId: update.requestId,
+            trialMode: Boolean(isTrialMode),
           });
         }
 
@@ -492,6 +501,7 @@ export function useGenerationFlow({
         }
 
         const completedResponse = statusResult.data;
+        setIsTrialResult(Boolean(completedResponse.trialMode));
 
         const convertLabelToIcon = (label: any) => ({
           id: label.id,
@@ -661,19 +671,14 @@ export function useGenerationFlow({
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (!document.hidden) {
-        console.log(
-          "👁️ Page visible - checking for pending generations...",
-        );
         void handleGenerationRecovery();
       }
     };
 
     const handleFocus = () => {
-      console.log("🎯 Window focused - checking for pending generations...");
       void handleGenerationRecovery();
     };
 
-    console.log("🚀 Component mounted - checking for pending generations...");
     void handleGenerationRecovery();
 
     document.addEventListener("visibilitychange", handleVisibilityChange);
@@ -699,6 +704,7 @@ export function useGenerationFlow({
     setUiState("streaming");
     setStreamingResults({});
     setShowResultsPanes(false);
+    setIsTrialResult(false);
     setOverallProgress(0);
 
     isRecoveredRef.current = false;
@@ -867,9 +873,6 @@ export function useGenerationFlow({
         currentEventSourceRef.current = null;
 
         if (!isRecoveredRef.current) {
-          console.log(
-            "🔄 EventSource error - attempting recovery before showing error...",
-          );
           handleGenerationRecovery()
             .then(() => {
               setTimeout(() => {
@@ -1260,6 +1263,7 @@ export function useGenerationFlow({
     isGenerating,
     setIsGenerating,
     currentResponse,
+    isTrialResult,
     streamingResults,
     showResultsPanes,
     overallProgress,

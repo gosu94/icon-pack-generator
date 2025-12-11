@@ -66,18 +66,19 @@ public class IllustrationGenerationService {
         
         // Send initial progress updates
         if (progressCallback != null) {
-            progressCallback.onUpdate(ServiceProgressUpdate.serviceStarted(requestId, "banana", 1));
+            notifyProgressUpdate(progressCallback, ServiceProgressUpdate.serviceStarted(requestId, "banana", 1), isTrialMode);
             if (request.getGenerationsPerService() > 1) {
-                progressCallback.onUpdate(ServiceProgressUpdate.serviceStarted(requestId, "banana", 2));
+                notifyProgressUpdate(progressCallback, ServiceProgressUpdate.serviceStarted(requestId, "banana", 2), isTrialMode);
             }
         }
         
         // Generate multiple generations
         CompletableFuture<List<IllustrationGenerationResponse.ServiceResults>> bananaFuture =
-            generateMultipleGenerationsWithBanana(request, requestId, seed, progressCallback);
+            generateMultipleGenerationsWithBanana(request, requestId, seed, progressCallback, isTrialMode);
         
         return bananaFuture.thenApply(bananaResults -> {
             IllustrationGenerationResponse finalResponse = createCombinedResponse(requestId, bananaResults, seed);
+            finalResponse.setTrialMode(isTrialMode);
             
             // Apply trial mode limitations if using trial coins
             if (isTrialMode && "success".equals(finalResponse.getStatus())) {
@@ -99,10 +100,8 @@ public class IllustrationGenerationService {
             }
             
             // Send final completion update with limited illustrations
-            if (progressCallback != null) {
-                progressCallback.onUpdate(ServiceProgressUpdate.allCompleteWithIcons(
-                    requestId, finalResponse.getMessage(), convertToIconList(finalResponse.getIllustrations())));
-            }
+            notifyProgressUpdate(progressCallback, ServiceProgressUpdate.allCompleteWithIcons(
+                    requestId, finalResponse.getMessage(), convertToIconList(finalResponse.getIllustrations())), isTrialMode);
             
             return finalResponse;
         }).exceptionally(error -> {
@@ -119,7 +118,9 @@ public class IllustrationGenerationService {
             
             // Sanitize error message for user display
             String sanitizedError = sanitizeErrorMessage(error);
-            return createErrorResponse(requestId, sanitizedError);
+            IllustrationGenerationResponse errorResponse = createErrorResponse(requestId, sanitizedError);
+            errorResponse.setTrialMode(isTrialMode);
+            return errorResponse;
         });
     }
     
@@ -129,7 +130,7 @@ public class IllustrationGenerationService {
     private CompletableFuture<List<IllustrationGenerationResponse.ServiceResults>> 
             generateMultipleGenerationsWithBanana(
                 IllustrationGenerationRequest request, String requestId, 
-                Long baseSeed, ProgressUpdateCallback progressCallback) {
+                Long baseSeed, ProgressUpdateCallback progressCallback, boolean isTrialMode) {
         
         int generationsCount = request.getGenerationsPerService();
         log.info("Generating {} generations with Banana", generationsCount);
@@ -156,17 +157,17 @@ public class IllustrationGenerationService {
                         if (progressCallback != null) {
                             String serviceGenName = "banana-gen" + generationIndex;
                             if (error != null) {
-                                progressCallback.onUpdate(ServiceProgressUpdate.serviceFailed(
-                                    requestId, serviceGenName, error.getMessage(), 
-                                    result != null ? result.getGenerationTimeMs() : 0L, generationIndex));
+                                notifyProgressUpdate(progressCallback, ServiceProgressUpdate.serviceFailed(
+                                        requestId, serviceGenName, error.getMessage(),
+                                        result != null ? result.getGenerationTimeMs() : 0L, generationIndex), isTrialMode);
                             } else if ("success".equals(result.getStatus())) {
-                                progressCallback.onUpdate(ServiceProgressUpdate.serviceCompleted(
-                                    requestId, serviceGenName, convertToIconList(result.getIllustrations()), 
-                                    result.getOriginalGridImageBase64(), result.getGenerationTimeMs(), generationIndex));
+                                notifyProgressUpdate(progressCallback, ServiceProgressUpdate.serviceCompleted(
+                                        requestId, serviceGenName, convertToIconList(result.getIllustrations()),
+                                        result.getOriginalGridImageBase64(), result.getGenerationTimeMs(), generationIndex), isTrialMode);
                             } else if ("error".equals(result.getStatus())) {
-                                progressCallback.onUpdate(ServiceProgressUpdate.serviceFailed(
-                                    requestId, serviceGenName, result.getMessage(), 
-                                    result.getGenerationTimeMs(), generationIndex));
+                                notifyProgressUpdate(progressCallback, ServiceProgressUpdate.serviceFailed(
+                                        requestId, serviceGenName, result.getMessage(),
+                                        result.getGenerationTimeMs(), generationIndex), isTrialMode);
                             }
                         }
                     });
@@ -557,5 +558,14 @@ public class IllustrationGenerationService {
         // Default case: return a generic error message without technical details
         return "Failed to generate illustrations. Please try again or contact support if the issue persists.";
     }
-}
 
+    private void notifyProgressUpdate(ProgressUpdateCallback progressCallback,
+                                      ServiceProgressUpdate update,
+                                      boolean isTrialMode) {
+        if (progressCallback == null || update == null) {
+            return;
+        }
+        update.setTrialMode(isTrialMode);
+        progressCallback.onUpdate(update);
+    }
+}

@@ -13,6 +13,7 @@ public class IllustrationGenerationResponse {
     private List<GeneratedIllustration> illustrations;
     private List<ServiceResults> bananaResults;
     private Long seed;
+    private boolean trialMode;
     
     @Data
     public static class ServiceResults {
@@ -34,4 +35,3 @@ public class IllustrationGenerationResponse {
         private String serviceSource;
     }
 }
-

@@ -38,6 +38,7 @@ export interface GenerationResponse {
   photonResults?: ServiceResult[];
   gptResults?: ServiceResult[];
   bananaResults?: ServiceResult[];
+  trialMode?: boolean;
 }
 
 export interface GifAsset {
