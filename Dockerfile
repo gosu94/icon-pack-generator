@@ -43,24 +43,6 @@ RUN apt-get update && apt-get install -y \
 RUN python3 -m venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 
-# Install rembg and its dependencies in the virtual environment
-RUN pip install --no-cache-dir \
-    rembg[new] \
-    pillow \
-    opencv-python-headless \
-    click \
-    scipy \
-    scikit-image \
-    pooch \
-    pymatting \
-    filetype \
-    watchdog \
-    aiohttp \
-    gradio \
-    asyncer \
-    onnxruntime \
-    numpy
-
 # Create app directory
 RUN mkdir -p /app
 
