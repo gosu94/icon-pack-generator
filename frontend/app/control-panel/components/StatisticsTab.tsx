@@ -359,17 +359,17 @@ const StatisticsChart = ({
   }
 
   const activeSeriesSet = new Set(activeSeries);
-  const maxValue =
-    data.reduce((max, item) => {
-      let localMax = max;
-      if (activeSeriesSet.has("registrations")) {
-        localMax = Math.max(localMax, item.registrations);
-      }
-      if (activeSeriesSet.has("icons")) {
-        localMax = Math.max(localMax, item.icons);
-      }
-      return localMax;
-    }, 0) || 1;
+  const rawMaxValue = data.reduce((max, item) => {
+    let localMax = max;
+    if (activeSeriesSet.has("registrations")) {
+      localMax = Math.max(localMax, item.registrations);
+    }
+    if (activeSeriesSet.has("icons")) {
+      localMax = Math.max(localMax, item.icons);
+    }
+    return localMax;
+  }, 0);
+  const maxValue = rawMaxValue || 1;
   const width = Math.max((data.length - 1) * 80 + 80, 320);
   const height = 240;
   const padding = 24;
@@ -377,6 +377,16 @@ const StatisticsChart = ({
   const innerWidth = width - padding * 2;
   const xStep = data.length > 1 ? innerWidth / (data.length - 1) : 0;
   const yTicks = 4;
+  const yTickValues =
+    rawMaxValue === 0
+      ? Array(yTicks + 1).fill(0)
+      : [...Array(yTicks + 1)].map((_, index) => {
+          const ratio = 1 - index / yTicks;
+          if (index === yTicks) {
+            return 0;
+          }
+          return Math.round(maxValue * ratio);
+        });
 
   const buildPoints = (key: "registrations" | "icons") =>
     data
@@ -426,128 +436,141 @@ const StatisticsChart = ({
 
   return (
     <div className="space-y-3">
-      <div className="relative">
-        {hoveredPoint && hoveredX !== null && (
-          <div
-            className="pointer-events-none absolute -top-2 z-10 w-48 -translate-x-1/2 -translate-y-full rounded-lg border border-slate-200 bg-white px-4 py-2 text-xs text-slate-600 shadow-lg"
-            style={{
-              left: `${(hoveredX / width) * 100}%`,
-            }}
-          >
-            <p className="text-sm font-semibold text-slate-800">
-              {formatTooltipLabel(hoveredPoint.date)}
-            </p>
-            <div
-              className={`mt-1 ${
-                activeSeriesSet.size > 1
-                  ? "flex justify-between gap-2"
-                  : "flex gap-2"
-              }`}
-            >
-              {activeSeriesSet.has("registrations") && (
-                <span className="flex items-center gap-1 text-purple-600">
-                  <span className="h-2 w-2 rounded-full bg-purple-500" />
-                  {hoveredPoint.registrations.toLocaleString()}
-                </span>
-              )}
-              {activeSeriesSet.has("icons") && (
-                <span className="flex items-center gap-1 text-emerald-600">
-                  <span className="h-2 w-2 rounded-full bg-emerald-500" />
-                  {hoveredPoint.icons.toLocaleString()}
-                </span>
-              )}
-            </div>
-          </div>
-        )}
-        <svg
-          viewBox={`0 0 ${width} ${height}`}
-          className="h-60 w-full"
-          preserveAspectRatio="none"
-          ref={svgRef}
-          onMouseMove={handleMouseMove}
-          onMouseLeave={handleMouseLeave}
+      <div className="flex gap-4">
+        <div
+          className="flex w-12 flex-col justify-between text-right text-xs text-slate-400"
+          style={{ paddingTop: `${padding}px`, paddingBottom: `${padding}px` }}
         >
-          {[...Array(yTicks + 1)].map((_, index) => {
-            const y = padding + (chartHeight / yTicks) * index;
-            return (
-              <line
-                key={index}
-                x1={padding}
-                x2={width - padding}
-                y1={y}
-                y2={y}
-                stroke="#e2e8f0"
-                strokeWidth="1"
-              />
-            );
-          })}
+          {yTickValues.map((value, index) => (
+            <span key={`tick-${index}`} className="tabular-nums">
+              {value.toLocaleString()}
+            </span>
+          ))}
+        </div>
+        <div className="relative flex-1">
           {hoveredPoint && hoveredX !== null && (
-            <line
-              x1={hoveredX}
-              x2={hoveredX}
-              y1={padding}
-              y2={height - padding}
-              stroke="#94a3b8"
-              strokeDasharray="4"
-            />
+            <div
+              className="pointer-events-none absolute -top-2 z-10 w-48 -translate-x-1/2 -translate-y-full rounded-lg border border-slate-200 bg-white px-4 py-2 text-xs text-slate-600 shadow-lg"
+              style={{
+                left: `${(hoveredX / width) * 100}%`,
+              }}
+            >
+              <p className="text-sm font-semibold text-slate-800">
+                {formatTooltipLabel(hoveredPoint.date)}
+              </p>
+              <div
+                className={`mt-1 ${
+                  activeSeriesSet.size > 1
+                    ? "flex justify-between gap-2"
+                    : "flex gap-2"
+                }`}
+              >
+                {activeSeriesSet.has("registrations") && (
+                  <span className="flex items-center gap-1 text-purple-600">
+                    <span className="h-2 w-2 rounded-full bg-purple-500" />
+                    {hoveredPoint.registrations.toLocaleString()}
+                  </span>
+                )}
+                {activeSeriesSet.has("icons") && (
+                  <span className="flex items-center gap-1 text-emerald-600">
+                    <span className="h-2 w-2 rounded-full bg-emerald-500" />
+                    {hoveredPoint.icons.toLocaleString()}
+                  </span>
+                )}
+              </div>
+            </div>
           )}
-          {activeSeriesSet.has("registrations") && (
-            <polyline
-              points={registrationPoints}
-              fill="none"
-              stroke="#7c3aed"
-              strokeWidth="3"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          )}
-          {activeSeriesSet.has("icons") && (
-            <polyline
-              points={iconPoints}
-              fill="none"
-              stroke="#10b981"
-              strokeWidth="3"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          )}
-          {activeSeriesSet.has("registrations") &&
-            data.map((point, index) => {
-              const ratio = (point.registrations || 0) / maxValue;
-              const x = padding + xStep * index;
-              const y = padding + (1 - ratio) * chartHeight;
-              const isHovered = hoveredIndex === index;
+          <svg
+            viewBox={`0 0 ${width} ${height}`}
+            className="w-full"
+            style={{ aspectRatio: `${width} / ${height}` }}
+            preserveAspectRatio="xMidYMid meet"
+            ref={svgRef}
+            onMouseMove={handleMouseMove}
+            onMouseLeave={handleMouseLeave}
+          >
+            {[...Array(yTicks + 1)].map((_, index) => {
+              const y = padding + (chartHeight / yTicks) * index;
               return (
-                <circle
-                  key={`reg-${point.date}`}
-                  cx={x}
-                  cy={y}
-                  r={isHovered ? 5 : 4}
-                  fill="#7c3aed"
-                  stroke="#fff"
-                  strokeWidth="2"
+                <line
+                  key={index}
+                  x1={padding}
+                  x2={width - padding}
+                  y1={y}
+                  y2={y}
+                  stroke="#e2e8f0"
+                  strokeWidth="1"
                 />
               );
             })}
-          {activeSeriesSet.has("icons") &&
-            data.map((point, index) => {
-              const ratio = (point.icons || 0) / maxValue;
-              const x = padding + xStep * index;
-              const y = padding + (1 - ratio) * chartHeight;
-              const isHovered = hoveredIndex === index;
-              return (
-                <circle
-                  key={`icon-${point.date}`}
-                  cx={x}
-                  cy={y}
-                  r={isHovered ? 5 : 4}
-                  fill="#10b981"
-                  stroke="#fff"
-                  strokeWidth="2"
-                />
-              );
-            })}
-        </svg>
+            {hoveredPoint && hoveredX !== null && (
+              <line
+                x1={hoveredX}
+                x2={hoveredX}
+                y1={padding}
+                y2={height - padding}
+                stroke="#94a3b8"
+                strokeDasharray="4"
+              />
+            )}
+            {activeSeriesSet.has("registrations") && (
+              <polyline
+                points={registrationPoints}
+                fill="none"
+                stroke="#7c3aed"
+                strokeWidth="3"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            )}
+            {activeSeriesSet.has("icons") && (
+              <polyline
+                points={iconPoints}
+                fill="none"
+                stroke="#10b981"
+                strokeWidth="3"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            )}
+            {activeSeriesSet.has("registrations") &&
+              data.map((point, index) => {
+                const ratio = (point.registrations || 0) / maxValue;
+                const x = padding + xStep * index;
+                const y = padding + (1 - ratio) * chartHeight;
+                const isHovered = hoveredIndex === index;
+                return (
+                  <circle
+                    key={`reg-${point.date}`}
+                    cx={x}
+                    cy={y}
+                    r={isHovered ? 5 : 4}
+                    fill="#7c3aed"
+                    stroke="#fff"
+                    strokeWidth="2"
+                  />
+                );
+              })}
+            {activeSeriesSet.has("icons") &&
+              data.map((point, index) => {
+                const ratio = (point.icons || 0) / maxValue;
+                const x = padding + xStep * index;
+                const y = padding + (1 - ratio) * chartHeight;
+                const isHovered = hoveredIndex === index;
+                return (
+                  <circle
+                    key={`icon-${point.date}`}
+                    cx={x}
+                    cy={y}
+                    r={isHovered ? 5 : 4}
+                    fill="#10b981"
+                    stroke="#fff"
+                    strokeWidth="2"
+                  />
+                );
+              })}
+          </svg>
+        </div>
       </div>
       <div
         className="grid gap-2 text-center text-xs text-slate-500"
