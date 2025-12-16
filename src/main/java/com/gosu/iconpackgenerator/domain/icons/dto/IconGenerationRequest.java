@@ -18,7 +18,7 @@ public class IconGenerationRequest {
     private String referenceImageBase64;
     
     @Min(value = 9, message = "Minimum 9 icons")
-    @Max(value = 18, message = "Maximum 18 icons")
+    @Max(value = 9, message = "Maximum 9 icons")
     private int iconCount;
     
     private List<String> individualDescriptions;

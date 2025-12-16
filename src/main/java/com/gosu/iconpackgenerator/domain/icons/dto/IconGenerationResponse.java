@@ -15,6 +15,7 @@ public class IconGenerationResponse {
     private List<ServiceResults> recraftResults;
     private List<ServiceResults> photonResults;
     private List<ServiceResults> gptResults;
+    private List<ServiceResults> gpt15Results;
     private List<ServiceResults> bananaResults;
     private boolean trialMode;
     
@@ -29,7 +30,7 @@ public class IconGenerationResponse {
         private String base64Data;
         private String description;
         private int gridPosition;
-        private String serviceSource; // "flux", "recraft", "photon", "gpt", or "banana"
+        private String serviceSource; // "flux", "recraft", "photon", "gpt", "gpt15", or "banana"
     }
     
     @Data

@@ -75,14 +75,7 @@ public class IconExportController implements IconExportControllerAPI {
             }
 
             iconsToExport = new ArrayList<>();
-            List<IconGenerationResponse.ServiceResults> serviceResults = switch (exportRequest.getServiceName().toLowerCase()) {
-                case "flux" -> generationResponse.getFalAiResults();
-                case "recraft" -> generationResponse.getRecraftResults();
-                case "photon" -> generationResponse.getPhotonResults();
-                case "gpt" -> generationResponse.getGptResults();
-                case "banana", "imagen" -> generationResponse.getBananaResults(); // Keep backward compatibility with "imagen"
-                default -> null;
-            };
+            List<IconGenerationResponse.ServiceResults> serviceResults = generationResponse.getGptResults();
 
             if (serviceResults != null) {
                 // Export ALL icons from the specific generation index (all batches of that generation)

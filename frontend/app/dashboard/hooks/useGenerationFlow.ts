@@ -131,13 +131,14 @@ export function useGenerationFlow({
   }, []);
 
   const formatServiceName = useCallback((serviceId: string): string => {
-    const serviceNames: { [key: string]: string } = {
-      flux: "Flux-Pro",
-      recraft: "Recraft V3",
-      photon: "Luma Photon",
-      gpt: "GPT Image",
-      banana: "Nano Banana",
-    };
+      const serviceNames: { [key: string]: string } = {
+        flux: "Flux-Pro",
+        recraft: "Recraft V3",
+        photon: "Luma Photon",
+        gpt: "GPT Image",
+        gpt15: "GPT Image 1.5",
+        banana: "Nano Banana",
+      };
     return serviceNames[serviceId] || serviceId;
   }, []);
 
@@ -251,6 +252,7 @@ export function useGenerationFlow({
         { id: "recraft", name: "Recraft V3" },
         { id: "photon", name: "Luma Photon" },
         { id: "gpt", name: "" },
+        { id: "gpt15", name: "GPT Image 1.5" },
         { id: "banana", name: "Nano Banana" },
       ];
 
@@ -351,6 +353,7 @@ export function useGenerationFlow({
             recraftResults: [] as ServiceResult[],
             photonResults: [] as ServiceResult[],
             gptResults: [] as ServiceResult[],
+            gpt15Results: [] as ServiceResult[],
             bananaResults: [] as ServiceResult[],
           };
 
@@ -369,6 +372,9 @@ export function useGenerationFlow({
                   break;
                 case "gpt":
                   groupedResults.gptResults.push(result);
+                  break;
+                case "gpt15":
+                  groupedResults.gpt15Results.push(result);
                   break;
                 case "banana":
                   groupedResults.bananaResults.push(result);
@@ -421,6 +427,7 @@ export function useGenerationFlow({
             recraftResults: [] as ServiceResult[],
             photonResults: [] as ServiceResult[],
             gptResults: [] as ServiceResult[],
+            gpt15Results: [] as ServiceResult[],
             bananaResults: [] as ServiceResult[],
           };
           Object.entries(latestStreamingResults).forEach(
@@ -438,6 +445,9 @@ export function useGenerationFlow({
                   break;
                 case "gpt":
                   groupedResults.gptResults.push(result);
+                  break;
+                case "gpt15":
+                  groupedResults.gpt15Results.push(result);
                   break;
                 case "banana":
                   groupedResults.bananaResults.push(result);
@@ -538,6 +548,7 @@ export function useGenerationFlow({
                   recraftResults: { serviceId: "recraft", itemsKey: "icons" },
                   photonResults: { serviceId: "photon", itemsKey: "icons" },
                   gptResults: { serviceId: "gpt", itemsKey: "icons" },
+                  gpt15Results: { serviceId: "gpt15", itemsKey: "icons" },
                   bananaResults: { serviceId: "banana", itemsKey: "icons" },
                 };
 
@@ -966,6 +977,9 @@ export function useGenerationFlow({
           break;
         case "gpt":
           resultsArray = currentResponse.gptResults;
+          break;
+        case "gpt15":
+          resultsArray = currentResponse.gpt15Results;
           break;
         case "banana":
           resultsArray = currentResponse.bananaResults;

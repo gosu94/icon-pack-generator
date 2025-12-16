@@ -12,7 +12,7 @@ import java.util.List;
 public class ServiceProgressUpdate {
     
     private String requestId;
-    private String serviceName; // "flux", "recraft", "photon", "gpt", "banana"
+    private String serviceName; // "flux", "recraft", "photon", "gpt", "gpt15", "banana"
     private String status; // "started", "upscaling", "success", "error", "complete"
     private String message;
     private List<IconGenerationResponse.GeneratedIcon> icons;

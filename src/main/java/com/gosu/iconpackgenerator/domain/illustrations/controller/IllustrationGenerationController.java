@@ -152,6 +152,7 @@ public class IllustrationGenerationController implements IllustrationGenerationC
         enabledServices.put("recraft", false);
         enabledServices.put("photon", false);
         enabledServices.put("gpt", false);
+        enabledServices.put("gpt15", false);
         response.put("enabledServices", enabledServices);
         
         return ResponseEntity.ok(response);

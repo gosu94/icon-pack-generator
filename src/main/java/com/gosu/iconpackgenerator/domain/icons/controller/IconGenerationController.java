@@ -10,15 +10,11 @@ import com.gosu.iconpackgenerator.domain.icons.dto.MoreIconsRequest;
 import com.gosu.iconpackgenerator.domain.icons.dto.MoreIconsResponse;
 import com.gosu.iconpackgenerator.domain.icons.dto.ServiceProgressUpdate;
 import com.gosu.iconpackgenerator.domain.icons.service.CoinManagementService;
-import com.gosu.iconpackgenerator.domain.ai.BananaModelService;
-import com.gosu.iconpackgenerator.domain.ai.FluxModelService;
 import com.gosu.iconpackgenerator.domain.ai.GptModelService;
 import com.gosu.iconpackgenerator.domain.icons.service.IconGenerationService;
 import com.gosu.iconpackgenerator.domain.icons.service.IconPersistenceService;
 import com.gosu.iconpackgenerator.domain.icons.service.ImageProcessingService;
-import com.gosu.iconpackgenerator.domain.ai.PhotonModelService;
 import com.gosu.iconpackgenerator.domain.icons.service.PromptGenerationService;
-import com.gosu.iconpackgenerator.domain.ai.RecraftModelService;
 import com.gosu.iconpackgenerator.domain.icons.service.ServiceFailureHandler;
 import com.gosu.iconpackgenerator.domain.status.GenerationStatusService;
 import com.gosu.iconpackgenerator.user.model.User;
@@ -55,10 +51,6 @@ import java.util.concurrent.TimeUnit;
 public class IconGenerationController implements IconGenerationControllerAPI {
 
     private final IconGenerationService iconGenerationService;
-    private final FluxModelService fluxModelService;
-    private final RecraftModelService recraftModelService;
-    private final BananaModelService bananaModelService;
-    private final PhotonModelService photonModelService;
     private final GptModelService gptModelService;
     private final PromptGenerationService promptGenerationService;
     private final ImageProcessingService imageProcessingService;
@@ -166,11 +158,7 @@ public class IconGenerationController implements IconGenerationControllerAPI {
         response.put("requestId", requestId);
 
         Map<String, Boolean> enabledServices = new HashMap<>();
-        enabledServices.put("flux", aiServicesConfig.isFluxAiEnabled());
-        enabledServices.put("recraft", aiServicesConfig.isRecraftEnabled());
-        enabledServices.put("photon", aiServicesConfig.isPhotonEnabled());
         enabledServices.put("gpt", aiServicesConfig.isGptEnabled());
-        enabledServices.put("banana", aiServicesConfig.isBananaEnabled());
         response.put("enabledServices", enabledServices);
 
         return ResponseEntity.ok(response);
@@ -332,6 +320,9 @@ public class IconGenerationController implements IconGenerationControllerAPI {
         }
 
         User user = customUser.getUser();
+        // Only GPT service is supported for additional generations
+        request.setServiceName("gpt");
+
         log.info("Received generate more icons request from user {} for service: {} with {} icon descriptions for generation index: {}",
                 user.getEmail(),
                 request.getServiceName(),
@@ -440,43 +431,13 @@ public class IconGenerationController implements IconGenerationControllerAPI {
     }
 
     private CompletableFuture<byte[]> getServiceAndGenerate(String serviceName, String prompt, byte[] originalImageData, Long seed) {
-        log.info("Generating more icons with service: {} using seed: {}", serviceName, seed);
+        log.info("Generating more icons with GPT service using seed: {}", seed);
 
-        switch (serviceName.toLowerCase()) {
-            case "flux":
-                if (!aiServicesConfig.isFluxAiEnabled()) {
-                    throw new RuntimeException("Flux service is disabled");
-                }
-                return fluxModelService.generateImageToImage(prompt, originalImageData, seed);
-
-            case "recraft":
-                if (!aiServicesConfig.isRecraftEnabled()) {
-                    throw new RuntimeException("Recraft service is disabled");
-                }
-                return recraftModelService.generateImageToImage(prompt, originalImageData, seed);
-
-            case "photon":
-                if (!aiServicesConfig.isPhotonEnabled()) {
-                    throw new RuntimeException("Photon service is disabled");
-                }
-                return photonModelService.generateImageToImage(prompt, originalImageData, seed);
-
-            case "gpt":
-                if (!aiServicesConfig.isGptEnabled()) {
-                    throw new RuntimeException("GPT service is disabled");
-                }
-                return gptModelService.generateImageToImage(prompt, originalImageData, 0L);
-
-            case "banana":
-            case "imagen": // Keep backward compatibility
-                if (!aiServicesConfig.isBananaEnabled()) {
-                    throw new RuntimeException("Banana service is disabled");
-                }
-                return bananaModelService.generateImageToImage(prompt, originalImageData, seed);
-
-            default:
-                throw new RuntimeException("Unknown service: " + serviceName);
+        if (!aiServicesConfig.isGptEnabled()) {
+            throw new RuntimeException("GPT service is disabled");
         }
+
+        return gptModelService.generateImageToImage(prompt, originalImageData, seed);
     }
 
     private List<IconGenerationResponse.GeneratedIcon> createIconList(List<String> base64Icons, MoreIconsRequest request) {
@@ -599,14 +560,7 @@ public class IconGenerationController implements IconGenerationControllerAPI {
             }
 
             // Get the appropriate service results list based on service name
-            List<IconGenerationResponse.ServiceResults> serviceResults = switch (request.getServiceName().toLowerCase()) {
-                case "flux" -> existingResponse.getFalAiResults();
-                case "recraft" -> existingResponse.getRecraftResults();
-                case "photon" -> existingResponse.getPhotonResults();
-                case "gpt" -> existingResponse.getGptResults();
-                case "banana", "imagen" -> existingResponse.getBananaResults(); // Keep backward compatibility with "imagen"
-                default -> null;
-            };
+            List<IconGenerationResponse.ServiceResults> serviceResults = existingResponse.getGptResults();
 
             if (serviceResults == null) {
                 log.warn("No service results found for service {} in request {}", request.getServiceName(), request.getOriginalRequestId());

@@ -54,6 +54,9 @@ public class IconPersistenceService {
             allServiceResults.addAll(response.getRecraftResults());
             allServiceResults.addAll(response.getPhotonResults());
             allServiceResults.addAll(response.getGptResults());
+            if (response.getGpt15Results() != null) {
+                allServiceResults.addAll(response.getGpt15Results());
+            }
             allServiceResults.addAll(response.getBananaResults());
             
             int persistedCount = 0;

@@ -45,6 +45,9 @@ public class TrialModeService {
         if (response.getGptResults() != null) {
             response.getGptResults().forEach(result -> limitServiceIcons(response, result, limitationResult));
         }
+        if (response.getGpt15Results() != null) {
+            response.getGpt15Results().forEach(result -> limitServiceIcons(response, result, limitationResult));
+        }
         if (response.getBananaResults() != null) {
             response.getBananaResults().forEach(result -> limitServiceIcons(response, result, limitationResult));
         }
@@ -55,6 +58,7 @@ public class TrialModeService {
         addIconsFromServiceResults(allIcons, response.getRecraftResults());
         addIconsFromServiceResults(allIcons, response.getPhotonResults());
         addIconsFromServiceResults(allIcons, response.getGptResults());
+        addIconsFromServiceResults(allIcons, response.getGpt15Results());
         addIconsFromServiceResults(allIcons, response.getBananaResults());
         response.setIcons(allIcons);
         

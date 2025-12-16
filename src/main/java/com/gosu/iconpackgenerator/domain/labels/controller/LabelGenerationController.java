@@ -118,6 +118,7 @@ public class LabelGenerationController implements LabelGenerationControllerAPI {
         enabledServices.put("recraft", false);
         enabledServices.put("photon", false);
         enabledServices.put("gpt", true);
+        enabledServices.put("gpt15", false);
         enabledServices.put("banana", false);
         response.put("enabledServices", enabledServices);
 

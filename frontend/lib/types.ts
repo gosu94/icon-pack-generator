@@ -37,6 +37,7 @@ export interface GenerationResponse {
   recraftResults?: ServiceResult[];
   photonResults?: ServiceResult[];
   gptResults?: ServiceResult[];
+  gpt15Results?: ServiceResult[];
   bananaResults?: ServiceResult[];
   trialMode?: boolean;
 }

@@ -140,6 +140,7 @@ public class MockupGenerationController implements MockupGenerationControllerAPI
         enabledServices.put("recraft", false);
         enabledServices.put("photon", false);
         enabledServices.put("gpt", false);
+        enabledServices.put("gpt15", false);
         response.put("enabledServices", enabledServices);
         
         return ResponseEntity.ok(response);
