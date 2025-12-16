@@ -516,7 +516,12 @@ const GeneratorForm: React.FC<GeneratorFormProps> = ({
 
             {mode !== "mockups" && (
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
+                <div className="flex flex-col gap-1">
+                  {mode === "icons" && (
+                    <span className="bg-gradient-to-r from-purple-600 to-indigo-500 text-white text-[10px] font-semibold uppercase tracking-wide px-2 py-0.5 rounded-full shadow-sm self-start">
+                      New Model
+                    </span>
+                  )}
                   <div className="flex items-center gap-2">
                     <label
                       className="text-lg font-semibold text-slate-900"
@@ -525,66 +530,61 @@ const GeneratorForm: React.FC<GeneratorFormProps> = ({
                       Additional Variation
                     </label>
                     {mode === "icons" && (
-                      <span className="bg-gradient-to-r from-purple-600 to-indigo-500 text-white text-[10px] font-semibold uppercase tracking-wide px-2 py-0.5 rounded-full shadow-sm">
-                        New Model
-                      </span>
-                    )}
-                  </div>
-                  {mode === "icons" && (
-                    <div className="relative group">
-                      <button
-                        type="button"
-                        className="text-slate-500 hover:text-slate-800 transition-colors"
-                        aria-label="More info about variations"
-                      >
-                        <svg
-                          className="w-4 h-4"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
+                      <div className="relative group">
+                        <button
+                          type="button"
+                          className="text-slate-500 hover:text-slate-800 transition-colors"
+                          aria-label="More info about variations"
                         >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                          />
-                        </svg>
-                      </button>
-                      <div className="absolute left-1/2 top-6 z-20 w-80 max-w-xs -translate-x-1/2 rounded-xl border border-slate-200 bg-white p-4 text-xs text-slate-600 shadow-xl opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity duration-200">
-                        <p className="font-semibold text-slate-900 mb-2 text-sm">Latest Model Variations</p>
-                        <p className="mb-3">
-                          Turned-on variations use our newest icon model, offering sharper lighting, richer contrast, and improved material fidelity compared to the base icons.
-                        </p>
-                        <div className="grid grid-cols-2 gap-3">
-                          <div className="text-center">
-                            <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-                              Original
-                            </span>
-                            <Image
-                              src="/images/new-model/old_icon1.webp"
-                              alt="Original model sample"
-                              width={120}
-                              height={120}
-                              className="mx-auto mt-1 rounded-lg border border-slate-200 object-cover"
+                          <svg
+                            className="w-4 h-4"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
                             />
-                          </div>
-                          <div className="text-center">
-                            <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-                              Variation
-                            </span>
-                            <Image
-                              src="/images/new-model/new_icon1.webp"
-                              alt="New model variation sample"
-                              width={120}
-                              height={120}
-                              className="mx-auto mt-1 rounded-lg border border-slate-200 object-cover"
-                            />
+                          </svg>
+                        </button>
+                        <div className="absolute left-1/2 top-6 z-20 w-80 max-w-xs -translate-x-1/2 rounded-xl border border-slate-200 bg-white p-4 text-xs text-slate-600 shadow-xl opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity duration-200">
+                          <p className="font-semibold text-slate-900 mb-2 text-sm">Latest Model Variations</p>
+                          <p className="mb-3">
+                            Turned-on variations use our newest icon model, offering sharper lighting, richer contrast, and improved material fidelity compared to the base icons.
+                          </p>
+                          <div className="grid grid-cols-2 gap-3">
+                            <div className="text-center">
+                              <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                                Original
+                              </span>
+                              <Image
+                                src="/images/new-model/old_icon1.webp"
+                                alt="Original model sample"
+                                width={120}
+                                height={120}
+                                className="mx-auto mt-1 rounded-lg border border-slate-200 object-cover"
+                              />
+                            </div>
+                            <div className="text-center">
+                              <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                                Variation
+                              </span>
+                              <Image
+                                src="/images/new-model/new_icon1.webp"
+                                alt="New model variation sample"
+                                width={120}
+                                height={120}
+                                className="mx-auto mt-1 rounded-lg border border-slate-200 object-cover"
+                              />
+                            </div>
                           </div>
                         </div>
                       </div>
-                    </div>
-                  )}
+                    )}
+                  </div>
                 </div>
                 <div className="flex items-center space-x-2">
                   {isTrialOnly ? (
