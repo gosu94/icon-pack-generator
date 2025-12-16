@@ -10,6 +10,7 @@ import com.gosu.iconpackgenerator.domain.icons.dto.MoreIconsRequest;
 import com.gosu.iconpackgenerator.domain.icons.dto.MoreIconsResponse;
 import com.gosu.iconpackgenerator.domain.icons.dto.ServiceProgressUpdate;
 import com.gosu.iconpackgenerator.domain.icons.service.CoinManagementService;
+import com.gosu.iconpackgenerator.domain.ai.Gpt15ModelService;
 import com.gosu.iconpackgenerator.domain.ai.GptModelService;
 import com.gosu.iconpackgenerator.domain.icons.service.IconGenerationService;
 import com.gosu.iconpackgenerator.domain.icons.service.IconPersistenceService;
@@ -52,6 +53,7 @@ public class IconGenerationController implements IconGenerationControllerAPI {
 
     private final IconGenerationService iconGenerationService;
     private final GptModelService gptModelService;
+    private final Gpt15ModelService gpt15ModelService;
     private final PromptGenerationService promptGenerationService;
     private final ImageProcessingService imageProcessingService;
     private final AIServicesConfig aiServicesConfig;
@@ -159,6 +161,7 @@ public class IconGenerationController implements IconGenerationControllerAPI {
 
         Map<String, Boolean> enabledServices = new HashMap<>();
         enabledServices.put("gpt", aiServicesConfig.isGptEnabled());
+        enabledServices.put("gpt15", aiServicesConfig.isGpt15Enabled() && request.getGenerationsPerService() > 1);
         response.put("enabledServices", enabledServices);
 
         return ResponseEntity.ok(response);
@@ -320,9 +323,6 @@ public class IconGenerationController implements IconGenerationControllerAPI {
         }
 
         User user = customUser.getUser();
-        // Only GPT service is supported for additional generations
-        request.setServiceName("gpt");
-
         log.info("Received generate more icons request from user {} for service: {} with {} icon descriptions for generation index: {}",
                 user.getEmail(),
                 request.getServiceName(),
@@ -348,6 +348,12 @@ public class IconGenerationController implements IconGenerationControllerAPI {
                 if (request.getServiceName() == null || request.getServiceName().trim().isEmpty()) {
                     return createErrorResponse(request, "Service name is required", startTime);
                 }
+
+                String normalizedService = request.getServiceName().trim().toLowerCase();
+                if (!normalizedService.equals("gpt") && !normalizedService.equals("gpt15")) {
+                    return createErrorResponse(request, "Unsupported service for additional icons", startTime);
+                }
+                request.setServiceName(normalizedService);
 
                 if (request.getOriginalImageBase64() == null || request.getOriginalImageBase64().trim().isEmpty()) {
                     return createErrorResponse(request, "Original image is required", startTime);
@@ -431,13 +437,22 @@ public class IconGenerationController implements IconGenerationControllerAPI {
     }
 
     private CompletableFuture<byte[]> getServiceAndGenerate(String serviceName, String prompt, byte[] originalImageData, Long seed) {
-        log.info("Generating more icons with GPT service using seed: {}", seed);
+        log.info("Generating more icons with service: {} using seed: {}", serviceName, seed);
 
-        if (!aiServicesConfig.isGptEnabled()) {
-            throw new RuntimeException("GPT service is disabled");
+        switch (serviceName.toLowerCase()) {
+            case "gpt":
+                if (!aiServicesConfig.isGptEnabled()) {
+                    throw new RuntimeException("GPT service is disabled");
+                }
+                return gptModelService.generateImageToImage(prompt, originalImageData, seed);
+            case "gpt15":
+                if (!aiServicesConfig.isGpt15Enabled()) {
+                    throw new RuntimeException("GPT 1.5 service is disabled");
+                }
+                return gpt15ModelService.generateImageToImage(prompt, originalImageData, seed);
+            default:
+                throw new RuntimeException("Unknown service: " + serviceName);
         }
-
-        return gptModelService.generateImageToImage(prompt, originalImageData, seed);
     }
 
     private List<IconGenerationResponse.GeneratedIcon> createIconList(List<String> base64Icons, MoreIconsRequest request) {
@@ -560,7 +575,11 @@ public class IconGenerationController implements IconGenerationControllerAPI {
             }
 
             // Get the appropriate service results list based on service name
-            List<IconGenerationResponse.ServiceResults> serviceResults = existingResponse.getGptResults();
+            List<IconGenerationResponse.ServiceResults> serviceResults = switch (request.getServiceName().toLowerCase()) {
+                case "gpt" -> existingResponse.getGptResults();
+                case "gpt15" -> existingResponse.getGpt15Results();
+                default -> null;
+            };
 
             if (serviceResults == null) {
                 log.warn("No service results found for service {} in request {}", request.getServiceName(), request.getOriginalRequestId());

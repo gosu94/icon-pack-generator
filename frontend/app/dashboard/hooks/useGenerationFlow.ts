@@ -262,6 +262,14 @@ export function useGenerationFlow({
       const generationsNum = generateVariations ? 2 : 1;
       enabledServicesList.forEach((service) => {
         for (let genIndex = 1; genIndex <= generationsNum; genIndex++) {
+          if (service.id === "gpt" && genIndex > 1) {
+            continue;
+          }
+          if (service.id === "gpt15") {
+            if (!generateVariations || genIndex === 1) {
+              continue;
+            }
+          }
           const uniqueId = `${service.id}-gen${genIndex}`;
           newResults[uniqueId] = {
             icons: [],

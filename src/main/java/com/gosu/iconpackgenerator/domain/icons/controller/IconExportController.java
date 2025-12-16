@@ -51,8 +51,12 @@ public class IconExportController implements IconExportControllerAPI {
     @ResponseBody
     public ResponseEntity<byte[]> exportIcons(@RequestBody IconExportRequest exportRequest,
                                               @AuthenticationPrincipal OAuth2User principal) {
+        String requestedService = exportRequest.getServiceName() != null ?
+                exportRequest.getServiceName().toLowerCase() : "gpt";
+        exportRequest.setServiceName(requestedService);
+
         log.info("Received export request for service: {} from request: {} - creating comprehensive icon pack with all generations",
-                exportRequest.getServiceName(), exportRequest.getRequestId());
+                requestedService, exportRequest.getRequestId());
 
         if (!(principal instanceof CustomOAuth2User customUser)) {
             log.warn("Unauthorized export attempt: no authenticated user");
@@ -75,7 +79,11 @@ public class IconExportController implements IconExportControllerAPI {
             }
 
             iconsToExport = new ArrayList<>();
-            List<IconGenerationResponse.ServiceResults> serviceResults = generationResponse.getGptResults();
+            List<IconGenerationResponse.ServiceResults> serviceResults = switch (requestedService) {
+                case "gpt15" -> generationResponse.getGpt15Results();
+                case "gpt" -> generationResponse.getGptResults();
+                default -> generationResponse.getGptResults();
+            };
 
             if (serviceResults != null) {
                 // Export ALL icons from the specific generation index (all batches of that generation)
@@ -91,7 +99,7 @@ public class IconExportController implements IconExportControllerAPI {
         }
 
         if (iconsToExport.isEmpty()) {
-            log.error("No icons found for service: {} in request: {}", exportRequest.getServiceName(), exportRequest.getRequestId());
+            log.error("No icons found for service: {} in request: {}", requestedService, exportRequest.getRequestId());
             return ResponseEntity.notFound().build();
         }
 

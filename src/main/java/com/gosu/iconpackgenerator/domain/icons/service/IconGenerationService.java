@@ -2,6 +2,7 @@ package com.gosu.iconpackgenerator.domain.icons.service;
 
 import com.gosu.iconpackgenerator.config.AIServicesConfig;
 import com.gosu.iconpackgenerator.domain.ai.AnyLlmModelService;
+import com.gosu.iconpackgenerator.domain.ai.Gpt15ModelService;
 import com.gosu.iconpackgenerator.domain.ai.GptModelService;
 import com.gosu.iconpackgenerator.domain.icons.dto.IconGenerationRequest;
 import com.gosu.iconpackgenerator.domain.icons.dto.IconGenerationResponse;
@@ -30,6 +31,7 @@ public class IconGenerationService {
     private static final String PROMPT_ENHANCER_USER_TEMPLATE = "Original description: \"%s\". Rewrite this so it guides an AI model to design a cohesive icon pack with a unified style, colors, materials, and lighting.";
 
     private final GptModelService gptModelService;
+    private final Gpt15ModelService gpt15ModelService;
     private final ImageProcessingService imageProcessingService;
     private final PromptGenerationService promptGenerationService;
     private final AIServicesConfig aiServicesConfig;
@@ -55,6 +57,10 @@ public class IconGenerationService {
             return CompletableFuture.completedFuture(createErrorResponse(requestId, "Icon generation service is disabled."));
         }
 
+        if (request.getGenerationsPerService() > 1 && !aiServicesConfig.isGpt15Enabled()) {
+            return CompletableFuture.completedFuture(createErrorResponse(requestId, "Variations are unavailable because GPT 1.5 service is disabled."));
+        }
+
         int cost = Math.max(1, request.getGenerationsPerService());
         CoinManagementService.CoinDeductionResult coinResult = coinManagementService.deductCoinsForGeneration(user, cost);
         if (!coinResult.isSuccess()) {
@@ -72,19 +78,24 @@ public class IconGenerationService {
 
         if (progressCallback != null) {
             for (int genIndex = 1; genIndex <= request.getGenerationsPerService(); genIndex++) {
-                notifyProgressUpdate(progressCallback, ServiceProgressUpdate.serviceStarted(requestId, "gpt", genIndex), isTrialMode);
+                String serviceName = shouldUseGpt15(genIndex, request) ? "gpt15" : "gpt";
+                String serviceKey = serviceName + "-gen" + genIndex;
+                notifyProgressUpdate(progressCallback, ServiceProgressUpdate.serviceStarted(requestId, serviceKey, genIndex), isTrialMode);
             }
         }
 
         return generateGptGenerations(request, requestId, seed, progressCallback, isTrialMode)
-                .thenApply(gptResults -> {
-                    IconGenerationResponse finalResponse = createCombinedResponse(requestId, gptResults, seed);
+                .thenApply(combinedResults -> {
+                    IconGenerationResponse finalResponse = createCombinedResponse(requestId, combinedResults.gptResults(), combinedResults.gpt15Results(), seed);
                     finalResponse.setTrialMode(isTrialMode);
 
                     if ("error".equals(finalResponse.getStatus())) {
                         ServiceFailureHandler.FailureAnalysisResult failureAnalysis =
                                 serviceFailureHandler.analyzeServiceFailures(
-                                        List.of(), List.of(), List.of(), gptResults, List.of(), List.of());
+                                        List.of(), List.of(), List.of(),
+                                        combinedResults.gptResults(),
+                                        combinedResults.gpt15Results(),
+                                        List.of());
 
                         if (failureAnalysis.shouldRefund()) {
                             try {
@@ -128,7 +139,7 @@ public class IconGenerationService {
                 });
     }
 
-    private CompletableFuture<List<IconGenerationResponse.ServiceResults>> generateGptGenerations(
+    private CompletableFuture<CombinedServiceResults> generateGptGenerations(
             IconGenerationRequest request,
             String requestId,
             Long baseSeed,
@@ -136,7 +147,7 @@ public class IconGenerationService {
             boolean isTrialMode) {
 
         int generations = Math.max(1, request.getGenerationsPerService());
-        List<CompletableFuture<IconGenerationResponse.ServiceResults>> futures = new ArrayList<>();
+        List<CompletableFuture<ServiceGenerationResult>> futures = new ArrayList<>();
 
         for (int i = 0; i < generations; i++) {
             final int generationIndex = i + 1;
@@ -145,33 +156,55 @@ public class IconGenerationService {
                     ? createStyledVariationRequest(request)
                     : request;
 
+            boolean useGpt15 = shouldUseGpt15(generationIndex, request);
+            String serviceName = useGpt15 ? "gpt15" : "gpt";
+
             futures.add(generateSingleGeneration(
                     generationRequest,
                     requestId,
                     generationSeed,
                     generationIndex,
+                    serviceName,
+                    useGpt15,
                     progressCallback,
                     isTrialMode));
         }
 
         return CompletableFuture.allOf(futures.toArray(new CompletableFuture[0]))
-                .thenApply(v -> futures.stream().map(CompletableFuture::join).toList());
+                .thenApply(v -> {
+                    List<IconGenerationResponse.ServiceResults> gptResults = new ArrayList<>();
+                    List<IconGenerationResponse.ServiceResults> gpt15Results = new ArrayList<>();
+
+                    futures.stream()
+                            .map(CompletableFuture::join)
+                            .forEach(result -> {
+                                if ("gpt15".equals(result.serviceName())) {
+                                    gpt15Results.add(result.serviceResults());
+                                } else {
+                                    gptResults.add(result.serviceResults());
+                                }
+                            });
+
+                    return new CombinedServiceResults(gptResults, gpt15Results);
+                });
     }
 
-    private CompletableFuture<IconGenerationResponse.ServiceResults> generateSingleGeneration(
+    private CompletableFuture<ServiceGenerationResult> generateSingleGeneration(
             IconGenerationRequest request,
             String requestId,
             Long seed,
             int generationIndex,
+            String serviceName,
+            boolean useGpt15,
             ProgressUpdateCallback progressCallback,
             boolean isTrialMode) {
 
         long startTime = System.currentTimeMillis();
-        return generateIconsInternal(request, seed)
+        return generateIconsInternal(request, seed, useGpt15)
                 .thenApply(result -> {
                     long generationTime = System.currentTimeMillis() - startTime;
                     IconGenerationResponse.ServiceResults serviceResult = new IconGenerationResponse.ServiceResults();
-                    serviceResult.setServiceName("gpt");
+                    serviceResult.setServiceName(serviceName);
                     serviceResult.setStatus("success");
                     serviceResult.setMessage("Icons generated successfully");
                     serviceResult.setIcons(result.getIcons());
@@ -182,21 +215,22 @@ public class IconGenerationService {
                     notifyProgressUpdate(progressCallback,
                             ServiceProgressUpdate.serviceCompleted(
                                     requestId,
-                                    "gpt-gen" + generationIndex,
+                                    serviceName + "-gen" + generationIndex,
                                     result.getIcons(),
                                     result.getOriginalGridImageBase64(),
                                     generationTime,
                                     generationIndex),
                             isTrialMode);
 
-                    return serviceResult;
+                    return new ServiceGenerationResult(serviceName, serviceResult);
                 })
                 .exceptionally(error -> {
                     long generationTime = System.currentTimeMillis() - startTime;
-                    String message = getDetailedErrorMessage(error, "gpt");
+                    String detailedServiceName = useGpt15 ? "GPT 1.5" : "GPT";
+                    String message = getDetailedErrorMessage(error, detailedServiceName);
 
                     IconGenerationResponse.ServiceResults serviceResult = new IconGenerationResponse.ServiceResults();
-                    serviceResult.setServiceName("gpt");
+                    serviceResult.setServiceName(serviceName);
                     serviceResult.setStatus("error");
                     serviceResult.setMessage(message);
                     serviceResult.setIcons(new ArrayList<>());
@@ -206,51 +240,62 @@ public class IconGenerationService {
                     notifyProgressUpdate(progressCallback,
                             ServiceProgressUpdate.serviceFailed(
                                     requestId,
-                                    "gpt-gen" + generationIndex,
+                                    serviceName + "-gen" + generationIndex,
                                     message,
                                     generationTime,
                                     generationIndex),
                             isTrialMode);
 
-                    return serviceResult;
+                    return new ServiceGenerationResult(serviceName, serviceResult);
                 });
     }
 
-    private CompletableFuture<IconGenerationResult> generateIconsInternal(IconGenerationRequest request, Long seed) {
+    private CompletableFuture<IconGenerationResult> generateIconsInternal(IconGenerationRequest request, Long seed, boolean useGpt15) {
         if (request.hasReferenceImage()) {
-            return generateGridWithReferenceImage(request, seed);
+            return generateGridWithReferenceImage(request, seed, useGpt15);
         }
-        return generateGridWithTextPrompt(request, seed);
+        return generateGridWithTextPrompt(request, seed, useGpt15);
     }
 
-    private CompletableFuture<IconGenerationResult> generateGridWithTextPrompt(IconGenerationRequest request, Long seed) {
+    private CompletableFuture<IconGenerationResult> generateGridWithTextPrompt(IconGenerationRequest request, Long seed, boolean useGpt15) {
         String prompt = promptGenerationService.generatePromptFor3x3Grid(
                 request.getGeneralDescription(),
                 request.getIndividualDescriptions());
 
-        return gptModelService.generateImage(prompt, seed)
+        String serviceName = useGpt15 ? "gpt15" : "gpt";
+        CompletableFuture<byte[]> imageFuture = useGpt15
+                ? gpt15ModelService.generateImage(prompt, seed)
+                : gptModelService.generateImage(prompt, seed);
+
+        return imageFuture
                 .thenApply(imageData -> {
                     List<String> base64Icons = imageProcessingService.cropIconsFromGrid(imageData, 9, false);
-                    return createIconListWithOriginalImage(base64Icons, imageData, "gpt");
+                    return createIconListWithOriginalImage(base64Icons, imageData, serviceName);
                 });
     }
 
-    private CompletableFuture<IconGenerationResult> generateGridWithReferenceImage(IconGenerationRequest request, Long seed) {
+    private CompletableFuture<IconGenerationResult> generateGridWithReferenceImage(IconGenerationRequest request, Long seed, boolean useGpt15) {
         String prompt = promptGenerationService.generatePromptForReferenceImage(
                 request.getIndividualDescriptions(),
                 request.getGeneralDescription());
 
         byte[] referenceImageData = Base64.getDecoder().decode(request.getReferenceImageBase64());
+        String serviceName = useGpt15 ? "gpt15" : "gpt";
 
-        return gptModelService.generateImageToImage(prompt, referenceImageData, seed)
+        CompletableFuture<byte[]> imageFuture = useGpt15
+                ? gpt15ModelService.generateImageToImage(prompt, referenceImageData, seed)
+                : gptModelService.generateImageToImage(prompt, referenceImageData, seed);
+
+        return imageFuture
                 .thenApply(imageData -> {
                     List<String> base64Icons = imageProcessingService.cropIconsFromGrid(imageData, 9, false);
-                    return createIconListWithOriginalImage(base64Icons, imageData, "gpt");
+                    return createIconListWithOriginalImage(base64Icons, imageData, serviceName);
                 });
     }
 
     private IconGenerationResponse createCombinedResponse(String requestId,
                                                           List<IconGenerationResponse.ServiceResults> gptResults,
+                                                          List<IconGenerationResponse.ServiceResults> gpt15Results,
                                                           Long seed) {
         IconGenerationResponse response = new IconGenerationResponse();
         response.setRequestId(requestId);
@@ -259,14 +304,16 @@ public class IconGenerationService {
         response.setRecraftResults(new ArrayList<>());
         response.setPhotonResults(new ArrayList<>());
         response.setGptResults(new ArrayList<>(gptResults));
-        response.setGpt15Results(new ArrayList<>());
+        response.setGpt15Results(new ArrayList<>(gpt15Results));
         response.setBananaResults(new ArrayList<>());
 
         List<IconGenerationResponse.GeneratedIcon> allIcons = new ArrayList<>();
         addIconsFromServiceResults(allIcons, gptResults);
+        addIconsFromServiceResults(allIcons, gpt15Results);
         response.setIcons(allIcons);
 
-        boolean anySuccess = gptResults.stream().anyMatch(result -> "success".equals(result.getStatus()));
+        boolean anySuccess = gptResults.stream().anyMatch(result -> "success".equals(result.getStatus())) ||
+                gpt15Results.stream().anyMatch(result -> "success".equals(result.getStatus()));
         if (anySuccess) {
             response.setStatus("success");
             response.setMessage("Icon generation completed successfully");
@@ -408,6 +455,43 @@ public class IconGenerationService {
         return errorMessageSanitizer.sanitizeErrorMessage(originalMessage, serviceName);
     }
 
+    private static class CombinedServiceResults {
+        private final List<IconGenerationResponse.ServiceResults> gptResults;
+        private final List<IconGenerationResponse.ServiceResults> gpt15Results;
+
+        CombinedServiceResults(List<IconGenerationResponse.ServiceResults> gptResults,
+                               List<IconGenerationResponse.ServiceResults> gpt15Results) {
+            this.gptResults = gptResults;
+            this.gpt15Results = gpt15Results;
+        }
+
+        public List<IconGenerationResponse.ServiceResults> gptResults() {
+            return gptResults;
+        }
+
+        public List<IconGenerationResponse.ServiceResults> gpt15Results() {
+            return gpt15Results;
+        }
+    }
+
+    private static class ServiceGenerationResult {
+        private final String serviceName;
+        private final IconGenerationResponse.ServiceResults serviceResults;
+
+        ServiceGenerationResult(String serviceName, IconGenerationResponse.ServiceResults serviceResults) {
+            this.serviceName = serviceName;
+            this.serviceResults = serviceResults;
+        }
+
+        public String serviceName() {
+            return serviceName;
+        }
+
+        public IconGenerationResponse.ServiceResults serviceResults() {
+            return serviceResults;
+        }
+    }
+
     private static class IconGenerationResult {
         private final List<IconGenerationResponse.GeneratedIcon> icons;
         private final String originalGridImageBase64;
@@ -424,5 +508,11 @@ public class IconGenerationService {
         public String getOriginalGridImageBase64() {
             return originalGridImageBase64;
         }
+    }
+
+    private boolean shouldUseGpt15(int generationIndex, IconGenerationRequest request) {
+        return generationIndex == 2 &&
+                request.getGenerationsPerService() >= 2 &&
+                aiServicesConfig.isGpt15Enabled();
     }
 }
