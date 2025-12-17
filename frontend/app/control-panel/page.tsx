@@ -106,12 +106,6 @@ const DEFAULT_EMAIL_BODY = `<!DOCTYPE html>
         font-size: 15px;
         color: #1e293b;
       }
-      .feature-list li::before {
-        content: '✨';
-        position: absolute;
-        left: 0;
-        top: 0;
-      }
       .cta-button {
         display: inline-block;
         padding: 14px 32px;
@@ -155,8 +149,8 @@ const DEFAULT_EMAIL_BODY = `<!DOCTYPE html>
           />
           <h1>
             IconPackGen
-            <span class="brand-accent">AI <span>✨</span></span>
-          </h1>
+              <span style="color:#6366f1;font-weight:700;">AI ✨</span>
+           </h1>
         </div>
         <div class="email-content">
           <h2>Hey there,</h2>
@@ -166,9 +160,9 @@ const DEFAULT_EMAIL_BODY = `<!DOCTYPE html>
             next standout project.
           </p>
           <ul class="feature-list">
-            <li>Add your feature highlight or announcement here.</li>
-            <li>Share an upcoming launch, workshop, or promotion.</li>
-            <li>Include a helpful tip, resource, or community spotlight.</li>
+            <li>✨ Add your feature highlight or announcement here.</li>
+            <li>✨ Share an upcoming launch, workshop, or promotion.</li>
+            <li>✨ Include a helpful tip, resource, or community spotlight.</li>
           </ul>
           <a
             href="https://iconpackgen.com/dashboard"
