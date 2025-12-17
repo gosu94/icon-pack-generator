@@ -310,19 +310,43 @@ export default function LandingPage() {
                         </div>
                     </div>
 
-                    {/* Feature 2: Illustrations (Moved up) */}
+                    {/* Feature 2: Variations */}
                     <div className="flex flex-col lg:flex-row items-center gap-12 lg:gap-20">
-                         <div className="lg:w-1/2">
-                            <div className="bg-pink-100 w-12 h-12 rounded-xl flex items-center justify-center mb-6">
-                                <PenTool className="w-6 h-6 text-pink-600" />
+                        <div className="lg:w-1/2">
+                            <div className="bg-slate-100 w-12 h-12 rounded-xl flex items-center justify-center mb-6">
+                                <Layers className="w-6 h-6 text-slate-600" />
                             </div>
-                            <h3 className="text-3xl font-bold text-slate-900 mb-4">Cohesive Illustrations</h3>
+                            <h3 className="text-3xl font-bold text-slate-900 mb-4">Model Variations</h3>
                             <p className="text-lg text-slate-600 leading-relaxed mb-6">
-                                Extend your visual system beyond icons. Generate cohesive, on-brand illustrations that 
-                                complement your icons and keep a consistent visual tone across your entire project.
+                                Switch on our latest state-of-the-art model to explore fresh variations of every icon while you generate them.
+                                Prefer the original minimalist style? The classic model still powers the base generation path so you always keep that clean look.
                             </p>
+                            <ul className="space-y-3">
+                                {['Explore new compositions instantly', 'Blend cutting-edge + classic workflows', 'Keep brand consistency while experimenting'].map((item, i) => (
+                                    <li key={i} className="flex items-center text-slate-700">
+                                        <CheckCircle2 className="w-5 h-5 text-purple-500 mr-3" />
+                                        {item}
+                                    </li>
+                                ))}
+                            </ul>
                         </div>
-                         <div className="lg:w-1/2">
+                        <div className="lg:w-1/2">
+                            <div className="relative group cursor-pointer" onClick={() => openImageModal('/images/features/feature_variations.webp')}>
+                                <div className="absolute inset-0 bg-gradient-to-r from-slate-600 to-purple-600 rounded-2xl blur opacity-20 group-hover:opacity-30 transition-opacity"></div>
+                                <Image
+                                    src="/images/features/feature_variations.webp"
+                                    alt="Icon Variations"
+                                    width={600}
+                                    height={400}
+                                    className="relative rounded-2xl shadow-xl border border-white/50 w-full"
+                                />
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Feature 3: Illustrations (Moved up) */}
+                    <div className="flex flex-col lg:flex-row items-center gap-12 lg:gap-20">
+                        <div className="lg:w-1/2 order-2 lg:order-1">
                             <div className="relative group cursor-pointer" onClick={() => openImageModal('/images/features/feature_illustrations.webp')}>
                                 <div className="absolute inset-0 bg-gradient-to-r from-pink-500 to-rose-500 rounded-2xl blur opacity-20 group-hover:opacity-30 transition-opacity"></div>
                                 <Image 
@@ -334,11 +358,31 @@ export default function LandingPage() {
                                 />
                             </div>
                         </div>
+                        <div className="lg:w-1/2 order-1 lg:order-2">
+                            <div className="bg-pink-100 w-12 h-12 rounded-xl flex items-center justify-center mb-6">
+                                <PenTool className="w-6 h-6 text-pink-600" />
+                            </div>
+                            <h3 className="text-3xl font-bold text-slate-900 mb-4">Cohesive Illustrations</h3>
+                            <p className="text-lg text-slate-600 leading-relaxed mb-6">
+                                Extend your visual system beyond icons. Generate cohesive, on-brand illustrations that 
+                                complement your icons and keep a consistent visual tone across your entire project.
+                            </p>
+                        </div>
                     </div>
 
-                    {/* Feature 3: GIFs */}
+                    {/* Feature 4: GIFs */}
                     <div className="flex flex-col lg:flex-row items-center gap-12 lg:gap-20">
-                        <div className="lg:w-1/2 order-2 lg:order-1">
+                        <div className="lg:w-1/2">
+                            <div className="bg-purple-100 w-12 h-12 rounded-xl flex items-center justify-center mb-6">
+                                <Play className="w-6 h-6 text-purple-600" />
+                            </div>
+                            <h3 className="text-3xl font-bold text-slate-900 mb-4">Animated GIF Icons</h3>
+                            <p className="text-lg text-slate-600 leading-relaxed mb-6">
+                                Bring your interface to life with motion. Generate seamless looping animations that retain 
+                                your specific style. Great for loading states, micro-interactions, and social media.
+                            </p>
+                        </div>
+                        <div className="lg:w-1/2">
                             <div className="relative group cursor-pointer" onClick={() => openImageModal('/images/features/feature_gifs.gif')}>
                                 <div className="absolute inset-0 bg-gradient-to-l from-purple-600 to-pink-600 rounded-2xl blur opacity-20 group-hover:opacity-30 transition-opacity"></div>
                                 <Image 
@@ -351,31 +395,11 @@ export default function LandingPage() {
                                 />
                             </div>
                         </div>
-                        <div className="lg:w-1/2 order-1 lg:order-2">
-                            <div className="bg-purple-100 w-12 h-12 rounded-xl flex items-center justify-center mb-6">
-                                <Play className="w-6 h-6 text-purple-600" />
-                            </div>
-                            <h3 className="text-3xl font-bold text-slate-900 mb-4">Animated GIF Icons</h3>
-                            <p className="text-lg text-slate-600 leading-relaxed mb-6">
-                                Bring your interface to life with motion. Generate seamless looping animations that retain 
-                                your specific style. Great for loading states, micro-interactions, and social media.
-                            </p>
-                        </div>
                     </div>
 
-                    {/* Feature 4: Labels */}
+                    {/* Feature 5: Labels */}
                     <div className="flex flex-col lg:flex-row items-center gap-12 lg:gap-20">
-                        <div className="lg:w-1/2">
-                            <div className="bg-indigo-100 w-12 h-12 rounded-xl flex items-center justify-center mb-6">
-                                <Tag className="w-6 h-6 text-indigo-600" />
-                            </div>
-                            <h3 className="text-3xl font-bold text-slate-900 mb-4">Custom Labels</h3>
-                            <p className="text-lg text-slate-600 leading-relaxed mb-6">
-                                Add text that matches your design language. Create custom labels that blend seamlessly 
-                                with your icon style — whether you start from scratch or describe what you need in plain text.
-                            </p>
-                        </div>
-                        <div className="lg:w-1/2">
+                        <div className="lg:w-1/2 order-2 lg:order-1">
                             <div className="relative group cursor-pointer" onClick={() => openImageModal('/images/features/feature_labels.webp')}>
                                 <div className="absolute inset-0 bg-gradient-to-r from-indigo-500 to-blue-500 rounded-2xl blur opacity-20 group-hover:opacity-30 transition-opacity"></div>
                                 <Image 
@@ -387,11 +411,31 @@ export default function LandingPage() {
                                 />
                             </div>
                         </div>
+                        <div className="lg:w-1/2 order-1 lg:order-2">
+                            <div className="bg-indigo-100 w-12 h-12 rounded-xl flex items-center justify-center mb-6">
+                                <Tag className="w-6 h-6 text-indigo-600" />
+                            </div>
+                            <h3 className="text-3xl font-bold text-slate-900 mb-4">Custom Labels</h3>
+                            <p className="text-lg text-slate-600 leading-relaxed mb-6">
+                                Add text that matches your design language. Create custom labels that blend seamlessly 
+                                with your icon style — whether you start from scratch or describe what you need in plain text.
+                            </p>
+                        </div>
                     </div>
 
-                     {/* Feature 5: Mockups */}
+                     {/* Feature 6: Mockups */}
                      <div className="flex flex-col lg:flex-row items-center gap-12 lg:gap-20">
-                        <div className="lg:w-1/2 order-2 lg:order-1">
+                        <div className="lg:w-1/2">
+                            <div className="bg-emerald-100 w-12 h-12 rounded-xl flex items-center justify-center mb-6">
+                                <Layers className="w-6 h-6 text-emerald-600" />
+                            </div>
+                            <h3 className="text-3xl font-bold text-slate-900 mb-4">Instant UI Mockups</h3>
+                            <p className="text-lg text-slate-600 leading-relaxed mb-6">
+                                Visualize your icons in context immediately. Generate full UI mockups that match your 
+                                icon pack's aesthetic, helping you present your work better - or flip the process: start with a mockup and use it as the foundation for your icon set.
+                            </p>
+                        </div>
+                        <div className="lg:w-1/2">
                             <div className="relative group cursor-pointer" onClick={() => openImageModal('/images/features/feature_mockups.webp')}>
                                 <div className="absolute inset-0 bg-gradient-to-r from-emerald-500 to-teal-500 rounded-2xl blur opacity-20 group-hover:opacity-30 transition-opacity"></div>
                                 <Image 
@@ -403,17 +447,7 @@ export default function LandingPage() {
                                 />
                             </div>
                         </div>
-                        <div className="lg:w-1/2 order-1 lg:order-2">
-                            <div className="bg-emerald-100 w-12 h-12 rounded-xl flex items-center justify-center mb-6">
-                                <Layers className="w-6 h-6 text-emerald-600" />
-                            </div>
-                            <h3 className="text-3xl font-bold text-slate-900 mb-4">Instant UI Mockups</h3>
-                            <p className="text-lg text-slate-600 leading-relaxed mb-6">
-                                Visualize your icons in context immediately. Generate full UI mockups that match your 
-                                icon pack's aesthetic, helping you present your work better - or flip the process: start with a mockup and use it as the foundation for your icon set.
-                            </p>
-                        </div>
-                    </div>
+                     </div>
 
                 </div>
             </section>
