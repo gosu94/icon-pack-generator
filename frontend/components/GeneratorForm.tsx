@@ -527,7 +527,7 @@ const GeneratorForm: React.FC<GeneratorFormProps> = ({
                       className="text-lg font-semibold text-slate-900"
                       htmlFor="variations-switch"
                     >
-                      Additional Variation
+                      Pro Variation
                     </label>
                     {mode === "icons" && (
                       <div className="relative group">
