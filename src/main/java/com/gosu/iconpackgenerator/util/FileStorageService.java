@@ -19,11 +19,13 @@ public class FileStorageService {
     @Value("${app.file-storage.base-path}")
     private String baseStoragePath;
 
+    @Value("${app.file-storage.private-base-path:}")
     private String privateIconStorageBasePath;
     
     @Value("${app.illustrations-storage.base-path:static/user-illustrations}")
     private String illustrationsBasePath;
 
+    @Value("${app.illustrations-storage.private-base-path:}")
     private String privateIllustrationsBasePath;
     
     @Value("${app.mockups-storage.base-path:static/user-mockups}")
@@ -39,8 +41,12 @@ public class FileStorageService {
 
     @PostConstruct
     public void initStoragePaths() {
-        privateIconStorageBasePath = baseStoragePath + "-private";
-        privateIllustrationsBasePath = illustrationsBasePath + "-private";
+        if (privateIconStorageBasePath == null || privateIconStorageBasePath.isBlank()) {
+            privateIconStorageBasePath = baseStoragePath + "-private";
+        }
+        if (privateIllustrationsBasePath == null || privateIllustrationsBasePath.isBlank()) {
+            privateIllustrationsBasePath = illustrationsBasePath + "-private";
+        }
     }
     
     /**

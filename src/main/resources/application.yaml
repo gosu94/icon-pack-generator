@@ -155,8 +155,10 @@ callmebot:
 app:
   file-storage:
     base-path: static/user-icons
+    private-base-path: ${APP_FILE_STORAGE_PRIVATE_BASE_PATH:static/user-icons-private}
   illustrations-storage:
     base-path: static/user-illustrations
+    private-base-path: ${APP_ILLUSTRATIONS_STORAGE_PRIVATE_BASE_PATH:static/user-illustrations-private}
   mockups-storage:
     base-path: static/user-mockups
   labels-storage:

@@ -36,21 +36,23 @@ services:
      # API Keys
      - FAL_KEY=${FAL_KEY}
      - OPENAI_API_KEY=${OPENAI_API_KEY}
-     
+
      # Database Configuration
      - POSTGRES_USER=${POSTGRES_USER:-iconpack}
      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-iconpack123}
      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/icon_pack_generator
-     
+
      # Application Configuration
      - APP_BASE_URL=${APP_BASE_URL:-https://iconpackgen.com}
      - FILE_STORAGE_PATH=/app/data/user-icons
+     - APP_FILE_STORAGE_PRIVATE_BASE_PATH=/app/data/user-icons-private
+     - APP_ILLUSTRATIONS_STORAGE_PRIVATE_BASE_PATH=/app/data/user-illustrations-private
      - STATIC_LOCATIONS=${STATIC_LOCATIONS:-classpath:/static/}
-     
+
      # Google OAuth
      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
-     
+
      # Stripe Configuration
      - STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY}
      - STRIPE_PUBLISHABLE_KEY=${STRIPE_PUBLISHABLE_KEY}
@@ -61,11 +63,11 @@ services:
      - STRIPE_CREATOR_PACK_PRICE_ID=${STRIPE_CREATOR_PACK_PRICE_ID:-price_1S7yMgG7H7nvLRCSvXEf20Ub}
      - STRIPE_PRO_PACK_PRODUCT_ID=${STRIPE_PRO_PACK_PRODUCT_ID:-pro_pack_product_id}
      - STRIPE_PRO_PACK_PRICE_ID=${STRIPE_PRO_PACK_PRICE_ID:-pro_pack_price_id}
-     
+
      # SendGrid Configuration
      - SENDGRID_API_KEY=${SENDGRID_API_KEY}
      - SENDGRID_FROM_EMAIL=${SENDGRID_FROM_EMAIL:-noreply@yourdomain.com}
-     
+
      # Signal Bot Configuration (optional)
      - CALLMEBOT_ENABLED=${CALLMEBOT_ENABLED:-false}
      - PHONE_NUMBER=${PHONE_NUMBER:-}
