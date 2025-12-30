@@ -122,8 +122,9 @@ public class AdminController {
         // Map to DTOs
         List<UserAdminDto> userDtos = userPage.getContent().stream()
                 .map(u -> {
-                    Long iconCount = generatedIconRepository.countByUser(u);
-                    Long illustrationCount = generatedIllustrationRepository.countByUser(u);
+                    int iconCount = filterWatermarkedIcons(generatedIconRepository.findByUser(u)).size();
+                    int illustrationCount = filterWatermarkedIllustrations(
+                            generatedIllustrationRepository.findByUserOrderByCreatedAtDesc(u)).size();
                     long mockupCount = generatedMockupRepository.countByUser(u);
                     Long labelCount = generatedLabelRepository.countByUser(u);
                     return new UserAdminDto(
@@ -132,8 +133,8 @@ public class AdminController {
                             u.getLastLogin(),
                             u.getCoins() != null ? u.getCoins() : 0,
                             u.getTrialCoins() != null ? u.getTrialCoins() : 0,
-                            iconCount,
-                            illustrationCount,
+                            (long) iconCount,
+                            (long) illustrationCount,
                             mockupCount,
                             labelCount,
                             u.getRegisteredAt(),
@@ -183,7 +184,8 @@ public class AdminController {
         }
 
         List<GeneratedIcon> icons = generatedIconRepository.findByUserOrderByCreatedAtDesc(targetUser);
-        List<IconDto> iconDtos = icons.stream()
+        List<GeneratedIcon> filteredIcons = filterWatermarkedIcons(icons);
+        List<IconDto> iconDtos = filteredIcons.stream()
                 .map(icon -> new IconDto(
                         icon.getFilePath(),
                         icon.getIconId(),
@@ -223,7 +225,8 @@ public class AdminController {
         }
 
         List<GeneratedIllustration> illustrations = generatedIllustrationRepository.findByUserOrderByCreatedAtDesc(targetUser);
-        List<IllustrationDto> illustrationDtos = illustrations.stream()
+        List<GeneratedIllustration> filteredIllustrations = filterWatermarkedIllustrations(illustrations);
+        List<IllustrationDto> illustrationDtos = filteredIllustrations.stream()
                 .map(illustration -> new IllustrationDto(
                         illustration.getFilePath(),
                         illustration.getDescription(),
@@ -234,6 +237,68 @@ public class AdminController {
 
         log.info("Admin user {} retrieved {} illustrations for user {}", adminUser.getEmail(), illustrationDtos.size(), targetUser.getEmail());
         return ResponseEntity.ok(illustrationDtos);
+    }
+
+    private List<GeneratedIcon> filterWatermarkedIcons(List<GeneratedIcon> icons) {
+        Map<String, Boolean> hasWatermarkByGroup = new HashMap<>();
+        for (GeneratedIcon icon : icons) {
+            if (Boolean.TRUE.equals(icon.getIsWatermarked())) {
+                hasWatermarkByGroup.put(buildWatermarkGroupKey(icon), true);
+            }
+        }
+
+        List<GeneratedIcon> filtered = new ArrayList<>();
+        for (GeneratedIcon icon : icons) {
+            if (isPrivateIconPath(icon.getFilePath())) {
+                continue;
+            }
+            if (Boolean.TRUE.equals(icon.getIsWatermarked())
+                    || !hasWatermarkByGroup.getOrDefault(buildWatermarkGroupKey(icon), false)) {
+                filtered.add(icon);
+            }
+        }
+        return filtered;
+    }
+
+    private String buildWatermarkGroupKey(GeneratedIcon icon) {
+        String generationIndex = icon.getGenerationIndex() != null ? icon.getGenerationIndex().toString() : "1";
+        String iconType = icon.getIconType() != null ? icon.getIconType() : "unknown";
+        return icon.getRequestId() + "|" + iconType + "|" + generationIndex;
+    }
+
+    private boolean isPrivateIconPath(String filePath) {
+        return filePath != null && filePath.startsWith("/private-icons/");
+    }
+
+    private List<GeneratedIllustration> filterWatermarkedIllustrations(List<GeneratedIllustration> illustrations) {
+        Map<String, Boolean> hasWatermarkByGroup = new HashMap<>();
+        for (GeneratedIllustration illustration : illustrations) {
+            if (Boolean.TRUE.equals(illustration.getIsWatermarked())) {
+                hasWatermarkByGroup.put(buildIllustrationWatermarkGroupKey(illustration), true);
+            }
+        }
+
+        List<GeneratedIllustration> filtered = new ArrayList<>();
+        for (GeneratedIllustration illustration : illustrations) {
+            if (isPrivateIllustrationPath(illustration.getFilePath())) {
+                continue;
+            }
+            if (Boolean.TRUE.equals(illustration.getIsWatermarked())
+                    || !hasWatermarkByGroup.getOrDefault(buildIllustrationWatermarkGroupKey(illustration), false)) {
+                filtered.add(illustration);
+            }
+        }
+        return filtered;
+    }
+
+    private String buildIllustrationWatermarkGroupKey(GeneratedIllustration illustration) {
+        String generationIndex = illustration.getGenerationIndex() != null ? illustration.getGenerationIndex().toString() : "1";
+        String illustrationType = illustration.getIllustrationType() != null ? illustration.getIllustrationType() : "unknown";
+        return illustration.getRequestId() + "|" + illustrationType + "|" + generationIndex;
+    }
+
+    private boolean isPrivateIllustrationPath(String filePath) {
+        return filePath != null && filePath.startsWith("/private-illustrations/");
     }
 
     /**
