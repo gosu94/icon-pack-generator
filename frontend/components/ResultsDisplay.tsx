@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import Image from "next/image";
-import Link from "next/link";
 import { Download } from "lucide-react";
+import { loadStripe } from "@stripe/stripe-js";
 import GifModal, { GifModalProgress } from "./GifModal";
 import {
   UIState,
@@ -69,6 +69,36 @@ interface GifModalState {
   requestId: string;
 }
 
+const storePlans = [
+  {
+    id: "starter-pack",
+    name: "Starter Pack",
+    price: 5,
+    coins: 8,
+    icons: 72,
+    illustrations: 32,
+    popular: false,
+  },
+  {
+    id: "creator-pack",
+    name: "Creator Pack",
+    price: 10,
+    coins: 18,
+    icons: 162,
+    illustrations: 72,
+    popular: true,
+  },
+  {
+    id: "pro-pack",
+    name: "Pro Pack",
+    price: 20,
+    coins: 40,
+    icons: 360,
+    illustrations: 160,
+    popular: false,
+  },
+];
+
 const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
   mode,
   uiState,
@@ -117,6 +147,8 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
   });
   const [gifResults, setGifResults] = useState<GifAsset[]>([]);
   const [isGifSubmitting, setIsGifSubmitting] = useState(false);
+  const [stripePublishableKey, setStripePublishableKey] = useState<string>("");
+  const [isCheckoutLoading, setIsCheckoutLoading] = useState(false);
   const gifEventSourceRef = useRef<EventSource | null>(null);
   const actionButtonBaseClass =
     "px-2 sm:px-4 py-2 bg-[#ffffff] text-[#3C4BFF] font-medium rounded-2xl shadow-sm hover:shadow-md transition-all flex items-center justify-center border border-[#E6E8FF] hover:bg-[#F5F6FF] active:shadow-sm focus:outline-none focus:ring-2 focus:ring-[#3C4BFF]/40";
@@ -153,6 +185,54 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
       cleanupGifEventSource();
     };
   }, []);
+
+  useEffect(() => {
+    fetch("/api/payment/config")
+      .then((res) => res.json())
+      .then((data) => {
+        setStripePublishableKey(data.publishableKey);
+      })
+      .catch((error) => {
+        console.error("Error loading Stripe config:", error);
+      });
+  }, []);
+
+  const handlePurchase = async (planId: string) => {
+    if (!stripePublishableKey) {
+      alert("Stripe is not configured properly");
+      return;
+    }
+
+    setIsCheckoutLoading(true);
+
+    try {
+      const response = await fetch("/api/payment/create-checkout-session", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+        body: JSON.stringify({
+          productType: planId,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to create checkout session");
+      }
+
+      const { sessionId } = await response.json();
+      const stripe = await loadStripe(stripePublishableKey);
+      if (stripe) {
+        await stripe.redirectToCheckout({ sessionId });
+      }
+    } catch (error) {
+      console.error("Error creating checkout session:", error);
+      alert("Failed to start checkout process. Please try again.");
+    } finally {
+      setIsCheckoutLoading(false);
+    }
+  };
 
   const resetGifState = () => {
     setSelectedGifIcons(new Set<string>());
@@ -936,17 +1016,44 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
                             ))}
                           </div>
                         </div>
-                        <div className="flex-shrink-0 w-full sm:w-auto">
-                          <Link
-                            href="/store"
-                            className="w-full sm:w-auto inline-flex items-center justify-center px-6 py-3 rounded-xl text-sm font-bold text-white bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all duration-200 gap-2 group-hover:ring-2 group-hover:ring-amber-500/20"
+                      </div>
+                      <div className="mt-6 grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        {storePlans.map((plan) => (
+                          <div
+                            key={plan.id}
+                            className={`relative flex flex-col rounded-xl border ${
+                              plan.popular ? "border-amber-400 shadow-lg" : "border-amber-100"
+                            } bg-white/80 p-4 text-left`}
                           >
-                            <span>Visit Store</span>
-                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
-                            </svg>
-                          </Link>
-                        </div>
+                            {plan.popular && (
+                              <div className="absolute -top-2 right-3 rounded-full bg-amber-500 px-2 py-0.5 text-[10px] font-semibold text-white">
+                                Popular
+                              </div>
+                            )}
+                            <div className="flex items-center justify-between">
+                              <h4 className="text-sm font-semibold text-slate-900">{plan.name}</h4>
+                              <span className="text-sm font-semibold text-slate-900">${plan.price}</span>
+                            </div>
+                            <div className="mt-2 flex items-center gap-2">
+                              <Image src="/images/coin.webp" alt="Coins" width={18} height={18} />
+                              <span className="text-sm font-semibold text-slate-900">{plan.coins} Coins</span>
+                            </div>
+                            <p className="mt-2 text-xs text-slate-500">
+                              Up to {plan.icons} icons or {plan.illustrations} illustrations.
+                            </p>
+                            <button
+                              onClick={() => handlePurchase(plan.id)}
+                              disabled={isCheckoutLoading || !stripePublishableKey}
+                              className={`mt-3 w-full rounded-lg py-2 text-xs font-semibold transition disabled:cursor-not-allowed disabled:opacity-60 ${
+                                plan.popular
+                                  ? "bg-amber-500 text-white hover:bg-amber-600"
+                                  : "bg-white text-amber-700 ring-1 ring-inset ring-amber-200 hover:ring-amber-300"
+                              }`}
+                            >
+                              {isCheckoutLoading ? "Processing..." : "Buy now"}
+                            </button>
+                          </div>
+                        ))}
                       </div>
                     </div>
                   </div>

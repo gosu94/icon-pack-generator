@@ -37,7 +37,16 @@ out/
 .vscode/
 /.env
 
+/src/main/resources/static/
+.gradle-home
+/frontend/.next/
+/frontend/node_modules/
+/static/user-icons/
 ### Application ###
 #application.properties
 #*.yml
 #*.yaml
+/src/test/resources/icons/output/
+/src/test/resources/images/output/
+/src/test/resources/mockups/output/
+/static/
