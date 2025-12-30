@@ -75,6 +75,8 @@ services:
     volumes:
       - ./static/user-icons:/app/static/user-icons
       - ./static/user-illustrations:/app/static/user-illustrations
+      - ./static/user-icons-private:/app/static/user-icons-private
+      - ./static/user-illustrations-private:/app/static/user-illustrations-private
       - ./static/user-mockups:/app/static/user-mockups
       - ./static/user-labels:/app/static/user-labels
     healthcheck:
