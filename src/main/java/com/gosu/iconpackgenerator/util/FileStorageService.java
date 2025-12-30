@@ -3,11 +3,13 @@ package com.gosu.iconpackgenerator.util;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import jakarta.annotation.PostConstruct;
 
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.util.Base64;
 
 @Service
@@ -16,15 +18,30 @@ public class FileStorageService {
     
     @Value("${app.file-storage.base-path}")
     private String baseStoragePath;
+
+    private String privateIconStorageBasePath;
     
     @Value("${app.illustrations-storage.base-path:static/user-illustrations}")
     private String illustrationsBasePath;
+
+    private String privateIllustrationsBasePath;
     
     @Value("${app.mockups-storage.base-path:static/user-mockups}")
     private String mockupsBasePath;
 
     @Value("${app.labels-storage.base-path:static/user-labels}")
     private String labelsBasePath;
+
+    private static final String USER_ICONS_PREFIX = "/user-icons";
+    private static final String PRIVATE_ICONS_PREFIX = "/private-icons";
+    private static final String USER_ILLUSTRATIONS_PREFIX = "/user-illustrations";
+    private static final String PRIVATE_ILLUSTRATIONS_PREFIX = "/private-illustrations";
+
+    @PostConstruct
+    public void initStoragePaths() {
+        privateIconStorageBasePath = baseStoragePath + "-private";
+        privateIllustrationsBasePath = illustrationsBasePath + "-private";
+    }
     
     /**
      * Save a base64 icon to the file system
@@ -36,28 +53,42 @@ public class FileStorageService {
      * @return The full file path where the icon was saved
      */
     public String saveIcon(String userDirectoryPath, String requestId, String iconType, String fileName, String base64Data) {
+        return saveIconInternal(
+                baseStoragePath,
+                USER_ICONS_PREFIX,
+                userDirectoryPath,
+                requestId,
+                iconType,
+                fileName,
+                base64Data);
+    }
+
+    public String saveIconPrivate(String userDirectoryPath, String requestId, String iconType, String fileName, String base64Data) {
+        return saveIconInternal(
+                privateIconStorageBasePath,
+                PRIVATE_ICONS_PREFIX,
+                userDirectoryPath,
+                requestId,
+                iconType,
+                fileName,
+                base64Data);
+    }
+
+    private String saveIconInternal(String storageBasePath, String urlPrefix, String userDirectoryPath,
+                                    String requestId, String iconType, String fileName, String base64Data) {
         try {
-            // Create the full directory path: baseStoragePath/userDirectoryPath/requestId/iconType
-            Path directoryPath = Paths.get(baseStoragePath, userDirectoryPath, requestId, iconType);
-            
-            // Create directories if they don't exist
+            Path directoryPath = Paths.get(storageBasePath, userDirectoryPath, requestId, iconType);
             if (!Files.exists(directoryPath)) {
                 Files.createDirectories(directoryPath);
                 log.debug("Created directory: {}", directoryPath.toAbsolutePath());
             }
-            
-            // Create the full file path
+
             Path filePath = directoryPath.resolve(fileName);
-            
-            // Decode base64 and save to file
             byte[] imageBytes = Base64.getDecoder().decode(base64Data);
             Files.write(filePath, imageBytes);
-            
+
             log.debug("Saved icon to: {}", filePath.toAbsolutePath());
-            
-            // Return relative path from static resources root for web serving
-            return getRelativeWebPath(userDirectoryPath, requestId, iconType, fileName);
-            
+            return buildIconWebPath(urlPrefix, userDirectoryPath, requestId, iconType, fileName);
         } catch (IOException e) {
             log.error("Error saving icon to file system", e);
             throw new RuntimeException("Failed to save icon: " + fileName, e);
@@ -81,7 +112,15 @@ public class FileStorageService {
     private String getRelativeWebPath(String userDirectoryPath, String requestId, String iconType, String fileName) {
         // For Docker environments, we need to serve files from the mounted volume
         // The web path should be /user-icons/userDirectoryPath/requestId/iconType/fileName
-        return String.format("/user-icons/%s/%s/%s/%s", userDirectoryPath, requestId, iconType, fileName);
+        return buildIconWebPath(USER_ICONS_PREFIX, userDirectoryPath, requestId, iconType, fileName);
+    }
+
+    public String buildIconWebPath(String userDirectoryPath, String requestId, String iconType, String fileName) {
+        return buildIconWebPath(USER_ICONS_PREFIX, userDirectoryPath, requestId, iconType, fileName);
+    }
+
+    private String buildIconWebPath(String urlPrefix, String userDirectoryPath, String requestId, String iconType, String fileName) {
+        return String.format("%s/%s/%s/%s/%s", urlPrefix, userDirectoryPath, requestId, iconType, fileName);
     }
     
     /**
@@ -122,6 +161,36 @@ public class FileStorageService {
         return 0L;
     }
 
+    public long getPrivateIconFileSize(String userDirectoryPath, String requestId, String iconType, String fileName) {
+        try {
+            Path filePath = Paths.get(privateIconStorageBasePath, userDirectoryPath, requestId, iconType, fileName);
+            if (Files.exists(filePath)) {
+                return Files.size(filePath);
+            }
+        } catch (IOException e) {
+            log.error("Error getting private icon file size for: {}", fileName, e);
+        }
+        return 0L;
+    }
+
+    public String movePrivateIconToPublic(String userDirectoryPath, String requestId, String iconType, String fileName) {
+        Path sourcePath = Paths.get(privateIconStorageBasePath, userDirectoryPath, requestId, iconType, fileName);
+        Path destinationDir = Paths.get(baseStoragePath, userDirectoryPath, requestId, iconType);
+        Path destinationPath = destinationDir.resolve(fileName);
+        try {
+            if (!Files.exists(sourcePath)) {
+                return buildIconWebPath(userDirectoryPath, requestId, iconType, fileName);
+            }
+            if (!Files.exists(destinationDir)) {
+                Files.createDirectories(destinationDir);
+            }
+            Files.move(sourcePath, destinationPath, StandardCopyOption.REPLACE_EXISTING);
+        } catch (IOException e) {
+            log.warn("Failed to move private icon to public path: {}", sourcePath, e);
+        }
+        return buildIconWebPath(userDirectoryPath, requestId, iconType, fileName);
+    }
+
     public byte[] readIcon(String relativeWebPath) throws IOException {
         // The relativeWebPath is like /user-icons/default-user/...
         // The baseStoragePath is like .../static/user-icons
@@ -140,6 +209,25 @@ public class FileStorageService {
         }
         throw new IOException("File not found: " + filePath.toString());
     }
+
+    public void deleteIconByRelativePath(String relativeWebPath) {
+        if (relativeWebPath == null || relativeWebPath.isBlank()) {
+            return;
+        }
+
+        String pathInsideUserIcons = relativeWebPath.startsWith("/user-icons/")
+                ? relativeWebPath.substring("/user-icons/".length())
+                : relativeWebPath;
+
+        Path filePath = Paths.get(baseStoragePath).resolve(pathInsideUserIcons);
+        try {
+            if (Files.exists(filePath)) {
+                Files.delete(filePath);
+            }
+        } catch (IOException e) {
+            log.warn("Failed to delete icon file {}", filePath, e);
+        }
+    }
     
     // ========== Illustration-specific methods ==========
     
@@ -154,28 +242,43 @@ public class FileStorageService {
      */
     public String saveIllustration(String userDirectoryPath, String requestId, String illustrationType, 
                                    String fileName, String base64Data) {
+        return saveIllustrationInternal(
+                illustrationsBasePath,
+                USER_ILLUSTRATIONS_PREFIX,
+                userDirectoryPath,
+                requestId,
+                illustrationType,
+                fileName,
+                base64Data);
+    }
+
+    public String saveIllustrationPrivate(String userDirectoryPath, String requestId, String illustrationType,
+                                          String fileName, String base64Data) {
+        return saveIllustrationInternal(
+                privateIllustrationsBasePath,
+                PRIVATE_ILLUSTRATIONS_PREFIX,
+                userDirectoryPath,
+                requestId,
+                illustrationType,
+                fileName,
+                base64Data);
+    }
+
+    private String saveIllustrationInternal(String storageBasePath, String urlPrefix, String userDirectoryPath,
+                                            String requestId, String illustrationType, String fileName, String base64Data) {
         try {
-            // Create the full directory path: illustrationsBasePath/userDirectoryPath/requestId/illustrationType
-            Path directoryPath = Paths.get(illustrationsBasePath, userDirectoryPath, requestId, illustrationType);
-            
-            // Create directories if they don't exist
+            Path directoryPath = Paths.get(storageBasePath, userDirectoryPath, requestId, illustrationType);
             if (!Files.exists(directoryPath)) {
                 Files.createDirectories(directoryPath);
                 log.debug("Created illustration directory: {}", directoryPath.toAbsolutePath());
             }
-            
-            // Create the full file path
+
             Path filePath = directoryPath.resolve(fileName);
-            
-            // Decode base64 and save to file
             byte[] imageBytes = Base64.getDecoder().decode(base64Data);
             Files.write(filePath, imageBytes);
-            
+
             log.debug("Saved illustration to: {}", filePath.toAbsolutePath());
-            
-            // Return relative path from static resources root for web serving
-            return getRelativeIllustrationWebPath(userDirectoryPath, requestId, illustrationType, fileName);
-            
+            return buildIllustrationWebPath(urlPrefix, userDirectoryPath, requestId, illustrationType, fileName);
         } catch (IOException e) {
             log.error("Error saving illustration to file system", e);
             throw new RuntimeException("Failed to save illustration: " + fileName, e);
@@ -198,8 +301,18 @@ public class FileStorageService {
     private String getRelativeIllustrationWebPath(String userDirectoryPath, String requestId, 
                                                    String illustrationType, String fileName) {
         // The web path should be /user-illustrations/userDirectoryPath/requestId/illustrationType/fileName
-        return String.format("/user-illustrations/%s/%s/%s/%s", 
-                           userDirectoryPath, requestId, illustrationType, fileName);
+        return buildIllustrationWebPath(USER_ILLUSTRATIONS_PREFIX, userDirectoryPath, requestId, illustrationType, fileName);
+    }
+
+    public String buildIllustrationWebPath(String userDirectoryPath, String requestId,
+                                           String illustrationType, String fileName) {
+        return buildIllustrationWebPath(USER_ILLUSTRATIONS_PREFIX, userDirectoryPath, requestId, illustrationType, fileName);
+    }
+
+    private String buildIllustrationWebPath(String urlPrefix, String userDirectoryPath, String requestId,
+                                            String illustrationType, String fileName) {
+        return String.format("%s/%s/%s/%s/%s",
+                urlPrefix, userDirectoryPath, requestId, illustrationType, fileName);
     }
 
     // ========== Label-specific methods ==========
@@ -281,6 +394,37 @@ public class FileStorageService {
             log.error("Error getting file size for illustration: {}", fileName, e);
         }
         return 0L;
+    }
+
+    public long getPrivateIllustrationFileSize(String userDirectoryPath, String requestId,
+                                               String illustrationType, String fileName) {
+        try {
+            Path filePath = Paths.get(privateIllustrationsBasePath, userDirectoryPath, requestId, illustrationType, fileName);
+            if (Files.exists(filePath)) {
+                return Files.size(filePath);
+            }
+        } catch (IOException e) {
+            log.error("Error getting private illustration file size for: {}", fileName, e);
+        }
+        return 0L;
+    }
+
+    public String movePrivateIllustrationToPublic(String userDirectoryPath, String requestId, String illustrationType, String fileName) {
+        Path sourcePath = Paths.get(privateIllustrationsBasePath, userDirectoryPath, requestId, illustrationType, fileName);
+        Path destinationDir = Paths.get(illustrationsBasePath, userDirectoryPath, requestId, illustrationType);
+        Path destinationPath = destinationDir.resolve(fileName);
+        try {
+            if (!Files.exists(sourcePath)) {
+                return buildIllustrationWebPath(userDirectoryPath, requestId, illustrationType, fileName);
+            }
+            if (!Files.exists(destinationDir)) {
+                Files.createDirectories(destinationDir);
+            }
+            Files.move(sourcePath, destinationPath, StandardCopyOption.REPLACE_EXISTING);
+        } catch (IOException e) {
+            log.warn("Failed to move private illustration to public path: {}", sourcePath, e);
+        }
+        return buildIllustrationWebPath(userDirectoryPath, requestId, illustrationType, fileName);
     }
     
     /**

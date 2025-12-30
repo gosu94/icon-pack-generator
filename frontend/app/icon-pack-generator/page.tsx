@@ -222,14 +222,14 @@ export default function LandingPage() {
                             </div>
                             <h3 className="text-xl font-bold text-slate-900 mb-4">Try for Free</h3>
                             <p className="text-slate-600 leading-relaxed">
-                                Get started instantly with a free trial coin! Generate 5 professional icons or 2 illustrations at no cost
-                                and experience our AI-powered creation process.
+                                Get started instantly with a free trial coin! Generate full icon and illustration sets with a trial
+                                watermark and experience our AI-powered creation process.
                             </p>
                             <div className="mt-4 flex items-center space-x-2 text-sm text-green-600 font-semibold">
                                 <div className="w-4 h-4 bg-green-500 rounded-full flex items-center justify-center">
                                     <span className="text-white text-xs font-bold">T</span>
                                 </div>
-                                <span>1 Trial Coin = 5 Icons (out of 9)</span>
+                                <span>1 Trial Coin = 9 Watermarked Icons / 4 Watermarked Illustrations</span>
                             </div>
                         </div>
 

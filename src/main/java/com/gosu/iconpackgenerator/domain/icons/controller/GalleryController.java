@@ -47,7 +47,7 @@ public class GalleryController implements GalleryControllerAPI {
 
             User user = customUser.getUser();
             List<GeneratedIcon> icons = generatedIconRepository.findByUserOrderByCreatedAtDesc(user);
-            return ResponseEntity.ok(icons);
+            return ResponseEntity.ok(filterWatermarkedIcons(icons));
         } catch (Exception e) {
             log.error("Error retrieving user icons", e);
             return ResponseEntity.status(500).build();
@@ -82,7 +82,7 @@ public class GalleryController implements GalleryControllerAPI {
 
             User user = customUser.getUser();
             List<GeneratedIllustration> illustrations = generatedIllustrationRepository.findByUserOrderByCreatedAtDesc(user);
-            return ResponseEntity.ok(illustrations);
+            return ResponseEntity.ok(filterWatermarkedIllustrations(illustrations));
         } catch (Exception e) {
             log.error("Error retrieving user illustrations", e);
             return ResponseEntity.status(500).build();
@@ -155,7 +155,7 @@ public class GalleryController implements GalleryControllerAPI {
 
             User user = customUser.getUser();
             List<GeneratedIcon> icons = generatedIconRepository.findByUserAndIconTypeOrderByCreatedAtDesc(user, iconType);
-            return ResponseEntity.ok(icons);
+            return ResponseEntity.ok(filterWatermarkedIcons(icons));
         } catch (Exception e) {
             log.error("Error retrieving {} icons", iconType, e);
             return ResponseEntity.status(500).build();
@@ -175,7 +175,7 @@ public class GalleryController implements GalleryControllerAPI {
             if (icons.isEmpty()) {
                 return ResponseEntity.notFound().build();
             }
-            return ResponseEntity.ok(icons);
+            return ResponseEntity.ok(filterWatermarkedIcons(icons));
         } catch (Exception e) {
             log.error("Error retrieving {} icons for request: {}", iconType, requestId, e);
             return ResponseEntity.status(500).build();
@@ -199,6 +199,54 @@ public class GalleryController implements GalleryControllerAPI {
             log.error("Error deleting icons for request: {}", requestId, e);
             return ResponseEntity.status(500).build();
         }
+    }
+
+    private List<GeneratedIcon> filterWatermarkedIcons(List<GeneratedIcon> icons) {
+        Map<String, Boolean> hasWatermarkByGroup = new HashMap<>();
+        for (GeneratedIcon icon : icons) {
+            if (Boolean.TRUE.equals(icon.getIsWatermarked())) {
+                hasWatermarkByGroup.put(buildIconWatermarkGroupKey(icon), true);
+            }
+        }
+
+        List<GeneratedIcon> filtered = new java.util.ArrayList<>();
+        for (GeneratedIcon icon : icons) {
+            if (Boolean.TRUE.equals(icon.getIsWatermarked())
+                    || !hasWatermarkByGroup.getOrDefault(buildIconWatermarkGroupKey(icon), false)) {
+                filtered.add(icon);
+            }
+        }
+        return filtered;
+    }
+
+    private String buildIconWatermarkGroupKey(GeneratedIcon icon) {
+        String generationIndex = icon.getGenerationIndex() != null ? icon.getGenerationIndex().toString() : "1";
+        String iconType = icon.getIconType() != null ? icon.getIconType() : "unknown";
+        return icon.getRequestId() + "|" + iconType + "|" + generationIndex;
+    }
+
+    private List<GeneratedIllustration> filterWatermarkedIllustrations(List<GeneratedIllustration> illustrations) {
+        Map<String, Boolean> hasWatermarkByGroup = new HashMap<>();
+        for (GeneratedIllustration illustration : illustrations) {
+            if (Boolean.TRUE.equals(illustration.getIsWatermarked())) {
+                hasWatermarkByGroup.put(buildIllustrationWatermarkGroupKey(illustration), true);
+            }
+        }
+
+        List<GeneratedIllustration> filtered = new java.util.ArrayList<>();
+        for (GeneratedIllustration illustration : illustrations) {
+            if (Boolean.TRUE.equals(illustration.getIsWatermarked())
+                    || !hasWatermarkByGroup.getOrDefault(buildIllustrationWatermarkGroupKey(illustration), false)) {
+                filtered.add(illustration);
+            }
+        }
+        return filtered;
+    }
+
+    private String buildIllustrationWatermarkGroupKey(GeneratedIllustration illustration) {
+        String generationIndex = illustration.getGenerationIndex() != null ? illustration.getGenerationIndex().toString() : "1";
+        String illustrationType = illustration.getIllustrationType() != null ? illustration.getIllustrationType() : "unknown";
+        return illustration.getRequestId() + "|" + illustrationType + "|" + generationIndex;
     }
 
     /**

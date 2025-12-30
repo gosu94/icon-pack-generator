@@ -32,10 +32,13 @@ public class IllustrationPersistenceService {
      * @param request The original generation request
      * @param response The generation response containing illustrations to persist
      * @param user The user who requested the generation
+     * @param isWatermarked Whether these illustrations are watermarked
      */
     @Transactional
     public void persistGeneratedIllustrations(String requestId, IllustrationGenerationRequest request, 
-                                            IllustrationGenerationResponse response, User user) {
+                                            IllustrationGenerationResponse response, User user,
+                                            boolean isWatermarked,
+                                            boolean storePrivately) {
         try {
             log.info("Persisting {} illustrations for request {}", 
                     response.getIllustrations().size(), requestId);
@@ -49,7 +52,7 @@ public class IllustrationPersistenceService {
             // Save individual illustrations
             for (IllustrationGenerationResponse.GeneratedIllustration illustration : response.getIllustrations()) {
                 if (illustration.getBase64Data() != null && !illustration.getBase64Data().isEmpty()) {
-                    persistSingleIllustration(requestId, request, illustration, allServiceResults, user);
+                    persistSingleIllustration(requestId, request, illustration, allServiceResults, user, isWatermarked, storePrivately);
                 }
             }
             
@@ -60,6 +63,12 @@ public class IllustrationPersistenceService {
             log.error("Error persisting illustrations for request {}", requestId, e);
             throw e;
         }
+    }
+
+    @Transactional
+    public void persistGeneratedIllustrations(String requestId, IllustrationGenerationRequest request,
+                                              IllustrationGenerationResponse response, User user) {
+        persistGeneratedIllustrations(requestId, request, response, user, false, false);
     }
     
     /**
@@ -74,7 +83,9 @@ public class IllustrationPersistenceService {
     @Transactional
     public void persistMoreIllustrations(String requestId, 
                                         List<IllustrationGenerationResponse.GeneratedIllustration> newIllustrations, 
-                                        User user, String generalDescription, int generationIndex) {
+                                        User user, String generalDescription, int generationIndex,
+                                        boolean isWatermarked,
+                                        boolean storePrivately) {
         try {
             log.info("Persisting {} more illustrations for request {}", newIllustrations.size(), requestId);
             
@@ -83,7 +94,7 @@ public class IllustrationPersistenceService {
             for (IllustrationGenerationResponse.GeneratedIllustration illustration : newIllustrations) {
                 if (illustration.getBase64Data() != null && !illustration.getBase64Data().isEmpty()) {
                     persistMoreIllustration(requestId, illustration, user, illustrationType, 
-                                          generalDescription, generationIndex);
+                                          generalDescription, generationIndex, isWatermarked, storePrivately);
                 }
             }
             
@@ -95,6 +106,13 @@ public class IllustrationPersistenceService {
             throw e;
         }
     }
+
+    @Transactional
+    public void persistMoreIllustrations(String requestId, 
+                                        List<IllustrationGenerationResponse.GeneratedIllustration> newIllustrations, 
+                                        User user, String generalDescription, int generationIndex) {
+        persistMoreIllustrations(requestId, newIllustrations, user, generalDescription, generationIndex, false, false);
+    }
     
     /**
      * Persists a single illustration from main generation
@@ -102,7 +120,9 @@ public class IllustrationPersistenceService {
     private void persistSingleIllustration(String requestId, IllustrationGenerationRequest request, 
                                           IllustrationGenerationResponse.GeneratedIllustration illustration,
                                           List<IllustrationGenerationResponse.ServiceResults> allServiceResults, 
-                                          User user) {
+                                          User user,
+                                          boolean isWatermarked,
+                                          boolean storePrivately) {
         
         // Find generation index from service results
         Integer generationIndex = findGenerationIndex(illustration, allServiceResults);
@@ -116,14 +136,21 @@ public class IllustrationPersistenceService {
                 illustration.getGridPosition()
         );
         
-        // Save illustration to file system
-        String filePath = fileStorageService.saveIllustration(
-                user.getDirectoryPath(),
-                requestId,
-                illustrationType,
-                fileName,
-                illustration.getBase64Data()
-        );
+        String storageType = isWatermarked ? illustrationType + "-trial" : illustrationType;
+
+        String filePath = storePrivately
+                ? fileStorageService.saveIllustrationPrivate(
+                        user.getDirectoryPath(),
+                        requestId,
+                        storageType,
+                        fileName,
+                        illustration.getBase64Data())
+                : fileStorageService.saveIllustration(
+                        user.getDirectoryPath(),
+                        requestId,
+                        storageType,
+                        fileName,
+                        illustration.getBase64Data());
         
         // Create database record
         GeneratedIllustration generatedIllustration = new GeneratedIllustration();
@@ -138,10 +165,14 @@ public class IllustrationPersistenceService {
         generatedIllustration.setIllustrationCount(request.getIllustrationCount());
         generatedIllustration.setGenerationIndex(generationIndex);
         generatedIllustration.setIllustrationType(illustrationType);
+        generatedIllustration.setIsWatermarked(isWatermarked);
         
         // Calculate file size
-        long fileSize = fileStorageService.getIllustrationFileSize(
-                user.getDirectoryPath(), requestId, illustrationType, fileName);
+        long fileSize = storePrivately
+                ? fileStorageService.getPrivateIllustrationFileSize(
+                        user.getDirectoryPath(), requestId, storageType, fileName)
+                : fileStorageService.getIllustrationFileSize(
+                        user.getDirectoryPath(), requestId, storageType, fileName);
         generatedIllustration.setFileSize(fileSize);
         
         generatedIllustrationRepository.save(generatedIllustration);
@@ -153,21 +184,30 @@ public class IllustrationPersistenceService {
     private void persistMoreIllustration(String requestId, 
                                         IllustrationGenerationResponse.GeneratedIllustration illustration, 
                                         User user, String illustrationType, String generalDescription, 
-                                        int generationIndex) {
+                                        int generationIndex,
+                                        boolean isWatermarked,
+                                        boolean storePrivately) {
         
         // Generate file name for more illustrations
         String fileName = String.format("illustration_%s_%d.png",
                 illustration.getId().substring(0, 8),
                 illustration.getGridPosition());
         
-        // Save illustration to file system
-        String filePath = fileStorageService.saveIllustration(
-                user.getDirectoryPath(),
-                requestId,
-                illustrationType,
-                fileName,
-                illustration.getBase64Data()
-        );
+        String storageType = isWatermarked ? illustrationType + "-trial" : illustrationType;
+
+        String filePath = storePrivately
+                ? fileStorageService.saveIllustrationPrivate(
+                        user.getDirectoryPath(),
+                        requestId,
+                        storageType,
+                        fileName,
+                        illustration.getBase64Data())
+                : fileStorageService.saveIllustration(
+                        user.getDirectoryPath(),
+                        requestId,
+                        storageType,
+                        fileName,
+                        illustration.getBase64Data());
         
         // Create database record
         GeneratedIllustration generatedIllustration = new GeneratedIllustration();
@@ -182,10 +222,14 @@ public class IllustrationPersistenceService {
         generatedIllustration.setIllustrationCount(4); // Always 4 for 2x2 grid
         generatedIllustration.setGenerationIndex(generationIndex);
         generatedIllustration.setIllustrationType(illustrationType);
+        generatedIllustration.setIsWatermarked(isWatermarked);
         
         // Calculate file size
-        long fileSize = fileStorageService.getIllustrationFileSize(
-                user.getDirectoryPath(), requestId, illustrationType, fileName);
+        long fileSize = storePrivately
+                ? fileStorageService.getPrivateIllustrationFileSize(
+                        user.getDirectoryPath(), requestId, storageType, fileName)
+                : fileStorageService.getIllustrationFileSize(
+                        user.getDirectoryPath(), requestId, storageType, fileName);
         generatedIllustration.setFileSize(fileSize);
         
         generatedIllustrationRepository.save(generatedIllustration);
@@ -214,4 +258,3 @@ public class IllustrationPersistenceService {
         return 1;
     }
 }
-

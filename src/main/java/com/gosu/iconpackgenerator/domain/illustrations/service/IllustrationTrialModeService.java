@@ -1,76 +1,61 @@
 package com.gosu.iconpackgenerator.domain.illustrations.service;
 
 import com.gosu.iconpackgenerator.domain.illustrations.dto.IllustrationGenerationResponse;
+import com.gosu.iconpackgenerator.util.WatermarkService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 
 /**
- * Service responsible for applying trial mode limitations to illustration generation responses.
- * Trial users get limited number of illustrations (2 out of 4) to encourage upgrades.
+ * Service responsible for applying trial mode watermarks to illustration generation responses.
  */
 @Service
 @RequiredArgsConstructor
 @Slf4j
 public class IllustrationTrialModeService {
-    
-    private static final int TRIAL_ILLUSTRATION_LIMIT = 2;
+
+    private static final String TRIAL_MESSAGE_SUFFIX = " - Trial Mode: Watermark applied";
+    private final WatermarkService watermarkService;
     
     /**
-     * Applies trial mode limitations to a complete illustration generation response
-     * 
-     * @param response The response to limit
+     * Applies trial mode watermark to a complete illustration generation response.
+     *
+     * @param response The response to watermark
      */
-    public void applyTrialLimitations(IllustrationGenerationResponse response) {
-        log.info("Applying trial mode limitations to illustration response");
+    public void applyTrialWatermark(IllustrationGenerationResponse response) {
+        log.info("Applying trial watermark to illustration response");
         
         // Apply limitations to Banana service results (only service for illustrations)
         if (response.getBananaResults() != null) {
-            response.getBananaResults().forEach(this::limitServiceIllustrations);
+            response.getBananaResults().forEach(this::watermarkServiceIllustrations);
         }
         
-        // Rebuild the combined illustrations list after limiting individual services
+        // Rebuild the combined illustrations list after watermarking
         List<IllustrationGenerationResponse.GeneratedIllustration> allIllustrations = new ArrayList<>();
         addIllustrationsFromServiceResults(allIllustrations, response.getBananaResults());
         response.setIllustrations(allIllustrations);
         
         // Add trial indicator to the overall response
         String currentMessage = response.getMessage() != null ? response.getMessage() : "Generated";
-        response.setMessage(currentMessage + " - Trial Mode: Limited to " + TRIAL_ILLUSTRATION_LIMIT + " random illustrations");
-        
-        log.info("Applied trial limitations to illustration response. Final illustration count: {}", allIllustrations.size());
+        response.setMessage(currentMessage + TRIAL_MESSAGE_SUFFIX);
     }
     
     /**
-     * Limits the illustrations in a single ServiceResults to the trial limit
-     * 
-     * @param serviceResults The service results to limit
+     * Applies watermark to the illustrations in a single ServiceResults.
      */
-    private void limitServiceIllustrations(IllustrationGenerationResponse.ServiceResults serviceResults) {
-        if (serviceResults == null || serviceResults.getIllustrations() == null || 
-            serviceResults.getIllustrations().size() <= TRIAL_ILLUSTRATION_LIMIT) {
-            return; // No need to limit if at or below limit
+    private void watermarkServiceIllustrations(IllustrationGenerationResponse.ServiceResults serviceResults) {
+        if (serviceResults == null || serviceResults.getIllustrations() == null) {
+            return;
         }
-        
-        List<IllustrationGenerationResponse.GeneratedIllustration> originalIllustrations = 
-                new ArrayList<>(serviceResults.getIllustrations());
-        Collections.shuffle(originalIllustrations); // Randomize the selection
-        
-        List<IllustrationGenerationResponse.GeneratedIllustration> limitedIllustrations = 
-                originalIllustrations.subList(0, TRIAL_ILLUSTRATION_LIMIT);
-        serviceResults.setIllustrations(limitedIllustrations);
-        
-        // Update the message to indicate limitation
-        String currentMessage = serviceResults.getMessage() != null ? serviceResults.getMessage() : "";
-        serviceResults.setMessage(currentMessage + " (Trial: " + TRIAL_ILLUSTRATION_LIMIT + " of " + 
-                originalIllustrations.size() + " illustrations)");
-        
-        log.info("Limited illustrations to {} random ones for trial user in service: {}", 
-                TRIAL_ILLUSTRATION_LIMIT, serviceResults.getServiceName());
+
+        for (IllustrationGenerationResponse.GeneratedIllustration illustration : serviceResults.getIllustrations()) {
+            if (illustration.getBase64Data() != null && !illustration.getBase64Data().isBlank()) {
+                illustration.setBase64Data(watermarkService.applyTrialWatermark(illustration.getBase64Data()));
+            }
+        }
     }
     
     /**
@@ -88,13 +73,4 @@ public class IllustrationTrialModeService {
         }
     }
     
-    /**
-     * Gets the trial illustration limit
-     * 
-     * @return The number of illustrations trial users get
-     */
-    public int getTrialIllustrationLimit() {
-        return TRIAL_ILLUSTRATION_LIMIT;
-    }
 }
-

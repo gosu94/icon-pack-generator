@@ -66,8 +66,10 @@ public class GeneratedIllustration {
     @Column(name = "illustration_type")
     private String illustrationType; // "original" or "variation"
 
+    @Column(name = "is_watermarked")
+    private Boolean isWatermarked = false;
+
     public String getImageUrl() {
         return this.filePath;
     }
 }
-

@@ -80,17 +80,20 @@ public class IllustrationGenerationService {
             IllustrationGenerationResponse finalResponse = createCombinedResponse(requestId, bananaResults, seed);
             finalResponse.setTrialMode(isTrialMode);
             
-            // Apply trial mode limitations if using trial coins
-            if (isTrialMode && "success".equals(finalResponse.getStatus())) {
-                log.info("Applying trial mode limitations to illustration response for request {}", requestId);
-                illustrationTrialModeService.applyTrialLimitations(finalResponse);
-            }
-            
             // Persist generated illustrations to database and file system
             if ("success".equals(finalResponse.getStatus())) {
                 try {
-                    illustrationPersistenceService.persistGeneratedIllustrations(
-                            requestId, request, finalResponse, user);
+                    if (isTrialMode) {
+                        illustrationPersistenceService.persistGeneratedIllustrations(
+                                requestId, request, finalResponse, user, false, true);
+                        log.info("Applying trial watermark to illustration response for request {}", requestId);
+                        illustrationTrialModeService.applyTrialWatermark(finalResponse);
+                        illustrationPersistenceService.persistGeneratedIllustrations(
+                                requestId, request, finalResponse, user, true, false);
+                    } else {
+                        illustrationPersistenceService.persistGeneratedIllustrations(
+                                requestId, request, finalResponse, user, false, false);
+                    }
                     log.info("Successfully persisted {} illustrations for request {} (trial mode: {})", 
                             finalResponse.getIllustrations().size(), requestId, isTrialMode);
                 } catch (Exception e) {
@@ -99,7 +102,7 @@ public class IllustrationGenerationService {
                 }
             }
             
-            // Send final completion update with limited illustrations
+            // Send final completion update with watermarked illustrations when applicable
             notifyProgressUpdate(progressCallback, ServiceProgressUpdate.allCompleteWithIcons(
                     requestId, finalResponse.getMessage(), convertToIconList(finalResponse.getIllustrations())), isTrialMode);
             

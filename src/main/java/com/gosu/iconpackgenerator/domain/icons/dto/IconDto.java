@@ -15,4 +15,5 @@ public class IconDto {
     private String requestId;
     private String iconType;
     private String theme;
+    private boolean watermarked;
 }

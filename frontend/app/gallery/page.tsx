@@ -20,6 +20,7 @@ interface Icon {
   requestId: string;
   iconType: string;
   theme: string;
+  watermarked?: boolean;
 }
 
 interface Illustration {
@@ -226,7 +227,7 @@ const composeGridFromIconUrls = async (iconUrls: string[]): Promise<Blob> => {
 
 export default function GalleryPage() {
   const router = useRouter();
-  const { authState } = useAuth();
+  const { authState, checkAuthenticationStatus } = useAuth();
   const [groupedIcons, setGroupedIcons] = useState<GroupedIcons>({});
   const [groupedIllustrations, setGroupedIllustrations] = useState<GroupedIllustrations>({});
   const [groupedMockups, setGroupedMockups] = useState<GroupedMockups>({});
@@ -235,6 +236,7 @@ export default function GalleryPage() {
   const [error, setError] = useState<string | null>(null);
   const [selectedRequest, setSelectedRequest] = useState<string | null>(null);
   const [galleryType, setGalleryType] = useState<string | null>(null);
+  const [isRemovingWatermark, setIsRemovingWatermark] = useState(false);
 
   // Export state
   const [showExportModal, setShowExportModal] = useState(false);
@@ -270,7 +272,7 @@ export default function GalleryPage() {
     "px-2 sm:px-4 py-2 bg-[#ffffff] text-[#3C4BFF] font-medium rounded-2xl shadow-sm hover:shadow-md transition-all flex items-center justify-center border border-[#E6E8FF] hover:bg-[#F5F6FF] active:shadow-sm focus:outline-none focus:ring-2 focus:ring-[#3C4BFF]/40";
 
   const truncateHeading = (value: string) =>
-    value.length > 80 ? `${value.slice(0, 79)}...` : value;
+    value.length > 35 ? `${value.slice(0, 34)}...` : value;
 
   // Preview state
   const [previewImage, setPreviewImage] = useState<string | null>(null);
@@ -558,41 +560,42 @@ export default function GalleryPage() {
     router.push("/dashboard");
   };
 
-  useEffect(() => {
-    const fetchIcons = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const response = await fetch("/api/user/icons", {
-          credentials: "include",
-        });
-        if (!response.ok) {
-          throw new Error("Failed to fetch icons");
-        }
-        const data: Icon[] = await response.json();
-
-        const grouped = data.reduce((acc, icon) => {
-          if (!acc[icon.requestId]) {
-            acc[icon.requestId] = { original: [], variation: [], gifs: [] };
-          }
-          const isGif = icon.imageUrl?.toLowerCase().endsWith(".gif");
-          if (isGif) {
-            acc[icon.requestId].gifs.push(icon);
-          } else if (icon.iconType === "original") {
-            acc[icon.requestId].original.push(icon);
-          } else if (icon.iconType === "variation") {
-            acc[icon.requestId].variation.push(icon);
-          }
-          return acc;
-        }, {} as GroupedIcons);
-
-        setGroupedIcons(grouped);
-      } catch (err: any) {
-        setError(err.message);
-      } finally {
-        setLoading(false);
+  const fetchIcons = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await fetch("/api/user/icons", {
+        credentials: "include",
+      });
+      if (!response.ok) {
+        throw new Error("Failed to fetch icons");
       }
-    };
+      const data: Icon[] = await response.json();
+
+      const grouped = data.reduce((acc, icon) => {
+        if (!acc[icon.requestId]) {
+          acc[icon.requestId] = { original: [], variation: [], gifs: [] };
+        }
+        const isGif = icon.imageUrl?.toLowerCase().endsWith(".gif");
+        if (isGif) {
+          acc[icon.requestId].gifs.push(icon);
+        } else if (icon.iconType === "original") {
+          acc[icon.requestId].original.push(icon);
+        } else if (icon.iconType === "variation") {
+          acc[icon.requestId].variation.push(icon);
+        }
+        return acc;
+      }, {} as GroupedIcons);
+
+      setGroupedIcons(grouped);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
 
     const fetchIllustrations = async () => {
       setLoading(true);
@@ -714,6 +717,38 @@ export default function GalleryPage() {
 
   const handleBackToGallery = () => {
     setSelectedRequest(null);
+  };
+
+  const handleRemoveWatermark = async () => {
+    if (!selectedRequest) {
+      return;
+    }
+    if (availableCoins < 1) {
+      alert("You need regular coins to remove the watermark.");
+      return;
+    }
+
+    setIsRemovingWatermark(true);
+    try {
+      const response = await fetch("/api/user/icons/remove-watermark", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ requestId: selectedRequest }),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(payload.message || "Failed to remove watermark");
+      }
+
+      await fetchIcons();
+      await checkAuthenticationStatus();
+    } catch (error) {
+      console.error("Failed to remove watermark", error);
+      alert(error instanceof Error ? error.message : "Failed to remove watermark");
+    } finally {
+      setIsRemovingWatermark(false);
+    }
   };
 
   const openExportModal = (icons: Icon[]) => {
@@ -1007,6 +1042,12 @@ export default function GalleryPage() {
   const selectedLabelGroup = selectedRequest
     ? groupedLabels[selectedRequest]
     : null;
+  const hasWatermarkedIcons = Boolean(
+    selectedIconGroup &&
+      (selectedIconGroup.original.some((icon) => icon.watermarked) ||
+        selectedIconGroup.variation.some((icon) => icon.watermarked)),
+  );
+  const canRemoveWatermark = hasWatermarkedIcons && availableCoins > 0;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50/30">
@@ -1164,6 +1205,38 @@ export default function GalleryPage() {
                               icons)
                             </span>
                           </button>
+                          {hasWatermarkedIcons && (
+                            <button
+                              onClick={handleRemoveWatermark}
+                              disabled={!canRemoveWatermark || isRemovingWatermark}
+                              className={`px-3 sm:px-5 py-2.5 font-medium rounded-2xl shadow-sm transition-all flex items-center justify-center gap-2 border ${
+                                canRemoveWatermark
+                                  ? "bg-[#3C4BFF] text-white border-[#3C4BFF] hover:bg-[#2F3BD4] hover:shadow-md"
+                                  : "bg-slate-200 text-slate-500 border-slate-200 cursor-not-allowed"
+                              }`}
+                              title={
+                                canRemoveWatermark
+                                  ? "Remove watermark (1 coin)"
+                                  : "You need regular coins to remove the watermark"
+                              }
+                            >
+                              {isRemovingWatermark ? (
+                                "Removing..."
+                              ) : (
+                                <>
+                                  <span>Remove Watermark</span>
+                                  <span className="flex items-center gap-1 text-xs font-semibold">
+                                    <img
+                                      src="/images/coin.webp"
+                                      alt="Coin"
+                                      className="h-4 w-4"
+                                    />
+                                    <span>1</span>
+                                  </span>
+                                </>
+                              )}
+                            </button>
+                          )}
                         </div>
 
                         {selectedIconGroup.original.length > 0 && (

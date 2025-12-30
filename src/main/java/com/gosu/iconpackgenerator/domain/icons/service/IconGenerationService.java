@@ -109,14 +109,15 @@ public class IconGenerationService {
                         }
                     }
 
-                    TrialModeService.TrialLimitationResult trialLimitationResult = null;
-                    if (isTrialMode && "success".equals(finalResponse.getStatus())) {
-                        trialLimitationResult = trialModeService.applyTrialLimitations(finalResponse);
-                    }
-
                     if ("success".equals(finalResponse.getStatus())) {
                         try {
-                            iconPersistenceService.persistGeneratedIcons(requestId, request, finalResponse, user, trialLimitationResult);
+                            if (isTrialMode) {
+                                iconPersistenceService.persistGeneratedIcons(requestId, request, finalResponse, user, false, true);
+                                trialModeService.applyTrialWatermark(finalResponse);
+                                iconPersistenceService.persistGeneratedIcons(requestId, request, finalResponse, user, true, false);
+                            } else {
+                                iconPersistenceService.persistGeneratedIcons(requestId, request, finalResponse, user, false, false);
+                            }
                             log.info("Persisted {} icons for request {} (trialMode={})",
                                     finalResponse.getIcons().size(), requestId, isTrialMode);
                         } catch (Exception e) {

@@ -14,6 +14,7 @@ import com.gosu.iconpackgenerator.domain.illustrations.service.IllustrationPersi
 import com.gosu.iconpackgenerator.domain.status.GenerationStatusService;
 import com.gosu.iconpackgenerator.user.model.User;
 import com.gosu.iconpackgenerator.user.service.CustomOAuth2User;
+import com.gosu.iconpackgenerator.util.WatermarkService;
 import jakarta.annotation.PreDestroy;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -51,6 +52,7 @@ public class IllustrationGenerationController implements IllustrationGenerationC
     private final IllustrationPersistenceService illustrationPersistenceService;
     private final CoinManagementService coinManagementService;
     private final GenerationStatusService generationStatusService;
+    private final WatermarkService watermarkService;
 
 
     private final ScheduledExecutorService heartbeatScheduler = Executors.newScheduledThreadPool(5);
@@ -526,16 +528,38 @@ public class IllustrationGenerationController implements IllustrationGenerationC
 
                 // Persist the new illustrations
                 try {
-                    illustrationPersistenceService.persistMoreIllustrations(
-                            request.getOriginalRequestId(), 
-                            newIllustrations, 
-                            user, 
-                            request.getGeneralDescription(), 
-                            request.getGenerationIndex());
-                    log.info("Successfully persisted {} more illustrations for request {}", 
+                    if (usedTrialCoin) {
+                        illustrationPersistenceService.persistMoreIllustrations(
+                                request.getOriginalRequestId(),
+                                newIllustrations,
+                                user,
+                                request.getGeneralDescription(),
+                                request.getGenerationIndex(),
+                                false,
+                                true);
+                        applyTrialWatermarkToIllustrations(newIllustrations);
+                        illustrationPersistenceService.persistMoreIllustrations(
+                                request.getOriginalRequestId(),
+                                newIllustrations,
+                                user,
+                                request.getGeneralDescription(),
+                                request.getGenerationIndex(),
+                                true,
+                                false);
+                    } else {
+                        illustrationPersistenceService.persistMoreIllustrations(
+                                request.getOriginalRequestId(),
+                                newIllustrations,
+                                user,
+                                request.getGeneralDescription(),
+                                request.getGenerationIndex(),
+                                false,
+                                false);
+                    }
+                    log.info("Successfully persisted {} more illustrations for request {}",
                             newIllustrations.size(), request.getOriginalRequestId());
                 } catch (Exception e) {
-                    log.error("Error persisting more illustrations for request {}", 
+                    log.error("Error persisting more illustrations for request {}",
                             request.getOriginalRequestId(), e);
                 }
 
@@ -717,5 +741,18 @@ public class IllustrationGenerationController implements IllustrationGenerationC
         
         // Default case: return a generic error message without technical details
         return "Failed to generate illustrations. Please try again or contact support if the issue persists.";
+    }
+
+    private void applyTrialWatermarkToIllustrations(
+            List<IllustrationGenerationResponse.GeneratedIllustration> illustrations) {
+        if (illustrations == null) {
+            return;
+        }
+
+        for (IllustrationGenerationResponse.GeneratedIllustration illustration : illustrations) {
+            if (illustration.getBase64Data() != null && !illustration.getBase64Data().isBlank()) {
+                illustration.setBase64Data(watermarkService.applyTrialWatermark(illustration.getBase64Data()));
+            }
+        }
     }
 }

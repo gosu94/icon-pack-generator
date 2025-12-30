@@ -388,9 +388,10 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
   const handleUseResultAsReference = (
     result: ServiceResult,
     targetMode: GenerationMode,
+    iconBase64Override?: string,
   ) => {
     const base64Source =
-      result.originalGridImageBase64 || result.icons?.[0]?.base64Data;
+      iconBase64Override || result.originalGridImageBase64 || result.icons?.[0]?.base64Data;
 
     if (!base64Source) {
       alert("Reference image is not available yet. Please wait for generation to finish.");
@@ -409,11 +410,45 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
     prepareReferenceFromBase64(base64Source, filename, targetMode);
   };
 
+  const getResponseServiceResults = (serviceId: string) => {
+    switch (serviceId) {
+      case "falai":
+        return currentResponse?.falAiResults;
+      case "recraft":
+        return currentResponse?.recraftResults;
+      case "photon":
+        return currentResponse?.photonResults;
+      case "gpt":
+        return currentResponse?.gptResults;
+      case "gpt15":
+        return currentResponse?.gpt15Results;
+      case "banana":
+        return currentResponse?.bananaResults;
+      default:
+        return undefined;
+    }
+  };
+
+  const getDisplayIcons = (result: ServiceResult, baseServiceId: string) => {
+    if (!isTrialResult || !currentResponse) {
+      return result.icons;
+    }
+
+    const serviceResults = getResponseServiceResults(baseServiceId);
+    const matchingResult = serviceResults?.find(
+      (serviceResult) => serviceResult.generationIndex === result.generationIndex,
+    );
+    return matchingResult?.icons?.length ? matchingResult.icons : result.icons;
+  };
+
   const renderGenerationResults = (generationNumber: number) => {
     const results = getGenerationResults(generationNumber);
     return results.map((result, index) => {
       const baseServiceId = result.serviceId.replace(/-gen\d+$/, "");
       const serviceName = getServiceDisplayName(baseServiceId);
+      const displayIcons = getDisplayIcons(result, baseServiceId);
+      const referenceIconBase64 =
+        isTrialResult && displayIcons?.length ? displayIcons[0].base64Data : undefined;
 
       return (
         <div key={result.serviceId} data-oid="o-woppu">
@@ -450,19 +485,23 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
                   </span>
                 )}
               </h3>
-              {result.status === "success" && result.icons.length > 0 && (
+              {result.status === "success" && displayIcons.length > 0 && (
                 <div className="flex items-center gap-2 sm:gap-3">
                   {mode === "icons" && (
                     <>
                       <button
-                        onClick={() => handleUseResultAsReference(result, "mockups")}
+                        onClick={() =>
+                          handleUseResultAsReference(result, "mockups", referenceIconBase64)
+                        }
                         className={`${actionButtonBaseClass} gap-1`}
                         title="Generate UI Mockup from these icons"
                       >
                         <span className="text-xs font-bold">UI</span>
                       </button>
                       <button
-                        onClick={() => handleUseResultAsReference(result, "labels")}
+                        onClick={() =>
+                          handleUseResultAsReference(result, "labels", referenceIconBase64)
+                        }
                         className={`${actionButtonBaseClass} gap-1`}
                         title="Generate Labels from these icons"
                       >
@@ -470,7 +509,12 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
                       </button>
                       <button
                         onClick={() =>
-                          openGifModal(baseServiceId, serviceName, result.generationIndex, result.icons)
+                          openGifModal(
+                            baseServiceId,
+                            serviceName,
+                            result.generationIndex,
+                            displayIcons,
+                          )
                         }
                         className={`${actionButtonBaseClass} gap-1`}
                         title="Create GIFs from these icons"
@@ -481,7 +525,9 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
                   )}
                   {mode === "mockups" && (
                     <button
-                      onClick={() => handleUseResultAsReference(result, "icons")}
+                      onClick={() =>
+                        handleUseResultAsReference(result, "icons", referenceIconBase64)
+                      }
                       className={`${actionButtonBaseClass} gap-1`}
                       title="Generate Icons from this mockup"
                     >
@@ -510,7 +556,7 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
             </p>
           </div>
 
-          {showResultsPanes && result.icons && result.icons.length > 0 && (
+          {showResultsPanes && displayIcons && displayIcons.length > 0 && (
             <div 
               className={
                 mode === "icons" || mode === "labels"
@@ -521,7 +567,7 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
               } 
               data-oid=".ge-1o5"
             >
-              {result.icons.map((icon, iconIndex) => (
+              {displayIcons.map((icon, iconIndex) => (
                 <div
                   key={iconIndex}
                   className={`relative group transform ${getIconAnimationClass(result.serviceId, iconIndex)} ${
@@ -880,7 +926,7 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
                             Loving these results? Get <span className="font-semibold text-amber-700">Premium Coins</span> to access:
                           </p>
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-2 gap-x-4 text-sm">
-                            {["Crisp SVG & HQ Exports", "GIF Animations", "Extra Variations", "Larger Packs"].map((feature, i) => (
+                            {["Crisp SVG & HQ Exports", "GIF Animations", "Extra Variations", "No watermarks"].map((feature, i) => (
                               <div key={i} className="flex items-center gap-2 text-slate-700">
                                 <svg className="w-4 h-4 text-green-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />

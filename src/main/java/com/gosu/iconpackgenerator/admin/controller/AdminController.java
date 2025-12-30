@@ -191,7 +191,8 @@ public class AdminController {
                         icon.getServiceSource(),
                         icon.getRequestId(),
                         icon.getIconType(),
-                        icon.getTheme()
+                        icon.getTheme(),
+                        Boolean.TRUE.equals(icon.getIsWatermarked())
                 ))
                 .collect(Collectors.toList());
 

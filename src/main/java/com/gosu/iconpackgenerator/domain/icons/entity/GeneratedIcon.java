@@ -70,6 +70,9 @@ public class GeneratedIcon {
     @Column(name = "icon_type")
     private String iconType; // "original" or "variation"
 
+    @Column(name = "is_watermarked")
+    private Boolean isWatermarked = false;
+
     public String getImageUrl() {
         return this.filePath;
     }

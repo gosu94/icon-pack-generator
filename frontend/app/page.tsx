@@ -265,7 +265,7 @@ export default function LandingPage() {
                             </div>
                             <h3 className="text-xl font-bold text-slate-900 mb-3">Try for Free</h3>
                             <p className="text-slate-600 text-sm">
-                                Get started with a free trial coin. Generate 5 professional icons at no cost.
+                                Get started with a free trial coin. Generate full 9-icon packs with a trial watermark.
                             </p>
                         </div>
                     </div>

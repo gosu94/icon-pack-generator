@@ -124,6 +124,28 @@ public class CoinManagementService {
             return CoinDeductionResult.failure("Insufficient coins. You need 1 coin to generate more icons, or you can purchase coins in the store.");
         }
     }
+
+    /**
+     * Deducts regular coins only (no trial coin fallback).
+     *
+     * @param user The user to deduct coins from
+     * @param cost The number of coins required
+     * @return CoinDeductionResult with success status
+     */
+    public CoinDeductionResult deductRegularCoins(User user, int cost) {
+        int regularCoins = userService.getUserCoins(user.getId());
+        if (regularCoins >= cost) {
+            if (!userService.deductCoins(user.getId(), cost)) {
+                log.error("Failed to deduct regular coins from user {}", user.getEmail());
+                return CoinDeductionResult.failure("Failed to process payment. Please try again.");
+            }
+            log.info("Deducted {} regular coin(s) from user {} for watermark removal", cost, user.getEmail());
+            return CoinDeductionResult.success(false, cost);
+        }
+
+        log.warn("User {} has insufficient regular coins: {}", user.getEmail(), regularCoins);
+        return CoinDeductionResult.failure("Insufficient regular coins. Please purchase coins to remove the watermark.");
+    }
     
     /**
      * Refunds coins to a user

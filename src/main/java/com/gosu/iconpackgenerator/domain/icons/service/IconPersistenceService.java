@@ -29,7 +29,7 @@ public class IconPersistenceService {
     @Transactional
     public void persistGeneratedIcons(String requestId, IconGenerationRequest request,
                                       IconGenerationResponse response, User user) {
-        persistGeneratedIcons(requestId, request, response, user, null);
+        persistGeneratedIcons(requestId, request, response, user, false, false);
     }
 
     /**
@@ -39,12 +39,14 @@ public class IconPersistenceService {
      * @param request         The original generation request
      * @param response        The generation response containing icons to persist
      * @param user            The user who requested the generation
-     * @param trialLimitResult Optional limitation metadata describing which icons should be persisted
+     * @param isWatermarked Whether these icons are watermarked
+     * @param storePrivately Whether to store these icons outside public web paths
      */
     @Transactional
     public void persistGeneratedIcons(String requestId, IconGenerationRequest request,
                                       IconGenerationResponse response, User user,
-                                      TrialModeService.TrialLimitationResult trialLimitResult) {
+                                      boolean isWatermarked,
+                                      boolean storePrivately) {
         try {
             log.info("Persisting {} icons for request {}", response.getIcons().size(), requestId);
             
@@ -61,12 +63,8 @@ public class IconPersistenceService {
             
             int persistedCount = 0;
             for (IconGenerationResponse.GeneratedIcon icon : response.getIcons()) {
-                if (!shouldPersistIcon(icon, trialLimitResult)) {
-                    continue;
-                }
-
                 if (icon.getBase64Data() != null && !icon.getBase64Data().isEmpty()) {
-                    persistSingleIcon(requestId, request, icon, allServiceResults, user);
+                    persistSingleIcon(requestId, request, icon, allServiceResults, user, isWatermarked, storePrivately);
                     persistedCount++;
                 }
             }
@@ -91,7 +89,9 @@ public class IconPersistenceService {
      */
     @Transactional
     public void persistMoreIcons(String requestId, List<IconGenerationResponse.GeneratedIcon> newIcons, 
-                               User user, String serviceName, String generalDescription, int generationIndex) {
+                               User user, String serviceName, String generalDescription, int generationIndex,
+                               boolean isWatermarked,
+                               boolean storePrivately) {
         try {
             log.info("Persisting {} more icons for request {}", newIcons.size(), requestId);
             
@@ -99,7 +99,7 @@ public class IconPersistenceService {
             
             for (IconGenerationResponse.GeneratedIcon icon : newIcons) {
                 if (icon.getBase64Data() != null && !icon.getBase64Data().isEmpty()) {
-                    persistMoreIcon(requestId, icon, user, iconType, generalDescription, generationIndex);
+                    persistMoreIcon(requestId, icon, user, iconType, generalDescription, generationIndex, isWatermarked, storePrivately);
                 }
             }
             
@@ -110,13 +110,21 @@ public class IconPersistenceService {
             throw e;
         }
     }
+
+    @Transactional
+    public void persistMoreIcons(String requestId, List<IconGenerationResponse.GeneratedIcon> newIcons, 
+                               User user, String serviceName, String generalDescription, int generationIndex) {
+        persistMoreIcons(requestId, newIcons, user, serviceName, generalDescription, generationIndex, false, false);
+    }
     
     /**
      * Persists a single icon from main generation
      */
     private void persistSingleIcon(String requestId, IconGenerationRequest request, 
                                  IconGenerationResponse.GeneratedIcon icon,
-                                 List<IconGenerationResponse.ServiceResults> allServiceResults, User user) {
+                                 List<IconGenerationResponse.ServiceResults> allServiceResults, User user,
+                                 boolean isWatermarked,
+                                 boolean storePrivately) {
         
         // Find generation index from service results
         Integer generationIndex = findGenerationIndex(icon, allServiceResults);
@@ -130,14 +138,21 @@ public class IconPersistenceService {
                 icon.getGridPosition()
         );
         
-        // Save icon to file system
-        String filePath = fileStorageService.saveIcon(
-                user.getDirectoryPath(),
-                requestId,
-                iconType,
-                fileName,
-                icon.getBase64Data()
-        );
+        String storageType = isWatermarked ? iconType + "-trial" : iconType;
+
+        String filePath = storePrivately
+                ? fileStorageService.saveIconPrivate(
+                        user.getDirectoryPath(),
+                        requestId,
+                        storageType,
+                        fileName,
+                        icon.getBase64Data())
+                : fileStorageService.saveIcon(
+                        user.getDirectoryPath(),
+                        requestId,
+                        storageType,
+                        fileName,
+                        icon.getBase64Data());
         
         // Create database record
         GeneratedIcon generatedIcon = new GeneratedIcon();
@@ -154,9 +169,12 @@ public class IconPersistenceService {
         generatedIcon.setGenerationIndex(generationIndex);
         generatedIcon.setIconType(iconType);
         generatedIcon.setUsedPromptEnhancer(request.isEnhancePrompt());
+        generatedIcon.setIsWatermarked(isWatermarked);
         
         // Calculate file size
-        long fileSize = fileStorageService.getFileSize(user.getDirectoryPath(), requestId, iconType, fileName);
+        long fileSize = storePrivately
+                ? fileStorageService.getPrivateIconFileSize(user.getDirectoryPath(), requestId, storageType, fileName)
+                : fileStorageService.getFileSize(user.getDirectoryPath(), requestId, storageType, fileName);
         generatedIcon.setFileSize(fileSize);
         
         generatedIconRepository.save(generatedIcon);
@@ -166,21 +184,30 @@ public class IconPersistenceService {
      * Persists a single icon from "more icons" generation
      */
     private void persistMoreIcon(String requestId, IconGenerationResponse.GeneratedIcon icon, 
-                               User user, String iconType, String generalDescription, int generationIndex) {
+                               User user, String iconType, String generalDescription, int generationIndex,
+                               boolean isWatermarked,
+                               boolean storePrivately) {
         
         // Generate file name for more icons
         String fileName = String.format("icon_%s_%d.png",
                 icon.getId().substring(0, 8),
                 icon.getGridPosition());
         
-        // Save icon to file system
-        String filePath = fileStorageService.saveIcon(
-                user.getDirectoryPath(),
-                requestId,
-                iconType,
-                fileName,
-                icon.getBase64Data()
-        );
+        String storageType = isWatermarked ? iconType + "-trial" : iconType;
+
+        String filePath = storePrivately
+                ? fileStorageService.saveIconPrivate(
+                        user.getDirectoryPath(),
+                        requestId,
+                        storageType,
+                        fileName,
+                        icon.getBase64Data())
+                : fileStorageService.saveIcon(
+                        user.getDirectoryPath(),
+                        requestId,
+                        storageType,
+                        fileName,
+                        icon.getBase64Data());
         
         // Create database record
         GeneratedIcon generatedIcon = new GeneratedIcon();
@@ -197,9 +224,12 @@ public class IconPersistenceService {
         generatedIcon.setGenerationIndex(generationIndex);
         generatedIcon.setIconType(iconType);
         generatedIcon.setUsedPromptEnhancer(false);
+        generatedIcon.setIsWatermarked(isWatermarked);
         
         // Calculate file size
-        long fileSize = fileStorageService.getFileSize(user.getDirectoryPath(), requestId, iconType, fileName);
+        long fileSize = storePrivately
+                ? fileStorageService.getPrivateIconFileSize(user.getDirectoryPath(), requestId, storageType, fileName)
+                : fileStorageService.getFileSize(user.getDirectoryPath(), requestId, storageType, fileName);
         generatedIcon.setFileSize(fileSize);
         
         generatedIconRepository.save(generatedIcon);
@@ -218,20 +248,4 @@ public class IconPersistenceService {
                 .orElse(1);
     }
 
-    private boolean shouldPersistIcon(IconGenerationResponse.GeneratedIcon icon, TrialModeService.TrialLimitationResult trialLimitResult) {
-        if (icon == null) {
-            return true;
-        }
-
-        if (trialLimitResult == null || !trialLimitResult.hasAllowedIconIds()) {
-            return true;
-        }
-
-        String serviceSource = icon.getServiceSource();
-        if (trialLimitResult.isServiceLimited(serviceSource)) {
-            return trialLimitResult.isIconAllowed(icon.getId());
-        }
-
-        return true;
-    }
 }

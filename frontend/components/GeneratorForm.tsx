@@ -295,11 +295,6 @@ const GeneratorForm: React.FC<GeneratorFormProps> = ({
             className="space-y-8"
           >
             <div>
-              <label
-                className="block text-lg font-semibold text-slate-900 mb-6"
-              >
-                Choose input type
-              </label>
               <div
                 className="bg-slate-100 p-1.5 rounded-2xl flex"
               >
@@ -320,7 +315,7 @@ const GeneratorForm: React.FC<GeneratorFormProps> = ({
                       d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
                     />
                   </svg>
-                    <span className="hidden md:inline">Text Description</span>
+                    <span className="hidden md:inline">Text</span>
                 </button>
                 <button
                   type="button"
@@ -339,7 +334,7 @@ const GeneratorForm: React.FC<GeneratorFormProps> = ({
                       d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
                     />
                   </svg>
-                    <span className="hidden md:inline">Reference Image</span>
+                    <span className="hidden md:inline">Image</span>
                 </button>
             </div>
           </div>
@@ -517,11 +512,6 @@ const GeneratorForm: React.FC<GeneratorFormProps> = ({
             {mode !== "mockups" && (
               <div className="flex items-center justify-between">
                 <div className="flex flex-col gap-1">
-                  {mode === "icons" && (
-                    <span className="bg-gradient-to-r from-purple-600 to-indigo-500 text-white text-[10px] font-semibold uppercase tracking-wide px-2 py-0.5 rounded-full shadow-sm self-start">
-                      New Model
-                    </span>
-                  )}
                   <div className="flex items-center gap-2">
                     <label
                       className="text-lg font-semibold text-slate-900"
@@ -656,8 +646,8 @@ const GeneratorForm: React.FC<GeneratorFormProps> = ({
                   </p>
                   <p className="text-[11px] text-blue-800">
                     {mode === "icons"
-                      ? "Trial generation is limited to 5 (out of 9) icons. "
-                      : "Trial generation is limited to 2 (out of 4) illustrations. "}
+                      ? "Trial generations include a watermark. "
+                      : "Trial generations include a watermark. "}
                       Visit the{" "}
                       <Link
                           href="/store"
@@ -665,7 +655,7 @@ const GeneratorForm: React.FC<GeneratorFormProps> = ({
                       >
                           store
                       </Link>{" "}
-                      to buy coins.
+                      to buy coins and remove it in your gallery.
                   </p>
                 </div>
               </div>

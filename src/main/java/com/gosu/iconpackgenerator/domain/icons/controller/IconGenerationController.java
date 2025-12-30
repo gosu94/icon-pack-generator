@@ -20,6 +20,7 @@ import com.gosu.iconpackgenerator.domain.icons.service.ServiceFailureHandler;
 import com.gosu.iconpackgenerator.domain.status.GenerationStatusService;
 import com.gosu.iconpackgenerator.user.model.User;
 import com.gosu.iconpackgenerator.user.service.CustomOAuth2User;
+import com.gosu.iconpackgenerator.util.WatermarkService;
 import jakarta.annotation.PreDestroy;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -63,6 +64,7 @@ public class IconGenerationController implements IconGenerationControllerAPI {
     private final ServiceFailureHandler serviceFailureHandler;
     private final IconPersistenceService iconPersistenceService;
     private final GenerationStatusService generationStatusService;
+    private final WatermarkService watermarkService;
 
     private final ScheduledExecutorService heartbeatScheduler = Executors.newScheduledThreadPool(5);
 
@@ -367,9 +369,19 @@ public class IconGenerationController implements IconGenerationControllerAPI {
                 List<IconGenerationResponse.GeneratedIcon> newIcons = createIconList(base64Icons, request);
 
                 try {
-                    iconPersistenceService.persistMoreIcons(request.getOriginalRequestId(), newIcons, user,
-                            request.getServiceName(), request.getGeneralDescription(),
-                            request.getGenerationIndex());
+                    if (usedTrialCoin) {
+                        iconPersistenceService.persistMoreIcons(request.getOriginalRequestId(), newIcons, user,
+                                request.getServiceName(), request.getGeneralDescription(),
+                                request.getGenerationIndex(), false, true);
+                        applyTrialWatermarkToIcons(newIcons);
+                        iconPersistenceService.persistMoreIcons(request.getOriginalRequestId(), newIcons, user,
+                                request.getServiceName(), request.getGeneralDescription(),
+                                request.getGenerationIndex(), true, false);
+                    } else {
+                        iconPersistenceService.persistMoreIcons(request.getOriginalRequestId(), newIcons, user,
+                                request.getServiceName(), request.getGeneralDescription(),
+                                request.getGenerationIndex(), false, false);
+                    }
                     log.info("Successfully persisted {} more icons for request {}", newIcons.size(), request.getOriginalRequestId());
                 } catch (Exception e) {
                     log.error("Error persisting more icons for request {}", request.getOriginalRequestId(), e);
@@ -475,6 +487,18 @@ public class IconGenerationController implements IconGenerationControllerAPI {
         }
 
         return icons;
+    }
+
+    private void applyTrialWatermarkToIcons(List<IconGenerationResponse.GeneratedIcon> icons) {
+        if (icons == null) {
+            return;
+        }
+
+        for (IconGenerationResponse.GeneratedIcon icon : icons) {
+            if (icon.getBase64Data() != null && !icon.getBase64Data().isBlank()) {
+                icon.setBase64Data(watermarkService.applyTrialWatermark(icon.getBase64Data()));
+            }
+        }
     }
 
     private MoreIconsResponse createErrorResponse(MoreIconsRequest request, String errorMessage, long startTime) {
