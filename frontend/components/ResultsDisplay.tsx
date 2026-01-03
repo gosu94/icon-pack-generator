@@ -999,7 +999,7 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
                               <Image src="/images/coin.webp" alt="Coins" width={16} height={16} />
                             </div>
                             <h3 className="text-lg font-bold text-slate-800">
-                              Unlock Full Potential
+                              Remove Watermarks and Unlock Full Potential
                             </h3>
                           </div>
                           <p className="text-slate-600 text-sm leading-relaxed">
