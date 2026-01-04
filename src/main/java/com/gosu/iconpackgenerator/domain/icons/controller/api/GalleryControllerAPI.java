@@ -50,5 +50,6 @@ public interface GalleryControllerAPI {
     @Operation(summary = "Delete icons for a specific request")
     @DeleteMapping("/api/gallery/request/{requestId}")
     @ResponseBody
-    ResponseEntity<Void> deleteRequestIcons(@PathVariable String requestId);
+    ResponseEntity<Void> deleteRequestIcons(@PathVariable String requestId,
+                                            @AuthenticationPrincipal OAuth2User principal);
 }

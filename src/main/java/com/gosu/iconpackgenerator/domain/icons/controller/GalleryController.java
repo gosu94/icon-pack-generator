@@ -12,6 +12,7 @@ import com.gosu.iconpackgenerator.domain.mockups.entity.GeneratedMockup;
 import com.gosu.iconpackgenerator.domain.mockups.repository.GeneratedMockupRepository;
 import com.gosu.iconpackgenerator.user.model.User;
 import com.gosu.iconpackgenerator.user.service.CustomOAuth2User;
+import com.gosu.iconpackgenerator.util.FileStorageService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -19,6 +20,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -35,6 +37,7 @@ public class GalleryController implements GalleryControllerAPI {
     private final GeneratedMockupRepository generatedMockupRepository;
     private final GeneratedLabelRepository generatedLabelRepository;
     private final GridCompositionService gridCompositionService;
+    private final FileStorageService fileStorageService;
 
     @Override
     @GetMapping("/api/gallery/icons")
@@ -185,14 +188,24 @@ public class GalleryController implements GalleryControllerAPI {
     @Override
     @DeleteMapping("/api/gallery/request/{requestId}")
     @ResponseBody
-    public ResponseEntity<Void> deleteRequestIcons(@PathVariable String requestId) {
+    @Transactional
+    public ResponseEntity<Void> deleteRequestIcons(@PathVariable String requestId,
+                                                   @AuthenticationPrincipal OAuth2User principal) {
         try {
-            List<GeneratedIcon> icons = generatedIconRepository.findByRequestId(requestId);
+            if (!(principal instanceof CustomOAuth2User customUser)) {
+                return ResponseEntity.status(401).build();
+            }
+
+            User user = customUser.getUser();
+            List<GeneratedIcon> icons = generatedIconRepository.findByUserAndRequestId(user, requestId);
             if (icons.isEmpty()) {
                 return ResponseEntity.notFound().build();
             }
 
-            generatedIconRepository.deleteByRequestId(requestId);
+            for (GeneratedIcon icon : icons) {
+                fileStorageService.deleteIconByRelativePath(icon.getFilePath());
+            }
+            generatedIconRepository.deleteByUserAndRequestId(user, requestId);
             log.info("Deleted {} icons for request: {}", icons.size(), requestId);
             return ResponseEntity.noContent().build();
         } catch (Exception e) {

@@ -6,7 +6,7 @@ import Navigation from "../../components/Navigation";
 import ExportModal from "../../components/ExportModal";
 import ProgressModal from "../../components/ProgressModal";
 import GifModal, { GifModalProgress } from "@/components/GifModal";
-import { Download, Sparkles } from "lucide-react";
+import { Download, Sparkles, Trash2 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { GifAsset, GifProgressUpdate } from "@/lib/types";
 
@@ -245,6 +245,10 @@ export default function GalleryPage() {
   const [illustrationsToExport, setIllustrationsToExport] = useState<Illustration[]>([]);
   const [mockupsToExport, setMockupsToExport] = useState<Mockup[]>([]);
   const [labelsToExport, setLabelsToExport] = useState<LabelItem[]>([]);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleteRequestId, setDeleteRequestId] = useState<string | null>(null);
+  const [isDeletingRequest, setIsDeletingRequest] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const gifEventSourceRef = useRef<EventSource | null>(null);
   const [gifRefreshToken, setGifRefreshToken] = useState(0);
   const [gifModalState, setGifModalState] = useState<GifModalState | null>(null);
@@ -717,6 +721,50 @@ export default function GalleryPage() {
 
   const handleBackToGallery = () => {
     setSelectedRequest(null);
+  };
+
+  const openDeleteModal = (requestId: string) => {
+    setDeleteRequestId(requestId);
+    setDeleteError(null);
+    setShowDeleteModal(true);
+  };
+
+  const closeDeleteModal = () => {
+    setShowDeleteModal(false);
+    setDeleteRequestId(null);
+    setDeleteError(null);
+  };
+
+  const handleDeleteRequest = async () => {
+    if (!deleteRequestId) {
+      return;
+    }
+    setIsDeletingRequest(true);
+    setDeleteError(null);
+    try {
+      const response = await fetch(`/api/gallery/request/${deleteRequestId}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+      if (!response.ok) {
+        const payload = await response.json().catch(() => ({}));
+        throw new Error(payload.message || "Failed to delete icons");
+      }
+      setGroupedIcons((prev) => {
+        const next = { ...prev };
+        delete next[deleteRequestId];
+        return next;
+      });
+      if (selectedRequest === deleteRequestId) {
+        setSelectedRequest(null);
+      }
+      closeDeleteModal();
+    } catch (error) {
+      console.error("Failed to delete icons", error);
+      setDeleteError(error instanceof Error ? error.message : "Failed to delete icons");
+    } finally {
+      setIsDeletingRequest(false);
+    }
   };
 
   const handleRemoveWatermark = async () => {
@@ -1260,25 +1308,33 @@ export default function GalleryPage() {
                                 >
                                   <span className="text-xs font-bold">UI</span>
                                 </button>
-                              <button
-                                onClick={() => handleGenerateLabelsFromIcons("original")}
-                                className={`${actionButtonBaseClass} gap-1`}
-                                title="Generate Labels from these icons"
-                              >
-                                <span className="text-xs font-bold">T</span>
-                              </button>
-                              <button
-                                onClick={() => openGifModal("original")}
-                                className={`${actionButtonBaseClass} gap-1`}
-                                title="Generate GIFs from these icons"
-                              >
-                                <span className="text-xs font-bold">GIF</span>
-                              </button>
-                              <button
-                                onClick={() =>
-                                  openExportModal(
-                                    selectedIconGroup.original
-                                  )
+                                <button
+                                  onClick={() => handleGenerateLabelsFromIcons("original")}
+                                  className={`${actionButtonBaseClass} gap-1`}
+                                  title="Generate Labels from these icons"
+                                >
+                                  <span className="text-xs font-bold">T</span>
+                                </button>
+                                <button
+                                  onClick={() => openGifModal("original")}
+                                  className={`${actionButtonBaseClass} gap-1`}
+                                  title="Generate GIFs from these icons"
+                                >
+                                  <span className="text-xs font-bold">GIF</span>
+                                </button>
+                                <button
+                                  onClick={() => openDeleteModal(selectedRequest)}
+                                  className="inline-flex items-center justify-center rounded-2xl border border-red-200 bg-red-50 px-2 sm:px-4 py-2 text-red-600 transition hover:bg-red-100 hover:text-red-700 focus:outline-none focus:ring-2 focus:ring-red-300"
+                                  title="Delete this generation"
+                                  aria-label="Delete this generation"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </button>
+                                <button
+                                  onClick={() =>
+                                    openExportModal(
+                                      selectedIconGroup.original
+                                    )
                                   }
                                   className={`${actionButtonBaseClass} gap-2`}
                                   title="Export"
@@ -1342,6 +1398,14 @@ export default function GalleryPage() {
                                 title="Generate GIFs from these icons"
                               >
                                 <span className="text-xs font-bold">GIF</span>
+                              </button>
+                              <button
+                                onClick={() => openDeleteModal(selectedRequest)}
+                                className="inline-flex items-center justify-center rounded-2xl border border-red-200 bg-red-50 px-2 sm:px-4 py-2 text-red-600 transition hover:bg-red-100 hover:text-red-700 focus:outline-none focus:ring-2 focus:ring-red-300"
+                                title="Delete this generation"
+                                aria-label="Delete this generation"
+                              >
+                                <Trash2 className="h-4 w-4" />
                               </button>
                               <button
                                 onClick={() =>
@@ -1449,14 +1513,16 @@ export default function GalleryPage() {
                                     />
                                   </div>
                                   <div className="w-2/3 pl-4">
-                                    <h2 className="text-base font-bold text-slate-800 truncate">
-                                      {theme || `Request: ${requestId}`}
-                                    </h2>
-                                    <p className="text-sm text-slate-500 mt-1">
-                                      {iconTypes.original.length +
-                                        iconTypes.variation.length}{" "}
-                                      icons
-                                    </p>
+                                    <div>
+                                      <h2 className="text-base font-bold text-slate-800 truncate">
+                                        {theme || `Request: ${requestId}`}
+                                      </h2>
+                                      <p className="text-sm text-slate-500 mt-1">
+                                        {iconTypes.original.length +
+                                          iconTypes.variation.length}{" "}
+                                        icons
+                                      </p>
+                                    </div>
                                   </div>
                                 </div>
                               );
@@ -2037,6 +2103,47 @@ export default function GalleryPage() {
       />
 
       <ProgressModal show={showProgressModal} progress={exportProgress} />
+
+      {showDeleteModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+          <div
+            className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl"
+            role="dialog"
+            aria-modal="true"
+          >
+            <div className="flex items-start gap-3">
+              <div className="rounded-full bg-red-100 p-2 text-red-600">
+                <Trash2 className="h-5 w-5" />
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-slate-800">Confirm deletion</h3>
+                <p className="mt-1 text-sm text-slate-600">
+                  This action is irreversible. Are you sure you want to continue?
+                </p>
+              </div>
+            </div>
+            {deleteError && (
+              <p className="mt-4 text-sm text-red-600">{deleteError}</p>
+            )}
+            <div className="mt-6 flex justify-end gap-3">
+              <button
+                onClick={closeDeleteModal}
+                className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-50"
+                disabled={isDeletingRequest}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDeleteRequest}
+                className="rounded-xl border border-red-600 bg-red-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:bg-red-400"
+                disabled={isDeletingRequest}
+              >
+                {isDeletingRequest ? "Deleting..." : "Delete"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {gifModalState && (
         <GifModal

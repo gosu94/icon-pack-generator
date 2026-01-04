@@ -221,11 +221,19 @@ public class FileStorageService {
             return;
         }
 
-        String pathInsideUserIcons = relativeWebPath.startsWith("/user-icons/")
-                ? relativeWebPath.substring("/user-icons/".length())
-                : relativeWebPath;
+        String pathInsideUserIcons;
+        Path basePath;
+        if (relativeWebPath.startsWith("/private-icons/")) {
+            pathInsideUserIcons = relativeWebPath.substring("/private-icons/".length());
+            basePath = Paths.get(privateIconStorageBasePath);
+        } else {
+            pathInsideUserIcons = relativeWebPath.startsWith("/user-icons/")
+                    ? relativeWebPath.substring("/user-icons/".length())
+                    : relativeWebPath;
+            basePath = Paths.get(baseStoragePath);
+        }
 
-        Path filePath = Paths.get(baseStoragePath).resolve(pathInsideUserIcons);
+        Path filePath = basePath.resolve(pathInsideUserIcons);
         try {
             if (Files.exists(filePath)) {
                 Files.delete(filePath);

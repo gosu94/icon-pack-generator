@@ -41,6 +41,8 @@ public interface GeneratedIconRepository extends JpaRepository<GeneratedIcon, Lo
 
     List<GeneratedIcon> findByUserAndRequestIdAndIsWatermarkedFalse(User user, String requestId);
     
+    void deleteByUserAndRequestId(User user, String requestId);
+
     void deleteByRequestId(String requestId);
     
     List<GeneratedIcon> findByFilePathIn(List<String> filePaths);
