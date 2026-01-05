@@ -16,7 +16,13 @@ public interface GeneratedLabelRepository extends JpaRepository<GeneratedLabel, 
 
     List<GeneratedLabel> findByUserAndLabelTypeOrderByCreatedAtDesc(User user, String labelType);
 
-    void deleteByRequestId(String requestId);
+    List<GeneratedLabel> findByUserAndRequestId(User user, String requestId);
+
+    List<GeneratedLabel> findByUserAndRequestIdAndLabelType(User user, String requestId, String labelType);
+
+    void deleteByUserAndRequestId(User user, String requestId);
+
+    void deleteByUserAndRequestIdAndLabelType(User user, String requestId, String labelType);
 
     List<GeneratedLabel> findByFilePathIn(List<String> filePaths);
 

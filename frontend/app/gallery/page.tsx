@@ -247,6 +247,8 @@ export default function GalleryPage() {
   const [labelsToExport, setLabelsToExport] = useState<LabelItem[]>([]);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleteRequestId, setDeleteRequestId] = useState<string | null>(null);
+  const [deleteTargetType, setDeleteTargetType] = useState<string | null>(null);
+  const [deleteGenerationType, setDeleteGenerationType] = useState<string | null>(null);
   const [isDeletingRequest, setIsDeletingRequest] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const gifEventSourceRef = useRef<EventSource | null>(null);
@@ -723,8 +725,14 @@ export default function GalleryPage() {
     setSelectedRequest(null);
   };
 
-  const openDeleteModal = (requestId: string) => {
+  const openDeleteModal = (
+    requestId: string,
+    targetType?: string | null,
+    generationType?: string | null,
+  ) => {
     setDeleteRequestId(requestId);
+    setDeleteTargetType(targetType ?? galleryType);
+    setDeleteGenerationType(generationType ?? null);
     setDeleteError(null);
     setShowDeleteModal(true);
   };
@@ -732,36 +740,142 @@ export default function GalleryPage() {
   const closeDeleteModal = () => {
     setShowDeleteModal(false);
     setDeleteRequestId(null);
+    setDeleteTargetType(null);
+    setDeleteGenerationType(null);
     setDeleteError(null);
   };
 
   const handleDeleteRequest = async () => {
-    if (!deleteRequestId) {
+    if (!deleteRequestId || !deleteTargetType) {
       return;
     }
     setIsDeletingRequest(true);
     setDeleteError(null);
     try {
-      const response = await fetch(`/api/gallery/request/${deleteRequestId}`, {
+      let shouldClearSelected = false;
+      const deleteEndpoint = deleteGenerationType
+        ? deleteTargetType === "icons"
+          ? `/api/gallery/request/${deleteRequestId}/${deleteGenerationType}`
+          : `/api/gallery/${deleteTargetType}/request/${deleteRequestId}/${deleteGenerationType}`
+        : deleteTargetType === "icons"
+          ? `/api/gallery/request/${deleteRequestId}`
+          : `/api/gallery/${deleteTargetType}/request/${deleteRequestId}`;
+      const response = await fetch(deleteEndpoint, {
         method: "DELETE",
         credentials: "include",
       });
       if (!response.ok) {
         const payload = await response.json().catch(() => ({}));
-        throw new Error(payload.message || "Failed to delete icons");
+        throw new Error(payload.message || "Failed to delete request");
       }
-      setGroupedIcons((prev) => {
-        const next = { ...prev };
-        delete next[deleteRequestId];
-        return next;
-      });
-      if (selectedRequest === deleteRequestId) {
+      if (deleteTargetType === "icons") {
+        setGroupedIcons((prev) => {
+          const next = { ...prev };
+          const group = next[deleteRequestId];
+          if (!group) {
+            return prev;
+          }
+          if (deleteGenerationType === "original" || deleteGenerationType === "variation") {
+            const updated = {
+              ...group,
+              [deleteGenerationType]: [],
+            };
+            if (
+              updated.original.length === 0 &&
+              updated.variation.length === 0 &&
+              updated.gifs.length === 0
+            ) {
+              delete next[deleteRequestId];
+              shouldClearSelected = true;
+            } else {
+              next[deleteRequestId] = updated;
+            }
+          } else {
+            delete next[deleteRequestId];
+            shouldClearSelected = true;
+          }
+          return next;
+        });
+      } else if (deleteTargetType === "illustrations") {
+        setGroupedIllustrations((prev) => {
+          const next = { ...prev };
+          const group = next[deleteRequestId];
+          if (!group) {
+            return prev;
+          }
+          if (deleteGenerationType === "original" || deleteGenerationType === "variation") {
+            const updated = {
+              ...group,
+              [deleteGenerationType]: [],
+            };
+            if (updated.original.length === 0 && updated.variation.length === 0) {
+              delete next[deleteRequestId];
+              shouldClearSelected = true;
+            } else {
+              next[deleteRequestId] = updated;
+            }
+          } else {
+            delete next[deleteRequestId];
+            shouldClearSelected = true;
+          }
+          return next;
+        });
+      } else if (deleteTargetType === "mockups") {
+        setGroupedMockups((prev) => {
+          const next = { ...prev };
+          const group = next[deleteRequestId];
+          if (!group) {
+            return prev;
+          }
+          if (deleteGenerationType === "original" || deleteGenerationType === "variation") {
+            const updated = {
+              ...group,
+              [deleteGenerationType]: [],
+            };
+            if (updated.original.length === 0 && updated.variation.length === 0) {
+              delete next[deleteRequestId];
+              shouldClearSelected = true;
+            } else {
+              next[deleteRequestId] = updated;
+            }
+          } else {
+            delete next[deleteRequestId];
+            shouldClearSelected = true;
+          }
+          return next;
+        });
+      } else if (deleteTargetType === "labels") {
+        setGroupedLabels((prev) => {
+          const next = { ...prev };
+          const group = next[deleteRequestId];
+          if (!group) {
+            return prev;
+          }
+          if (deleteGenerationType === "original" || deleteGenerationType === "variation") {
+            const updated = {
+              ...group,
+              [deleteGenerationType]: [],
+            };
+            if (updated.original.length === 0 && updated.variation.length === 0) {
+              delete next[deleteRequestId];
+              shouldClearSelected = true;
+            } else {
+              next[deleteRequestId] = updated;
+            }
+          } else {
+            delete next[deleteRequestId];
+            shouldClearSelected = true;
+          }
+          return next;
+        });
+      }
+      if (selectedRequest === deleteRequestId && shouldClearSelected) {
         setSelectedRequest(null);
       }
       closeDeleteModal();
     } catch (error) {
-      console.error("Failed to delete icons", error);
-      setDeleteError(error instanceof Error ? error.message : "Failed to delete icons");
+      console.error("Failed to delete request", error);
+      setDeleteError(error instanceof Error ? error.message : "Failed to delete request");
     } finally {
       setIsDeletingRequest(false);
     }
@@ -1323,7 +1437,9 @@ export default function GalleryPage() {
                                   <span className="text-xs font-bold">GIF</span>
                                 </button>
                                 <button
-                                  onClick={() => openDeleteModal(selectedRequest)}
+                                  onClick={() =>
+                                    openDeleteModal(selectedRequest, "icons", "original")
+                                  }
                                   className="inline-flex items-center justify-center rounded-2xl border border-red-200 bg-red-50 px-2 sm:px-4 py-2 text-red-600 transition hover:bg-red-100 hover:text-red-700 focus:outline-none focus:ring-2 focus:ring-red-300"
                                   title="Delete this generation"
                                   aria-label="Delete this generation"
@@ -1400,7 +1516,9 @@ export default function GalleryPage() {
                                 <span className="text-xs font-bold">GIF</span>
                               </button>
                               <button
-                                onClick={() => openDeleteModal(selectedRequest)}
+                                onClick={() =>
+                                  openDeleteModal(selectedRequest, "icons", "variation")
+                                }
                                 className="inline-flex items-center justify-center rounded-2xl border border-red-200 bg-red-50 px-2 sm:px-4 py-2 text-red-600 transition hover:bg-red-100 hover:text-red-700 focus:outline-none focus:ring-2 focus:ring-red-300"
                                 title="Delete this generation"
                                 aria-label="Delete this generation"
@@ -1577,16 +1695,28 @@ export default function GalleryPage() {
                               <h3 className="text-xl font-semibold text-slate-700">
                                 Original Labels
                               </h3>
-                              <button
-                                onClick={() =>
-                                  openLabelExportModal(
-                                    selectedLabelGroup.original,
-                                  )
-                                }
-                                className={`${actionButtonBaseClass} gap-1`}
-                              >
-                                <Download className="w-4 h-4" />
-                              </button>
+                              <div className="flex gap-3">
+                                <button
+                                  onClick={() =>
+                                    openDeleteModal(selectedRequest, "labels", "original")
+                                  }
+                                  className="inline-flex items-center justify-center rounded-2xl border border-red-200 bg-red-50 px-2 sm:px-4 py-2 text-red-600 transition hover:bg-red-100 hover:text-red-700 focus:outline-none focus:ring-2 focus:ring-red-300"
+                                  title="Delete this generation"
+                                  aria-label="Delete this generation"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </button>
+                                <button
+                                  onClick={() =>
+                                    openLabelExportModal(
+                                      selectedLabelGroup.original,
+                                    )
+                                  }
+                                  className={`${actionButtonBaseClass} gap-1`}
+                                >
+                                  <Download className="w-4 h-4" />
+                                </button>
+                              </div>
                             </div>
                             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                               {selectedLabelGroup.original.map((label, index) => (
@@ -1614,16 +1744,28 @@ export default function GalleryPage() {
                               <h3 className="text-xl font-semibold text-slate-700">
                                 Variations
                               </h3>
-                              <button
-                                onClick={() =>
-                                  openLabelExportModal(
-                                    selectedLabelGroup.variation,
-                                  )
-                                }
-                                className={`${actionButtonBaseClass} gap-1`}
-                              >
-                                <Download className="w-4 h-4" />
-                              </button>
+                              <div className="flex gap-3">
+                                <button
+                                  onClick={() =>
+                                    openDeleteModal(selectedRequest, "labels", "variation")
+                                  }
+                                  className="inline-flex items-center justify-center rounded-2xl border border-red-200 bg-red-50 px-2 sm:px-4 py-2 text-red-600 transition hover:bg-red-100 hover:text-red-700 focus:outline-none focus:ring-2 focus:ring-red-300"
+                                  title="Delete this generation"
+                                  aria-label="Delete this generation"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </button>
+                                <button
+                                  onClick={() =>
+                                    openLabelExportModal(
+                                      selectedLabelGroup.variation,
+                                    )
+                                  }
+                                  className={`${actionButtonBaseClass} gap-1`}
+                                >
+                                  <Download className="w-4 h-4" />
+                                </button>
+                              </div>
                             </div>
                             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                               {selectedLabelGroup.variation.map((label, index) => (
@@ -1749,6 +1891,16 @@ export default function GalleryPage() {
                                 </button>
                                 <button
                                   onClick={() =>
+                                    openDeleteModal(selectedRequest, "illustrations", "original")
+                                  }
+                                  className="inline-flex items-center justify-center rounded-2xl border border-red-200 bg-red-50 px-2 sm:px-4 py-2 text-red-600 transition hover:bg-red-100 hover:text-red-700 focus:outline-none focus:ring-2 focus:ring-red-300"
+                                  title="Delete this generation"
+                                  aria-label="Delete this generation"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </button>
+                                <button
+                                  onClick={() =>
                                     openIllustrationExportModal(
                                       groupedIllustrations[selectedRequest].original
                                     )
@@ -1793,6 +1945,16 @@ export default function GalleryPage() {
                                   className={`${actionButtonBaseClass} gap-2`}
                                 >
                                   <Sparkles className="w-4 h-4" />
+                                </button>
+                                <button
+                                  onClick={() =>
+                                    openDeleteModal(selectedRequest, "illustrations", "variation")
+                                  }
+                                  className="inline-flex items-center justify-center rounded-2xl border border-red-200 bg-red-50 px-2 sm:px-4 py-2 text-red-600 transition hover:bg-red-100 hover:text-red-700 focus:outline-none focus:ring-2 focus:ring-red-300"
+                                  title="Delete this generation"
+                                  aria-label="Delete this generation"
+                                >
+                                  <Trash2 className="h-4 w-4" />
                                 </button>
                                 <button
                                   onClick={() =>
@@ -1938,6 +2100,16 @@ export default function GalleryPage() {
                                 </button>
                                 <button
                                   onClick={() =>
+                                    openDeleteModal(selectedRequest, "mockups", "original")
+                                  }
+                                  className="inline-flex items-center justify-center rounded-2xl border border-red-200 bg-red-50 px-2 sm:px-4 py-2 text-red-600 transition hover:bg-red-100 hover:text-red-700 focus:outline-none focus:ring-2 focus:ring-red-300"
+                                  title="Delete this generation"
+                                  aria-label="Delete this generation"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </button>
+                                <button
+                                  onClick={() =>
                                     openMockupExportModal(
                                       groupedMockups[selectedRequest].original
                                     )
@@ -1981,6 +2153,16 @@ export default function GalleryPage() {
                                   title="Generate Icons from this Mockup"
                                 >
                                   <span className="text-xs font-bold">Icon</span>
+                                </button>
+                                <button
+                                  onClick={() =>
+                                    openDeleteModal(selectedRequest, "mockups", "variation")
+                                  }
+                                  className="inline-flex items-center justify-center rounded-2xl border border-red-200 bg-red-50 px-2 sm:px-4 py-2 text-red-600 transition hover:bg-red-100 hover:text-red-700 focus:outline-none focus:ring-2 focus:ring-red-300"
+                                  title="Delete this generation"
+                                  aria-label="Delete this generation"
+                                >
+                                  <Trash2 className="h-4 w-4" />
                                 </button>
                                 <button
                                   onClick={() =>

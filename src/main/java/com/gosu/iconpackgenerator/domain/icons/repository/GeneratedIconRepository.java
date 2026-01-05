@@ -20,6 +20,8 @@ public interface GeneratedIconRepository extends JpaRepository<GeneratedIcon, Lo
     List<GeneratedIcon> findByUserOrderByCreatedAtDesc(User user);
     
     List<GeneratedIcon> findByUserAndRequestId(User user, String requestId);
+
+    List<GeneratedIcon> findByUserAndRequestIdAndIconType(User user, String requestId, String iconType);
     
     @Query("SELECT DISTINCT g.requestId FROM GeneratedIcon g WHERE g.user = :user ORDER BY g.createdAt DESC")
     List<String> findDistinctRequestIdsByUserOrderByCreatedAtDesc(@Param("user") User user);
@@ -42,6 +44,8 @@ public interface GeneratedIconRepository extends JpaRepository<GeneratedIcon, Lo
     List<GeneratedIcon> findByUserAndRequestIdAndIsWatermarkedFalse(User user, String requestId);
     
     void deleteByUserAndRequestId(User user, String requestId);
+
+    void deleteByUserAndRequestIdAndIconType(User user, String requestId, String iconType);
 
     void deleteByRequestId(String requestId);
     

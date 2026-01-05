@@ -214,6 +214,227 @@ public class GalleryController implements GalleryControllerAPI {
         }
     }
 
+    @Override
+    @DeleteMapping("/api/gallery/request/{requestId}/{iconType}")
+    @ResponseBody
+    @Transactional
+    public ResponseEntity<Void> deleteRequestIconsByType(@PathVariable String requestId,
+                                                         @PathVariable String iconType,
+                                                         @AuthenticationPrincipal OAuth2User principal) {
+        try {
+            if (!"original".equals(iconType) && !"variation".equals(iconType)) {
+                return ResponseEntity.badRequest().build();
+            }
+            if (!(principal instanceof CustomOAuth2User customUser)) {
+                return ResponseEntity.status(401).build();
+            }
+
+            User user = customUser.getUser();
+            List<GeneratedIcon> icons = generatedIconRepository.findByUserAndRequestIdAndIconType(user, requestId, iconType);
+            if (icons.isEmpty()) {
+                return ResponseEntity.notFound().build();
+            }
+
+            for (GeneratedIcon icon : icons) {
+                fileStorageService.deleteIconByRelativePath(icon.getFilePath());
+            }
+            generatedIconRepository.deleteByUserAndRequestIdAndIconType(user, requestId, iconType);
+            log.info("Deleted {} {} icons for request: {}", icons.size(), iconType, requestId);
+            return ResponseEntity.noContent().build();
+        } catch (Exception e) {
+            log.error("Error deleting {} icons for request: {}", iconType, requestId, e);
+            return ResponseEntity.status(500).build();
+        }
+    }
+
+    @Override
+    @DeleteMapping("/api/gallery/illustrations/request/{requestId}")
+    @ResponseBody
+    @Transactional
+    public ResponseEntity<Void> deleteRequestIllustrations(@PathVariable String requestId,
+                                                           @AuthenticationPrincipal OAuth2User principal) {
+        try {
+            if (!(principal instanceof CustomOAuth2User customUser)) {
+                return ResponseEntity.status(401).build();
+            }
+
+            User user = customUser.getUser();
+            List<GeneratedIllustration> illustrations = generatedIllustrationRepository.findByUserAndRequestId(user, requestId);
+            if (illustrations.isEmpty()) {
+                return ResponseEntity.notFound().build();
+            }
+
+            for (GeneratedIllustration illustration : illustrations) {
+                fileStorageService.deleteIllustrationByRelativePath(illustration.getFilePath());
+            }
+            generatedIllustrationRepository.deleteByUserAndRequestId(user, requestId);
+            log.info("Deleted {} illustrations for request: {}", illustrations.size(), requestId);
+            return ResponseEntity.noContent().build();
+        } catch (Exception e) {
+            log.error("Error deleting illustrations for request: {}", requestId, e);
+            return ResponseEntity.status(500).build();
+        }
+    }
+
+    @Override
+    @DeleteMapping("/api/gallery/illustrations/request/{requestId}/{illustrationType}")
+    @ResponseBody
+    @Transactional
+    public ResponseEntity<Void> deleteRequestIllustrationsByType(@PathVariable String requestId,
+                                                                 @PathVariable String illustrationType,
+                                                                 @AuthenticationPrincipal OAuth2User principal) {
+        try {
+            if (!"original".equals(illustrationType) && !"variation".equals(illustrationType)) {
+                return ResponseEntity.badRequest().build();
+            }
+            if (!(principal instanceof CustomOAuth2User customUser)) {
+                return ResponseEntity.status(401).build();
+            }
+
+            User user = customUser.getUser();
+            List<GeneratedIllustration> illustrations =
+                    generatedIllustrationRepository.findByUserAndRequestIdAndIllustrationType(user, requestId, illustrationType);
+            if (illustrations.isEmpty()) {
+                return ResponseEntity.notFound().build();
+            }
+
+            for (GeneratedIllustration illustration : illustrations) {
+                fileStorageService.deleteIllustrationByRelativePath(illustration.getFilePath());
+            }
+            generatedIllustrationRepository.deleteByUserAndRequestIdAndIllustrationType(user, requestId, illustrationType);
+            log.info("Deleted {} {} illustrations for request: {}", illustrations.size(), illustrationType, requestId);
+            return ResponseEntity.noContent().build();
+        } catch (Exception e) {
+            log.error("Error deleting {} illustrations for request: {}", illustrationType, requestId, e);
+            return ResponseEntity.status(500).build();
+        }
+    }
+
+    @Override
+    @DeleteMapping("/api/gallery/mockups/request/{requestId}")
+    @ResponseBody
+    @Transactional
+    public ResponseEntity<Void> deleteRequestMockups(@PathVariable String requestId,
+                                                     @AuthenticationPrincipal OAuth2User principal) {
+        try {
+            if (!(principal instanceof CustomOAuth2User customUser)) {
+                return ResponseEntity.status(401).build();
+            }
+
+            User user = customUser.getUser();
+            List<GeneratedMockup> mockups = generatedMockupRepository.findByUserAndRequestId(user, requestId);
+            if (mockups.isEmpty()) {
+                return ResponseEntity.notFound().build();
+            }
+
+            for (GeneratedMockup mockup : mockups) {
+                fileStorageService.deleteMockupByRelativePath(mockup.getFilePath());
+            }
+            generatedMockupRepository.deleteByUserAndRequestId(user, requestId);
+            log.info("Deleted {} mockups for request: {}", mockups.size(), requestId);
+            return ResponseEntity.noContent().build();
+        } catch (Exception e) {
+            log.error("Error deleting mockups for request: {}", requestId, e);
+            return ResponseEntity.status(500).build();
+        }
+    }
+
+    @Override
+    @DeleteMapping("/api/gallery/mockups/request/{requestId}/{mockupType}")
+    @ResponseBody
+    @Transactional
+    public ResponseEntity<Void> deleteRequestMockupsByType(@PathVariable String requestId,
+                                                           @PathVariable String mockupType,
+                                                           @AuthenticationPrincipal OAuth2User principal) {
+        try {
+            if (!"original".equals(mockupType) && !"variation".equals(mockupType)) {
+                return ResponseEntity.badRequest().build();
+            }
+            if (!(principal instanceof CustomOAuth2User customUser)) {
+                return ResponseEntity.status(401).build();
+            }
+
+            User user = customUser.getUser();
+            List<GeneratedMockup> mockups =
+                    generatedMockupRepository.findByUserAndRequestIdAndMockupType(user, requestId, mockupType);
+            if (mockups.isEmpty()) {
+                return ResponseEntity.notFound().build();
+            }
+
+            for (GeneratedMockup mockup : mockups) {
+                fileStorageService.deleteMockupByRelativePath(mockup.getFilePath());
+            }
+            generatedMockupRepository.deleteByUserAndRequestIdAndMockupType(user, requestId, mockupType);
+            log.info("Deleted {} {} mockups for request: {}", mockups.size(), mockupType, requestId);
+            return ResponseEntity.noContent().build();
+        } catch (Exception e) {
+            log.error("Error deleting {} mockups for request: {}", mockupType, requestId, e);
+            return ResponseEntity.status(500).build();
+        }
+    }
+
+    @Override
+    @DeleteMapping("/api/gallery/labels/request/{requestId}")
+    @ResponseBody
+    @Transactional
+    public ResponseEntity<Void> deleteRequestLabels(@PathVariable String requestId,
+                                                    @AuthenticationPrincipal OAuth2User principal) {
+        try {
+            if (!(principal instanceof CustomOAuth2User customUser)) {
+                return ResponseEntity.status(401).build();
+            }
+
+            User user = customUser.getUser();
+            List<GeneratedLabel> labels = generatedLabelRepository.findByUserAndRequestId(user, requestId);
+            if (labels.isEmpty()) {
+                return ResponseEntity.notFound().build();
+            }
+
+            for (GeneratedLabel label : labels) {
+                fileStorageService.deleteLabelByRelativePath(label.getFilePath());
+            }
+            generatedLabelRepository.deleteByUserAndRequestId(user, requestId);
+            log.info("Deleted {} labels for request: {}", labels.size(), requestId);
+            return ResponseEntity.noContent().build();
+        } catch (Exception e) {
+            log.error("Error deleting labels for request: {}", requestId, e);
+            return ResponseEntity.status(500).build();
+        }
+    }
+
+    @Override
+    @DeleteMapping("/api/gallery/labels/request/{requestId}/{labelType}")
+    @ResponseBody
+    @Transactional
+    public ResponseEntity<Void> deleteRequestLabelsByType(@PathVariable String requestId,
+                                                          @PathVariable String labelType,
+                                                          @AuthenticationPrincipal OAuth2User principal) {
+        try {
+            if (!"original".equals(labelType) && !"variation".equals(labelType)) {
+                return ResponseEntity.badRequest().build();
+            }
+            if (!(principal instanceof CustomOAuth2User customUser)) {
+                return ResponseEntity.status(401).build();
+            }
+
+            User user = customUser.getUser();
+            List<GeneratedLabel> labels = generatedLabelRepository.findByUserAndRequestIdAndLabelType(user, requestId, labelType);
+            if (labels.isEmpty()) {
+                return ResponseEntity.notFound().build();
+            }
+
+            for (GeneratedLabel label : labels) {
+                fileStorageService.deleteLabelByRelativePath(label.getFilePath());
+            }
+            generatedLabelRepository.deleteByUserAndRequestIdAndLabelType(user, requestId, labelType);
+            log.info("Deleted {} {} labels for request: {}", labels.size(), labelType, requestId);
+            return ResponseEntity.noContent().build();
+        } catch (Exception e) {
+            log.error("Error deleting {} labels for request: {}", labelType, requestId, e);
+            return ResponseEntity.status(500).build();
+        }
+    }
+
     private List<GeneratedIcon> filterWatermarkedIcons(List<GeneratedIcon> icons) {
         Map<String, Boolean> hasWatermarkByGroup = new HashMap<>();
         for (GeneratedIcon icon : icons) {

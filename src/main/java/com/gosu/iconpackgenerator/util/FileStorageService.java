@@ -242,6 +242,69 @@ public class FileStorageService {
             log.warn("Failed to delete icon file {}", filePath, e);
         }
     }
+
+    public void deleteIllustrationByRelativePath(String relativeWebPath) {
+        if (relativeWebPath == null || relativeWebPath.isBlank()) {
+            return;
+        }
+
+        String pathInsideIllustrations;
+        Path basePath;
+        if (relativeWebPath.startsWith("/private-illustrations/")) {
+            pathInsideIllustrations = relativeWebPath.substring("/private-illustrations/".length());
+            basePath = Paths.get(privateIllustrationsBasePath);
+        } else {
+            pathInsideIllustrations = relativeWebPath.startsWith("/user-illustrations/")
+                    ? relativeWebPath.substring("/user-illustrations/".length())
+                    : relativeWebPath;
+            basePath = Paths.get(illustrationsBasePath);
+        }
+
+        Path filePath = basePath.resolve(pathInsideIllustrations);
+        try {
+            if (Files.exists(filePath)) {
+                Files.delete(filePath);
+            }
+        } catch (IOException e) {
+            log.warn("Failed to delete illustration file {}", filePath, e);
+        }
+    }
+
+    public void deleteLabelByRelativePath(String relativeWebPath) {
+        if (relativeWebPath == null || relativeWebPath.isBlank()) {
+            return;
+        }
+
+        String pathInsideLabels = relativeWebPath.startsWith("/user-labels/")
+                ? relativeWebPath.substring("/user-labels/".length())
+                : relativeWebPath;
+        Path filePath = Paths.get(labelsBasePath).resolve(pathInsideLabels);
+        try {
+            if (Files.exists(filePath)) {
+                Files.delete(filePath);
+            }
+        } catch (IOException e) {
+            log.warn("Failed to delete label file {}", filePath, e);
+        }
+    }
+
+    public void deleteMockupByRelativePath(String relativeWebPath) {
+        if (relativeWebPath == null || relativeWebPath.isBlank()) {
+            return;
+        }
+
+        String pathInsideMockups = relativeWebPath.startsWith("/user-mockups/")
+                ? relativeWebPath.substring("/user-mockups/".length())
+                : relativeWebPath;
+        Path filePath = Paths.get(mockupsBasePath).resolve(pathInsideMockups);
+        try {
+            if (Files.exists(filePath)) {
+                Files.delete(filePath);
+            }
+        } catch (IOException e) {
+            log.warn("Failed to delete mockup file {}", filePath, e);
+        }
+    }
     
     // ========== Illustration-specific methods ==========
     

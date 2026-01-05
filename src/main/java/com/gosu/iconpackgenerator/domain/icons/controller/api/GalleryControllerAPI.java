@@ -52,4 +52,50 @@ public interface GalleryControllerAPI {
     @ResponseBody
     ResponseEntity<Void> deleteRequestIcons(@PathVariable String requestId,
                                             @AuthenticationPrincipal OAuth2User principal);
+
+    @Operation(summary = "Delete icons for a specific request and type")
+    @DeleteMapping("/api/gallery/request/{requestId}/{iconType}")
+    @ResponseBody
+    ResponseEntity<Void> deleteRequestIconsByType(@PathVariable String requestId,
+                                                  @PathVariable String iconType,
+                                                  @AuthenticationPrincipal OAuth2User principal);
+
+    @Operation(summary = "Delete illustrations for a specific request")
+    @DeleteMapping("/api/gallery/illustrations/request/{requestId}")
+    @ResponseBody
+    ResponseEntity<Void> deleteRequestIllustrations(@PathVariable String requestId,
+                                                    @AuthenticationPrincipal OAuth2User principal);
+
+    @Operation(summary = "Delete illustrations for a specific request and type")
+    @DeleteMapping("/api/gallery/illustrations/request/{requestId}/{illustrationType}")
+    @ResponseBody
+    ResponseEntity<Void> deleteRequestIllustrationsByType(@PathVariable String requestId,
+                                                          @PathVariable String illustrationType,
+                                                          @AuthenticationPrincipal OAuth2User principal);
+
+    @Operation(summary = "Delete mockups for a specific request")
+    @DeleteMapping("/api/gallery/mockups/request/{requestId}")
+    @ResponseBody
+    ResponseEntity<Void> deleteRequestMockups(@PathVariable String requestId,
+                                              @AuthenticationPrincipal OAuth2User principal);
+
+    @Operation(summary = "Delete mockups for a specific request and type")
+    @DeleteMapping("/api/gallery/mockups/request/{requestId}/{mockupType}")
+    @ResponseBody
+    ResponseEntity<Void> deleteRequestMockupsByType(@PathVariable String requestId,
+                                                    @PathVariable String mockupType,
+                                                    @AuthenticationPrincipal OAuth2User principal);
+
+    @Operation(summary = "Delete labels for a specific request")
+    @DeleteMapping("/api/gallery/labels/request/{requestId}")
+    @ResponseBody
+    ResponseEntity<Void> deleteRequestLabels(@PathVariable String requestId,
+                                             @AuthenticationPrincipal OAuth2User principal);
+
+    @Operation(summary = "Delete labels for a specific request and type")
+    @DeleteMapping("/api/gallery/labels/request/{requestId}/{labelType}")
+    @ResponseBody
+    ResponseEntity<Void> deleteRequestLabelsByType(@PathVariable String requestId,
+                                                   @PathVariable String labelType,
+                                                   @AuthenticationPrincipal OAuth2User principal);
 }

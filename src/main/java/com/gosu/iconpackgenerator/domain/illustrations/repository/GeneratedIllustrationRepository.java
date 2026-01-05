@@ -19,9 +19,16 @@ public interface GeneratedIllustrationRepository extends JpaRepository<Generated
     Page<GeneratedIllustration> findByUserOrderByCreatedAtDesc(User user, Pageable pageable);
 
     List<GeneratedIllustration> findByUserOrderByCreatedAtDesc(User user);
+
+    List<GeneratedIllustration> findByUserAndRequestId(User user, String requestId);
+
+    List<GeneratedIllustration> findByUserAndRequestIdAndIllustrationType(User user, String requestId, String illustrationType);
+
+    void deleteByUserAndRequestId(User user, String requestId);
+
+    void deleteByUserAndRequestIdAndIllustrationType(User user, String requestId, String illustrationType);
     
     List<GeneratedIllustration> findByFilePathIn(List<String> filePaths);
     
     long countByUser(User user);
 }
-

@@ -19,9 +19,16 @@ public interface GeneratedMockupRepository extends JpaRepository<GeneratedMockup
     Page<GeneratedMockup> findByUserOrderByCreatedAtDesc(User user, Pageable pageable);
 
     List<GeneratedMockup> findByUserOrderByCreatedAtDesc(User user);
+
+    List<GeneratedMockup> findByUserAndRequestId(User user, String requestId);
+
+    List<GeneratedMockup> findByUserAndRequestIdAndMockupType(User user, String requestId, String mockupType);
+
+    void deleteByUserAndRequestId(User user, String requestId);
+
+    void deleteByUserAndRequestIdAndMockupType(User user, String requestId, String mockupType);
     
     List<GeneratedMockup> findByFilePathIn(List<String> filePaths);
     
     long countByUser(User user);
 }
-
