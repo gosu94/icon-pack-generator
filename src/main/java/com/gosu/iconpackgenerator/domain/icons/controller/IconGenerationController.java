@@ -189,10 +189,27 @@ public class IconGenerationController implements IconGenerationControllerAPI {
             emitter.complete();
         });
         emitter.onError(throwable -> {
-            log.error("SSE error for request: {}", requestId, throwable);
-            streamingStateStore.removeEmitter(requestId);
-            streamingStateStore.removeRequest(requestId);
-            emitter.completeWithError(throwable);
+            boolean isClientDisconnect = throwable instanceof org.springframework.web.context.request.async.AsyncRequestNotUsableException
+                    || (throwable.getCause() != null && throwable.getCause() instanceof java.io.IOException
+                    && (throwable.getCause().getMessage() != null
+                    && (throwable.getCause().getMessage().contains("Broken pipe")
+                    || throwable.getCause().getMessage().contains("Connection reset")
+                    || throwable.getCause().getMessage().contains("Socket closed"))));
+
+            if (isClientDisconnect) {
+                log.debug("Client disconnected from SSE stream for request: {}", requestId);
+                streamingStateStore.removeEmitter(requestId);
+                // Keep request in state store for recovery
+            } else {
+                log.error("SSE error for request: {}", requestId, throwable);
+                streamingStateStore.removeEmitter(requestId);
+                streamingStateStore.removeRequest(requestId);
+                try {
+                    emitter.completeWithError(throwable);
+                } catch (Exception e) {
+                    log.debug("Could not complete emitter with error: {}", e.getMessage());
+                }
+            }
         });
 
         return emitter;
