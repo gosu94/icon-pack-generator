@@ -42,6 +42,10 @@ public interface GeneratedIconRepository extends JpaRepository<GeneratedIcon, Lo
     List<GeneratedIcon> findByUserAndRequestIdAndIsWatermarkedTrue(User user, String requestId);
 
     List<GeneratedIcon> findByUserAndRequestIdAndIsWatermarkedFalse(User user, String requestId);
+
+    List<GeneratedIcon> findByIsWatermarkedTrueAndCreatedAtBefore(LocalDateTime cutoff);
+
+    List<GeneratedIcon> findByRequestIdAndIconIdInAndIsWatermarkedFalse(String requestId, List<String> iconIds);
     
     void deleteByUserAndRequestId(User user, String requestId);
 

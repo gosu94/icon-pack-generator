@@ -646,8 +646,8 @@ const GeneratorForm: React.FC<GeneratorFormProps> = ({
                   </p>
                   <p className="text-[11px] text-blue-800">
                     {mode === "icons"
-                      ? "Trial generations include a watermark. "
-                      : "Trial generations include a watermark. "}
+                      ? "Trial generations include a watermark and are stored for 30 days only. "
+                      : "Trial generations include a watermark and are stored for 30 days only. "}
                       Visit the{" "}
                       <Link
                           href="/store"

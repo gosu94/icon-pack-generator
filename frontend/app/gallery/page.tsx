@@ -30,6 +30,7 @@ interface Illustration {
   requestId: string;
   illustrationType: string;
   theme: string;
+  watermarked?: boolean;
 }
 
 interface Mockup {
@@ -613,7 +614,11 @@ export default function GalleryPage() {
         if (!response.ok) {
           throw new Error("Failed to fetch illustrations");
         }
-        const data: Illustration[] = await response.json();
+        const rawData: Array<Illustration & { isWatermarked?: boolean }> = await response.json();
+        const data: Illustration[] = rawData.map((illustration) => ({
+          ...illustration,
+          watermarked: illustration.watermarked ?? illustration.isWatermarked ?? false,
+        }));
 
         const grouped = data.reduce((acc, illustration) => {
           if (!acc[illustration.requestId]) {
@@ -1201,6 +1206,9 @@ export default function GalleryPage() {
   const selectedIconGroup = selectedRequest
     ? groupedIcons[selectedRequest]
     : null;
+  const selectedIllustrationGroup = selectedRequest
+    ? groupedIllustrations[selectedRequest]
+    : null;
   const selectedLabelGroup = selectedRequest
     ? groupedLabels[selectedRequest]
     : null;
@@ -1208,6 +1216,11 @@ export default function GalleryPage() {
     selectedIconGroup &&
       (selectedIconGroup.original.some((icon) => icon.watermarked) ||
         selectedIconGroup.variation.some((icon) => icon.watermarked)),
+  );
+  const hasWatermarkedIllustrations = Boolean(
+    selectedIllustrationGroup &&
+      (selectedIllustrationGroup.original.some((illustration) => illustration.watermarked) ||
+        selectedIllustrationGroup.variation.some((illustration) => illustration.watermarked)),
   );
   const canRemoveWatermark = hasWatermarkedIcons && availableCoins > 0;
 
@@ -1400,6 +1413,34 @@ export default function GalleryPage() {
                             </button>
                           )}
                         </div>
+
+                        {hasWatermarkedIcons && (
+                          <div className="mb-6 flex items-start gap-2 rounded-xl border border-amber-200/80 bg-amber-50/80 px-3 py-3 text-xs text-amber-900">
+                            <svg
+                              className="mt-0.5 h-4 w-4 flex-shrink-0 text-amber-500"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                              aria-hidden="true"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                              />
+                            </svg>
+                            <div>
+                              <p className="text-xs font-semibold text-amber-900">
+                                Trial assets notice
+                              </p>
+                              <p className="text-[11px] text-amber-800">
+                                Trial assets include a watermark and are stored for 30 days.
+                                Remove the watermark to keep them permanently.
+                              </p>
+                            </div>
+                          </div>
+                        )}
 
                         {selectedIconGroup.original.length > 0 && (
                           <div className="mb-8 p-4 rounded-lg border border-slate-200/80 bg-white/50 shadow-lg shadow-slate-200/50">
@@ -1875,6 +1916,33 @@ export default function GalleryPage() {
                             </span>
                           </button>
                         </div>
+
+                        {hasWatermarkedIllustrations && (
+                          <div className="mb-6 flex items-start gap-2 rounded-xl border border-amber-200/80 bg-amber-50/80 px-3 py-3 text-xs text-amber-900">
+                            <svg
+                              className="mt-0.5 h-4 w-4 flex-shrink-0 text-amber-500"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                              aria-hidden="true"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                              />
+                            </svg>
+                            <div>
+                              <p className="text-xs font-semibold text-amber-900">
+                                Trial assets notice
+                              </p>
+                              <p className="text-[11px] text-amber-800">
+                                Trial illustrations include a watermark and are stored for 30 days.
+                              </p>
+                            </div>
+                          </div>
+                        )}
 
                         {groupedIllustrations[selectedRequest].original.length > 0 && (
                           <div className="mb-8 p-4 rounded-lg border border-slate-200/80 bg-white/50 shadow-lg shadow-slate-200/50">

@@ -7,6 +7,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Repository
@@ -31,4 +32,8 @@ public interface GeneratedIllustrationRepository extends JpaRepository<Generated
     List<GeneratedIllustration> findByFilePathIn(List<String> filePaths);
     
     long countByUser(User user);
+
+    List<GeneratedIllustration> findByIsWatermarkedTrueAndCreatedAtBefore(LocalDateTime cutoff);
+
+    List<GeneratedIllustration> findByRequestIdAndIllustrationIdInAndIsWatermarkedFalse(String requestId, List<String> illustrationIds);
 }
