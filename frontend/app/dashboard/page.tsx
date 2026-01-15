@@ -63,6 +63,10 @@ export default function Page() {
     formatFileSize,
     enhancePrompt,
     setEnhancePrompt,
+    baseModel,
+    setBaseModel,
+    variationModel,
+    setVariationModel,
   } = formState;
 
   const {
@@ -133,6 +137,10 @@ export default function Page() {
           formatFileSize={formatFileSize}
           enhancePrompt={enhancePrompt}
           setEnhancePrompt={setEnhancePrompt}
+          baseModel={baseModel}
+          setBaseModel={setBaseModel}
+          variationModel={variationModel}
+          setVariationModel={setVariationModel}
         />
 
         <ResultsDisplay

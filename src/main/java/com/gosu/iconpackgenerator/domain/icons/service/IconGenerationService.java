@@ -29,6 +29,8 @@ public class IconGenerationService {
 
     private static final String PROMPT_ENHANCER_SYSTEM_PROMPT = "You are an art director specializing in crafting vivid, cohesive icon pack prompts. Rewrite the user input into a clear, descriptive but concise creative brief. Mention color palette, tone, shapes, and stylistic cues. Keep it under 80 words and in natural sentences without bullet points.";
     private static final String PROMPT_ENHANCER_USER_TEMPLATE = "Original description: \"%s\". Rewrite this so it guides an AI model to design a cohesive icon pack with a unified style, colors, materials, and lighting.";
+    private static final String MODEL_STANDARD = "standard";
+    private static final String MODEL_PRO = "pro";
 
     private final GptModelService gptModelService;
     private final Gpt15ModelService gpt15ModelService;
@@ -53,12 +55,12 @@ public class IconGenerationService {
                                                                    String requestId,
                                                                    ProgressUpdateCallback progressCallback,
                                                                    User user) {
-        if (!aiServicesConfig.isGptEnabled()) {
+        if (usesGptModel(request) && !aiServicesConfig.isGptEnabled()) {
             return CompletableFuture.completedFuture(createErrorResponse(requestId, "Icon generation service is disabled."));
         }
 
-        if (request.getGenerationsPerService() > 1 && !aiServicesConfig.isGpt15Enabled()) {
-            return CompletableFuture.completedFuture(createErrorResponse(requestId, "Variations are unavailable because GPT 1.5 service is disabled."));
+        if (usesGpt15Model(request) && !aiServicesConfig.isGpt15Enabled()) {
+            return CompletableFuture.completedFuture(createErrorResponse(requestId, "Pro model generation is unavailable because the service is disabled."));
         }
 
         int cost = Math.max(1, request.getGenerationsPerService());
@@ -412,6 +414,8 @@ public class IconGenerationService {
         modifiedRequest.setGenerationsPerService(originalRequest.getGenerationsPerService());
         modifiedRequest.setReferenceImageBase64(originalRequest.getReferenceImageBase64());
         modifiedRequest.setEnhancePrompt(originalRequest.isEnhancePrompt());
+        modifiedRequest.setBaseModel(originalRequest.getBaseModel());
+        modifiedRequest.setVariationModel(originalRequest.getVariationModel());
 
         String originalDescription = originalRequest.getGeneralDescription() != null
                 ? originalRequest.getGeneralDescription()
@@ -512,8 +516,54 @@ public class IconGenerationService {
     }
 
     private boolean shouldUseGpt15(int generationIndex, IconGenerationRequest request) {
-        return generationIndex == 2 &&
-                request.getGenerationsPerService() >= 2 &&
-                aiServicesConfig.isGpt15Enabled();
+        if (request.hasReferenceImage()) {
+            return true;
+        }
+
+        if (generationIndex == 1) {
+            return isProModel(request.getBaseModel());
+        }
+
+        if (generationIndex == 2 && request.getGenerationsPerService() >= 2) {
+            return !isStandardModel(request.getVariationModel());
+        }
+
+        return false;
+    }
+
+    private boolean usesGptModel(IconGenerationRequest request) {
+        if (request.hasReferenceImage()) {
+            return false;
+        }
+
+        if (!isProModel(request.getBaseModel())) {
+            return true;
+        }
+        if (request.getGenerationsPerService() >= 2) {
+            return isStandardModel(request.getVariationModel());
+        }
+        return false;
+    }
+
+    private boolean usesGpt15Model(IconGenerationRequest request) {
+        if (request.hasReferenceImage()) {
+            return true;
+        }
+
+        if (isProModel(request.getBaseModel())) {
+            return true;
+        }
+        if (request.getGenerationsPerService() >= 2) {
+            return !isStandardModel(request.getVariationModel());
+        }
+        return false;
+    }
+
+    private boolean isStandardModel(String model) {
+        return model != null && MODEL_STANDARD.equalsIgnoreCase(model.trim());
+    }
+
+    private boolean isProModel(String model) {
+        return model != null && MODEL_PRO.equalsIgnoreCase(model.trim());
     }
 }

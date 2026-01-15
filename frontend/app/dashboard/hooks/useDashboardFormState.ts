@@ -31,6 +31,8 @@ export function useDashboardFormState({
   const [referenceImage, setReferenceImage] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string>("");
   const [enhancePrompt, setEnhancePrompt] = useState(false);
+  const [baseModel, setBaseModel] = useState("standard");
+  const [variationModel, setVariationModel] = useState("pro");
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -210,6 +212,10 @@ export function useDashboardFormState({
     formatFileSize,
     enhancePrompt,
     setEnhancePrompt,
+    baseModel,
+    setBaseModel,
+    variationModel,
+    setVariationModel,
     validateForm,
   };
 }

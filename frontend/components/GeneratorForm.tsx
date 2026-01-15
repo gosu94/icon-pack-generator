@@ -28,6 +28,10 @@ interface GeneratorFormProps {
   formatFileSize: (bytes: number) => string;
   enhancePrompt: boolean;
   setEnhancePrompt: (value: boolean) => void;
+  baseModel: string;
+  setBaseModel: (value: string) => void;
+  variationModel: string;
+  setVariationModel: (value: string) => void;
 }
 
 const GeneratorForm: React.FC<GeneratorFormProps> = ({
@@ -54,6 +58,10 @@ const GeneratorForm: React.FC<GeneratorFormProps> = ({
   formatFileSize,
   enhancePrompt,
   setEnhancePrompt,
+  baseModel,
+  setBaseModel,
+  variationModel,
+  setVariationModel,
 }) => {
   const { authState } = useAuth();
   const [isDragOver, setIsDragOver] = useState(false);
@@ -509,6 +517,84 @@ const GeneratorForm: React.FC<GeneratorFormProps> = ({
               </div>
             )}
 
+            {mode === "icons" && inputType !== "image" && (
+              <div className="flex items-center justify-between">
+                <div className="flex flex-col gap-1">
+                  <div className="flex items-center gap-2">
+                    <label className="text-lg font-semibold text-slate-900">
+                      Generation model
+                    </label>
+                    <div className="relative group">
+                      <button
+                        type="button"
+                        className="text-slate-500 hover:text-slate-800 transition-colors"
+                        aria-label="More info about models"
+                      >
+                        <svg
+                          className="w-4 h-4"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                          />
+                        </svg>
+                      </button>
+                      <div className="absolute left-1/2 top-6 z-20 w-80 max-w-xs -translate-x-1/2 rounded-xl border border-slate-200 bg-white p-4 text-xs text-slate-600 shadow-xl opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity duration-200">
+                        <p className="font-semibold text-slate-900 mb-2 text-sm">
+                          Standard vs Pro
+                        </p>
+                        <p className="mb-3">
+                          Standard produces simpler, cleaner icons. Pro adds
+                          richer materials, deeper contrast, and more refined
+                          lighting for premium polish.
+                        </p>
+                        <div className="grid grid-cols-2 gap-3">
+                          <div className="text-center">
+                            <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                              Standard
+                            </span>
+                            <Image
+                              src="/images/new-model/old_icon1.webp"
+                              alt="Standard model sample"
+                              width={120}
+                              height={120}
+                              className="mx-auto mt-1 rounded-lg border border-slate-200 object-cover"
+                            />
+                          </div>
+                          <div className="text-center">
+                            <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                              Pro
+                            </span>
+                            <Image
+                              src="/images/new-model/new_icon1.webp"
+                              alt="Pro model sample"
+                              width={120}
+                              height={120}
+                              className="mx-auto mt-1 rounded-lg border border-slate-200 object-cover"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <select
+                  value={baseModel}
+                  onChange={(e) => setBaseModel(e.target.value)}
+                  disabled={isGenerating}
+                  className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-700 shadow-sm focus:border-purple-400 focus:outline-none focus:ring-2 focus:ring-purple-200 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  <option value="standard">Standard</option>
+                  <option value="pro">Pro</option>
+                </select>
+              </div>
+            )}
+
             {mode !== "mockups" && (
               <div className="flex items-center justify-between">
                 <div className="flex flex-col gap-1">
@@ -517,63 +603,8 @@ const GeneratorForm: React.FC<GeneratorFormProps> = ({
                       className="text-lg font-semibold text-slate-900"
                       htmlFor="variations-switch"
                     >
-                      Pro Variation
+                      Additional Variations
                     </label>
-                    {mode === "icons" && (
-                      <div className="relative group">
-                        <button
-                          type="button"
-                          className="text-slate-500 hover:text-slate-800 transition-colors"
-                          aria-label="More info about variations"
-                        >
-                          <svg
-                            className="w-4 h-4"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                            />
-                          </svg>
-                        </button>
-                        <div className="absolute left-1/2 top-6 z-20 w-80 max-w-xs -translate-x-1/2 rounded-xl border border-slate-200 bg-white p-4 text-xs text-slate-600 shadow-xl opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity duration-200">
-                          <p className="font-semibold text-slate-900 mb-2 text-sm">Latest Model Variations</p>
-                          <p className="mb-3">
-                            Turned-on variations use our newest icon model, offering sharper lighting, richer contrast, and improved material fidelity compared to the base icons.
-                          </p>
-                          <div className="grid grid-cols-2 gap-3">
-                            <div className="text-center">
-                              <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-                                Original
-                              </span>
-                              <Image
-                                src="/images/new-model/old_icon1.webp"
-                                alt="Original model sample"
-                                width={120}
-                                height={120}
-                                className="mx-auto mt-1 rounded-lg border border-slate-200 object-cover"
-                              />
-                            </div>
-                            <div className="text-center">
-                              <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-                                Variation
-                              </span>
-                              <Image
-                                src="/images/new-model/new_icon1.webp"
-                                alt="New model variation sample"
-                                width={120}
-                                height={120}
-                                className="mx-auto mt-1 rounded-lg border border-slate-200 object-cover"
-                              />
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    )}
                   </div>
                 </div>
                 <div className="flex items-center space-x-2">
@@ -621,6 +652,23 @@ const GeneratorForm: React.FC<GeneratorFormProps> = ({
                     />
                   </button>
                 </div>
+              </div>
+            )}
+
+            {mode === "icons" && generateVariations && !isTrialOnly && inputType !== "image" && (
+              <div className="mt-3 flex items-center justify-between rounded-xl border border-slate-200 bg-white/70 px-3 py-2">
+                <span className="text-sm font-semibold text-slate-800">
+                  Additional variations model
+                </span>
+                <select
+                  value={variationModel}
+                  onChange={(e) => setVariationModel(e.target.value)}
+                  disabled={isGenerating}
+                  className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-700 shadow-sm focus:border-purple-400 focus:outline-none focus:ring-2 focus:ring-purple-200 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  <option value="standard">Standard</option>
+                  <option value="pro">Pro</option>
+                </select>
               </div>
             )}
 

@@ -53,6 +53,8 @@ export function useGenerationFlow({
     fileToBase64,
     validateForm,
     enhancePrompt,
+    baseModel,
+    variationModel,
   } = formState;
   const {
     animatingIcons,
@@ -135,8 +137,8 @@ export function useGenerationFlow({
         flux: "Flux-Pro",
         recraft: "Recraft V3",
         photon: "Luma Photon",
-        gpt: "GPT Image",
-        gpt15: "GPT Image 1.5",
+        gpt: "Standard",
+        gpt15: "Pro",
         banana: "Nano Banana",
       };
     return serviceNames[serviceId] || serviceId;
@@ -251,8 +253,8 @@ export function useGenerationFlow({
         { id: "flux", name: "Flux-Pro" },
         { id: "recraft", name: "Recraft V3" },
         { id: "photon", name: "Luma Photon" },
-        { id: "gpt", name: "" },
-        { id: "gpt15", name: "GPT Image 1.5" },
+        { id: "gpt", name: "Standard" },
+        { id: "gpt15", name: "Pro" },
         { id: "banana", name: "Nano Banana" },
       ];
 
@@ -260,15 +262,36 @@ export function useGenerationFlow({
         (service) => enabledServices[service.id],
       );
       const generationsNum = generateVariations ? 2 : 1;
+      const getExpectedServiceId = (genIndex: number) => {
+        if (genIndex === 1) {
+          return baseModel === "pro" ? "gpt15" : "gpt";
+        }
+        if (genIndex === 2) {
+          return variationModel === "standard" ? "gpt" : "gpt15";
+        }
+        return "gpt";
+      };
+      const shouldIncludeServiceForGeneration = (
+        serviceId: string,
+        genIndex: number,
+      ) => {
+        if (mode === "icons" && (serviceId === "gpt" || serviceId === "gpt15")) {
+          return serviceId === getExpectedServiceId(genIndex);
+        }
+        if (serviceId === "gpt" && genIndex > 1) {
+          return false;
+        }
+        if (serviceId === "gpt15") {
+          if (!generateVariations || genIndex === 1) {
+            return false;
+          }
+        }
+        return true;
+      };
       enabledServicesList.forEach((service) => {
         for (let genIndex = 1; genIndex <= generationsNum; genIndex++) {
-          if (service.id === "gpt" && genIndex > 1) {
+          if (!shouldIncludeServiceForGeneration(service.id, genIndex)) {
             continue;
-          }
-          if (service.id === "gpt15") {
-            if (!generateVariations || genIndex === 1) {
-              continue;
-            }
           }
           const uniqueId = `${service.id}-gen${genIndex}`;
           newResults[uniqueId] = {
@@ -282,7 +305,7 @@ export function useGenerationFlow({
       });
       setStreamingResults(newResults);
     },
-    [generateVariations],
+    [baseModel, generateVariations, mode, variationModel],
   );
 
   const handleServiceUpdate = useCallback((update: any) => {
@@ -764,12 +787,17 @@ export function useGenerationFlow({
         generationsPerService: generateVariations ? 2 : 1,
       };
     } else {
+      const resolvedBaseModel = inputType === "image" ? "pro" : baseModel;
+      const resolvedVariationModel =
+        inputType === "image" ? "pro" : variationModel;
       formData = {
         iconCount: count,
         generationsPerService: generateVariations ? 2 : 1,
         individualDescriptions: individualDescriptions.filter((desc) =>
           desc.trim(),
         ),
+        baseModel: resolvedBaseModel,
+        variationModel: resolvedVariationModel,
       };
     }
 
@@ -925,6 +953,7 @@ export function useGenerationFlow({
     }
   }, [
     authState,
+    baseModel,
     clearAllAnimations,
     generalDescription,
     generateVariations,
@@ -943,6 +972,7 @@ export function useGenerationFlow({
     startOverallProgressTimer,
     stopOverallProgressTimer,
     validateForm,
+    variationModel,
   ]);
 
   const showMoreIconsForm = useCallback(

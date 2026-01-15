@@ -52,6 +52,9 @@ import java.util.concurrent.TimeUnit;
 @Slf4j
 public class IconGenerationController implements IconGenerationControllerAPI {
 
+    private static final String MODEL_STANDARD = "standard";
+    private static final String MODEL_PRO = "pro";
+
     private final IconGenerationService iconGenerationService;
     private final GptModelService gptModelService;
     private final Gpt15ModelService gpt15ModelService;
@@ -161,9 +164,17 @@ public class IconGenerationController implements IconGenerationControllerAPI {
         Map<String, Object> response = new HashMap<>();
         response.put("requestId", requestId);
 
+        boolean useGptForBase = !isProModel(request.getBaseModel()) && !request.hasReferenceImage();
+        boolean useGptForVariation = request.getGenerationsPerService() >= 2
+                && isStandardModel(request.getVariationModel())
+                && !request.hasReferenceImage();
+        boolean useGpt15ForBase = isProModel(request.getBaseModel()) || request.hasReferenceImage();
+        boolean useGpt15ForVariation = request.getGenerationsPerService() >= 2
+                && (!isStandardModel(request.getVariationModel()) || request.hasReferenceImage());
+
         Map<String, Boolean> enabledServices = new HashMap<>();
-        enabledServices.put("gpt", aiServicesConfig.isGptEnabled());
-        enabledServices.put("gpt15", aiServicesConfig.isGpt15Enabled() && request.getGenerationsPerService() > 1);
+        enabledServices.put("gpt", aiServicesConfig.isGptEnabled() && (useGptForBase || useGptForVariation));
+        enabledServices.put("gpt15", aiServicesConfig.isGpt15Enabled() && (useGpt15ForBase || useGpt15ForVariation));
         response.put("enabledServices", enabledServices);
 
         return ResponseEntity.ok(response);
@@ -516,6 +527,14 @@ public class IconGenerationController implements IconGenerationControllerAPI {
                 icon.setBase64Data(watermarkService.applyTrialWatermark(icon.getBase64Data()));
             }
         }
+    }
+
+    private boolean isStandardModel(String model) {
+        return model != null && MODEL_STANDARD.equalsIgnoreCase(model.trim());
+    }
+
+    private boolean isProModel(String model) {
+        return model != null && MODEL_PRO.equalsIgnoreCase(model.trim());
     }
 
     private MoreIconsResponse createErrorResponse(MoreIconsRequest request, String errorMessage, long startTime) {

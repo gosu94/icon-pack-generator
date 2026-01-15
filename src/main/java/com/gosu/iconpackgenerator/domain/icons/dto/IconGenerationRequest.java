@@ -38,6 +38,16 @@ public class IconGenerationRequest {
     private int generationsPerService = 1;
 
     /**
+     * Model preference for the primary generation ("standard" or "pro").
+     */
+    private String baseModel;
+
+    /**
+     * Model preference for the variation generation ("standard" or "pro").
+     */
+    private String variationModel;
+
+    /**
      * When true, the backend should attempt to enhance the user's general theme prompt
      * before generating icons.
      */
