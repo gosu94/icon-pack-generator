@@ -68,7 +68,7 @@ public class WatermarkService {
             GlyphVector glyphVector = graphics.getFont().createGlyphVector(fontRenderContext, WATERMARK_TEXT);
             Shape textOutline = glyphVector.getOutline(textX, textY);
 
-            float strokeWidth = Math.max(2f, fontSize / 12f);
+            float strokeWidth = Math.max(1.5f, fontSize / 16f);
             graphics.setStroke(new BasicStroke(strokeWidth, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
             graphics.setColor(new Color(0, 0, 0));
             graphics.draw(textOutline);

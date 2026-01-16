@@ -213,6 +213,10 @@ export default function ControlPanelPage() {
   const [userForCoins, setUserForCoins] = useState<UserAdminData | null>(null);
   const [coins, setCoins] = useState(0);
   const [trialCoins, setTrialCoins] = useState(0);
+  const [deleteConfirmUserId, setDeleteConfirmUserId] = useState<number | null>(
+    null
+  );
+  const [deletingUserId, setDeletingUserId] = useState<number | null>(null);
   
   // Sorting state
   const [sortColumn, setSortColumn] = useState<keyof UserAdminData | null>(null);
@@ -460,6 +464,7 @@ export default function ControlPanelPage() {
       setUsers(data.content);
       setTotalElements(data.totalElements);
       setTotalPages(data.totalPages);
+      setDeleteConfirmUserId(null);
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -661,6 +666,37 @@ export default function ControlPanelPage() {
     } catch (err: any) {
       console.error(err.message);
       alert(`Error: ${err.message}`);
+    }
+  };
+
+  const handleDeleteUser = async (user: UserAdminData) => {
+    if (deletingUserId) return;
+    if (deleteConfirmUserId !== user.id) {
+      setDeleteConfirmUserId(user.id);
+      return;
+    }
+
+    try {
+      setDeletingUserId(user.id);
+      const response = await fetch(`/api/admin/users/${user.id}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+
+      if (!response.ok) {
+        const errorData = await response
+          .json()
+          .catch(() => ({ error: "Failed to delete user" }));
+        throw new Error(errorData.error || errorData.message || "Failed to delete user");
+      }
+
+      setDeleteConfirmUserId(null);
+      await fetchUsers();
+    } catch (err: any) {
+      console.error(err.message);
+      alert(`Error: ${err.message}`);
+    } finally {
+      setDeletingUserId(null);
     }
   };
 
@@ -979,6 +1015,9 @@ export default function ControlPanelPage() {
               onViewMockups={handleViewMockups}
               onViewLabels={handleViewLabels}
               onOpenSetCoinsModal={handleOpenSetCoinsModal}
+              onDeleteUser={handleDeleteUser}
+              deleteConfirmUserId={deleteConfirmUserId}
+              deletingUserId={deletingUserId}
               formatDate={formatDate}
               totalElements={totalElements}
               itemsPerPage={itemsPerPage}

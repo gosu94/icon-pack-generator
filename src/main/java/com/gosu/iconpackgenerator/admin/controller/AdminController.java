@@ -17,9 +17,12 @@ import com.gosu.iconpackgenerator.domain.labels.entity.GeneratedLabel;
 import com.gosu.iconpackgenerator.domain.mockups.dto.MockupDto;
 import com.gosu.iconpackgenerator.domain.mockups.entity.GeneratedMockup;
 import com.gosu.iconpackgenerator.domain.mockups.repository.GeneratedMockupRepository;
+import com.gosu.iconpackgenerator.feedback.model.Feedback;
+import com.gosu.iconpackgenerator.feedback.repository.FeedbackRepository;
 import com.gosu.iconpackgenerator.user.model.User;
 import com.gosu.iconpackgenerator.user.repository.UserRepository;
 import com.gosu.iconpackgenerator.user.service.CustomOAuth2User;
+import com.gosu.iconpackgenerator.util.FileStorageService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -30,6 +33,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.util.StringUtils;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -37,6 +41,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.sql.Date;
 import java.time.LocalDate;
@@ -61,6 +66,8 @@ public class AdminController {
     private final GeneratedIllustrationRepository generatedIllustrationRepository;
     private final GeneratedMockupRepository generatedMockupRepository;
     private final GeneratedLabelRepository generatedLabelRepository;
+    private final FeedbackRepository feedbackRepository;
+    private final FileStorageService fileStorageService;
 
     /**
      * Check if current user is admin
@@ -411,6 +418,69 @@ public class AdminController {
 
         log.info("Admin user {} updated coins for user {}. New values: coins={}, trialCoins={}", adminUser.getEmail(), targetUser.getEmail(), targetUser.getCoins(), targetUser.getTrialCoins());
         return ResponseEntity.ok(Map.of("message", "Coins updated successfully"));
+    }
+
+    /**
+     * Delete a user and all of their assets (admin only)
+     */
+    @DeleteMapping("/users/{userId}")
+    @Transactional
+    public ResponseEntity<?> deleteUser(@PathVariable Long userId, @AuthenticationPrincipal OAuth2User principal) {
+        if (!(principal instanceof CustomOAuth2User customUser)) {
+            return ResponseEntity.status(401).body(Map.of("error", "Unauthorized"));
+        }
+
+        User adminUser = customUser.getUser();
+        if (!adminService.isAdmin(adminUser)) {
+            log.warn("Non-admin user {} attempted to delete user {}", adminUser.getEmail(), userId);
+            return ResponseEntity.status(403).body(Map.of("error", "Forbidden - Admin access required"));
+        }
+
+        User targetUser = userRepository.findById(userId)
+                .orElse(null);
+
+        if (targetUser == null) {
+            return ResponseEntity.status(404).body(Map.of("error", "User not found"));
+        }
+
+        List<GeneratedIcon> icons = generatedIconRepository.findByUser(targetUser);
+        for (GeneratedIcon icon : icons) {
+            fileStorageService.deleteIconByRelativePath(icon.getFilePath());
+        }
+        generatedIconRepository.deleteAll(icons);
+
+        List<GeneratedIllustration> illustrations = generatedIllustrationRepository.findByUserOrderByCreatedAtDesc(targetUser);
+        for (GeneratedIllustration illustration : illustrations) {
+            fileStorageService.deleteIllustrationByRelativePath(illustration.getFilePath());
+        }
+        generatedIllustrationRepository.deleteAll(illustrations);
+
+        List<GeneratedMockup> mockups = generatedMockupRepository.findByUserOrderByCreatedAtDesc(targetUser);
+        for (GeneratedMockup mockup : mockups) {
+            fileStorageService.deleteMockupByRelativePath(mockup.getFilePath());
+        }
+        generatedMockupRepository.deleteAll(mockups);
+
+        List<GeneratedLabel> labels = generatedLabelRepository.findByUserOrderByCreatedAtDesc(targetUser);
+        for (GeneratedLabel label : labels) {
+            fileStorageService.deleteLabelByRelativePath(label.getFilePath());
+        }
+        generatedLabelRepository.deleteAll(labels);
+
+        List<Feedback> feedbacks = feedbackRepository.findByUser(targetUser);
+        feedbackRepository.deleteAll(feedbacks);
+
+        userRepository.delete(targetUser);
+
+        log.info("Admin user {} deleted user {} and {} icons, {} illustrations, {} mockups, {} labels, {} feedback entries",
+                adminUser.getEmail(),
+                targetUser.getEmail(),
+                icons.size(),
+                illustrations.size(),
+                mockups.size(),
+                labels.size(),
+                feedbacks.size());
+        return ResponseEntity.ok(Map.of("message", "User deleted successfully"));
     }
 
     /**

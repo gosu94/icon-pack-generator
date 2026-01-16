@@ -11,6 +11,9 @@ interface UsersTabProps {
   onViewMockups: (user: UserAdminData) => void;
   onViewLabels: (user: UserAdminData) => void;
   onOpenSetCoinsModal: (user: UserAdminData) => void;
+  onDeleteUser: (user: UserAdminData) => void;
+  deleteConfirmUserId: number | null;
+  deletingUserId: number | null;
   formatDate: (dateString: string | null) => string;
   totalElements: number;
   itemsPerPage: number;
@@ -53,6 +56,9 @@ export default function UsersTab({
   onViewMockups,
   onViewLabels,
   onOpenSetCoinsModal,
+  onDeleteUser,
+  deleteConfirmUserId,
+  deletingUserId,
   formatDate,
   totalElements,
   itemsPerPage,
@@ -196,12 +202,30 @@ export default function UsersTab({
                   </span>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                  <button
-                    onClick={() => onOpenSetCoinsModal(user)}
-                    className="text-indigo-600 hover:text-indigo-900"
-                  >
-                    Set Coins
-                  </button>
+                  <div className="flex items-center gap-3">
+                    <button
+                      onClick={() => onOpenSetCoinsModal(user)}
+                      className="text-indigo-600 hover:text-indigo-900"
+                    >
+                      Set Coins
+                    </button>
+                    <button
+                      onClick={() => onDeleteUser(user)}
+                      disabled={deletingUserId === user.id}
+                      className="text-rose-600 hover:text-rose-800 disabled:opacity-60 disabled:cursor-not-allowed"
+                    >
+                      {deletingUserId === user.id
+                        ? "Deleting..."
+                        : deleteConfirmUserId === user.id
+                        ? "Confirm delete"
+                        : "Delete user"}
+                    </button>
+                    {deleteConfirmUserId === user.id && deletingUserId !== user.id && (
+                      <span className="text-xs font-semibold text-rose-600">
+                        Are you sure?
+                      </span>
+                    )}
+                  </div>
                 </td>
               </tr>
             ))}
