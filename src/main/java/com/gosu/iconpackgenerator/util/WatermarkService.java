@@ -5,11 +5,15 @@ import org.springframework.stereotype.Service;
 
 import javax.imageio.ImageIO;
 import java.awt.AlphaComposite;
+import java.awt.BasicStroke;
 import java.awt.Color;
 import java.awt.Font;
 import java.awt.FontMetrics;
 import java.awt.Graphics2D;
 import java.awt.RenderingHints;
+import java.awt.Shape;
+import java.awt.font.FontRenderContext;
+import java.awt.font.GlyphVector;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -56,12 +60,20 @@ public class WatermarkService {
             double centerY = original.getHeight() / 2.0;
 
             graphics.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, WATERMARK_ALPHA));
-            graphics.setColor(new Color(255, 255, 255));
             graphics.rotate(Math.toRadians(WATERMARK_ANGLE_DEGREES), centerX, centerY);
-            graphics.drawString(
-                    WATERMARK_TEXT,
-                    (int) Math.round(centerX - textWidth / 2.0),
-                    (int) Math.round(centerY + textHeight / 2.0));
+
+            float textX = (float) (centerX - textWidth / 2.0);
+            float textY = (float) (centerY + textHeight / 2.0);
+            FontRenderContext fontRenderContext = graphics.getFontRenderContext();
+            GlyphVector glyphVector = graphics.getFont().createGlyphVector(fontRenderContext, WATERMARK_TEXT);
+            Shape textOutline = glyphVector.getOutline(textX, textY);
+
+            float strokeWidth = Math.max(2f, fontSize / 12f);
+            graphics.setStroke(new BasicStroke(strokeWidth, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+            graphics.setColor(new Color(0, 0, 0));
+            graphics.draw(textOutline);
+            graphics.setColor(new Color(255, 255, 255));
+            graphics.fill(textOutline);
             graphics.dispose();
 
             ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
