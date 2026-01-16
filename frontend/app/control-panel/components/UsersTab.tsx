@@ -12,7 +12,6 @@ interface UsersTabProps {
   onViewLabels: (user: UserAdminData) => void;
   onOpenSetCoinsModal: (user: UserAdminData) => void;
   onDeleteUser: (user: UserAdminData) => void;
-  deleteConfirmUserId: number | null;
   deletingUserId: number | null;
   formatDate: (dateString: string | null) => string;
   totalElements: number;
@@ -57,7 +56,6 @@ export default function UsersTab({
   onViewLabels,
   onOpenSetCoinsModal,
   onDeleteUser,
-  deleteConfirmUserId,
   deletingUserId,
   formatDate,
   totalElements,
@@ -214,17 +212,8 @@ export default function UsersTab({
                       disabled={deletingUserId === user.id}
                       className="text-rose-600 hover:text-rose-800 disabled:opacity-60 disabled:cursor-not-allowed"
                     >
-                      {deletingUserId === user.id
-                        ? "Deleting..."
-                        : deleteConfirmUserId === user.id
-                        ? "Confirm delete"
-                        : "Delete user"}
+                      {deletingUserId === user.id ? "Deleting..." : "Delete user"}
                     </button>
-                    {deleteConfirmUserId === user.id && deletingUserId !== user.id && (
-                      <span className="text-xs font-semibold text-rose-600">
-                        Are you sure?
-                      </span>
-                    )}
                   </div>
                 </td>
               </tr>

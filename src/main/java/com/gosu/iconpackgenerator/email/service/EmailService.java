@@ -1,6 +1,7 @@
 package com.gosu.iconpackgenerator.email.service;
 
 import com.gosu.iconpackgenerator.singal.SignalMessageService;
+import com.gosu.iconpackgenerator.email.template.EmailTemplate;
 import com.sendgrid.Method;
 import com.sendgrid.Request;
 import com.sendgrid.Response;
@@ -39,57 +40,7 @@ public class EmailService {
         try {
             String subject = "Set up your Icon Pack Gen password";
             String setupUrl = baseUrl + "/password-setup/index.html?token=" + token;
-            
-            String htmlBody = String.format("""
-                <!DOCTYPE html>
-                <html>
-                <head>
-                    <meta charset="UTF-8">
-                    <title>Set up your password</title>
-                    <style>
-                        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-                        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-                        .header { text-align: center; margin-bottom: 30px; }
-                        .button { 
-                            display: inline-block; 
-                            padding: 12px 24px; 
-                            background: linear-gradient(135deg, #667eea 0%%, #764ba2 100%%); 
-                            color: white !important; 
-                            text-decoration: none; 
-                            border-radius: 8px; 
-                            font-weight: bold;
-                        }
-                        .footer { margin-top: 30px; font-size: 12px; color: #666; }
-                    </style>
-                </head>
-                <body>
-                    <div class="container">
-                        <div class="header">
-                            <h1>Welcome to Icon Pack Generator!</h1>
-                        </div>
-                        
-                        <p>Hi there,</p>
-                        
-                        <p>You're almost ready to start creating amazing icons! To complete your account setup, please set up your password by clicking the button below:</p>
-                        
-                        <div style="text-align: center; margin: 30px 0;">
-                            <a href="%s" class="button">Set Up Password</a>
-                        </div>
-                        
-                        <p>If the button doesn't work, you can copy and paste this link into your browser:</p>
-                        <p><a href="%s">%s</a></p>
-                        
-                        <p>This link will expire in 24 hours for security reasons.</p>
-                        
-                        <p>If you didn't request this account, you can safely ignore this email.</p>
-                        
-                        <div class="footer">
-                            <p>Best regards,<br>The IconPackGen Team</p>
-                        </div>
-                    </div>
-                </body>
-                </html>
-                """, setupUrl, setupUrl, setupUrl);
+            String htmlBody = EmailTemplate.passwordSetupEmail(setupUrl);
 
             String textBody = String.format("""
                 Welcome to IconPackGen!
@@ -118,57 +69,7 @@ public class EmailService {
         try {
             String subject = "Reset your IconPackGen password";
             String resetUrl = baseUrl + "/password-setup/index.html?token=" + token + "&reset=true";
-            
-            String htmlBody = String.format("""
-                <!DOCTYPE html>
-                <html>
-                <head>
-                    <meta charset="UTF-8">
-                    <title>Reset your password</title>
-                    <style>
-                        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-                        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-                        .header { text-align: center; margin-bottom: 30px; }
-                        .button { 
-                            display: inline-block; 
-                            padding: 12px 24px; 
-                            background: linear-gradient(135deg, #667eea 0%%, #764ba2 100%%); 
-                            color: white !important; 
-                            text-decoration: none; 
-                            border-radius: 8px; 
-                            font-weight: bold;
-                        }
-                        .footer { margin-top: 30px; font-size: 12px; color: #666; }
-                    </style>
-                </head>
-                <body>
-                    <div class="container">
-                        <div class="header">
-                            <h1>Password Reset Request</h1>
-                        </div>
-                        
-                        <p>Hi there,</p>
-                        
-                        <p>We received a request to reset your password for your Icon Pack Generator account. Click the button below to reset your password:</p>
-                        
-                        <div style="text-align: center; margin: 30px 0;">
-                            <a href="%s" class="button">Reset Password</a>
-                        </div>
-                        
-                        <p>If the button doesn't work, you can copy and paste this link into your browser:</p>
-                        <p><a href="%s">%s</a></p>
-                        
-                        <p>This link will expire in 24 hours for security reasons.</p>
-                        
-                        <p>If you didn't request this password reset, you can safely ignore this email.</p>
-                        
-                        <div class="footer">
-                            <p>Best regards,<br>The IconPackGen Team</p>
-                        </div>
-                    </div>
-                </body>
-                </html>
-                """, resetUrl, resetUrl, resetUrl);
+            String htmlBody = EmailTemplate.passwordResetEmail(resetUrl);
 
             String textBody = String.format("""
                 Password Reset Request

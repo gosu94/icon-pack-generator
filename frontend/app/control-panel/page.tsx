@@ -26,167 +26,9 @@ import {
 import UsersTab from "./components/UsersTab";
 import EmailTab from "./components/EmailTab";
 import StatisticsTab from "./components/StatisticsTab";
+import DEFAULT_EMAIL_BODY from "./emailTemplate";
 
 type EmailRecipientScope = "ME" | "EVERYBODY" | "SPECIFIC";
-
-const DEFAULT_EMAIL_BODY = `<!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <title>IconPackGen AI Update</title>
-    <style>
-      body {
-        margin: 0;
-        padding: 0;
-        background: #f8fafc;
-        font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-        color: #0f172a;
-      }
-      .email-wrapper {
-        width: 100%;
-        padding: 32px 16px;
-        background: linear-gradient(135deg, #eef2ff, #f5f3ff);
-      }
-      .email-card {
-        max-width: 640px;
-        margin: 0 auto;
-        background: #ffffff;
-        border-radius: 24px;
-        box-shadow: 0 30px 60px rgba(79, 70, 229, 0.12);
-        overflow: hidden;
-        border: 1px solid rgba(79, 70, 229, 0.08);
-      }
-      .email-header {
-        display: flex;
-        align-items: center;
-        gap: 16px;
-        padding: 32px;
-        background: linear-gradient(135deg, rgba(99, 102, 241, 0.12), rgba(124, 58, 237, 0.08));
-      }
-      .email-header h1 {
-        margin: 0;
-        font-size: 26px;
-        font-weight: 700;
-        color: #0f172a;
-      }
-      .email-header .brand-accent {
-        background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
-        -webkit-background-clip: text;
-        color: transparent;
-        display: inline-flex;
-        align-items: center;
-        gap: 4px;
-      }
-      .email-header .brand-accent span {
-        font-size: 18px;
-      }
-      .email-content {
-        padding: 32px;
-      }
-      .email-content h2 {
-        font-size: 22px;
-        margin: 0 0 16px;
-        color: #312e81;
-      }
-      .email-content p {
-        margin: 0 0 16px;
-        line-height: 1.6;
-        color: #334155;
-        font-size: 16px;
-      }
-      .feature-list {
-        padding: 0;
-        margin: 24px 0 32px;
-        list-style: none;
-      }
-      .feature-list li {
-        margin-bottom: 16px;
-        padding-left: 32px;
-        position: relative;
-        font-size: 15px;
-        color: #1e293b;
-      }
-      .cta-button {
-        display: inline-block;
-        padding: 14px 32px;
-        background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
-        color: #ffffff !important;
-        border-radius: 9999px;
-        text-decoration: none;
-        font-weight: 600;
-        box-shadow: 0 20px 35px rgba(99, 102, 241, 0.35);
-      }
-      .email-footer {
-        padding: 24px 32px 32px;
-        background: #f8fafc;
-        border-top: 1px solid rgba(99, 102, 241, 0.08);
-        font-size: 13px;
-        color: #64748b;
-        line-height: 1.6;
-      }
-      @media (max-width: 600px) {
-        .email-header,
-        .email-content,
-        .email-footer {
-          padding: 24px;
-        }
-        .email-header h1 {
-          font-size: 22px;
-        }
-      }
-    </style>
-  </head>
-  <body>
-    <div class="email-wrapper">
-      <div class="email-card">
-        <div class="email-header">
-          <img
-            src="https://iconpackgen.com/images/logo%20small.webp"
-            alt="IconPackGen AI"
-            width="48"
-            height="48"
-            style="border-radius: 12px"
-          />
-          <h1>
-            IconPackGen
-              <span style="color:#6366f1;font-weight:700;">AI ✨</span>
-           </h1>
-        </div>
-        <div class="email-content">
-          <h2>Hey there,</h2>
-          <p>
-            We have something exciting to share with you from IconPackGen AI. Here’s a quick
-            overview of the latest updates, improvements, and insider tips to help you create your
-            next standout project.
-          </p>
-          <ul class="feature-list">
-            <li>✨ Add your feature highlight or announcement here.</li>
-            <li>✨ Share an upcoming launch, workshop, or promotion.</li>
-            <li>✨ Include a helpful tip, resource, or community spotlight.</li>
-          </ul>
-          <a
-            href="https://iconpackgen.com/dashboard"
-            class="cta-button"
-            target="_blank"
-            rel="noopener"
-          >
-            Jump back into IconPackGen
-          </a>
-        </div>
-        <div class="email-footer">
-          <p>
-            IconPackGen AI &bull; Crafted with creativity for designers and teams around the globe.
-          </p>
-          <p style="margin-top: 12px">
-            You're receiving this email because you're part of the IconPackGen community. 
-            <a href="{{UNSUBSCRIBE_LINK}}" style="color: #6366f1; text-decoration: underline;">Unsubscribe</a> 
-            if you no longer wish to receive these emails.
-          </p>
-        </div>
-      </div>
-    </div>
-  </body>
-</html>`;
 
 export default function ControlPanelPage() {
   const router = useRouter();
@@ -213,9 +55,9 @@ export default function ControlPanelPage() {
   const [userForCoins, setUserForCoins] = useState<UserAdminData | null>(null);
   const [coins, setCoins] = useState(0);
   const [trialCoins, setTrialCoins] = useState(0);
-  const [deleteConfirmUserId, setDeleteConfirmUserId] = useState<number | null>(
-    null
-  );
+  const [showDeleteUserModal, setShowDeleteUserModal] = useState(false);
+  const [userPendingDelete, setUserPendingDelete] =
+    useState<UserAdminData | null>(null);
   const [deletingUserId, setDeletingUserId] = useState<number | null>(null);
   
   // Sorting state
@@ -464,7 +306,8 @@ export default function ControlPanelPage() {
       setUsers(data.content);
       setTotalElements(data.totalElements);
       setTotalPages(data.totalPages);
-      setDeleteConfirmUserId(null);
+      setShowDeleteUserModal(false);
+      setUserPendingDelete(null);
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -669,16 +512,23 @@ export default function ControlPanelPage() {
     }
   };
 
-  const handleDeleteUser = async (user: UserAdminData) => {
+  const handleRequestDeleteUser = (user: UserAdminData) => {
     if (deletingUserId) return;
-    if (deleteConfirmUserId !== user.id) {
-      setDeleteConfirmUserId(user.id);
-      return;
-    }
+    setUserPendingDelete(user);
+    setShowDeleteUserModal(true);
+  };
 
+  const handleCloseDeleteUserModal = () => {
+    if (deletingUserId) return;
+    setShowDeleteUserModal(false);
+    setUserPendingDelete(null);
+  };
+
+  const handleConfirmDeleteUser = async () => {
+    if (!userPendingDelete || deletingUserId) return;
     try {
-      setDeletingUserId(user.id);
-      const response = await fetch(`/api/admin/users/${user.id}`, {
+      setDeletingUserId(userPendingDelete.id);
+      const response = await fetch(`/api/admin/users/${userPendingDelete.id}`, {
         method: "DELETE",
         credentials: "include",
       });
@@ -690,7 +540,7 @@ export default function ControlPanelPage() {
         throw new Error(errorData.error || errorData.message || "Failed to delete user");
       }
 
-      setDeleteConfirmUserId(null);
+      handleCloseDeleteUserModal();
       await fetchUsers();
     } catch (err: any) {
       console.error(err.message);
@@ -1015,8 +865,7 @@ export default function ControlPanelPage() {
               onViewMockups={handleViewMockups}
               onViewLabels={handleViewLabels}
               onOpenSetCoinsModal={handleOpenSetCoinsModal}
-              onDeleteUser={handleDeleteUser}
-              deleteConfirmUserId={deleteConfirmUserId}
+              onDeleteUser={handleRequestDeleteUser}
               deletingUserId={deletingUserId}
               formatDate={formatDate}
               totalElements={totalElements}
@@ -1130,6 +979,48 @@ export default function ControlPanelPage() {
                 className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
               >
                 Save
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete User Modal */}
+      {showDeleteUserModal && userPendingDelete && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-md w-full">
+            <div className="flex items-center justify-between p-6 border-b border-slate-200">
+              <h2 className="text-2xl font-bold text-slate-800">Delete User</h2>
+              <button
+                onClick={handleCloseDeleteUserModal}
+                className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
+                disabled={deletingUserId === userPendingDelete.id}
+              >
+                <X className="w-6 h-6 text-slate-600" />
+              </button>
+            </div>
+            <div className="p-6">
+              <p className="text-slate-700">
+                Are you sure you want to delete <strong>{userPendingDelete.email}</strong>?
+              </p>
+              <p className="text-sm text-slate-500 mt-2">
+                This action is permanent and cannot be undone.
+              </p>
+            </div>
+            <div className="flex justify-end p-6 border-t border-slate-200">
+              <button
+                onClick={handleCloseDeleteUserModal}
+                className="px-4 py-2 bg-slate-200 text-slate-700 rounded-lg hover:bg-slate-300 transition-colors mr-2"
+                disabled={deletingUserId === userPendingDelete.id}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleConfirmDeleteUser}
+                className="px-4 py-2 bg-rose-600 text-white rounded-lg hover:bg-rose-700 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                disabled={deletingUserId === userPendingDelete.id}
+              >
+                {deletingUserId === userPendingDelete.id ? "Deleting..." : "Yes, delete"}
               </button>
             </div>
           </div>
