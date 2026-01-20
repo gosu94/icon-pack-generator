@@ -159,7 +159,7 @@ const GeneratorForm: React.FC<GeneratorFormProps> = ({
   return (
     <div className="w-full lg:w-1/3 p-4 lg:p-8">
       <div
-        className="bg-white/80 backdrop-blur-md rounded-3xl p-8 shadow-2xl border-2 border-purple-200/50 h-full overflow-y-auto relative"
+        className="bg-white/80 backdrop-blur-md rounded-3xl p-8 shadow-2xl border-2 border-purple-200/50 relative lg:h-full lg:overflow-y-auto"
       >
         <div
           className="absolute inset-0 rounded-3xl bg-gradient-to-br from-white/30 to-transparent pointer-events-none"
