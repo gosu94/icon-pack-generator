@@ -131,6 +131,7 @@ const StatisticsTab = ({
     : range === "quarter"
     ? "last 90 days"
     : "all time";
+  const showXAxisLabels = !monthLabel && range !== "quarter" && range !== "all";
 
   const controls = (
     <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
@@ -291,6 +292,7 @@ const StatisticsTab = ({
             formatLabel={(value) => dateFormatter.format(new Date(value))}
             formatTooltipLabel={(value) => longDateFormatter.format(new Date(value))}
             activeSeries={activeSeries}
+            showXAxisLabels={showXAxisLabels}
           />
         </div>
       </div>
@@ -339,11 +341,13 @@ const StatisticsChart = ({
   formatLabel,
   formatTooltipLabel,
   activeSeries,
+  showXAxisLabels,
 }: {
   data: CombinedDataPoint[];
   formatLabel: (value: string) => string;
   formatTooltipLabel: (value: string) => string;
   activeSeries: SeriesKey[];
+  showXAxisLabels: boolean;
 }) => {
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
   const svgRef = useRef<SVGSVGElement | null>(null);
@@ -453,7 +457,7 @@ const StatisticsChart = ({
             </span>
           ))}
         </div>
-        <div className="relative flex-1">
+        <div className="relative flex-1 overflow-x-auto">
           {hoveredPoint && hoveredX !== null && (
             <div
               className="pointer-events-none absolute -top-2 z-10 w-48 -translate-x-1/2 -translate-y-full rounded-lg border border-slate-200 bg-white px-4 py-2 text-xs text-slate-600 shadow-lg"
@@ -488,8 +492,8 @@ const StatisticsChart = ({
           )}
           <svg
             viewBox={`0 0 ${width} ${height}`}
-            className="w-full"
-            style={{ aspectRatio: `${width} / ${height}` }}
+            className="h-64 min-w-full"
+            style={{ minWidth: `${width}px` }}
             preserveAspectRatio="xMidYMid meet"
             ref={svgRef}
             onMouseMove={handleMouseMove}
@@ -578,14 +582,16 @@ const StatisticsChart = ({
           </svg>
         </div>
       </div>
-      <div
-        className="grid gap-2 text-center text-xs text-slate-500"
-        style={{ gridTemplateColumns: `repeat(${data.length}, minmax(0, 1fr))` }}
-      >
-        {data.map((point) => (
-          <span key={point.date}>{formatLabel(point.date)}</span>
-        ))}
-      </div>
+      {showXAxisLabels && (
+        <div
+          className="grid gap-2 text-center text-xs text-slate-500"
+          style={{ gridTemplateColumns: `repeat(${data.length}, minmax(0, 1fr))` }}
+        >
+          {data.map((point) => (
+            <span key={point.date}>{formatLabel(point.date)}</span>
+          ))}
+        </div>
+      )}
     </div>
   );
 };
