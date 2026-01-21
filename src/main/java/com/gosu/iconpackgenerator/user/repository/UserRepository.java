@@ -32,6 +32,15 @@ public interface UserRepository extends JpaRepository<User, Long> {
     Page<User> searchUsers(@Param("searchTerm") String searchTerm, Pageable pageable);
 
     @Query("""
+            SELECT u FROM User u
+            WHERE (:searchTerm = '' OR LOWER(u.email) LIKE LOWER(CONCAT('%', :searchTerm, '%')))
+            AND (:customersOnly = false OR u.isCustomer = true)
+            """)
+    Page<User> searchUsersWithCustomerFilter(@Param("searchTerm") String searchTerm,
+                                             @Param("customersOnly") boolean customersOnly,
+                                             Pageable pageable);
+
+    @Query("""
             SELECT FUNCTION('date', u.registeredAt) AS registrationDate, COUNT(u)
             FROM User u
             WHERE u.registeredAt >= :startDate AND u.registeredAt < :endDate
@@ -40,4 +49,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
             """)
     List<Object[]> countRegistrationsByDateRange(@Param("startDate") LocalDateTime startDate,
                                                 @Param("endDate") LocalDateTime endDate);
+
+    @Query("SELECT MIN(u.registeredAt) FROM User u")
+    LocalDateTime findEarliestRegistration();
 }

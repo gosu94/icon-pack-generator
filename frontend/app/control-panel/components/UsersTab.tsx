@@ -28,6 +28,8 @@ interface UsersTabProps {
   activeSearchQuery: string;
   onSearchTermChange: (value: string) => void;
   onClearSearch: () => void;
+  customersOnly: boolean;
+  onCustomersOnlyChange: (value: boolean) => void;
 }
 
 const columnConfig: Array<{
@@ -72,6 +74,8 @@ export default function UsersTab({
   activeSearchQuery,
   onSearchTermChange,
   onClearSearch,
+  customersOnly,
+  onCustomersOnlyChange,
 }: UsersTabProps) {
   return (
     <>
@@ -97,6 +101,15 @@ export default function UsersTab({
             </button>
           )}
         </div>
+        <label className="inline-flex items-center gap-2 text-sm text-slate-600">
+          <input
+            type="checkbox"
+            checked={customersOnly}
+            onChange={(e) => onCustomersOnlyChange(e.target.checked)}
+            className="h-4 w-4 rounded border-slate-300 text-purple-600 focus:ring-purple-500"
+          />
+          Customers
+        </label>
         {activeSearchQuery && (
           <p className="text-sm text-slate-500">
             Filtering email by <span className="font-medium text-slate-700">{activeSearchQuery}</span>

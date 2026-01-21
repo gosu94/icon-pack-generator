@@ -11,6 +11,7 @@ export interface UserAdminData {
   registeredAt: string;
   authProvider: string;
   isActive: boolean;
+  isCustomer: boolean;
 }
 
 export interface PagedResponse<T> {
@@ -68,7 +69,7 @@ export interface GenerationStatus {
   activeGenerations: GenerationInProgress[];
 }
 
-export type StatsRange = "week" | "month";
+export type StatsRange = "week" | "month" | "quarter" | "all";
 
 export interface DailyStat {
   date: string;

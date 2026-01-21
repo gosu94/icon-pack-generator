@@ -30,6 +30,7 @@ public class PaymentService {
         int newCoinsTotal = currentCoins + coins;
         
         user.setCoins(newCoinsTotal);
+        user.setIsCustomer(true);
         userRepository.save(user);
         
         log.info("Added {} coins to user {}. New balance: {}", 

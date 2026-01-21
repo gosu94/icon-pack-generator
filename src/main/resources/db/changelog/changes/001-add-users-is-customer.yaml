@@ -1,0 +1,21 @@
+databaseChangeLog:
+  - changeSet:
+      id: 001-add-users-is-customer
+      author: codex
+      changes:
+        - addColumn:
+            tableName: users
+            columns:
+              - column:
+                  name: is_customer
+                  type: boolean
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+        - update:
+            tableName: users
+            columns:
+              - column:
+                  name: is_customer
+                  valueBoolean: false
+            where: is_customer IS NULL

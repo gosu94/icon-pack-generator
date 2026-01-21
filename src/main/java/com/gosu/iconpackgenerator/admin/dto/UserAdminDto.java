@@ -22,4 +22,5 @@ public class UserAdminDto {
     private LocalDateTime registeredAt;
     private String authProvider;
     private Boolean isActive;
+    private Boolean isCustomer;
 }

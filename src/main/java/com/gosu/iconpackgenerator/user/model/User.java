@@ -68,6 +68,9 @@ public class User {
     
     @Column(name = "notifications")
     private Boolean notifications = true; // Default to true for email notifications
+
+    @Column(name = "is_customer", nullable = false)
+    private Boolean isCustomer = false;
     
     @Column(name = "unsubscribe_token")
     private String unsubscribeToken;

@@ -64,4 +64,7 @@ public interface GeneratedIconRepository extends JpaRepository<GeneratedIcon, Lo
             """)
     List<Object[]> countGeneratedIconsByDateRange(@Param("startDate") LocalDateTime startDate,
                                                   @Param("endDate") LocalDateTime endDate);
+
+    @Query("SELECT MIN(g.createdAt) FROM GeneratedIcon g")
+    LocalDateTime findEarliestGeneration();
 }

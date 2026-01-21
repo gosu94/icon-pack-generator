@@ -94,6 +94,7 @@ export default function ControlPanelPage() {
     useState<GenerationStatus | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
+  const [customersOnly, setCustomersOnly] = useState(false);
   const latestStatsRange = useRef<StatsRange>(statsRange);
   const latestStatsMonth = useRef<string | null>(statsMonth);
 
@@ -121,7 +122,7 @@ export default function ControlPanelPage() {
     if (authState.authenticated && authState.user?.isAdmin) {
       fetchUsers();
     }
-  }, [authState, router, currentPage, itemsPerPage, sortColumn, sortDirection, searchQuery]);
+  }, [authState, router, currentPage, itemsPerPage, sortColumn, sortDirection, searchQuery, customersOnly]);
 
   useEffect(() => {
     if (authState.authenticated && authState.user?.isAdmin) {
@@ -287,6 +288,9 @@ export default function ControlPanelPage() {
 
       if (searchQuery) {
         params.append("search", searchQuery);
+      }
+      if (customersOnly) {
+        params.append("customersOnly", "true");
       }
 
       const response = await fetch(`/api/admin/users?${params}`, {
@@ -725,6 +729,11 @@ export default function ControlPanelPage() {
     });
   };
 
+  const handleCustomersOnlyChange = (value: boolean) => {
+    setCustomersOnly(value);
+    setCurrentPage(0);
+  };
+
   const generationSummary = formatGenerationSummary();
   const isStatusKnown = generationStatus !== null;
   const statusInProgress = generationStatus?.inProgress;
@@ -882,6 +891,8 @@ export default function ControlPanelPage() {
               activeSearchQuery={searchQuery}
               onSearchTermChange={handleSearchTermChange}
               onClearSearch={handleClearSearch}
+              customersOnly={customersOnly}
+              onCustomersOnlyChange={handleCustomersOnlyChange}
             />
           )}
 

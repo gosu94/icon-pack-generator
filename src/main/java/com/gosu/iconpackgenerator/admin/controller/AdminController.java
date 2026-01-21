@@ -99,6 +99,7 @@ public class AdminController {
             @RequestParam(defaultValue = "id") String sortBy,
             @RequestParam(defaultValue = "asc") String direction,
             @RequestParam(required = false) String search,
+            @RequestParam(defaultValue = "false") boolean customersOnly,
             @AuthenticationPrincipal OAuth2User principal) {
         
         if (!(principal instanceof CustomOAuth2User customUser)) {
@@ -122,9 +123,7 @@ public class AdminController {
         String trimmedSearch = search != null ? search.trim() : "";
 
         // Fetch paginated users
-        Page<User> userPage = StringUtils.hasText(trimmedSearch)
-                ? userRepository.searchUsers(trimmedSearch, pageable)
-                : userRepository.findAll(pageable);
+        Page<User> userPage = userRepository.searchUsersWithCustomerFilter(trimmedSearch, customersOnly, pageable);
         
         // Map to DTOs
         List<UserAdminDto> userDtos = userPage.getContent().stream()
@@ -146,7 +145,8 @@ public class AdminController {
                             labelCount,
                             u.getRegisteredAt(),
                             u.getAuthProvider(),
-                            u.getIsActive()
+                            u.getIsActive(),
+                            u.getIsCustomer()
                     );
                 })
                 .collect(Collectors.toList());
@@ -546,13 +546,32 @@ public class AdminController {
                 return ResponseEntity.badRequest().body(Map.of("error", "Invalid month format. Use YYYY-MM."));
             }
         } else {
-            int days = switch (normalizedRange) {
-                case "month" -> 30;
-                default -> 7;
-            };
-            normalizedRange = days == 30 ? "month" : "week";
-            endDate = today;
-            startDate = endDate.minusDays(days - 1L);
+            if ("all".equals(normalizedRange)) {
+                LocalDateTime earliestRegistration = userRepository.findEarliestRegistration();
+                LocalDateTime earliestGeneration = generatedIconRepository.findEarliestGeneration();
+                LocalDateTime earliest = earliestRegistration;
+                if (earliestGeneration != null &&
+                        (earliest == null || earliestGeneration.isBefore(earliest))) {
+                    earliest = earliestGeneration;
+                }
+
+                startDate = (earliest != null ? earliest.toLocalDate() : today);
+                endDate = today;
+                normalizedRange = "all";
+            } else {
+                int days = switch (normalizedRange) {
+                    case "month" -> 30;
+                    case "quarter" -> 90;
+                    default -> 7;
+                };
+                normalizedRange = switch (days) {
+                    case 30 -> "month";
+                    case 90 -> "quarter";
+                    default -> "week";
+                };
+                endDate = today;
+                startDate = endDate.minusDays(days - 1L);
+            }
         }
 
         LocalDateTime startDateTime = startDate.atStartOfDay();

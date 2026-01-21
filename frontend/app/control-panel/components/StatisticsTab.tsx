@@ -27,6 +27,8 @@ type SeriesKey = "registrations" | "icons";
 const rangeOptions: { value: StatsRange; label: string; description: string }[] = [
   { value: "week", label: "Last 7 days", description: "Rolling weekly view" },
   { value: "month", label: "Last 30 days", description: "Rolling monthly view" },
+  { value: "quarter", label: "Last 90 days", description: "Rolling quarterly view" },
+  { value: "all", label: "All", description: "Lifetime view" },
 ];
 
 const seriesOptions: {
@@ -124,7 +126,11 @@ const StatisticsTab = ({
     ? monthLabel
     : range === "week"
     ? "last 7 days"
-    : "last 30 days";
+    : range === "month"
+    ? "last 30 days"
+    : range === "quarter"
+    ? "last 90 days"
+    : "all time";
 
   const controls = (
     <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
