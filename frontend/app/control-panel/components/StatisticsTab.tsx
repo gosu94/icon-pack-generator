@@ -293,6 +293,7 @@ const StatisticsTab = ({
             formatTooltipLabel={(value) => longDateFormatter.format(new Date(value))}
             activeSeries={activeSeries}
             showXAxisLabels={showXAxisLabels}
+            showDots={range !== "quarter" && range !== "all"}
           />
         </div>
       </div>
@@ -342,12 +343,14 @@ const StatisticsChart = ({
   formatTooltipLabel,
   activeSeries,
   showXAxisLabels,
+  showDots,
 }: {
   data: CombinedDataPoint[];
   formatLabel: (value: string) => string;
   formatTooltipLabel: (value: string) => string;
   activeSeries: SeriesKey[];
   showXAxisLabels: boolean;
+  showDots: boolean;
 }) => {
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
   const svgRef = useRef<SVGSVGElement | null>(null);
@@ -380,7 +383,7 @@ const StatisticsChart = ({
     return localMax;
   }, 0);
   const maxValue = rawMaxValue || 1;
-  const width = Math.max((data.length - 1) * 80 + 80, 320);
+  const width = 720;
   const height = 240;
   const padding = 24;
   const chartHeight = height - padding * 2;
@@ -457,7 +460,7 @@ const StatisticsChart = ({
             </span>
           ))}
         </div>
-        <div className="relative flex-1 overflow-x-auto">
+        <div className="relative flex-1">
           {hoveredPoint && hoveredX !== null && (
             <div
               className="pointer-events-none absolute -top-2 z-10 w-48 -translate-x-1/2 -translate-y-full rounded-lg border border-slate-200 bg-white px-4 py-2 text-xs text-slate-600 shadow-lg"
@@ -492,8 +495,7 @@ const StatisticsChart = ({
           )}
           <svg
             viewBox={`0 0 ${width} ${height}`}
-            className="h-64 min-w-full"
-            style={{ minWidth: `${width}px` }}
+            className="h-64 w-full"
             preserveAspectRatio="xMidYMid meet"
             ref={svgRef}
             onMouseMove={handleMouseMove}
@@ -543,7 +545,8 @@ const StatisticsChart = ({
                 strokeLinejoin="round"
               />
             )}
-            {activeSeriesSet.has("registrations") &&
+            {showDots &&
+              activeSeriesSet.has("registrations") &&
               data.map((point, index) => {
                 const ratio = (point.registrations || 0) / maxValue;
                 const x = padding + xStep * index;
@@ -558,10 +561,12 @@ const StatisticsChart = ({
                     fill="#7c3aed"
                     stroke="#fff"
                     strokeWidth="2"
+                    onMouseEnter={() => setHoveredIndex(index)}
                   />
                 );
               })}
-            {activeSeriesSet.has("icons") &&
+            {showDots &&
+              activeSeriesSet.has("icons") &&
               data.map((point, index) => {
                 const ratio = (point.icons || 0) / maxValue;
                 const x = padding + xStep * index;
@@ -576,6 +581,7 @@ const StatisticsChart = ({
                     fill="#10b981"
                     stroke="#fff"
                     strokeWidth="2"
+                    onMouseEnter={() => setHoveredIndex(index)}
                   />
                 );
               })}
