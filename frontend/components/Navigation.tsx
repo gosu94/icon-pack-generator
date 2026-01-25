@@ -89,7 +89,7 @@ const Navigation: React.FC<NavigationProps> = ({ useLoginPage = false }) => {
         <div className="flex items-center space-x-6">
           <div className="flex items-center space-x-3">
             <Image
-              src="/images/logo small.webp"
+              src="/favicon.ico"
               alt="Icon Pack Gen"
               width={32}
               height={32}
