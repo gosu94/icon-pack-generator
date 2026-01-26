@@ -41,9 +41,32 @@ public class UiElementPersistenceService {
         }
     }
 
+    @Transactional
+    public void persistUiElementsForMockups(String requestId,
+                                            List<IconGenerationResponse.GeneratedIcon> elements,
+                                            User user,
+                                            String theme) {
+        if (elements == null || elements.isEmpty()) {
+            return;
+        }
+        for (IconGenerationResponse.GeneratedIcon icon : elements) {
+            if (icon.getBase64Data() == null || icon.getBase64Data().isBlank()) {
+                continue;
+            }
+            persistSingleUiElement(requestId, icon, user, theme);
+        }
+    }
+
     private void persistSingleUiElement(String requestId,
                                         IconGenerationResponse.GeneratedIcon icon,
                                         User user) {
+        persistSingleUiElement(requestId, icon, user, "UI elements");
+    }
+
+    private void persistSingleUiElement(String requestId,
+                                        IconGenerationResponse.GeneratedIcon icon,
+                                        User user,
+                                        String theme) {
         String fileName = fileStorageService.generateMockupFileName(icon.getId());
         String filePath = fileStorageService.saveMockup(
                 user.getDirectoryPath(),
@@ -60,7 +83,7 @@ public class UiElementPersistenceService {
         generatedMockup.setFileName(fileName);
         generatedMockup.setFilePath(filePath);
         generatedMockup.setDescription(icon.getDescription());
-        generatedMockup.setTheme("UI elements");
+        generatedMockup.setTheme(theme != null && !theme.isBlank() ? theme : "UI elements");
         generatedMockup.setGenerationIndex(1);
         generatedMockup.setMockupType(UI_ELEMENT_TYPE);
 

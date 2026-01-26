@@ -112,7 +112,9 @@ export default function Page() {
   } = exportFlow;
 
   const modalIconCount =
-    exportContext && streamingResults
+    mode === "mockups" && generation.currentResponse?.elements?.length
+      ? generation.currentResponse.elements.length
+      : exportContext && streamingResults
       ? streamingResults[
           `${exportContext.serviceName}-gen${exportContext.generationIndex}`
         ]?.icons?.length || 0

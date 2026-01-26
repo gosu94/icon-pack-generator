@@ -34,9 +34,8 @@ public class MockupExportService {
                 : List.of("png", "webp");
         
         // Default sizes for mockups are widths in pixels (height will be calculated for 16:9)
-        List<Integer> sizes = exportRequest.getSizes() != null && !exportRequest.getSizes().isEmpty()
-                ? exportRequest.getSizes()
-                : List.of(1920); // Default Full HD width
+        List<Integer> sizes = exportRequest.getSizes();
+        boolean useOriginalSize = sizes == null || sizes.isEmpty();
         
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         
@@ -54,28 +53,38 @@ public class MockupExportService {
                     continue;
                 }
                 
-                // Process each size
-                for (Integer width : sizes) {
-                    // Calculate height for 16:9 ratio
-                    int height = (width * 9) / 16;
-                    
-                    // Resize image
-                    BufferedImage resizedImage = resizeImage(originalImage, width, height);
-                    
-                    // Process each format
+                if (useOriginalSize) {
+                    int width = originalImage.getWidth();
+                    int height = originalImage.getHeight();
                     for (String format : formats) {
-                        String fileName = String.format("mockup_%d_%dx%d.%s", 
+                        String fileName = String.format("mockup_%d_%dx%d.%s",
                                 mockupIndex, width, height, format);
-                        
-                        // Convert and add to ZIP
-                        byte[] imageData = convertImageToFormat(resizedImage, format);
-                        
+                        byte[] imageData = convertImageToFormat(originalImage, format);
                         ZipEntry entry = new ZipEntry(fileName);
                         zos.putNextEntry(entry);
                         zos.write(imageData);
                         zos.closeEntry();
-                        
                         log.debug("Added mockup to ZIP: {}", fileName);
+                    }
+                } else {
+                    // Process each size
+                    for (Integer width : sizes) {
+                        int originalWidth = originalImage.getWidth();
+                        int originalHeight = originalImage.getHeight();
+                        int height = originalWidth > 0
+                                ? (int) Math.round((double) originalHeight / originalWidth * width)
+                                : width;
+                        BufferedImage resizedImage = resizeImage(originalImage, width, height);
+                        for (String format : formats) {
+                            String fileName = String.format("mockup_%d_%dx%d.%s",
+                                    mockupIndex, width, height, format);
+                            byte[] imageData = convertImageToFormat(resizedImage, format);
+                            ZipEntry entry = new ZipEntry(fileName);
+                            zos.putNextEntry(entry);
+                            zos.write(imageData);
+                            zos.closeEntry();
+                            log.debug("Added mockup to ZIP: {}", fileName);
+                        }
                     }
                 }
                 
@@ -140,4 +149,3 @@ public class MockupExportService {
         return baos.toByteArray();
     }
 }
-

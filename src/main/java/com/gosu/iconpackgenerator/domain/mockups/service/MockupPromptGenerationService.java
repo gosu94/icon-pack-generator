@@ -7,6 +7,19 @@ import org.springframework.stereotype.Service;
 @Slf4j
 public class MockupPromptGenerationService {
 
+    private static final String COMPONENT_SET_BASE = "A high-quality, modern UI component mockup on a square 1:1 canvas. " +
+            "Use a consistent visual language with rounded corners, subtle depth, and even spacing on a neutral background. " +
+            "Include only the following components: %s. " +
+            "Arrange the components in a clean grid with generous spacing and no overlap. " +
+            "No text labels, no logos, no branding, no real-world content. " +
+            "Keep the background clearly different from the UI elements to avoid transparency issues.";
+
+    private static final String COMPONENT_SET_TEXT_PROMPT =
+            "General theme: %s. " + COMPONENT_SET_BASE;
+
+    private static final String COMPONENT_SET_IMAGE_PROMPT =
+            "Using the provided reference image as a style guide, " + COMPONENT_SET_BASE;
+
     private static final String TEXT_TO_IMAGE_PROMPT_TEMPLATE = "A high-quality, modern user interface mockup in a consistent style - general theme: %s.\n" +
             "The design should include buttons, icons, sliders, player controls, chat bubbles , progress bars, toggles, search bars and rating cards, arranged in a clean, balanced grid layout on a neutral background.\n" +
             "Each component should share the same visual language — soft shadows, rounded corners, consistent color palette, and even spacing.\n" +
@@ -53,5 +66,16 @@ public class MockupPromptGenerationService {
         log.debug("Generated reference image mockup prompt: {}", prompt);
         return prompt;
     }
-}
 
+    public String generateComponentSetPromptForText(String description, String componentsCsv) {
+        String prompt = String.format(COMPONENT_SET_TEXT_PROMPT, description, componentsCsv);
+        log.debug("Generated component set prompt (text): {}", prompt);
+        return prompt;
+    }
+
+    public String generateComponentSetPromptForReference(String componentsCsv) {
+        String prompt = String.format(COMPONENT_SET_IMAGE_PROMPT, componentsCsv);
+        log.debug("Generated component set prompt (reference): {}", prompt);
+        return prompt;
+    }
+}

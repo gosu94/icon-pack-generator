@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import { Download } from "lucide-react";
 import { loadStripe } from "@stripe/stripe-js";
@@ -514,6 +514,16 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
     }
   };
 
+  const combinedMockups: Icon[] = useMemo(() => {
+    if (mode !== "mockups") {
+      return [];
+    }
+    if (currentResponse?.mockups?.length) {
+      return currentResponse.mockups;
+    }
+    return Object.values(streamingResults).flatMap((result) => result.icons ?? []);
+  }, [mode, currentResponse, streamingResults]);
+
   const getDisplayIcons = (result: ServiceResult, baseServiceId: string) => {
     if (!isTrialResult || !currentResponse) {
       return result.icons;
@@ -531,7 +541,8 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
     return results.map((result, index) => {
       const baseServiceId = result.serviceId.replace(/-gen\d+$/, "");
       const serviceName = getServiceDisplayName(baseServiceId);
-      const displayIcons = getDisplayIcons(result, baseServiceId);
+      const displayIcons: Icon[] =
+        mode === "mockups" ? combinedMockups : getDisplayIcons(result, baseServiceId);
       const referenceIconBase64 =
         isTrialResult && displayIcons?.length ? displayIcons[0].base64Data : undefined;
 
@@ -642,14 +653,14 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
           </div>
 
           {showResultsPanes && displayIcons && displayIcons.length > 0 && (
-            <div 
+            <div
               className={
                 mode === "icons" || mode === "labels" || mode === "ui-elements"
                   ? "grid gap-4 grid-cols-2 sm:grid-cols-[repeat(auto-fit,minmax(160px,1fr))]"
                   : mode === "illustrations"
                   ? "grid grid-cols-1 sm:grid-cols-2 gap-6"
-                  : "flex justify-center items-center"
-              } 
+                  : "grid grid-cols-1 sm:grid-cols-3 gap-4"
+              }
               data-oid=".ge-1o5"
             >
               {displayIcons.map((icon, iconIndex) => (
@@ -725,8 +736,8 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
                 <button
                   onClick={() => {
                     // Get the first icon (mockup image) from this result
-                    if (result.icons && result.icons.length > 0) {
-                      handleGenerateIconsFromMockup(result.icons[0].base64Data);
+                    if (displayIcons && displayIcons.length > 0) {
+                      handleGenerateIconsFromMockup(displayIcons[0].base64Data);
                     }
                   }}
                   className="px-4 py-2 rounded-xl text-sm font-semibold text-white bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 transform hover:scale-105 shadow-md hover:shadow-lg transition-all duration-200"
@@ -744,6 +755,29 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
               </p>
             </div>
           )}
+
+          {mode === "mockups" && currentResponse?.elements?.length ? (
+            <div className="mt-6">
+              <h4 className="text-sm font-semibold text-slate-700 mb-3">
+                Extracted UI Elements
+              </h4>
+              <div className="grid gap-4 grid-cols-2 sm:grid-cols-[repeat(auto-fit,minmax(160px,1fr))]">
+                {currentResponse.elements.map((element, elementIndex) => (
+                  <div
+                    key={element.id || elementIndex}
+                    className="relative group flex justify-center"
+                  >
+                    <img
+                      src={`data:image/png;base64,${element.base64Data}`}
+                      alt={`Extracted UI Element ${elementIndex + 1}`}
+                      onClick={() => handleImageClick(element.base64Data)}
+                      className="w-full h-auto max-w-[200px] rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-shadow duration-200"
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : null}
 
           {result.status === "success" && uiState === "results" && (mode === "icons" || mode === "illustrations") && (
             <div

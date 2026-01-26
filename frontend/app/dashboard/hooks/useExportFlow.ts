@@ -51,7 +51,7 @@ export function useExportFlow({
           ? "labels"
           : mode === "ui-elements"
           ? "ui elements"
-          : "mockups";
+          : "ui elements";
 
       setShowProgressModal(true);
       setExportProgress({
@@ -82,7 +82,7 @@ export function useExportFlow({
             ? "/api/illustrations/export"
             : mode === "labels"
             ? "/api/labels/export"
-            : "/api/mockups/export";
+            : "/api/mockups/export-elements";
 
         const response = await fetch(endpoint, {
           method: "POST",
@@ -130,6 +130,41 @@ export function useExportFlow({
     [mode, setErrorMessage, setUiState],
   );
 
+  const downloadMockupPng = useCallback(
+    async (requestId: string): Promise<void> => {
+      try {
+        const response = await fetch("/api/mockups/export", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({
+            requestId,
+            serviceName: "banana",
+            generationIndex: 0,
+            formats: ["png"],
+          }),
+        });
+        if (!response.ok) {
+          console.error("Mockup PNG export failed:", response.status);
+          return;
+        }
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const anchor = document.createElement("a");
+        anchor.style.display = "none";
+        anchor.href = url;
+        anchor.download = `ui-mockups-${requestId}.zip`;
+        document.body.appendChild(anchor);
+        anchor.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(anchor);
+      } catch (error) {
+        console.error("Error exporting mockup PNG:", error);
+      }
+    },
+    [],
+  );
+
   const confirmExport = useCallback(
     (
       formats: string[],
@@ -150,7 +185,7 @@ export function useExportFlow({
           ? "label"
           : mode === "ui-elements"
           ? "ui-elements"
-          : "mockup";
+          : "ui-elements";
       const fileName = `${packType}-pack-${requestId}-${serviceName}-gen${generationIndex}.zip`;
       const exportData = {
         requestId,
@@ -160,12 +195,15 @@ export function useExportFlow({
         sizes: mode === "labels" ? undefined : sizes,
         vectorizeSvg: vectorizeSvg ?? false,
         hqUpscale: hqUpscale ?? false,
-        minSvgSize: mode === "ui-elements" ? 256 : 0,
+        minSvgSize: mode === "ui-elements" || mode === "mockups" ? 256 : 0,
       };
       setShowExportModal(false);
       void downloadZip(exportData, fileName);
+      if (mode === "mockups") {
+        void downloadMockupPng(requestId);
+      }
     },
-    [downloadZip, exportContext, mode],
+    [downloadZip, downloadMockupPng, exportContext, mode],
   );
 
   return {

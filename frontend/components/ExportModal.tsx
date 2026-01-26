@@ -34,6 +34,12 @@ const ExportModal: React.FC<ExportModalProps> = ({
           ico: true,
           webp: true,
         }
+      : mode === "mockups"
+      ? {
+          png: true,
+          webp: true,
+          svg: true,
+        }
       : {
           png: true,
           webp: true,
@@ -50,10 +56,16 @@ const ExportModal: React.FC<ExportModalProps> = ({
             ico: true,
             webp: true,
           }
+        : mode === "mockups"
+        ? {
+            png: true,
+            webp: true,
+            svg: true,
+          }
         : {
             png: true,
             webp: true,
-        }
+          }
     );
     setVectorizeSvg(false);
     setHqUpscale(false);
@@ -83,7 +95,7 @@ const ExportModal: React.FC<ExportModalProps> = ({
   const handleVectorToggle = () => {
     setVectorizeSvg((prev) => {
       const next = !prev;
-      if (next && (mode === "icons" || mode === "ui-elements")) {
+      if (next && (mode === "icons" || mode === "ui-elements" || mode === "mockups")) {
         setHqUpscale(false);
       }
       return next;
@@ -93,13 +105,13 @@ const ExportModal: React.FC<ExportModalProps> = ({
   const totalVectorCost = Math.ceil(Math.max(iconCount, 1) / 9);
   const labelVectorCost = 1;
   const showVectorOption =
-    mode === "icons" || mode === "labels" || mode === "ui-elements";
+    mode === "icons" || mode === "labels" || mode === "ui-elements" || mode === "mockups";
   const showHqOption =
-    (mode === "icons" || mode === "ui-elements") &&
+    (mode === "icons" || mode === "ui-elements" || mode === "mockups") &&
     (formats.png || formats.webp || formats.ico);
   const totalHqCost = Math.ceil(Math.max(iconCount, 1) / 9);
-  const vectorDisabled = (mode === "icons" || mode === "ui-elements") && hqUpscale;
-  const hqDisabled = (mode === "icons" || mode === "ui-elements") && vectorizeSvg;
+  const vectorDisabled = (mode === "icons" || mode === "ui-elements" || mode === "mockups") && hqUpscale;
+  const hqDisabled = (mode === "icons" || mode === "ui-elements" || mode === "mockups") && vectorizeSvg;
   const vectorCoinCost = mode === "labels" ? labelVectorCost : totalVectorCost;
   const premiumCost =
     (vectorizeSvg ? vectorCoinCost : 0) + (hqUpscale ? totalHqCost : 0);
@@ -120,14 +132,10 @@ const ExportModal: React.FC<ExportModalProps> = ({
     if (mode === "illustrations") {
       const selectedSizes = [1024];
       onConfirm(selectedFormats, selectedSizes);
-    } else if (mode === "mockups") {
-      // For mockups, use original size (1920x1080 for 16:9)
-      const selectedSizes = [1920];
-      onConfirm(selectedFormats, selectedSizes);
     } else {
       const shouldVectorize = showVectorOption ? vectorizeSvg : false;
       const shouldUpscale =
-        mode === "icons" || mode === "ui-elements" ? hqUpscale : false;
+        mode === "icons" || mode === "ui-elements" || mode === "mockups" ? hqUpscale : false;
       onConfirm(selectedFormats, undefined, shouldVectorize, shouldUpscale);
     }
   };
@@ -146,6 +154,8 @@ const ExportModal: React.FC<ExportModalProps> = ({
               ? "Illustration"
               : mode === "labels"
               ? "Label"
+              : mode === "mockups"
+              ? "UI Element"
               : mode === "ui-elements"
               ? "UI Element"
               : "UI Mockup"}{" "}
@@ -180,6 +190,8 @@ const ExportModal: React.FC<ExportModalProps> = ({
               ? "illustration"
               : mode === "labels"
               ? "label"
+              : mode === "mockups"
+              ? "UI element"
               : mode === "ui-elements"
               ? "UI element"
               : "UI mockup"}{" "}
@@ -211,6 +223,8 @@ const ExportModal: React.FC<ExportModalProps> = ({
                       ? "illustrations"
                       : mode === "labels"
                       ? "labels"
+                      : mode === "mockups"
+                      ? "UI elements"
                       : mode === "ui-elements"
                       ? "UI elements"
                       : "mockups"}{" "}

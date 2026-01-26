@@ -1,19 +1,28 @@
 package com.gosu.iconpackgenerator.domain.mockups.controller;
 
 import com.gosu.iconpackgenerator.domain.icons.component.StreamingStateStore;
+import com.gosu.iconpackgenerator.domain.icons.dto.IconExportRequest;
+import com.gosu.iconpackgenerator.domain.icons.dto.IconGenerationResponse;
+import com.gosu.iconpackgenerator.domain.icons.service.CoinManagementService;
+import com.gosu.iconpackgenerator.domain.icons.service.IconExportService;
 import com.gosu.iconpackgenerator.util.FileStorageService;
 import com.gosu.iconpackgenerator.domain.mockups.controller.api.MockupExportControllerAPI;
 import com.gosu.iconpackgenerator.domain.mockups.dto.GalleryMockupExportRequest;
 import com.gosu.iconpackgenerator.domain.mockups.dto.MockupExportRequest;
+import com.gosu.iconpackgenerator.domain.mockups.dto.MockupElementExportRequest;
 import com.gosu.iconpackgenerator.domain.mockups.dto.MockupGenerationResponse;
 import com.gosu.iconpackgenerator.domain.mockups.entity.GeneratedMockup;
 import com.gosu.iconpackgenerator.domain.mockups.repository.GeneratedMockupRepository;
 import com.gosu.iconpackgenerator.domain.mockups.service.MockupExportService;
+import com.gosu.iconpackgenerator.user.model.User;
+import com.gosu.iconpackgenerator.user.service.CustomOAuth2User;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -31,6 +40,8 @@ import java.util.UUID;
 public class MockupExportController implements MockupExportControllerAPI {
     
     private final MockupExportService mockupExportService;
+    private final IconExportService iconExportService;
+    private final CoinManagementService coinManagementService;
     private final StreamingStateStore streamingStateStore;
     private final GeneratedMockupRepository generatedMockupRepository;
     private final FileStorageService fileStorageService;
@@ -61,8 +72,9 @@ public class MockupExportController implements MockupExportControllerAPI {
                 
                 if (bananaResults != null) {
                     for (MockupGenerationResponse.ServiceResults result : bananaResults) {
-                        if (result.getGenerationIndex() == exportRequest.getGenerationIndex() &&
-                            result.getMockups() != null && !result.getMockups().isEmpty()) {
+                        boolean includeAll = exportRequest.getGenerationIndex() <= 0;
+                        if ((includeAll || result.getGenerationIndex() == exportRequest.getGenerationIndex()) &&
+                                result.getMockups() != null && !result.getMockups().isEmpty()) {
                             mockupsToExport.addAll(result.getMockups());
                             log.info("Added {} mockups from generation {} batch",
                                     result.getMockups().size(), result.getGenerationIndex());
@@ -103,6 +115,58 @@ public class MockupExportController implements MockupExportControllerAPI {
             return ResponseEntity.internalServerError()
                 .body("Error creating mockup pack".getBytes());
         }
+    }
+
+    @Override
+    @ResponseBody
+    public ResponseEntity<byte[]> exportMockupElements(@RequestBody MockupElementExportRequest exportRequest,
+                                                       @AuthenticationPrincipal OAuth2User principal) {
+        if (!(principal instanceof CustomOAuth2User customUser)) {
+            return ResponseEntity.status(401).body("User not authenticated".getBytes());
+        }
+
+        User user = customUser.getUser();
+        MockupGenerationResponse generationResponse = streamingStateStore.getResponse(exportRequest.getRequestId());
+        if (generationResponse == null || generationResponse.getElements() == null || generationResponse.getElements().isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
+
+        List<IconGenerationResponse.GeneratedIcon> elementsToExport = generationResponse.getElements();
+        int elementCount = Math.max(elementsToExport.size(), 1);
+        int vectorCoinCost = exportRequest.isVectorizeSvg() ? (int) Math.ceil(elementCount / 9.0) : 0;
+        int hqCoinCost = exportRequest.isHqUpscale() ? (int) Math.ceil(elementCount / 9.0) : 0;
+        int totalCoinCost = vectorCoinCost + hqCoinCost;
+
+        if (totalCoinCost > 0) {
+            CoinManagementService.CoinDeductionResult coinResult =
+                    coinManagementService.deductCoinsForGeneration(user, totalCoinCost);
+            if (!coinResult.isSuccess()) {
+                String errorMessage = coinResult.getErrorMessage() != null
+                        ? coinResult.getErrorMessage()
+                        : "Insufficient coins for premium export options.";
+                return ResponseEntity.status(402).body(errorMessage.getBytes());
+            }
+        }
+
+        IconExportRequest iconExportRequest = new IconExportRequest();
+        iconExportRequest.setIcons(elementsToExport);
+        iconExportRequest.setRequestId("mockup-elements-" + exportRequest.getRequestId());
+        iconExportRequest.setServiceName("mockup-elements");
+        iconExportRequest.setGenerationIndex(1);
+        iconExportRequest.setFormats(exportRequest.getFormats());
+        iconExportRequest.setVectorizeSvg(exportRequest.isVectorizeSvg());
+        iconExportRequest.setHqUpscale(exportRequest.isHqUpscale());
+        iconExportRequest.setMinSvgSize(256);
+
+        byte[] zipData = iconExportService.createIconPackZip(iconExportRequest);
+        String fileName = "ui-elements-pack-" + exportRequest.getRequestId() + ".zip";
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_OCTET_STREAM);
+        headers.setContentDispositionFormData("attachment", fileName);
+        headers.setContentLength(zipData.length);
+
+        return ResponseEntity.ok().headers(headers).body(zipData);
     }
 
     /**
@@ -169,4 +233,3 @@ public class MockupExportController implements MockupExportControllerAPI {
         }
     }
 }
-

@@ -1,16 +1,25 @@
 package com.gosu.iconpackgenerator.domain.mockups.service;
 
+import com.gosu.iconpackgenerator.config.AIServicesConfig;
 import com.gosu.iconpackgenerator.domain.ai.BananaModelService;
-import com.gosu.iconpackgenerator.domain.ai.SeedVrUpscaleService;
+import com.gosu.iconpackgenerator.domain.ai.Gpt15ImageOptions;
+import com.gosu.iconpackgenerator.domain.ai.Gpt15ModelService;
+import com.gosu.iconpackgenerator.domain.icons.dto.IconGenerationResponse;
 import com.gosu.iconpackgenerator.domain.icons.dto.ServiceProgressUpdate;
 import com.gosu.iconpackgenerator.domain.icons.service.CoinManagementService;
 import com.gosu.iconpackgenerator.domain.mockups.dto.MockupGenerationRequest;
 import com.gosu.iconpackgenerator.domain.mockups.dto.MockupGenerationResponse;
+import com.gosu.iconpackgenerator.domain.uielements.service.UiElementPersistenceService;
 import com.gosu.iconpackgenerator.user.model.User;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+import javax.imageio.ImageIO;
+import java.awt.image.BufferedImage;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
@@ -23,13 +32,23 @@ import java.util.concurrent.CompletableFuture;
 public class MockupGenerationService {
     
     private final BananaModelService bananaModelService;
-    private final SeedVrUpscaleService seedVrUpscaleService;
     private final MockupImageProcessingService mockupImageProcessingService;
     private final MockupPromptGenerationService mockupPromptGenerationService;
     private final CoinManagementService coinManagementService;
     private final MockupPersistenceService mockupPersistenceService;
+    private final Gpt15ModelService gpt15ModelService;
+    private final UiElementPersistenceService uiElementPersistenceService;
+    private final AIServicesConfig aiServicesConfig;
     
-    private static final String ASPECT_RATIO_16_9 = "16:9";
+    private static final String ASPECT_RATIO_1_1 = "1:1";
+    private static final String UI_ELEMENT_PROMPT =
+            "Extract UI elements from this picture. If elements have labels on them, remove them. " +
+            "Ensure each element has generous spacing around it for clean cropping.";
+    private static final List<List<String>> COMPONENT_SETS = List.of(
+            List.of("rectangle_button", "rectangle_button_pressed", "text_field_empty", "text_field_focused"),
+            List.of("progress_bar_empty", "progress_bar_filled", "switch_on", "switch_off"),
+            List.of("dropdown_menu", "dropdown_menu_open", "square_arrow_button", "square_arrow_button_pressed")
+    );
     
     public interface ProgressUpdateCallback {
         void onUpdate(ServiceProgressUpdate update);
@@ -68,17 +87,28 @@ public class MockupGenerationService {
         // Send initial progress updates
         if (progressCallback != null) {
             progressCallback.onUpdate(ServiceProgressUpdate.serviceStarted(requestId, "banana", 1));
-            if (request.getGenerationsPerService() > 1) {
-                progressCallback.onUpdate(ServiceProgressUpdate.serviceStarted(requestId, "banana", 2));
-            }
+            progressCallback.onUpdate(ServiceProgressUpdate.serviceStarted(requestId, "banana", 2));
+            progressCallback.onUpdate(ServiceProgressUpdate.serviceStarted(requestId, "banana", 3));
         }
         
-        // Generate multiple generations
+        // Generate component mockups (3 images)
         CompletableFuture<List<MockupGenerationResponse.ServiceResults>> bananaFuture =
-            generateMultipleGenerationsWithBanana(request, requestId, seed, progressCallback);
+            generateComponentMockupsWithBanana(request, requestId, seed, progressCallback);
         
-        return bananaFuture.thenApply(bananaResults -> {
-            MockupGenerationResponse finalResponse = createCombinedResponse(requestId, bananaResults, seed);
+        return bananaFuture.thenCompose(bananaResults -> {
+            List<byte[]> mockupImages = bananaResults.stream()
+                    .map(MockupGenerationResponse.ServiceResults::getOriginalImageBase64)
+                    .filter(base64 -> base64 != null && !base64.isBlank())
+                    .map(base64 -> Base64.getDecoder().decode(base64))
+                    .toList();
+
+            return extractUiElementsFromMockups(mockupImages, seed)
+                    .exceptionally(error -> {
+                        log.error("Error extracting UI elements for request {}", requestId, error);
+                        return new ArrayList<>();
+                    })
+                    .thenApply(elements -> createCombinedResponse(requestId, bananaResults, elements, seed));
+        }).thenApply(finalResponse -> {
             
             // Note: Trial mode limitations can be added here if needed
             
@@ -89,6 +119,8 @@ public class MockupGenerationService {
                             requestId, request, finalResponse, user);
                     log.info("Successfully persisted {} mockups for request {} (trial mode: {})", 
                             finalResponse.getMockups().size(), requestId, isTrialMode);
+                    uiElementPersistenceService.persistUiElementsForMockups(
+                            requestId, finalResponse.getElements(), user, request.getDescription());
                 } catch (Exception e) {
                     log.error("Error persisting mockups for request {}", requestId, e);
                     // Don't fail the entire request if persistence fails
@@ -121,101 +153,111 @@ public class MockupGenerationService {
     }
     
     /**
-     * Generate multiple generations with Banana service
+     * Generate three component mockups with Banana service (1:1 aspect ratio).
      */
-    private CompletableFuture<List<MockupGenerationResponse.ServiceResults>> 
-            generateMultipleGenerationsWithBanana(
-                MockupGenerationRequest request, String requestId, 
+    private CompletableFuture<List<MockupGenerationResponse.ServiceResults>>
+            generateComponentMockupsWithBanana(
+                MockupGenerationRequest request, String requestId,
                 Long baseSeed, ProgressUpdateCallback progressCallback) {
-        
-        int generationsCount = request.getGenerationsPerService();
-        log.info("Generating {} generations with Banana (16:9 aspect ratio)", generationsCount);
-        
-        List<CompletableFuture<MockupGenerationResponse.ServiceResults>> generationFutures = new ArrayList<>();
-        
-        for (int i = 0; i < generationsCount; i++) {
-            Long generationSeed = baseSeed + i;
-            final int generationIndex = i + 1;
-            
-            // Create modified request for second generation with style variation
-            MockupGenerationRequest modifiedRequest = request;
-            if (generationIndex == 2) {
-                modifiedRequest = createStyledVariationRequest(request);
+
+        log.info("Generating 3 component mockups with Banana (1:1 aspect ratio)");
+
+        String set1 = String.join(", ", COMPONENT_SETS.get(0));
+        String set2 = String.join(", ", COMPONENT_SETS.get(1));
+        String set3 = String.join(", ", COMPONENT_SETS.get(2));
+
+        CompletableFuture<MockupBundle> firstFuture = generateComponentSet(
+                request, requestId, baseSeed, 1, null, set1, progressCallback);
+
+        return firstFuture.thenCompose(first -> {
+            byte[] referenceImage = first.imageData();
+            if (referenceImage == null || referenceImage.length == 0) {
+                return CompletableFuture.failedFuture(
+                        new RuntimeException("Failed to generate initial UI mockup for component sets."));
             }
-            
-            CompletableFuture<MockupGenerationResponse.ServiceResults> generationFuture = 
-                generateMockupsWithBanana(modifiedRequest, requestId, generationSeed, progressCallback, generationIndex)
-                    .thenApply(result -> {
-                        result.setGenerationIndex(generationIndex);
-                        return result;
-                    })
-                    .whenComplete((result, error) -> {
-                        if (progressCallback != null) {
-                            String serviceGenName = "banana-gen" + generationIndex;
-                            if (error != null) {
-                                progressCallback.onUpdate(ServiceProgressUpdate.serviceFailed(
-                                    requestId, serviceGenName, error.getMessage(), 
-                                    result != null ? result.getGenerationTimeMs() : 0L, generationIndex));
-                            } else if ("success".equals(result.getStatus())) {
-                                progressCallback.onUpdate(ServiceProgressUpdate.serviceCompleted(
-                                    requestId, serviceGenName, convertToIconList(result.getMockups()), 
-                                    result.getOriginalImageBase64(), result.getGenerationTimeMs(), generationIndex));
-                            } else if ("error".equals(result.getStatus())) {
-                                progressCallback.onUpdate(ServiceProgressUpdate.serviceFailed(
-                                    requestId, serviceGenName, result.getMessage(), 
-                                    result.getGenerationTimeMs(), generationIndex));
-                            }
-                        }
-                    });
-            
-            generationFutures.add(generationFuture);
-        }
-        
-        return CompletableFuture.allOf(generationFutures.toArray(new CompletableFuture[0]))
-            .thenApply(v -> generationFutures.stream()
-                .map(CompletableFuture::join)
-                .toList());
+            CompletableFuture<MockupGenerationResponse.ServiceResults> secondFuture =
+                    generateComponentSet(request, requestId, baseSeed + 1, 2, referenceImage, set2, progressCallback)
+                            .thenApply(MockupBundle::serviceResult);
+            CompletableFuture<MockupGenerationResponse.ServiceResults> thirdFuture =
+                    generateComponentSet(request, requestId, baseSeed + 2, 3, referenceImage, set3, progressCallback)
+                            .thenApply(MockupBundle::serviceResult);
+
+            return CompletableFuture.allOf(secondFuture, thirdFuture)
+                    .thenApply(v -> List.of(first.serviceResult(), secondFuture.join(), thirdFuture.join()));
+        });
     }
     
-    /**
-     * Generate mockups with Banana service using 16:9 aspect ratio
-     */
-    private CompletableFuture<MockupGenerationResponse.ServiceResults> 
-            generateMockupsWithBanana(
-                MockupGenerationRequest request, String requestId, Long seed,
-                ProgressUpdateCallback progressCallback, int generationIndex) {
-        
+    private record MockupBundle(MockupGenerationResponse.ServiceResults serviceResult, byte[] imageData) {}
+
+    private CompletableFuture<MockupBundle> generateComponentSet(
+            MockupGenerationRequest request,
+            String requestId,
+            Long seed,
+            int generationIndex,
+            byte[] referenceImageOverride,
+            String componentsCsv,
+            ProgressUpdateCallback progressCallback) {
+
         long startTime = System.currentTimeMillis();
-        
-        return generateMockupsInternal(request, seed, progressCallback, requestId, generationIndex)
-            .thenApply(mockupResult -> {
-                long generationTime = System.currentTimeMillis() - startTime;
-                MockupGenerationResponse.ServiceResults result = 
-                    new MockupGenerationResponse.ServiceResults();
-                result.setServiceName("banana");
-                result.setStatus("success");
-                result.setMessage("Mockups generated successfully");
-                result.setMockups(mockupResult.getMockups());
-                result.setOriginalImageBase64(mockupResult.getOriginalImageBase64());
-                result.setGenerationTimeMs(generationTime);
-                return result;
-            })
-            .exceptionally(error -> {
-                long generationTime = System.currentTimeMillis() - startTime;
-                log.error("Error generating mockups with Banana", error);
-                
-                // Sanitize error message
+        byte[] referenceImage = referenceImageOverride;
+        if (referenceImage == null && request.hasReferenceImage()) {
+            referenceImage = Base64.getDecoder().decode(request.getReferenceImageBase64());
+        }
+
+        boolean useReference = referenceImage != null && referenceImage.length > 0;
+        String safeDescription = request.getDescription();
+        if (safeDescription == null || safeDescription.isBlank()) {
+            safeDescription = "clean modern UI kit";
+        }
+        String prompt = useReference
+                ? mockupPromptGenerationService.generateComponentSetPromptForReference(componentsCsv)
+                : mockupPromptGenerationService.generateComponentSetPromptForText(safeDescription, componentsCsv);
+
+        CompletableFuture<byte[]> generationFuture = useReference
+                ? bananaModelService.generateImageToImage(prompt, referenceImage, seed, ASPECT_RATIO_1_1)
+                : bananaModelService.generateImage(prompt, seed, ASPECT_RATIO_1_1);
+
+        return generationFuture.thenApply(imageData -> {
+            long generationTime = System.currentTimeMillis() - startTime;
+            String base64Mockup = mockupImageProcessingService.processMockupImage(imageData);
+
+            MockupGenerationResponse.GeneratedMockup mockup = new MockupGenerationResponse.GeneratedMockup();
+            mockup.setId(UUID.randomUUID().toString());
+            mockup.setBase64Data(base64Mockup);
+            mockup.setDescription("Component set " + generationIndex);
+            mockup.setServiceSource("banana");
+
+            MockupGenerationResponse.ServiceResults result = new MockupGenerationResponse.ServiceResults();
+            result.setServiceName("banana");
+            result.setStatus("success");
+            result.setMessage("Mockup generated successfully");
+            result.setMockups(List.of(mockup));
+            result.setOriginalImageBase64(Base64.getEncoder().encodeToString(imageData));
+            result.setGenerationTimeMs(generationTime);
+            result.setGenerationIndex(generationIndex);
+
+            return new MockupBundle(result, imageData);
+        }).whenComplete((bundle, error) -> {
+            if (progressCallback == null) {
+                return;
+            }
+            String serviceGenName = "banana-gen" + generationIndex;
+            if (error != null) {
                 String sanitizedError = sanitizeErrorMessage(error);
-                
-                MockupGenerationResponse.ServiceResults result = 
-                    new MockupGenerationResponse.ServiceResults();
-                result.setServiceName("banana");
-                result.setStatus("error");
-                result.setMessage(sanitizedError);
-                result.setMockups(new ArrayList<>());
-                result.setGenerationTimeMs(generationTime);
-                return result;
-            });
+                progressCallback.onUpdate(ServiceProgressUpdate.serviceFailed(
+                        requestId, serviceGenName, sanitizedError, 0L, generationIndex));
+            } else if (bundle != null && bundle.serviceResult() != null) {
+                MockupGenerationResponse.ServiceResults result = bundle.serviceResult();
+                if ("success".equals(result.getStatus())) {
+                    progressCallback.onUpdate(ServiceProgressUpdate.serviceCompleted(
+                            requestId, serviceGenName, convertToIconList(result.getMockups()),
+                            result.getOriginalImageBase64(), result.getGenerationTimeMs(), generationIndex));
+                } else {
+                    progressCallback.onUpdate(ServiceProgressUpdate.serviceFailed(
+                            requestId, serviceGenName, result.getMessage(), result.getGenerationTimeMs(), generationIndex));
+                }
+            }
+        });
     }
     
     /**
@@ -241,19 +283,10 @@ public class MockupGenerationService {
 
         String prompt = mockupPromptGenerationService.generatePromptForMockup(request.getDescription());
 
-        return bananaModelService.generateImage(prompt, seed, ASPECT_RATIO_16_9)
-                .thenCompose(imageData -> {
-                    log.info("Upscaling mockup image before processing (factor: 2)");
-
-                    long upscaleStart = System.currentTimeMillis();
-                    // Upscale the image by 2x
-                    return seedVrUpscaleService.upscaleImage(imageData, 2.0f)
-                            .thenApply(upscaledImageData -> {
-                                long upscaleDuration = System.currentTimeMillis() - upscaleStart;
-                                log.info("Upscaling completed in {}ms, processing upscaled image", upscaleDuration);
-                                String base64Mockup = mockupImageProcessingService.processMockupImage(upscaledImageData);
-                                return createMockupWithOriginalImage(base64Mockup, imageData, request);
-                            });
+        return bananaModelService.generateImage(prompt, seed, ASPECT_RATIO_1_1)
+                .thenApply(imageData -> {
+                    String base64Mockup = mockupImageProcessingService.processMockupImage(imageData);
+                    return createMockupWithOriginalImage(base64Mockup, imageData, request);
                 });
     }
     
@@ -268,19 +301,10 @@ public class MockupGenerationService {
 
         byte[] referenceImageData = Base64.getDecoder().decode(request.getReferenceImageBase64());
 
-        return bananaModelService.generateImageToImage(prompt, referenceImageData, seed, ASPECT_RATIO_16_9)
-                .thenCompose(imageData -> {
-                    log.info("Upscaling mockup image before processing (factor: 2)");
-
-                    long upscaleStart = System.currentTimeMillis();
-                    // Upscale the image by 2x
-                    return seedVrUpscaleService.upscaleImage(imageData, 2.0f)
-                            .thenApply(upscaledImageData -> {
-                                long upscaleDuration = System.currentTimeMillis() - upscaleStart;
-                                log.info("Upscaling completed, processing upscaled mockup in {}ms", upscaleDuration);
-                                String base64Mockup = mockupImageProcessingService.processMockupImage(upscaledImageData);
-                                return createMockupWithOriginalImage(base64Mockup, imageData, request);
-                            });
+        return bananaModelService.generateImageToImage(prompt, referenceImageData, seed, ASPECT_RATIO_1_1)
+                .thenApply(imageData -> {
+                    String base64Mockup = mockupImageProcessingService.processMockupImage(imageData);
+                    return createMockupWithOriginalImage(base64Mockup, imageData, request);
                 });
     }
     
@@ -291,30 +315,20 @@ public class MockupGenerationService {
     public CompletableFuture<List<MockupGenerationResponse.GeneratedMockup>> generateMoreMockupsFromImage(
             byte[] originalImageData, String prompt, Long seed) {
 
-        return bananaModelService.generateImageToImage(prompt, originalImageData, seed, ASPECT_RATIO_16_9)
-                .thenCompose(imageData -> {
-                    log.info("Upscaling more mockups image before processing (factor: 2)");
+        return bananaModelService.generateImageToImage(prompt, originalImageData, seed, ASPECT_RATIO_1_1)
+                .thenApply(imageData -> {
+                    String base64Mockup = mockupImageProcessingService.processMockupImage(imageData);
 
-                    long upscaleStart = System.currentTimeMillis();
-                    // Upscale the image by 2x
-                    return seedVrUpscaleService.upscaleImage(imageData, 2.0f)
-                            .thenApply(upscaledImageData -> {
-                                long upscaleDuration = System.currentTimeMillis() - upscaleStart;
-                                log.info("Upscaling completed, processing upscaled more mockups in {}ms", upscaleDuration);
-                                String base64Mockup = mockupImageProcessingService.processMockupImage(upscaledImageData);
+                    List<MockupGenerationResponse.GeneratedMockup> mockups = new ArrayList<>();
+                    MockupGenerationResponse.GeneratedMockup mockup =
+                            new MockupGenerationResponse.GeneratedMockup();
+                    mockup.setId(UUID.randomUUID().toString());
+                    mockup.setBase64Data(base64Mockup);
+                    mockup.setServiceSource("banana");
+                    mockup.setDescription("");
+                    mockups.add(mockup);
 
-                                // Create list with single mockup
-                                List<MockupGenerationResponse.GeneratedMockup> mockups = new ArrayList<>();
-                                MockupGenerationResponse.GeneratedMockup mockup =
-                                        new MockupGenerationResponse.GeneratedMockup();
-                                mockup.setId(UUID.randomUUID().toString());
-                                mockup.setBase64Data(base64Mockup);
-                                mockup.setServiceSource("banana");
-                                mockup.setDescription("");
-                                mockups.add(mockup);
-
-                                return mockups;
-                            });
+                    return mockups;
                 });
     }
     
@@ -361,12 +375,92 @@ public class MockupGenerationService {
         String originalImageBase64 = Base64.getEncoder().encodeToString(originalImageData);
         return new MockupGenerationResult(mockups, originalImageBase64);
     }
+
+    private CompletableFuture<List<IconGenerationResponse.GeneratedIcon>> extractUiElementsFromMockups(
+            List<byte[]> mockupImages, Long seed) {
+        if (!aiServicesConfig.isGpt15Enabled()) {
+            log.warn("GPT1.5 is disabled; skipping UI element extraction.");
+            return CompletableFuture.completedFuture(new ArrayList<>());
+        }
+        if (mockupImages == null || mockupImages.isEmpty()) {
+            return CompletableFuture.completedFuture(new ArrayList<>());
+        }
+
+        Gpt15ImageOptions options = Gpt15ImageOptions.builder()
+                .background("transparent")
+                .imageSize("1536x1024")
+                .quality("high")
+                .outputFormat("png")
+                .inputFidelity("high")
+                .build();
+
+        List<CompletableFuture<List<IconGenerationResponse.GeneratedIcon>>> elementFutures = new ArrayList<>();
+        int index = 0;
+        for (byte[] imageData : mockupImages) {
+            Long imageSeed = seed != null ? seed + index : null;
+            int batchIndex = index;
+            CompletableFuture<List<IconGenerationResponse.GeneratedIcon>> future = gpt15ModelService
+                    .generateImageToImage(UI_ELEMENT_PROMPT, imageData, imageSeed, options)
+                    .thenApply(outputImageData -> {
+                        BufferedImage outputImage = readImage(outputImageData);
+                        List<BufferedImage> components =
+                                mockupImageProcessingService.extractComponentsFromMockup(outputImage);
+                        List<IconGenerationResponse.GeneratedIcon> icons = new ArrayList<>();
+                        int componentIndex = 0;
+                        for (BufferedImage component : components) {
+                            String base64 = bufferedImageToBase64(component);
+                            IconGenerationResponse.GeneratedIcon icon = new IconGenerationResponse.GeneratedIcon();
+                            icon.setId(UUID.randomUUID().toString());
+                            icon.setBase64Data(base64);
+                            icon.setDescription("UI element " + (batchIndex + 1) + "-" + (componentIndex + 1));
+                            icon.setGridPosition(componentIndex);
+                            icon.setServiceSource("gpt15");
+                            icons.add(icon);
+                            componentIndex++;
+                        }
+                        return icons;
+                    });
+            elementFutures.add(future);
+            index++;
+        }
+
+        return CompletableFuture.allOf(elementFutures.toArray(new CompletableFuture[0]))
+                .thenApply(v -> elementFutures.stream()
+                        .map(CompletableFuture::join)
+                        .flatMap(List::stream)
+                        .toList());
+    }
+
+    private BufferedImage readImage(byte[] imageData) {
+        try {
+            BufferedImage image = ImageIO.read(new ByteArrayInputStream(imageData));
+            if (image == null) {
+                throw new RuntimeException("Unable to decode generated UI image.");
+            }
+            return image;
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to parse generated UI image.", e);
+        }
+    }
+
+    private String bufferedImageToBase64(BufferedImage image) {
+        try {
+            ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+            ImageIO.write(image, "png", outputStream);
+            return Base64.getEncoder().encodeToString(outputStream.toByteArray());
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to encode UI element image.", e);
+        }
+    }
     
     /**
      * Create combined response
      */
     private MockupGenerationResponse createCombinedResponse(
-            String requestId, List<MockupGenerationResponse.ServiceResults> bananaResults, Long seed) {
+            String requestId,
+            List<MockupGenerationResponse.ServiceResults> bananaResults,
+            List<IconGenerationResponse.GeneratedIcon> elements,
+            Long seed) {
         
         MockupGenerationResponse response = new MockupGenerationResponse();
         response.setRequestId(requestId);
@@ -381,6 +475,7 @@ public class MockupGenerationService {
             }
         }
         response.setMockups(allMockups);
+        response.setElements(elements != null ? elements : new ArrayList<>());
         
         // Set overall status
         int successCount = 0;
@@ -414,6 +509,7 @@ public class MockupGenerationService {
         response.setStatus("error");
         response.setMessage(message);
         response.setMockups(new ArrayList<>());
+        response.setElements(new ArrayList<>());
         
         MockupGenerationResponse.ServiceResults errorResult = 
             new MockupGenerationResponse.ServiceResults();
@@ -530,4 +626,3 @@ public class MockupGenerationService {
         return "Failed to generate mockups. Please try again or contact support if the issue persists.";
     }
 }
-

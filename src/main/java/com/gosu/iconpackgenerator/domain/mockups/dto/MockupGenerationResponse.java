@@ -3,6 +3,7 @@ package com.gosu.iconpackgenerator.domain.mockups.dto;
 import lombok.Data;
 
 import java.util.List;
+import com.gosu.iconpackgenerator.domain.icons.dto.IconGenerationResponse;
 
 @Data
 public class MockupGenerationResponse {
@@ -11,6 +12,7 @@ public class MockupGenerationResponse {
     private String status;
     private String message;
     private List<GeneratedMockup> mockups;
+    private List<IconGenerationResponse.GeneratedIcon> elements;
     private List<ServiceResults> bananaResults;
     private Long seed;
     
@@ -33,4 +35,3 @@ public class MockupGenerationResponse {
         private String serviceSource;
     }
 }
-

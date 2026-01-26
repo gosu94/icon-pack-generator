@@ -32,6 +32,8 @@ export interface StreamingResults {
 
 export interface GenerationResponse {
   icons: Icon[];
+  mockups?: Icon[];
+  elements?: Icon[];
   requestId: string;
   falAiResults?: ServiceResult[];
   recraftResults?: ServiceResult[];

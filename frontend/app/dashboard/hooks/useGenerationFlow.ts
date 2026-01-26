@@ -274,7 +274,8 @@ export function useGenerationFlow({
       const enabledServicesList = allServices.filter(
         (service) => enabledServices[service.id],
       );
-      const generationsNum = effectiveVariations ? 2 : 1;
+      const generationsNum =
+        effectiveMode === "mockups" ? 3 : effectiveVariations ? 2 : 1;
       const getExpectedServiceId = (genIndex: number) => {
         if (genIndex === 1) {
           return baseModel === "pro" ? "gpt15" : "gpt";
