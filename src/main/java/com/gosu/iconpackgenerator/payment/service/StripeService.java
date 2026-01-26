@@ -28,6 +28,17 @@ public class StripeService {
                 .setMode(SessionCreateParams.Mode.PAYMENT)
                 .setSuccessUrl(baseUrl + "/payment/success/index.html")
                 .setCancelUrl(baseUrl + "/payment/failure/index.html")
+                .setCustomerCreation(SessionCreateParams.CustomerCreation.ALWAYS)
+                .setInvoiceCreation(
+                        SessionCreateParams.InvoiceCreation.builder()
+                                .setEnabled(true)
+                                .build()
+                )
+                .setTaxIdCollection(
+                        SessionCreateParams.TaxIdCollection.builder()
+                                .setEnabled(true)
+                                .build()
+                )
                 .addLineItem(
                         SessionCreateParams.LineItem.builder()
                                 .setPrice(priceId)
