@@ -28,7 +28,7 @@ const ExportModal: React.FC<ExportModalProps> = ({
   const availableCoins = authState?.user?.coins ?? 0;
 
   const [formats, setFormats] = useState<Record<string, boolean>>(
-    mode === "icons"
+    mode === "icons" || mode === "ui-elements"
       ? {
           png: true,
           ico: true,
@@ -44,7 +44,7 @@ const ExportModal: React.FC<ExportModalProps> = ({
 
   useEffect(() => {
     setFormats(
-      mode === "icons"
+      mode === "icons" || mode === "ui-elements"
         ? {
             png: true,
             ico: true,
@@ -83,7 +83,7 @@ const ExportModal: React.FC<ExportModalProps> = ({
   const handleVectorToggle = () => {
     setVectorizeSvg((prev) => {
       const next = !prev;
-      if (next && mode === "icons") {
+      if (next && (mode === "icons" || mode === "ui-elements")) {
         setHqUpscale(false);
       }
       return next;
@@ -92,11 +92,14 @@ const ExportModal: React.FC<ExportModalProps> = ({
 
   const totalVectorCost = Math.ceil(Math.max(iconCount, 1) / 9);
   const labelVectorCost = 1;
-  const showVectorOption = mode === "icons" || mode === "labels";
-  const showHqOption = mode === "icons" && (formats.png || formats.webp || formats.ico);
+  const showVectorOption =
+    mode === "icons" || mode === "labels" || mode === "ui-elements";
+  const showHqOption =
+    (mode === "icons" || mode === "ui-elements") &&
+    (formats.png || formats.webp || formats.ico);
   const totalHqCost = Math.ceil(Math.max(iconCount, 1) / 9);
-  const vectorDisabled = mode === "icons" && hqUpscale;
-  const hqDisabled = mode === "icons" && vectorizeSvg;
+  const vectorDisabled = (mode === "icons" || mode === "ui-elements") && hqUpscale;
+  const hqDisabled = (mode === "icons" || mode === "ui-elements") && vectorizeSvg;
   const vectorCoinCost = mode === "labels" ? labelVectorCost : totalVectorCost;
   const premiumCost =
     (vectorizeSvg ? vectorCoinCost : 0) + (hqUpscale ? totalHqCost : 0);
@@ -123,7 +126,8 @@ const ExportModal: React.FC<ExportModalProps> = ({
       onConfirm(selectedFormats, selectedSizes);
     } else {
       const shouldVectorize = showVectorOption ? vectorizeSvg : false;
-      const shouldUpscale = mode === "icons" ? hqUpscale : false;
+      const shouldUpscale =
+        mode === "icons" || mode === "ui-elements" ? hqUpscale : false;
       onConfirm(selectedFormats, undefined, shouldVectorize, shouldUpscale);
     }
   };
@@ -135,7 +139,17 @@ const ExportModal: React.FC<ExportModalProps> = ({
       <div className="bg-white rounded-lg p-6 w-full max-w-md">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-medium text-gray-900">
-            Export {mode === "icons" ? "Icon" : mode === "illustrations" ? "Illustration" : mode === "labels" ? "Label" : "UI Mockup"} Pack
+            Export{" "}
+            {mode === "icons"
+              ? "Icon"
+              : mode === "illustrations"
+              ? "Illustration"
+              : mode === "labels"
+              ? "Label"
+              : mode === "ui-elements"
+              ? "UI Element"
+              : "UI Mockup"}{" "}
+            Pack
           </h3>
           <button
             onClick={onClose}
@@ -159,7 +173,17 @@ const ExportModal: React.FC<ExportModalProps> = ({
         
         <div className="space-y-4">
           <p className="text-gray-600 text-sm">
-            Select the formats you need for your {mode === "icons" ? "icon" : mode === "illustrations" ? "illustration" : mode === "labels" ? "label" : "UI mockup"} pack.
+            Select the formats you need for your{" "}
+            {mode === "icons"
+              ? "icon"
+              : mode === "illustrations"
+              ? "illustration"
+              : mode === "labels"
+              ? "label"
+              : mode === "ui-elements"
+              ? "UI element"
+              : "UI mockup"}{" "}
+            pack.
           </p>
           
           <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg p-4 border border-blue-100">
@@ -180,7 +204,17 @@ const ExportModal: React.FC<ExportModalProps> = ({
               <div className="w-full space-y-4">
                 <div>
                   <p className="text-sm font-semibold text-blue-900 mb-3">
-                    {iconCount} {mode === "icons" ? "icons" : mode === "illustrations" ? "illustrations" : mode === "labels" ? "labels" : "mockups"} • Choose your formats
+                    {iconCount}{" "}
+                    {mode === "icons"
+                      ? "icons"
+                      : mode === "illustrations"
+                      ? "illustrations"
+                      : mode === "labels"
+                      ? "labels"
+                      : mode === "ui-elements"
+                      ? "UI elements"
+                      : "mockups"}{" "}
+                    • Choose your formats
                   </p>
                   
                   <div className="grid grid-cols-2 gap-4">
@@ -247,15 +281,15 @@ const ExportModal: React.FC<ExportModalProps> = ({
                       </p>
                       <span className="flex items-center space-x-1 rounded-full bg-indigo-100 px-2 py-0.5 text-xs font-semibold text-indigo-800">
                         <span>
-                          +{mode === "icons" ? totalVectorCost : labelVectorCost}
+                          +{mode === "labels" ? labelVectorCost : totalVectorCost}
                         </span>
                         <Image src="/images/coin.webp" alt="Coin" width={16} height={16} />
                       </span>
                     </div>
                     <p className="text-xs text-indigo-700">
-                      {mode === "icons"
-                        ? `Toggle to receive crisp, editable SVGs processed with AI. Costs 1 coin per 9 icons (this export: ${totalVectorCost} coin${totalVectorCost === 1 ? "" : "s"}). Cannot be combined with HQ Upscaled.`
-                        : "Toggle to receive a crisp, editable SVG version processed with AI. Costs 1 coin for this export."}
+                      {mode === "labels"
+                        ? "Toggle to receive a crisp, editable SVG version processed with AI. Costs 1 coin for this export."
+                        : `Toggle to receive crisp, editable SVGs processed with AI. Costs 1 coin per 9 icons (this export: ${totalVectorCost} coin${totalVectorCost === 1 ? "" : "s"}). Cannot be combined with HQ Upscaled.`}
                     </p>
                     <div className="flex items-start space-x-2 rounded-md bg-indigo-200/60 px-3 py-2">
                       <span className="mt-0.5 text-indigo-900" aria-hidden="true">

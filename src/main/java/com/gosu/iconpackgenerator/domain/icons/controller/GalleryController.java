@@ -347,7 +347,7 @@ public class GalleryController implements GalleryControllerAPI {
                                                            @PathVariable String mockupType,
                                                            @AuthenticationPrincipal OAuth2User principal) {
         try {
-            if (!"original".equals(mockupType) && !"variation".equals(mockupType)) {
+            if (!"original".equals(mockupType) && !"variation".equals(mockupType) && !"elements".equals(mockupType)) {
                 return ResponseEntity.badRequest().build();
             }
             if (!(principal instanceof CustomOAuth2User customUser)) {

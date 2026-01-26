@@ -89,9 +89,16 @@ public class Gpt15ModelService implements AIModelService {
     }
 
     public CompletableFuture<byte[]> generateImageToImage(String prompt, byte[] sourceImageData, Long seed) {
+        return generateImageToImage(prompt, sourceImageData, seed, null);
+    }
+
+    public CompletableFuture<byte[]> generateImageToImage(String prompt,
+                                                          byte[] sourceImageData,
+                                                          Long seed,
+                                                          Gpt15ImageOptions options) {
         log.info("Generating GPT-1.5 image-to-image for prompt: {} (seed: {})", prompt, seed);
 
-        return generateImageToImageAsync(prompt, sourceImageData, seed)
+        return generateImageToImageAsync(prompt, sourceImageData, seed, options)
                 .whenComplete((bytes, error) -> {
                     if (error != null) {
                         log.error("Error generating GPT-1.5 image-to-image", error);
@@ -101,13 +108,16 @@ public class Gpt15ModelService implements AIModelService {
                 });
     }
 
-    private CompletableFuture<byte[]> generateImageToImageAsync(String prompt, byte[] sourceImageData, Long seed) {
+    private CompletableFuture<byte[]> generateImageToImageAsync(String prompt,
+                                                                byte[] sourceImageData,
+                                                                Long seed,
+                                                                Gpt15ImageOptions options) {
         return CompletableFuture.supplyAsync(() -> {
             try {
                 validateConfiguration();
 
                 String imageDataUrl = convertToDataUrl(sourceImageData);
-                Map<String, Object> input = createImageToImageInputMap(prompt, imageDataUrl);
+                Map<String, Object> input = createImageToImageInputMap(prompt, imageDataUrl, options);
                 log.info("Calling GPT-1.5 image-to-image endpoint {} with input keys {} (seed: {})",
                         IMAGE_TO_IMAGE_ENDPOINT, input.keySet(), seed);
 
@@ -143,15 +153,37 @@ public class Gpt15ModelService implements AIModelService {
     }
 
     private Map<String, Object> createImageToImageInputMap(String prompt, String imageDataUrl) {
+        return createImageToImageInputMap(prompt, imageDataUrl, null);
+    }
+
+    private Map<String, Object> createImageToImageInputMap(String prompt,
+                                                           String imageDataUrl,
+                                                           Gpt15ImageOptions options) {
+        String imageSize = options != null && options.getImageSize() != null
+                ? options.getImageSize()
+                : "1024x1024";
+        String background = options != null && options.getBackground() != null
+                ? options.getBackground()
+                : "transparent";
+        String quality = options != null && options.getQuality() != null
+                ? options.getQuality()
+                : "high";
+        String outputFormat = options != null && options.getOutputFormat() != null
+                ? options.getOutputFormat()
+                : "png";
+        String inputFidelity = options != null && options.getInputFidelity() != null
+                ? options.getInputFidelity()
+                : "high";
+
         Map<String, Object> input = new HashMap<>();
         input.put("prompt", prompt);
         input.put("image_urls", Collections.singletonList(imageDataUrl));
-        input.put("image_size", "1024x1024");
-        input.put("background", "transparent");
-        input.put("quality", "high");
-        input.put("input_fidelity", "high");
+        input.put("image_size", imageSize);
+        input.put("background", background);
+        input.put("quality", quality);
+        input.put("input_fidelity", inputFidelity);
         input.put("num_images", 1);
-        input.put("output_format", "png");
+        input.put("output_format", outputFormat);
         return input;
     }
 

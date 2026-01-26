@@ -67,4 +67,9 @@ export interface GifProgressUpdate {
 
 export type UIState = "initial" | "streaming" | "error" | "results";
 
-export type GenerationMode = "icons" | "illustrations" | "mockups" | "labels";
+export type GenerationMode =
+  | "icons"
+  | "illustrations"
+  | "mockups"
+  | "ui-elements"
+  | "labels";

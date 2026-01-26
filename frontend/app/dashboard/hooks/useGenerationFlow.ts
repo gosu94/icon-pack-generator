@@ -50,7 +50,11 @@ export function useGenerationFlow({
     referenceImage,
     setReferenceImage,
     setImagePreview,
+    uiReferenceImage,
+    uiImagePreview,
+    uiCrop,
     fileToBase64,
+    cropImageToBase64,
     validateForm,
     enhancePrompt,
     baseModel,
@@ -171,12 +175,12 @@ export function useGenerationFlow({
   );
 
   const saveGenerationState = useCallback(
-    (requestId: string, request: any) => {
+    (requestId: string, request: any, generationMode: GenerationMode) => {
       try {
         const generationState = {
           requestId,
           request,
-          mode,
+          mode: generationMode,
           timestamp: Date.now(),
         };
         localStorage.setItem(
@@ -188,7 +192,7 @@ export function useGenerationFlow({
         console.warn("Failed to save generation state to localStorage:", error);
       }
     },
-    [mode],
+    [],
   );
 
   const getGenerationState = useCallback(() => {
@@ -224,6 +228,8 @@ export function useGenerationFlow({
             ? `/api/illustrations/generate/status/${requestId}`
             : generationMode === "mockups"
             ? `/api/mockups/generate/status/${requestId}`
+            : generationMode === "ui-elements"
+            ? `/api/ui-elements/generate/status/${requestId}`
             : generationMode === "labels"
             ? `/api/labels/generate/status/${requestId}`
             : `/status/${requestId}`;
@@ -247,7 +253,14 @@ export function useGenerationFlow({
   );
 
   const initializeStreamingResults = useCallback(
-    (enabledServices: { [key: string]: boolean }) => {
+    (
+      enabledServices: { [key: string]: boolean },
+      generationModeOverride?: GenerationMode,
+      variationsOverride?: boolean,
+    ) => {
+      const effectiveMode = generationModeOverride ?? mode;
+      const effectiveVariations =
+        variationsOverride ?? generateVariations;
       const newResults: StreamingResults = {};
       const allServices = [
         { id: "flux", name: "Flux-Pro" },
@@ -261,7 +274,7 @@ export function useGenerationFlow({
       const enabledServicesList = allServices.filter(
         (service) => enabledServices[service.id],
       );
-      const generationsNum = generateVariations ? 2 : 1;
+      const generationsNum = effectiveVariations ? 2 : 1;
       const getExpectedServiceId = (genIndex: number) => {
         if (genIndex === 1) {
           return baseModel === "pro" ? "gpt15" : "gpt";
@@ -275,14 +288,17 @@ export function useGenerationFlow({
         serviceId: string,
         genIndex: number,
       ) => {
-        if (mode === "icons" && (serviceId === "gpt" || serviceId === "gpt15")) {
+        if (
+          effectiveMode === "icons" &&
+          (serviceId === "gpt" || serviceId === "gpt15")
+        ) {
           return serviceId === getExpectedServiceId(genIndex);
         }
         if (serviceId === "gpt" && genIndex > 1) {
           return false;
         }
-        if (serviceId === "gpt15") {
-          if (!generateVariations || genIndex === 1) {
+        if (effectiveMode === "icons" && serviceId === "gpt15") {
+          if (!effectiveVariations || genIndex === 1) {
             return false;
           }
         }
@@ -680,6 +696,8 @@ export function useGenerationFlow({
         setMode("icons");
       } else if (generationMode === "mockups") {
         setMode("mockups");
+      } else if (generationMode === "ui-elements") {
+        setMode("ui-elements");
       } else if (generationMode === "labels") {
         setMode("labels");
       }
@@ -732,248 +750,294 @@ export function useGenerationFlow({
     };
   }, [handleGenerationRecovery]);
 
-  const generateIcons = useCallback(async () => {
-    if (
-      !validateForm(mode, authState, (msg) => {
-        setErrorMessage(msg);
-      })
-    ) {
-      setUiState("error");
-      return;
-    }
-
-    setIsGenerating(true);
-    setUiState("streaming");
-    setStreamingResults({});
-    setShowResultsPanes(false);
-    setIsTrialResult(false);
-    setOverallProgress(0);
-
-    isRecoveredRef.current = false;
-    clearAllAnimations();
-
-    let duration = 40000;
-    if (inputType === "image") {
-      duration = 70000;
-    }
-    startOverallProgressTimer(duration);
-
-    const count =
-      mode === "illustrations"
-        ? 4
-        : mode === "mockups"
-        ? 1
-        : mode === "labels"
-        ? 1
-        : 9;
-    let formData: any;
-
-    if (mode === "illustrations") {
-      formData = {
-        illustrationCount: count,
-        generationsPerService: generateVariations ? 2 : 1,
-        individualDescriptions: individualDescriptions.filter((desc) =>
-          desc.trim(),
-        ),
-      };
-    } else if (mode === "mockups") {
-      formData = {
-        mockupCount: 1,
-        generationsPerService: 2,
-      };
-    } else if (mode === "labels") {
-      formData = {
-        labelText: labelText.trim(),
-        generationsPerService: generateVariations ? 2 : 1,
-      };
-    } else {
-      const resolvedBaseModel = inputType === "image" ? "pro" : baseModel;
-      const resolvedVariationModel =
-        inputType === "image" ? "pro" : variationModel;
-      formData = {
-        iconCount: count,
-        generationsPerService: generateVariations ? 2 : 1,
-        individualDescriptions: individualDescriptions.filter((desc) =>
-          desc.trim(),
-        ),
-        baseModel: resolvedBaseModel,
-        variationModel: resolvedVariationModel,
-      };
-    }
-
-    if (inputType === "text") {
-      if (mode === "mockups") {
-        formData.description = generalDescription.trim();
-      } else if (mode === "labels") {
-        formData.generalTheme = generalDescription.trim();
-      } else {
-        formData.generalDescription = generalDescription.trim();
-        if (mode === "icons") {
-          formData.enhancePrompt = enhancePrompt;
-        }
-      }
-    } else if (inputType === "image" && referenceImage) {
-      try {
-        formData.referenceImageBase64 = await fileToBase64(referenceImage);
-      } catch (error) {
-        console.error("Error converting image to base64:", error);
-        setErrorMessage("Failed to process reference image");
+  const generateForMode = useCallback(
+    async (targetMode?: GenerationMode) => {
+      const generationMode = targetMode ?? mode;
+      if (
+        !validateForm(generationMode, authState, (msg) => {
+          setErrorMessage(msg);
+        })
+      ) {
         setUiState("error");
-        setIsGenerating(false);
-        stopOverallProgressTimer();
         return;
       }
-    }
 
-    setCurrentRequest({ ...formData });
+      if (generationMode !== mode) {
+        setMode(generationMode);
+      }
 
-    try {
-      const endpoint =
-        mode === "illustrations"
-          ? "/api/illustrations/generate/stream/start"
-          : mode === "mockups"
-          ? "/api/mockups/generate/stream/start"
-          : mode === "labels"
-          ? "/api/labels/generate/stream/start"
-          : "/generate-stream";
-      const response = await fetch(endpoint, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify(formData),
-      });
-      if (!response.ok) {
-        const responseText = await response.text();
-        console.error(
-          "❌ Generation request failed:",
-          response.status,
-          responseText,
+      setIsGenerating(true);
+      setUiState("streaming");
+      setStreamingResults({});
+      setShowResultsPanes(false);
+      setIsTrialResult(false);
+      setOverallProgress(0);
+
+      isRecoveredRef.current = false;
+      clearAllAnimations();
+
+      let duration = 40000;
+      if (inputType === "image" || generationMode === "ui-elements") {
+        duration = 70000;
+      }
+      startOverallProgressTimer(duration);
+
+      const count =
+        generationMode === "illustrations"
+          ? 4
+          : generationMode === "mockups"
+          ? 1
+          : generationMode === "ui-elements"
+          ? 1
+          : generationMode === "labels"
+          ? 1
+          : 9;
+      let formData: any;
+
+      if (generationMode === "illustrations") {
+        formData = {
+          illustrationCount: count,
+          generationsPerService: generateVariations ? 2 : 1,
+          individualDescriptions: individualDescriptions.filter((desc) =>
+            desc.trim(),
+          ),
+        };
+      } else if (generationMode === "mockups") {
+        formData = {
+          mockupCount: 1,
+          generationsPerService: 2,
+        };
+      } else if (generationMode === "ui-elements") {
+        formData = {};
+      } else if (generationMode === "labels") {
+        formData = {
+          labelText: labelText.trim(),
+          generationsPerService: generateVariations ? 2 : 1,
+        };
+      } else {
+        const resolvedBaseModel = inputType === "image" ? "pro" : baseModel;
+        const resolvedVariationModel =
+          inputType === "image" ? "pro" : variationModel;
+        formData = {
+          iconCount: count,
+          generationsPerService: generateVariations ? 2 : 1,
+          individualDescriptions: individualDescriptions.filter((desc) =>
+            desc.trim(),
+          ),
+          baseModel: resolvedBaseModel,
+          variationModel: resolvedVariationModel,
+        };
+      }
+
+      if (generationMode === "ui-elements") {
+        if (uiReferenceImage) {
+          try {
+            formData.referenceImageBase64 = await cropImageToBase64(
+              uiReferenceImage,
+              uiCrop,
+              uiImagePreview,
+            );
+          } catch (error) {
+            console.error("Error converting UI image to base64:", error);
+            setErrorMessage("Failed to process UI reference image");
+            setUiState("error");
+            setIsGenerating(false);
+            stopOverallProgressTimer();
+            return;
+          }
+        }
+      } else if (inputType === "text") {
+        if (generationMode === "mockups") {
+          formData.description = generalDescription.trim();
+        } else if (generationMode === "labels") {
+          formData.generalTheme = generalDescription.trim();
+        } else {
+          formData.generalDescription = generalDescription.trim();
+          if (generationMode === "icons") {
+            formData.enhancePrompt = enhancePrompt;
+          }
+        }
+      } else if (inputType === "image" && referenceImage) {
+        try {
+          formData.referenceImageBase64 = await fileToBase64(referenceImage);
+        } catch (error) {
+          console.error("Error converting image to base64:", error);
+          setErrorMessage("Failed to process reference image");
+          setUiState("error");
+          setIsGenerating(false);
+          stopOverallProgressTimer();
+          return;
+        }
+      }
+
+      setCurrentRequest({ ...formData });
+
+      try {
+        const endpoint =
+          generationMode === "illustrations"
+            ? "/api/illustrations/generate/stream/start"
+            : generationMode === "mockups"
+            ? "/api/mockups/generate/stream/start"
+            : generationMode === "ui-elements"
+            ? "/api/ui-elements/generate/stream/start"
+            : generationMode === "labels"
+            ? "/api/labels/generate/stream/start"
+            : "/generate-stream";
+        const response = await fetch(endpoint, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify(formData),
+        });
+        if (!response.ok) {
+          const responseText = await response.text();
+          console.error(
+            "❌ Generation request failed:",
+            response.status,
+            responseText,
+          );
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const data = await response.json();
+        const { requestId, enabledServices } = data;
+
+        saveGenerationState(requestId, formData, generationMode);
+        initializeStreamingResults(
+          enabledServices,
+          generationMode,
+          generationMode === "ui-elements" ? false : generateVariations,
         );
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      const data = await response.json();
-      const { requestId, enabledServices } = data;
 
-      saveGenerationState(requestId, formData);
-      initializeStreamingResults(enabledServices);
-
-      if (currentEventSourceRef.current) {
-        currentEventSourceRef.current.close();
-      }
-
-      const streamEndpoint =
-        mode === "illustrations"
-          ? `/api/illustrations/generate/stream/${requestId}`
-          : mode === "mockups"
-          ? `/api/mockups/generate/stream/${requestId}`
-          : mode === "labels"
-          ? `/api/labels/generate/stream/${requestId}`
-          : `/stream/${requestId}`;
-      const eventSource = new EventSource(streamEndpoint);
-      currentEventSourceRef.current = eventSource;
-
-      eventSource.addEventListener("service_update", (event) => {
-        try {
-          handleServiceUpdate(JSON.parse(event.data));
-        } catch (error) {
-          console.error("Error parsing service update:", error);
+        if (currentEventSourceRef.current) {
+          currentEventSourceRef.current.close();
         }
-      });
-      eventSource.addEventListener("generation_complete", (event) => {
-        try {
-          handleGenerationComplete(JSON.parse(event.data));
-          eventSource.close();
-          currentEventSourceRef.current = null;
-        } catch (error) {
-          console.error("Error parsing completion update:", error);
-          eventSource.close();
-          currentEventSourceRef.current = null;
-        }
-      });
-      eventSource.addEventListener("generation_error", (event) => {
-        try {
-          const update = JSON.parse(event.data);
-          if (!isRecoveredRef.current) {
-            setErrorMessage(update.message || "Generation failed");
-            setUiState("error");
-            setIsGenerating(false);
-            stopOverallProgressTimer();
+
+        const streamEndpoint =
+          generationMode === "illustrations"
+            ? `/api/illustrations/generate/stream/${requestId}`
+            : generationMode === "mockups"
+            ? `/api/mockups/generate/stream/${requestId}`
+            : generationMode === "ui-elements"
+            ? `/api/ui-elements/generate/stream/${requestId}`
+            : generationMode === "labels"
+            ? `/api/labels/generate/stream/${requestId}`
+            : `/stream/${requestId}`;
+        const eventSource = new EventSource(streamEndpoint);
+        currentEventSourceRef.current = eventSource;
+
+        eventSource.addEventListener("service_update", (event) => {
+          try {
+            handleServiceUpdate(JSON.parse(event.data));
+          } catch (error) {
+            console.error("Error parsing service update:", error);
           }
-          eventSource.close();
-          currentEventSourceRef.current = null;
-        } catch (error) {
-          console.error("Error parsing error update:", error);
-          if (!isRecoveredRef.current) {
-            setErrorMessage("Generation failed with unknown error");
-            setUiState("error");
-            setIsGenerating(false);
-            stopOverallProgressTimer();
+        });
+        eventSource.addEventListener("generation_complete", (event) => {
+          try {
+            handleGenerationComplete(JSON.parse(event.data));
+            eventSource.close();
+            currentEventSourceRef.current = null;
+          } catch (error) {
+            console.error("Error parsing completion update:", error);
+            eventSource.close();
+            currentEventSourceRef.current = null;
           }
-          eventSource.close();
-          currentEventSourceRef.current = null;
-        }
-      });
-      eventSource.onerror = (error) => {
-        console.error("EventSource error:", error);
-
-        eventSource.close();
-        currentEventSourceRef.current = null;
-
-        if (!isRecoveredRef.current) {
-          handleGenerationRecovery()
-            .then(() => {
-              setTimeout(() => {
-                if (!isRecoveredRef.current) {
-                  setErrorMessage("Connection error. Please try again.");
-                  setUiState("error");
-                  setIsGenerating(false);
-                  stopOverallProgressTimer();
-                }
-              }, 500);
-            })
-            .catch((recoveryError) => {
-              console.error("Recovery attempt failed:", recoveryError);
-              setErrorMessage("Connection error. Please try again.");
+        });
+        eventSource.addEventListener("generation_error", (event) => {
+          try {
+            const update = JSON.parse(event.data);
+            if (!isRecoveredRef.current) {
+              setErrorMessage(update.message || "Generation failed");
               setUiState("error");
               setIsGenerating(false);
               stopOverallProgressTimer();
-            });
+            }
+            eventSource.close();
+            currentEventSourceRef.current = null;
+          } catch (error) {
+            console.error("Error parsing error update:", error);
+            if (!isRecoveredRef.current) {
+              setErrorMessage("Generation failed with unknown error");
+              setUiState("error");
+              setIsGenerating(false);
+              stopOverallProgressTimer();
+            }
+            eventSource.close();
+            currentEventSourceRef.current = null;
+          }
+        });
+        eventSource.onerror = (error) => {
+          console.error("EventSource error:", error);
+
+          eventSource.close();
+          currentEventSourceRef.current = null;
+
+          if (!isRecoveredRef.current) {
+            handleGenerationRecovery()
+              .then(() => {
+                setTimeout(() => {
+                  if (!isRecoveredRef.current) {
+                    setErrorMessage("Connection error. Please try again.");
+                    setUiState("error");
+                    setIsGenerating(false);
+                    stopOverallProgressTimer();
+                  }
+                }, 500);
+              })
+              .catch((recoveryError) => {
+                console.error("Recovery attempt failed:", recoveryError);
+                setErrorMessage("Connection error. Please try again.");
+                setUiState("error");
+                setIsGenerating(false);
+                stopOverallProgressTimer();
+              });
+          }
+        };
+      } catch (error) {
+        console.error("❌ Error starting generation:", error);
+        if (error instanceof Error) {
+          console.error("❌ Error message:", error.message);
+          console.error("❌ Error stack:", error.stack);
         }
-      };
-    } catch (error) {
-      console.error("❌ Error starting generation:", error);
-      if (error instanceof Error) {
-        console.error("❌ Error message:", error.message);
-        console.error("❌ Error stack:", error.stack);
+        setErrorMessage("Failed to start generation. Please try again.");
+        setUiState("error");
+        setIsGenerating(false);
+        stopOverallProgressTimer();
       }
-      setErrorMessage("Failed to start generation. Please try again.");
-      setUiState("error");
-      setIsGenerating(false);
-      stopOverallProgressTimer();
-    }
-  }, [
-    authState,
-    baseModel,
-    clearAllAnimations,
-    generalDescription,
-    generateVariations,
-    handleGenerationComplete,
-    handleGenerationRecovery,
-    handleServiceUpdate,
-    individualDescriptions,
-    initializeStreamingResults,
-    inputType,
-    labelText,
-    mode,
-    referenceImage,
-    saveGenerationState,
-    setErrorMessage,
-    setShowResultsPanes,
-    startOverallProgressTimer,
-    stopOverallProgressTimer,
-    validateForm,
-    variationModel,
-  ]);
+    },
+    [
+      authState,
+      baseModel,
+      clearAllAnimations,
+      cropImageToBase64,
+      generalDescription,
+      generateVariations,
+      handleGenerationComplete,
+      handleGenerationRecovery,
+      handleServiceUpdate,
+      individualDescriptions,
+      initializeStreamingResults,
+      inputType,
+      labelText,
+      mode,
+      referenceImage,
+      saveGenerationState,
+      setErrorMessage,
+      setMode,
+      setShowResultsPanes,
+      startOverallProgressTimer,
+      stopOverallProgressTimer,
+      uiCrop,
+      uiImagePreview,
+      uiReferenceImage,
+      validateForm,
+      variationModel,
+    ],
+  );
+
+  const generateIcons = useCallback(async () => {
+    await generateForMode();
+  }, [generateForMode]);
 
   const showMoreIconsForm = useCallback(
     (uniqueId: string) => {
@@ -1321,6 +1385,7 @@ export function useGenerationFlow({
     overallProgress,
     calculateTimeRemaining,
     generateIcons,
+    generateForMode,
     generateMoreIcons,
     generateMoreIllustrations,
     moreIconsVisible,

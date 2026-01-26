@@ -14,5 +14,6 @@ public class IconExportRequest {
     private List<String> formats;
     private boolean vectorizeSvg;
     private boolean hqUpscale;
+    private int minSvgSize;
 
 }

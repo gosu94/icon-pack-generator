@@ -68,7 +68,7 @@ interface GifModalState {
 }
 
 type GroupedIllustrations = Record<string, { original: Illustration[]; variation: Illustration[] }>;
-type GroupedMockups = Record<string, { original: Mockup[]; variation: Mockup[] }>;
+type GroupedMockups = Record<string, { original: Mockup[]; variation: Mockup[]; elements: Mockup[] }>;
 type GroupedLabels = Record<string, { original: LabelItem[]; variation: LabelItem[] }>;
 
 type GridGenerationMode = "icons" | "mockups" | "labels";
@@ -245,6 +245,7 @@ export default function GalleryPage() {
   const [iconsToExport, setIconsToExport] = useState<Icon[]>([]);
   const [illustrationsToExport, setIllustrationsToExport] = useState<Illustration[]>([]);
   const [mockupsToExport, setMockupsToExport] = useState<Mockup[]>([]);
+  const [uiElementsToExport, setUiElementsToExport] = useState<Mockup[]>([]);
   const [labelsToExport, setLabelsToExport] = useState<LabelItem[]>([]);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleteRequestId, setDeleteRequestId] = useState<string | null>(null);
@@ -654,12 +655,14 @@ export default function GalleryPage() {
 
         const grouped = data.reduce((acc, mockup) => {
           if (!acc[mockup.requestId]) {
-            acc[mockup.requestId] = { original: [], variation: [] };
+            acc[mockup.requestId] = { original: [], variation: [], elements: [] };
           }
           if (mockup.mockupType === "original") {
             acc[mockup.requestId].original.push(mockup);
           } else if (mockup.mockupType === "variation") {
             acc[mockup.requestId].variation.push(mockup);
+          } else if (mockup.mockupType === "elements") {
+            acc[mockup.requestId].elements.push(mockup);
           }
           return acc;
         }, {} as GroupedMockups);
@@ -808,12 +811,18 @@ export default function GalleryPage() {
           if (!group) {
             return prev;
           }
-          if (deleteGenerationType === "original" || deleteGenerationType === "variation") {
+          if (
+            deleteGenerationType === "original" ||
+            deleteGenerationType === "variation"
+          ) {
             const updated = {
               ...group,
               [deleteGenerationType]: [],
             };
-            if (updated.original.length === 0 && updated.variation.length === 0) {
+            if (
+              updated.original.length === 0 &&
+              updated.variation.length === 0
+            ) {
               delete next[deleteRequestId];
               shouldClearSelected = true;
             } else {
@@ -922,6 +931,7 @@ export default function GalleryPage() {
     setIconsToExport(icons);
     setIllustrationsToExport([]);
     setMockupsToExport([]);
+    setUiElementsToExport([]);
     setLabelsToExport([]);
     setShowExportModal(true);
   };
@@ -930,12 +940,23 @@ export default function GalleryPage() {
     setIllustrationsToExport(illustrations);
     setIconsToExport([]);
     setMockupsToExport([]);
+    setUiElementsToExport([]);
     setLabelsToExport([]);
     setShowExportModal(true);
   };
 
   const openMockupExportModal = (mockups: Mockup[]) => {
     setMockupsToExport(mockups);
+    setIconsToExport([]);
+    setIllustrationsToExport([]);
+    setUiElementsToExport([]);
+    setLabelsToExport([]);
+    setShowExportModal(true);
+  };
+
+  const openUiElementsExportModal = (elements: Mockup[]) => {
+    setUiElementsToExport(elements);
+    setMockupsToExport([]);
     setIconsToExport([]);
     setIllustrationsToExport([]);
     setLabelsToExport([]);
@@ -947,6 +968,7 @@ export default function GalleryPage() {
     setIconsToExport([]);
     setIllustrationsToExport([]);
     setMockupsToExport([]);
+    setUiElementsToExport([]);
     setShowExportModal(true);
   };
 
@@ -1064,6 +1086,17 @@ export default function GalleryPage() {
       };
       setShowExportModal(false);
       downloadZip(exportData, fileName, "/api/mockups/export-gallery");
+    } else if (uiElementsToExport.length > 0) {
+      const uiElementFilePaths = uiElementsToExport.map((element) => element.imageUrl);
+      const fileName = `ui-elements-pack-gallery-${new Date().getTime()}.zip`;
+      const exportData = {
+        uiElementFilePaths,
+        formats,
+        vectorizeSvg: vectorizeSvg ?? false,
+        hqUpscale: hqUpscale ?? false,
+      };
+      setShowExportModal(false);
+      downloadZip(exportData, fileName, "/api/ui-elements/export-gallery");
     } else if (labelsToExport.length > 0) {
       const labelFilePaths = labelsToExport.map((label) => label.imageUrl);
       const fileName = `label-pack-gallery-${new Date().getTime()}.zip`;
@@ -1083,6 +1116,8 @@ export default function GalleryPage() {
       ? "illustrations"
       : endpoint.includes("mockup")
       ? "mockups"
+      : endpoint.includes("ui-elements")
+      ? "ui elements"
       : endpoint.includes("label")
       ? "labels"
       : "icons";
@@ -1264,10 +1299,10 @@ export default function GalleryPage() {
                   className="group cursor-pointer rounded-xl border border-slate-200 bg-white p-6 transition-all duration-300 hover:border-pink-300 hover:shadow-lg hover:shadow-pink-100"
                 >
                   <h2 className="text-2xl font-bold text-slate-800 text-center">
-                    UI Mockups
+                    UI
                   </h2>
                   <p className="text-slate-500 mt-2 text-center">
-                    Browse your generated UI mockups.
+                    Browse your generated UI.
                   </p>
                 </div>
                   <div
@@ -1459,7 +1494,7 @@ export default function GalleryPage() {
                                 <button
                                   onClick={() => handleGenerateMockupFromIcons("original")}
                                   className={`${actionButtonBaseClass} gap-1`}
-                                  title="Generate UI Mockup from these icons"
+                                  title="Generate UI from these icons"
                                 >
                                   <span className="text-xs font-bold">UI</span>
                                 </button>
@@ -1538,7 +1573,7 @@ export default function GalleryPage() {
                                 <button
                                   onClick={() => handleGenerateMockupFromIcons("variation")}
                                   className={`${actionButtonBaseClass} gap-1`}
-                                  title="Generate UI Mockup from these icons"
+                                  title="Generate UI from these icons"
                                 >
                                   <span className="text-xs font-bold">UI</span>
                                 </button>
@@ -2128,28 +2163,56 @@ export default function GalleryPage() {
                                 `Request: ${selectedRequest}`
                             )}
                           </h1>
-                          <button
-                            onClick={() =>
-                              openMockupExportModal([
-                                ...groupedMockups[selectedRequest].original,
-                                ...groupedMockups[selectedRequest].variation,
-                              ])
-                            }
-                            className="px-3 sm:px-5 py-2.5 bg-[#ffffff] text-[#3C4BFF] font-medium
-             rounded-2xl shadow-sm hover:shadow-md transition-all
-             flex items-center justify-center gap-2
-             border border-[#E6E8FF]
-             hover:bg-[#F5F6FF] active:shadow-sm
-             focus:outline-none focus:ring-2 focus:ring-[#3C4BFF]/40"
-                          >
-                            <Download className="w-4 h-4" />
-                            <span className="hidden sm:inline">
-                              Export All (
-                              {groupedMockups[selectedRequest].original.length +
-                                groupedMockups[selectedRequest].variation.length}{" "}
-                              mockups)
-                            </span>
-                          </button>
+                          <div className="flex flex-wrap gap-2">
+                            {groupedMockups[selectedRequest].original.length +
+                              groupedMockups[selectedRequest].variation.length >
+                              0 && (
+                              <button
+                                onClick={() =>
+                                  openMockupExportModal([
+                                    ...groupedMockups[selectedRequest].original,
+                                    ...groupedMockups[selectedRequest].variation,
+                                  ])
+                                }
+                                className="px-3 sm:px-5 py-2.5 bg-[#ffffff] text-[#3C4BFF] font-medium
+                 rounded-2xl shadow-sm hover:shadow-md transition-all
+                 flex items-center justify-center gap-2
+                 border border-[#E6E8FF]
+                 hover:bg-[#F5F6FF] active:shadow-sm
+                 focus:outline-none focus:ring-2 focus:ring-[#3C4BFF]/40"
+                              >
+                                <Download className="w-4 h-4" />
+                                <span className="hidden sm:inline">
+                                  Export Mockups (
+                                  {groupedMockups[selectedRequest].original.length +
+                                    groupedMockups[selectedRequest].variation.length}{" "}
+                                  )
+                                </span>
+                              </button>
+                            )}
+                            {groupedMockups[selectedRequest].elements.length > 0 && (
+                              <button
+                                onClick={() =>
+                                  openUiElementsExportModal(
+                                    groupedMockups[selectedRequest].elements
+                                  )
+                                }
+                                className="px-3 sm:px-5 py-2.5 bg-[#ffffff] text-[#3C4BFF] font-medium
+                 rounded-2xl shadow-sm hover:shadow-md transition-all
+                 flex items-center justify-center gap-2
+                 border border-[#E6E8FF]
+                 hover:bg-[#F5F6FF] active:shadow-sm
+                 focus:outline-none focus:ring-2 focus:ring-[#3C4BFF]/40"
+                              >
+                                <Download className="w-4 h-4" />
+                                <span className="hidden sm:inline">
+                                  Export UI Elements (
+                                  {groupedMockups[selectedRequest].elements.length}
+                                  )
+                                </span>
+                              </button>
+                            )}
+                          </div>
                         </div>
 
                         {groupedMockups[selectedRequest].original.length > 0 && (
@@ -2198,7 +2261,7 @@ export default function GalleryPage() {
                                   >
                                     <img
                                       src={mockup.imageUrl}
-                                      alt={mockup.description || "Generated UI Mockup"}
+                                      alt={mockup.description || "Generated UI"}
                                       className="w-full h-full object-contain rounded-md"
                                     />
                                   </div>
@@ -2254,7 +2317,56 @@ export default function GalleryPage() {
                                   >
                                     <img
                                       src={mockup.imageUrl}
-                                      alt={mockup.description || "Generated UI Mockup"}
+                                      alt={mockup.description || "Generated UI"}
+                                      className="w-full h-full object-contain rounded-md"
+                                    />
+                                  </div>
+                                )
+                              )}
+                            </div>
+                          </div>
+                        )}
+
+                        {groupedMockups[selectedRequest].elements.length > 0 && (
+                          <div className="mt-8 p-4 rounded-lg border border-slate-200/80 bg-white/50 shadow-lg shadow-slate-200/50">
+                            <div className="flex items-center justify-between mb-4">
+                              <h3 className="text-xl font-semibold text-slate-700">
+                                UI Elements
+                              </h3>
+                              <div className="flex gap-3">
+                                <button
+                                  onClick={() =>
+                                    openDeleteModal(selectedRequest, "mockups", "elements")
+                                  }
+                                  className="inline-flex items-center justify-center rounded-2xl border border-red-200 bg-red-50 px-2 sm:px-4 py-2 text-red-600 transition hover:bg-red-100 hover:text-red-700 focus:outline-none focus:ring-2 focus:ring-red-300"
+                                  title="Delete this generation"
+                                  aria-label="Delete this generation"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </button>
+                                <button
+                                  onClick={() =>
+                                    openUiElementsExportModal(
+                                      groupedMockups[selectedRequest].elements
+                                    )
+                                  }
+                                  className={`${actionButtonBaseClass} gap-1`}
+                                >
+                                  <Download className="w-4 h-4" />
+                                </button>
+                              </div>
+                            </div>
+                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                              {groupedMockups[selectedRequest].elements.map(
+                                (element, index) => (
+                                  <div
+                                    key={index}
+                                    className="border rounded-lg p-2 bg-white shadow-sm aspect-square cursor-pointer hover:shadow-lg transition-shadow duration-200"
+                                    onClick={() => handleImageClick(element.imageUrl)}
+                                  >
+                                    <img
+                                      src={element.imageUrl}
+                                      alt={element.description || "Generated UI element"}
                                       className="w-full h-full object-contain rounded-md"
                                     />
                                   </div>
@@ -2267,7 +2379,7 @@ export default function GalleryPage() {
                     ) : (
                       <div>
                         <h1 className="text-3xl font-bold mb-8 text-slate-800">
-                          UI Mockup Gallery
+                          UI Gallery
                         </h1>
                         {Object.keys(groupedMockups).length > 0 ? (
                           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -2278,11 +2390,16 @@ export default function GalleryPage() {
                                     return mockupTypes.original[0].imageUrl;
                                   if (mockupTypes.variation.length > 0)
                                     return mockupTypes.variation[0].imageUrl;
+                                  if (mockupTypes.elements.length > 0)
+                                    return mockupTypes.elements[0].imageUrl;
                                   return "";
                                 };
                                 const theme =
                                   mockupTypes.original[0]?.theme ||
                                   mockupTypes.variation[0]?.theme;
+                                const mockupCount =
+                                  mockupTypes.original.length + mockupTypes.variation.length;
+                                const elementCount = mockupTypes.elements.length;
 
                                 return (
                                   <div
@@ -2302,9 +2419,8 @@ export default function GalleryPage() {
                                         {theme || `Request: ${requestId}`}
                                       </h2>
                                       <p className="text-sm text-slate-500 mt-1">
-                                        {mockupTypes.original.length +
-                                          mockupTypes.variation.length}{" "}
-                                        mockups
+                                        {mockupCount} mockups
+                                        {elementCount > 0 ? ` • ${elementCount} elements` : ""}
                                       </p>
                                     </div>
                                   </div>
@@ -2315,7 +2431,7 @@ export default function GalleryPage() {
                         ) : (
                           <div className="text-center py-16 border-2 border-dashed border-slate-300 rounded-lg">
                             <p className="text-slate-500">
-                              You don't have any UI mockups yet.
+                              You don't have any UI items yet.
                             </p>
                           </div>
                         )}
@@ -2339,6 +2455,8 @@ export default function GalleryPage() {
             ? illustrationsToExport.length
             : mockupsToExport.length > 0
             ? mockupsToExport.length
+            : uiElementsToExport.length > 0
+            ? uiElementsToExport.length
             : labelsToExport.length
         }
         mode={
@@ -2348,6 +2466,8 @@ export default function GalleryPage() {
             ? "illustrations"
             : mockupsToExport.length > 0
             ? "mockups"
+            : uiElementsToExport.length > 0
+            ? "ui-elements"
             : "labels"
         }
       />

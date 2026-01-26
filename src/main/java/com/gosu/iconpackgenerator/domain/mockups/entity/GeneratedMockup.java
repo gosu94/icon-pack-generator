@@ -55,10 +55,9 @@ public class GeneratedMockup {
     private LocalDateTime createdAt;
     
     @Column(name = "mockup_type")
-    private String mockupType; // "original" or "variation"
+    private String mockupType; // "original", "variation", or "elements"
 
     public String getImageUrl() {
         return this.filePath;
     }
 }
-

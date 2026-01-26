@@ -81,7 +81,7 @@ public class SecurityConfig {
                 .requestMatchers("/feedback/**", "/feedback").authenticated()
                 .requestMatchers("/control-panel/**", "/control-panel").authenticated()
                 // Protected API endpoints - require authentication
-                .requestMatchers("/api/user/**", "/api/icons/**", "/api/gallery/**").authenticated()
+                .requestMatchers("/api/user/**", "/api/icons/**", "/api/gallery/**", "/api/ui-elements/**").authenticated()
                 .requestMatchers("/api/admin/**").authenticated()
                 .requestMatchers("/generate-stream", "/stream/**", "/generate-more").authenticated()
                 .requestMatchers("/export", "/export-gallery", "/export-gallery-illustrations").authenticated()

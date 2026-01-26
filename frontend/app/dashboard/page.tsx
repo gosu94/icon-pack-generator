@@ -57,6 +57,14 @@ export default function Page() {
     setReferenceImage,
     imagePreview,
     setImagePreview,
+    uiReferenceImage,
+    uiImagePreview,
+    uiCrop,
+    setUiCrop,
+    uiFileInputRef,
+    handleUiImageSelect,
+    handleUiImageFromGallery,
+    removeUiImage,
     fileInputRef,
     handleImageSelect,
     removeImage,
@@ -80,7 +88,7 @@ export default function Page() {
     showResultsPanes,
     overallProgress,
     calculateTimeRemaining,
-    generateIcons,
+    generateForMode,
     generateMoreIcons,
     generateMoreIllustrations,
     moreIconsVisible,
@@ -117,6 +125,7 @@ export default function Page() {
         <GeneratorForm
           mode={mode}
           setMode={setMode}
+          generateForMode={generateForMode}
           inputType={inputType}
           setInputType={setInputType}
           labelText={labelText}
@@ -129,11 +138,18 @@ export default function Page() {
           setIndividualDescriptions={setIndividualDescriptions}
           referenceImage={referenceImage}
           imagePreview={imagePreview}
+          uiReferenceImage={uiReferenceImage}
+          uiImagePreview={uiImagePreview}
+          uiCrop={uiCrop}
+          setUiCrop={setUiCrop}
           isGenerating={isGenerating}
-          generateIcons={generateIcons}
           handleImageSelect={handleImageSelect}
           removeImage={removeImage}
           fileInputRef={fileInputRef}
+          uiFileInputRef={uiFileInputRef}
+          handleUiImageSelect={handleUiImageSelect}
+          handleUiImageFromGallery={handleUiImageFromGallery}
+          removeUiImage={removeUiImage}
           formatFileSize={formatFileSize}
           enhancePrompt={enhancePrompt}
           setEnhancePrompt={setEnhancePrompt}

@@ -69,11 +69,11 @@ public class IconExportService {
              ZipOutputStream zos = new ZipOutputStream(baos)) {
 
             List<PreparedIcon> preparedIcons = prepareIcons(exportRequest.getIcons());
+            int minSvgSize = Math.max(exportRequest.getMinSvgSize(), 0);
             boolean needsVectorization = exportRequest.isVectorizeSvg() || exportRequest.isHqUpscale();
             Map<String, byte[]> vectorizedSvgs = needsVectorization
                     ? svgVectorizationService.vectorizeImages(
-                    preparedIcons.stream()
-                            .collect(Collectors.toMap(PreparedIcon::baseName, PreparedIcon::originalData)))
+                    prepareVectorizationInputs(preparedIcons, minSvgSize))
                     : Collections.emptyMap();
             Map<String, byte[]> hqIconData = exportRequest.isHqUpscale()
                     ? processIconsForHighQuality(preparedIcons, vectorizedSvgs)
@@ -89,7 +89,10 @@ public class IconExportService {
                         : originalIconData;
 
                 if (formats.contains("svg")) {
-                    createSvgVersion(zos, iconBase64Data, baseName);
+                    byte[] svgSource = exportRequest.isHqUpscale()
+                            ? hqIconData.getOrDefault(baseName, originalIconData)
+                            : originalIconData;
+                    createSvgVersion(zos, svgSource, baseName, minSvgSize);
                 }
                 if (formats.contains("png")) {
                     createPngVersions(zos, workingIconData, baseName, rasterSizes);
@@ -144,19 +147,33 @@ public class IconExportService {
         zos.closeEntry();
     }
     
-    private void createSvgVersion(ZipOutputStream zos, String iconBase64Data, String baseName) throws IOException {
+    private void createSvgVersion(ZipOutputStream zos, byte[] iconData, String baseName, int minSvgSize) throws IOException {
         try {
-            byte[] iconData = Base64.getDecoder().decode(iconBase64Data);
             ByteArrayInputStream bais = new ByteArrayInputStream(iconData);
             BufferedImage image = ImageIO.read(bais);
-            
+
             if (image == null) {
                 log.warn("Could not read image for SVG conversion: {}", baseName);
                 return;
             }
-            
+
             int width = image.getWidth();
             int height = image.getHeight();
+            byte[] svgImageData = iconData;
+
+            if (minSvgSize > 0 && (width < minSvgSize || height < minSvgSize)) {
+                double scale = Math.max(
+                        (double) minSvgSize / Math.max(1, width),
+                        (double) minSvgSize / Math.max(1, height));
+                int newWidth = Math.max(minSvgSize, (int) Math.ceil(width * scale));
+                int newHeight = Math.max(minSvgSize, (int) Math.ceil(height * scale));
+                BufferedImage resized = resizeImage(image, newWidth, newHeight);
+                svgImageData = imageToBytes(resized, "png");
+                width = newWidth;
+                height = newHeight;
+            }
+
+            String iconBase64Data = Base64.getEncoder().encodeToString(svgImageData);
 
             // Create proper SVG with embedded PNG data
             String svgContent = String.format("""
@@ -170,9 +187,46 @@ public class IconExportService {
             zos.putNextEntry(zipEntry);
             zos.write(svgContent.getBytes("UTF-8"));
             zos.closeEntry();
-            
+
         } catch (IOException e) {
             log.error("Failed to create SVG version for: {}", baseName, e);
+        }
+    }
+
+    private Map<String, byte[]> prepareVectorizationInputs(List<PreparedIcon> preparedIcons, int minSvgSize) {
+        if (minSvgSize <= 0) {
+            return preparedIcons.stream()
+                    .collect(Collectors.toMap(PreparedIcon::baseName, PreparedIcon::originalData));
+        }
+        return preparedIcons.stream()
+                .collect(Collectors.toMap(
+                        PreparedIcon::baseName,
+                        icon -> ensureMinimumSize(icon.originalData(), minSvgSize, icon.baseName())));
+    }
+
+    private byte[] ensureMinimumSize(byte[] imageData, int minSize, String baseName) {
+        try {
+            ByteArrayInputStream bais = new ByteArrayInputStream(imageData);
+            BufferedImage image = ImageIO.read(bais);
+            if (image == null) {
+                log.warn("Could not read image for minimum size check: {}", baseName);
+                return imageData;
+            }
+            int width = image.getWidth();
+            int height = image.getHeight();
+            if (width >= minSize && height >= minSize) {
+                return imageData;
+            }
+            double scale = Math.max(
+                    (double) minSize / Math.max(1, width),
+                    (double) minSize / Math.max(1, height));
+            int newWidth = Math.max(minSize, (int) Math.ceil(width * scale));
+            int newHeight = Math.max(minSize, (int) Math.ceil(height * scale));
+            BufferedImage resized = resizeImage(image, newWidth, newHeight);
+            return imageToBytes(resized, "png");
+        } catch (IOException e) {
+            log.warn("Failed to resize image {} to minimum size {}", baseName, minSize, e);
+            return imageData;
         }
     }
     

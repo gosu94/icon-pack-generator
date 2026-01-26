@@ -164,7 +164,12 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
   };
 
   const handleImageClick = (base64Data: string) => {
-    if (mode === "illustrations" || mode === "mockups" || mode === "labels") {
+    if (
+      mode === "illustrations" ||
+      mode === "mockups" ||
+      mode === "labels" ||
+      mode === "ui-elements"
+    ) {
       setPreviewImage(base64Data);
     }
   };
@@ -639,7 +644,7 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
           {showResultsPanes && displayIcons && displayIcons.length > 0 && (
             <div 
               className={
-                mode === "icons" || mode === "labels"
+                mode === "icons" || mode === "labels" || mode === "ui-elements"
                   ? "grid gap-4 grid-cols-2 sm:grid-cols-[repeat(auto-fit,minmax(160px,1fr))]"
                   : mode === "illustrations"
                   ? "grid grid-cols-1 sm:grid-cols-2 gap-6"
@@ -651,7 +656,7 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
                 <div
                   key={iconIndex}
                   className={`relative group transform ${getIconAnimationClass(result.serviceId, iconIndex)} ${
-                    mode === "icons" || mode === "labels"
+                    mode === "icons" || mode === "labels" || mode === "ui-elements"
                       ? "hover:scale-105 hover:z-20 flex justify-center"
                       : "hover:scale-105 transition-transform duration-200"
                   }`}
@@ -665,6 +670,8 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
                         ? "aspect-video w-full max-w-[800px]"
                         : mode === "labels"
                         ? "w-full max-w-[320px]"
+                        : mode === "ui-elements"
+                        ? "w-full max-w-[200px]"
                         : ""
                     }
                   >
@@ -677,14 +684,18 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
                           ? `Generated Illustration ${iconIndex + 1}`
                           : mode === "labels"
                           ? `Generated Label ${iconIndex + 1}`
+                          : mode === "ui-elements"
+                          ? `Generated UI Element ${iconIndex + 1}`
                           : `Generated UI Mockup`
                       }
                       onClick={() => handleImageClick(icon.base64Data)}
                       className={
                         mode === "icons"
                           ? "w-full h-auto max-w-[128px] rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-shadow duration-200"
-                          : mode === "labels"
+                        : mode === "labels"
                           ? "w-full h-auto max-w-[280px] rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-shadow duration-200"
+                        : mode === "ui-elements"
+                          ? "w-full h-auto max-w-[200px] rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-shadow duration-200"
                           : "w-full h-full object-contain rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-shadow duration-200 cursor-pointer"
                       }
                       data-oid="3jhfiim"
@@ -902,6 +913,8 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
                   ? "Your Illustrations"
                   : mode === "labels"
                   ? "Your Labels"
+                  : mode === "ui-elements"
+                  ? "Your UI Elements"
                   : "Your Mockup"}
               </h2>
             </div>
@@ -930,6 +943,8 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
                     <p className="text-gray-500" data-oid="gi9rui3">
                       {mode === "mockups"
                         ? "Generated UI mockup will appear here"
+                        : mode === "ui-elements"
+                        ? "Generated UI elements will appear here"
                         : mode === "labels"
                         ? "Generated labels will appear here"
                         : "Generated icons will appear here"}
