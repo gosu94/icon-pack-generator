@@ -49,8 +49,6 @@ export function useExportFlow({
           ? "illustrations"
           : mode === "labels"
           ? "labels"
-          : mode === "ui-elements"
-          ? "ui elements"
           : "ui elements";
 
       setShowProgressModal(true);
@@ -76,7 +74,7 @@ export function useExportFlow({
         }, 500);
 
         const endpoint =
-          mode === "icons" || mode === "ui-elements"
+          mode === "icons"
             ? "/export"
             : mode === "illustrations"
             ? "/api/illustrations/export"
@@ -183,9 +181,7 @@ export function useExportFlow({
           ? "illustration"
           : mode === "labels"
           ? "label"
-          : mode === "ui-elements"
-          ? "ui-elements"
-          : "ui-elements";
+          : "ui-mockup";
       const fileName = `${packType}-pack-${requestId}-${serviceName}-gen${generationIndex}.zip`;
       const exportData = {
         requestId,
@@ -195,7 +191,7 @@ export function useExportFlow({
         sizes: mode === "labels" ? undefined : sizes,
         vectorizeSvg: vectorizeSvg ?? false,
         hqUpscale: hqUpscale ?? false,
-        minSvgSize: mode === "ui-elements" || mode === "mockups" ? 256 : 0,
+        minSvgSize: mode === "mockups" ? 256 : 0,
       };
       setShowExportModal(false);
       void downloadZip(exportData, fileName);

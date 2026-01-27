@@ -73,5 +73,4 @@ export type GenerationMode =
   | "icons"
   | "illustrations"
   | "mockups"
-  | "ui-elements"
   | "labels";

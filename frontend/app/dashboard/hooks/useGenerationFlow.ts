@@ -228,8 +228,6 @@ export function useGenerationFlow({
             ? `/api/illustrations/generate/status/${requestId}`
             : generationMode === "mockups"
             ? `/api/mockups/generate/status/${requestId}`
-            : generationMode === "ui-elements"
-            ? `/api/ui-elements/generate/status/${requestId}`
             : generationMode === "labels"
             ? `/api/labels/generate/status/${requestId}`
             : `/status/${requestId}`;
@@ -523,12 +521,33 @@ export function useGenerationFlow({
           void checkAuthenticationStatus();
         }, 3000);
 
+        if (mode === "mockups" && update.requestId) {
+          void checkGenerationStatus(update.requestId, "mockups").then(
+            (statusResult) => {
+              if (statusResult?.status === "completed" && statusResult.data) {
+                const responseData = statusResult.data;
+                setCurrentResponse({
+                  icons: responseData.mockups || [],
+                  mockups: responseData.mockups || [],
+                  elements: responseData.elements || [],
+                  bananaResults: responseData.bananaResults || [],
+                  requestId: responseData.requestId || update.requestId,
+                  trialMode: Boolean(isTrialMode),
+                });
+                setCurrentIcons(responseData.mockups || []);
+              }
+            },
+          );
+        }
+
         return latestStreamingResults;
       });
     },
     [
       checkAuthenticationStatus,
+      checkGenerationStatus,
       clearGenerationState,
+      mode,
       startIconAnimation,
       stopOverallProgressTimer,
     ],
@@ -697,8 +716,6 @@ export function useGenerationFlow({
         setMode("icons");
       } else if (generationMode === "mockups") {
         setMode("mockups");
-      } else if (generationMode === "ui-elements") {
-        setMode("ui-elements");
       } else if (generationMode === "labels") {
         setMode("labels");
       }
@@ -778,7 +795,7 @@ export function useGenerationFlow({
       clearAllAnimations();
 
       let duration = 40000;
-      if (inputType === "image" || generationMode === "ui-elements") {
+      if (inputType === "image") {
         duration = 70000;
       }
       startOverallProgressTimer(duration);
@@ -787,8 +804,6 @@ export function useGenerationFlow({
         generationMode === "illustrations"
           ? 4
           : generationMode === "mockups"
-          ? 1
-          : generationMode === "ui-elements"
           ? 1
           : generationMode === "labels"
           ? 1
@@ -806,10 +821,8 @@ export function useGenerationFlow({
       } else if (generationMode === "mockups") {
         formData = {
           mockupCount: 1,
-          generationsPerService: 2,
+          generationsPerService: 1,
         };
-      } else if (generationMode === "ui-elements") {
-        formData = {};
       } else if (generationMode === "labels") {
         formData = {
           labelText: labelText.trim(),
@@ -830,7 +843,7 @@ export function useGenerationFlow({
         };
       }
 
-      if (generationMode === "ui-elements") {
+      if (generationMode === "mockups" && inputType === "image") {
         if (uiReferenceImage) {
           try {
             formData.referenceImageBase64 = await cropImageToBase64(
@@ -879,8 +892,6 @@ export function useGenerationFlow({
             ? "/api/illustrations/generate/stream/start"
             : generationMode === "mockups"
             ? "/api/mockups/generate/stream/start"
-            : generationMode === "ui-elements"
-            ? "/api/ui-elements/generate/stream/start"
             : generationMode === "labels"
             ? "/api/labels/generate/stream/start"
             : "/generate-stream";
@@ -906,7 +917,7 @@ export function useGenerationFlow({
         initializeStreamingResults(
           enabledServices,
           generationMode,
-          generationMode === "ui-elements" ? false : generateVariations,
+          generateVariations,
         );
 
         if (currentEventSourceRef.current) {
@@ -918,8 +929,6 @@ export function useGenerationFlow({
             ? `/api/illustrations/generate/stream/${requestId}`
             : generationMode === "mockups"
             ? `/api/mockups/generate/stream/${requestId}`
-            : generationMode === "ui-elements"
-            ? `/api/ui-elements/generate/stream/${requestId}`
             : generationMode === "labels"
             ? `/api/labels/generate/stream/${requestId}`
             : `/stream/${requestId}`;

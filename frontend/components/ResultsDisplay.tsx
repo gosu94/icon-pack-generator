@@ -167,8 +167,7 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
     if (
       mode === "illustrations" ||
       mode === "mockups" ||
-      mode === "labels" ||
-      mode === "ui-elements"
+      mode === "labels"
     ) {
       setPreviewImage(base64Data);
     }
@@ -655,11 +654,11 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
           {showResultsPanes && displayIcons && displayIcons.length > 0 && (
             <div
               className={
-                mode === "icons" || mode === "labels" || mode === "ui-elements"
+                mode === "icons" || mode === "labels"
                   ? "grid gap-4 grid-cols-2 sm:grid-cols-[repeat(auto-fit,minmax(160px,1fr))]"
-                  : mode === "illustrations"
+                : mode === "illustrations"
                   ? "grid grid-cols-1 sm:grid-cols-2 gap-6"
-                  : "grid grid-cols-1 sm:grid-cols-3 gap-4"
+                : "grid grid-cols-1 sm:grid-cols-3 gap-4"
               }
               data-oid=".ge-1o5"
             >
@@ -667,7 +666,7 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
                 <div
                   key={iconIndex}
                   className={`relative group transform ${getIconAnimationClass(result.serviceId, iconIndex)} ${
-                    mode === "icons" || mode === "labels" || mode === "ui-elements"
+                    mode === "icons" || mode === "labels"
                       ? "hover:scale-105 hover:z-20 flex justify-center"
                       : "hover:scale-105 transition-transform duration-200"
                   }`}
@@ -681,8 +680,6 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
                         ? "aspect-video w-full max-w-[800px]"
                         : mode === "labels"
                         ? "w-full max-w-[320px]"
-                        : mode === "ui-elements"
-                        ? "w-full max-w-[200px]"
                         : ""
                     }
                   >
@@ -695,8 +692,6 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
                           ? `Generated Illustration ${iconIndex + 1}`
                           : mode === "labels"
                           ? `Generated Label ${iconIndex + 1}`
-                          : mode === "ui-elements"
-                          ? `Generated UI Element ${iconIndex + 1}`
                           : `Generated UI Mockup`
                       }
                       onClick={() => handleImageClick(icon.base64Data)}
@@ -705,9 +700,7 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
                           ? "w-full h-auto max-w-[128px] rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-shadow duration-200"
                         : mode === "labels"
                           ? "w-full h-auto max-w-[280px] rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-shadow duration-200"
-                        : mode === "ui-elements"
-                          ? "w-full h-auto max-w-[200px] rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-shadow duration-200"
-                          : "w-full h-full object-contain rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-shadow duration-200 cursor-pointer"
+                        : "w-full h-full object-contain rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-shadow duration-200 cursor-pointer"
                       }
                       data-oid="3jhfiim"
                     />
@@ -757,25 +750,70 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
           )}
 
           {mode === "mockups" && currentResponse?.elements?.length ? (
-            <div className="mt-6">
-              <h4 className="text-sm font-semibold text-slate-700 mb-3">
+            <div className="mt-6 space-y-6">
+              <h4 className="text-sm font-semibold text-slate-700">
                 Extracted UI Elements
               </h4>
-              <div className="grid gap-4 grid-cols-2 sm:grid-cols-[repeat(auto-fit,minmax(160px,1fr))]">
-                {currentResponse.elements.map((element, elementIndex) => (
-                  <div
-                    key={element.id || elementIndex}
-                    className="relative group flex justify-center"
-                  >
-                    <img
-                      src={`data:image/png;base64,${element.base64Data}`}
-                      alt={`Extracted UI Element ${elementIndex + 1}`}
-                      onClick={() => handleImageClick(element.base64Data)}
-                      className="w-full h-auto max-w-[200px] rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-shadow duration-200"
-                    />
+              {[
+                {
+                  title: "Buttons & Text Fields",
+                  labels: [
+                    "rectangle_button",
+                    "rectangle_button_pressed",
+                    "text_field_empty",
+                    "text_field_focused",
+                  ],
+                  items: currentResponse.elements.slice(0, 4),
+                },
+                {
+                  title: "Progress Bars & Switches",
+                  labels: [
+                    "progress_bar_empty",
+                    "progress_bar_filled",
+                    "switch_on",
+                    "switch_off",
+                  ],
+                  items: currentResponse.elements.slice(4, 8),
+                },
+                {
+                  title: "Dropdowns & Arrow Buttons",
+                  labels: [
+                    "dropdown_menu",
+                    "dropdown_menu_open",
+                    "square_arrow_button",
+                    "square_arrow_button_pressed",
+                  ],
+                  items: currentResponse.elements.slice(8, 12),
+                },
+              ].map((group) =>
+                group.items.length ? (
+                  <div key={group.title} className="space-y-3">
+                    <div>
+                      <h5 className="text-sm font-semibold text-slate-700">
+                        {group.title}
+                      </h5>
+                      <p className="text-xs text-slate-500">
+                        {group.labels.join(" • ")}
+                      </p>
+                    </div>
+                    <div className="grid gap-4 grid-cols-2 sm:grid-cols-[repeat(auto-fit,minmax(160px,1fr))]">
+                      {group.items.map((element, elementIndex) => (
+                        <div
+                          key={element.id || `${group.title}-${elementIndex}`}
+                          className="relative group flex justify-center"
+                        >
+                          <img
+                            src={`data:image/png;base64,${element.base64Data}`}
+                            alt={`${group.title} UI Element ${elementIndex + 1}`}
+                            onClick={() => handleImageClick(element.base64Data)}
+                            className="w-full h-auto max-w-[200px] rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-shadow duration-200"
+                          />
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                ))}
-              </div>
+                ) : null,
+              )}
             </div>
           ) : null}
 
@@ -947,8 +985,6 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
                   ? "Your Illustrations"
                   : mode === "labels"
                   ? "Your Labels"
-                  : mode === "ui-elements"
-                  ? "Your UI Elements"
                   : "Your Mockup"}
               </h2>
             </div>
@@ -977,8 +1013,6 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
                     <p className="text-gray-500" data-oid="gi9rui3">
                       {mode === "mockups"
                         ? "Generated UI mockup will appear here"
-                        : mode === "ui-elements"
-                        ? "Generated UI elements will appear here"
                         : mode === "labels"
                         ? "Generated labels will appear here"
                         : "Generated icons will appear here"}
@@ -1110,7 +1144,7 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
             </div>
           </div>
         </div>
-        {generateVariations && (
+        {generateVariations && mode !== "mockups" && (
           <div
             className="bg-white/80 backdrop-blur-md rounded-3xl shadow-2xl border border-purple-200/50 flex-1 relative"
             data-oid="mj9c878"
@@ -1154,9 +1188,7 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
                         />
                       </svg>
                       <p className="text-gray-500" data-oid="2c96zzz">
-                        {mode === "mockups"
-                          ? "UI mockup variation will appear here"
-                          : mode === "labels"
+                        {mode === "labels"
                           ? "Label variations will appear here"
                           : "Icon variations will appear here"}
                       </p>

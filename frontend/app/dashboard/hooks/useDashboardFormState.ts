@@ -54,8 +54,6 @@ export function useDashboardFormState({
           ? 4
           : nextMode === "mockups"
           ? 1
-          : nextMode === "ui-elements"
-          ? 1
           : nextMode === "labels"
           ? 1
           : 9;
@@ -70,9 +68,6 @@ export function useDashboardFormState({
   useEffect(() => {
     resetFormForMode(mode);
     if (mode === "mockups") {
-      setGenerateVariations(true);
-    }
-    if (mode === "ui-elements") {
       setGenerateVariations(false);
     }
     if (mode !== "icons" && enhancePrompt) {
@@ -288,14 +283,7 @@ export function useDashboardFormState({
         return false;
       }
 
-      if (generationMode === "ui-elements") {
-        if (!uiReferenceImage) {
-          setErrorMessage("Please select a UI reference image.");
-          return false;
-        }
-      }
-
-      if (generationMode !== "ui-elements" && inputType === "text") {
+      if (inputType === "text") {
         if (generationMode === "labels" && !generalDescription.trim()) {
           setErrorMessage("Please provide a general theme for your label.");
           return false;
@@ -309,13 +297,18 @@ export function useDashboardFormState({
         }
       }
 
-      if (generationMode !== "ui-elements" && inputType === "image" && !referenceImage) {
+      if (inputType === "image" && generationMode === "mockups") {
+        if (!uiReferenceImage) {
+          setErrorMessage("Please select a UI reference image.");
+          return false;
+        }
+      } else if (inputType === "image" && !referenceImage) {
         setErrorMessage("Please select a reference image.");
         return false;
       }
 
       const cost =
-        generationMode === "mockups" || generationMode === "ui-elements"
+        generationMode === "mockups"
           ? 1
           : generateVariations
           ? 2
@@ -330,8 +323,6 @@ export function useDashboardFormState({
         const itemType =
           generationMode === "mockups"
             ? "mockups"
-            : generationMode === "ui-elements"
-            ? "ui elements"
             : generationMode === "illustrations"
             ? "illustrations"
             : generationMode === "labels"

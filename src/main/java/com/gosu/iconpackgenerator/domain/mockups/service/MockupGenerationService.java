@@ -43,7 +43,8 @@ public class MockupGenerationService {
     private static final String ASPECT_RATIO_1_1 = "1:1";
     private static final String UI_ELEMENT_PROMPT =
             "Extract UI elements from this picture. If elements have labels on them, remove them. " +
-            "Ensure each element has generous spacing around it for clean cropping.";
+            "Ensure each element has generous spacing around it for clean cropping. " +
+            "Preserve the original fill and foreground colors of components (do not make them transparent unless truly transparent).";
     private static final List<List<String>> COMPONENT_SETS = List.of(
             List.of("rectangle_button", "rectangle_button_pressed", "text_field_empty", "text_field_focused"),
             List.of("progress_bar_empty", "progress_bar_filled", "switch_on", "switch_off"),
@@ -107,33 +108,54 @@ public class MockupGenerationService {
                         log.error("Error extracting UI elements for request {}", requestId, error);
                         return new ArrayList<>();
                     })
-                    .thenApply(elements -> createCombinedResponse(requestId, bananaResults, elements, seed));
-        }).thenApply(finalResponse -> {
-            
-            // Note: Trial mode limitations can be added here if needed
-            
-            // Persist generated mockups to database and file system
-            if ("success".equals(finalResponse.getStatus())) {
-                try {
-                    mockupPersistenceService.persistGeneratedMockups(
-                            requestId, request, finalResponse, user);
-                    log.info("Successfully persisted {} mockups for request {} (trial mode: {})", 
-                            finalResponse.getMockups().size(), requestId, isTrialMode);
-                    uiElementPersistenceService.persistUiElementsForMockups(
-                            requestId, finalResponse.getElements(), user, request.getDescription());
-                } catch (Exception e) {
-                    log.error("Error persisting mockups for request {}", requestId, e);
-                    // Don't fail the entire request if persistence fails
-                }
-            }
-            
-            // Send final completion update
-            if (progressCallback != null) {
-                progressCallback.onUpdate(ServiceProgressUpdate.allCompleteWithIcons(
-                    requestId, finalResponse.getMessage(), convertToIconList(finalResponse.getMockups())));
-            }
-            
-            return finalResponse;
+                    .thenApply(elements -> {
+                        MockupGenerationResponse finalResponse =
+                                createCombinedResponse(requestId, bananaResults, elements, seed);
+
+                        // Note: Trial mode limitations can be added here if needed
+
+                        // Persist generated mockups to database and file system
+                        if ("success".equals(finalResponse.getStatus())) {
+                            try {
+                                mockupPersistenceService.persistGeneratedMockups(
+                                        requestId, request, finalResponse, user);
+                                log.info("Successfully persisted {} mockups for request {} (trial mode: {})",
+                                        finalResponse.getMockups().size(), requestId, isTrialMode);
+                                uiElementPersistenceService.persistUiElementsForMockups(
+                                        requestId, finalResponse.getElements(), user, request.getDescription());
+                            } catch (Exception e) {
+                                log.error("Error persisting mockups for request {}", requestId, e);
+                                // Don't fail the entire request if persistence fails
+                            }
+                        }
+
+                        // Send final completion update
+                        if (progressCallback != null) {
+                            for (MockupGenerationResponse.ServiceResults result : bananaResults) {
+                                String serviceGenName = "banana-gen" + result.getGenerationIndex();
+                                if ("success".equals(result.getStatus())) {
+                                    progressCallback.onUpdate(ServiceProgressUpdate.serviceCompleted(
+                                            requestId,
+                                            serviceGenName,
+                                            convertToIconList(result.getMockups()),
+                                            result.getOriginalImageBase64(),
+                                            result.getGenerationTimeMs(),
+                                            result.getGenerationIndex()));
+                                } else {
+                                    progressCallback.onUpdate(ServiceProgressUpdate.serviceFailed(
+                                            requestId,
+                                            serviceGenName,
+                                            result.getMessage(),
+                                            result.getGenerationTimeMs(),
+                                            result.getGenerationIndex()));
+                                }
+                            }
+                            progressCallback.onUpdate(ServiceProgressUpdate.allCompleteWithIcons(
+                                requestId, finalResponse.getMessage(), convertToIconList(finalResponse.getMockups())));
+                        }
+
+                        return finalResponse;
+                    });
         }).exceptionally(error -> {
             log.error("Error generating mockups for request {}", requestId, error);
             
@@ -247,15 +269,11 @@ public class MockupGenerationService {
                 progressCallback.onUpdate(ServiceProgressUpdate.serviceFailed(
                         requestId, serviceGenName, sanitizedError, 0L, generationIndex));
             } else if (bundle != null && bundle.serviceResult() != null) {
-                MockupGenerationResponse.ServiceResults result = bundle.serviceResult();
-                if ("success".equals(result.getStatus())) {
-                    progressCallback.onUpdate(ServiceProgressUpdate.serviceCompleted(
-                            requestId, serviceGenName, convertToIconList(result.getMockups()),
-                            result.getOriginalImageBase64(), result.getGenerationTimeMs(), generationIndex));
-                } else {
-                    progressCallback.onUpdate(ServiceProgressUpdate.serviceFailed(
-                            requestId, serviceGenName, result.getMessage(), result.getGenerationTimeMs(), generationIndex));
-                }
+                progressCallback.onUpdate(ServiceProgressUpdate.serviceProcessing(
+                        requestId,
+                        serviceGenName,
+                        "Mockup generated. Extracting UI elements...",
+                        generationIndex));
             }
         });
     }
@@ -399,8 +417,12 @@ public class MockupGenerationService {
         for (byte[] imageData : mockupImages) {
             Long imageSeed = seed != null ? seed + index : null;
             int batchIndex = index;
+            List<String> componentSet = batchIndex < COMPONENT_SETS.size()
+                    ? COMPONENT_SETS.get(batchIndex)
+                    : List.of();
+            String componentPrompt = buildUiElementPrompt(componentSet);
             CompletableFuture<List<IconGenerationResponse.GeneratedIcon>> future = gpt15ModelService
-                    .generateImageToImage(UI_ELEMENT_PROMPT, imageData, imageSeed, options)
+                    .generateImageToImage(componentPrompt, imageData, imageSeed, options)
                     .thenApply(outputImageData -> {
                         BufferedImage outputImage = readImage(outputImageData);
                         List<BufferedImage> components =
@@ -429,6 +451,14 @@ public class MockupGenerationService {
                         .map(CompletableFuture::join)
                         .flatMap(List::stream)
                         .toList());
+    }
+
+    private String buildUiElementPrompt(List<String> components) {
+        if (components == null || components.isEmpty()) {
+            return UI_ELEMENT_PROMPT;
+        }
+        return UI_ELEMENT_PROMPT + " Extract only the following components: " +
+                String.join(", ", components) + ".";
     }
 
     private BufferedImage readImage(byte[] imageData) {

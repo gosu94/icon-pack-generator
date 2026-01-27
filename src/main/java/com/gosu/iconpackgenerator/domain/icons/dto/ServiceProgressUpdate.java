@@ -32,6 +32,12 @@ public class ServiceProgressUpdate {
         return new ServiceProgressUpdate(requestId, serviceName, "upscaling", 
                 "Upscaling...", null, null, null, "service_update", generationIndex, false);
     }
+
+    public static ServiceProgressUpdate serviceProcessing(String requestId, String serviceName,
+            String message, int generationIndex) {
+        return new ServiceProgressUpdate(requestId, serviceName, "processing",
+                message, null, null, null, "service_update", generationIndex, false);
+    }
     
     public static ServiceProgressUpdate serviceCompleted(String requestId, String serviceName, 
             List<IconGenerationResponse.GeneratedIcon> icons, String originalGridImageBase64, Long generationTimeMs, int generationIndex) {

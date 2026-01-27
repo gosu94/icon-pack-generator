@@ -28,7 +28,7 @@ const ExportModal: React.FC<ExportModalProps> = ({
   const availableCoins = authState?.user?.coins ?? 0;
 
   const [formats, setFormats] = useState<Record<string, boolean>>(
-    mode === "icons" || mode === "ui-elements"
+    mode === "icons"
       ? {
           png: true,
           ico: true,
@@ -50,7 +50,7 @@ const ExportModal: React.FC<ExportModalProps> = ({
 
   useEffect(() => {
     setFormats(
-      mode === "icons" || mode === "ui-elements"
+      mode === "icons"
         ? {
             png: true,
             ico: true,
@@ -95,7 +95,7 @@ const ExportModal: React.FC<ExportModalProps> = ({
   const handleVectorToggle = () => {
     setVectorizeSvg((prev) => {
       const next = !prev;
-      if (next && (mode === "icons" || mode === "ui-elements" || mode === "mockups")) {
+      if (next && (mode === "icons" || mode === "mockups")) {
         setHqUpscale(false);
       }
       return next;
@@ -105,13 +105,13 @@ const ExportModal: React.FC<ExportModalProps> = ({
   const totalVectorCost = Math.ceil(Math.max(iconCount, 1) / 9);
   const labelVectorCost = 1;
   const showVectorOption =
-    mode === "icons" || mode === "labels" || mode === "ui-elements" || mode === "mockups";
+    mode === "icons" || mode === "labels" || mode === "mockups";
   const showHqOption =
-    (mode === "icons" || mode === "ui-elements" || mode === "mockups") &&
+    (mode === "icons" || mode === "mockups") &&
     (formats.png || formats.webp || formats.ico);
   const totalHqCost = Math.ceil(Math.max(iconCount, 1) / 9);
-  const vectorDisabled = (mode === "icons" || mode === "ui-elements" || mode === "mockups") && hqUpscale;
-  const hqDisabled = (mode === "icons" || mode === "ui-elements" || mode === "mockups") && vectorizeSvg;
+  const vectorDisabled = (mode === "icons" || mode === "mockups") && hqUpscale;
+  const hqDisabled = (mode === "icons" || mode === "mockups") && vectorizeSvg;
   const vectorCoinCost = mode === "labels" ? labelVectorCost : totalVectorCost;
   const premiumCost =
     (vectorizeSvg ? vectorCoinCost : 0) + (hqUpscale ? totalHqCost : 0);
@@ -135,7 +135,7 @@ const ExportModal: React.FC<ExportModalProps> = ({
     } else {
       const shouldVectorize = showVectorOption ? vectorizeSvg : false;
       const shouldUpscale =
-        mode === "icons" || mode === "ui-elements" || mode === "mockups" ? hqUpscale : false;
+        mode === "icons" || mode === "mockups" ? hqUpscale : false;
       onConfirm(selectedFormats, undefined, shouldVectorize, shouldUpscale);
     }
   };
@@ -155,8 +155,6 @@ const ExportModal: React.FC<ExportModalProps> = ({
               : mode === "labels"
               ? "Label"
               : mode === "mockups"
-              ? "UI Element"
-              : mode === "ui-elements"
               ? "UI Element"
               : "UI Mockup"}{" "}
             Pack
@@ -192,8 +190,6 @@ const ExportModal: React.FC<ExportModalProps> = ({
               ? "label"
               : mode === "mockups"
               ? "UI element"
-              : mode === "ui-elements"
-              ? "UI element"
               : "UI mockup"}{" "}
             pack.
           </p>
@@ -224,8 +220,6 @@ const ExportModal: React.FC<ExportModalProps> = ({
                       : mode === "labels"
                       ? "labels"
                       : mode === "mockups"
-                      ? "UI elements"
-                      : mode === "ui-elements"
                       ? "UI elements"
                       : "mockups"}{" "}
                     • Choose your formats

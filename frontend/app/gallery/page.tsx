@@ -2467,7 +2467,7 @@ export default function GalleryPage() {
             : mockupsToExport.length > 0
             ? "mockups"
             : uiElementsToExport.length > 0
-            ? "ui-elements"
+            ? "mockups"
             : "labels"
         }
       />

@@ -8,11 +8,12 @@ import org.springframework.stereotype.Service;
 public class MockupPromptGenerationService {
 
     private static final String COMPONENT_SET_BASE = "A high-quality, modern UI component mockup on a square 1:1 canvas. " +
-            "Use a consistent visual language with rounded corners, subtle depth, and even spacing on a neutral background. " +
+            "Use a consistent visual language with rounded corners, subtle depth, and even spacing on a solid, uniform background. " +
             "Include only the following components: %s. " +
             "Arrange the components in a clean grid with generous spacing and no overlap. " +
             "No text labels, no logos, no branding, no real-world content. " +
-            "Keep the background clearly different from the UI elements to avoid transparency issues.";
+            "Keep the background clearly different from the UI elements to avoid transparency issues. " +
+            "Ensure strong contrast between components and background with clear negative space around each component.";
 
     private static final String COMPONENT_SET_TEXT_PROMPT =
             "General theme: %s. " + COMPONENT_SET_BASE;
@@ -21,7 +22,7 @@ public class MockupPromptGenerationService {
             "Using the provided reference image as a style guide, " + COMPONENT_SET_BASE;
 
     private static final String TEXT_TO_IMAGE_PROMPT_TEMPLATE = "A high-quality, modern user interface mockup in a consistent style - general theme: %s.\n" +
-            "The design should include buttons, icons, sliders, player controls, chat bubbles , progress bars, toggles, search bars and rating cards, arranged in a clean, balanced grid layout on a neutral background.\n" +
+            "The design should include buttons, icons, sliders, player controls, chat bubbles , progress bars, toggles, search bars and rating cards, arranged in a clean, balanced grid layout on a solid, uniform background.\n" +
             "Each component should share the same visual language — soft shadows, rounded corners, consistent color palette, and even spacing.\n" +
             "The layout should show distinct UI elements without visible grid lines or borders.\n" +
             "\n" +
@@ -30,12 +31,13 @@ public class MockupPromptGenerationService {
             "\n" +
             "Emphasize clarity, readability, and design consistency.\n" +
             "Use subtle lighting and depth to separate components naturally.\n" +
+            "Ensure the background is clearly distinct from UI elements with ample negative space around each component.\n" +
             "No branding, no logos, no real-world content — only abstract UI shapes and elements.";
 
     private static final String IMAGE_TO_IMAGE_PROMPT_TEMPLATE =
             "Using the provided reference image as a style guide\n" +
                     "A high-quality, modern user interface mockup in a consistent style - with general theme as in reference image\n" +
-                    "The design should include buttons, icons, sliders, player controls ,chat bubbles, progress bars, toggles, search bars and rating cards, arranged in a clean, balanced grid layout on a neutral background.\n" +
+                    "The design should include buttons, icons, sliders, player controls ,chat bubbles, progress bars, toggles, search bars and rating cards, arranged in a clean, balanced grid layout on a solid, uniform background.\n" +
                     "Each component should share the same visual language — soft shadows, rounded corners, consistent color palette, and even spacing.\n" +
                     "The layout should show distinct UI elements without visible grid lines or borders.\n" +
                     "\n" +
@@ -44,6 +46,7 @@ public class MockupPromptGenerationService {
                     "\n" +
                     "Emphasize clarity, readability, and design consistency.\n" +
                     "Use subtle lighting and depth to separate components naturally.\n" +
+                    "Ensure the background is clearly distinct from UI elements with ample negative space around each component.\n" +
                     "No branding, no logos, no real-world content — only abstract UI shapes and elements.";
 
     public static final String SECOND_GENERATION_VARIATION =
