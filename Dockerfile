@@ -7,7 +7,7 @@ COPY frontend/. .
 RUN yarn build
 
 # Stage 2: Build the Java Spring Boot application with Gradle and Java 21
-FROM --platform=linux/amd64 openjdk:21-jdk-slim AS backend-builder
+FROM --platform=linux/amd64 eclipse-temurin:21-jdk AS backend-builder
 WORKDIR /app/backend
 
 # Copy Gradle files first to leverage Docker cache for dependencies
@@ -27,7 +27,7 @@ COPY --from=frontend-builder /app/frontend/out ./src/main/resources/static
 RUN ./gradlew bootJar --no-daemon
 
 # Use OpenJDK 21 as base image with Python support (force x86_64 for WebP compatibility)
-FROM openjdk:21-jdk-slim
+FROM eclipse-temurin:21-jdk
 
 # Install Python, pip, and system dependencies for rembg
 RUN apt-get update && apt-get install -y \
