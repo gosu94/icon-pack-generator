@@ -1,403 +1,242 @@
 # Icon Pack Generator
 
-A Spring Boot web application for generating custom icon packs using AI. This application uses the Flux-1-Kontext-Pro model to generate icons based on user descriptions and automatically crops them into individual icons.
+Icon Pack Generator is a full-stack application for creating production-ready visual assets with AI:
+- icon packs
+- vector/SVG exports
+- animated GIF icons
+- cohesive illustrations
+- UI mockups
+- branded labels
 
-## Features
+It combines a Spring Boot backend with a Next.js frontend and a coin-based generation/export model.
 
-- **Web Interface**: Clean, responsive UI with form-based icon generation
-- **Google OAuth2 Authentication**: Secure user authentication with Google accounts
-- **User Management**: Individual user accounts with personal icon galleries and coin balances
-- **AI Integration**: Integrated with Flux-1-Kontext-Pro model for high-quality icon generation
-- **Flexible Icon Counts**: Generate 9 or 18 icons at once
-- **Automated Processing**: Automatic image cropping to extract individual icons from generated grids
-- **Background Removal**: Intelligent background removal using rembg before icon processing
-- **Real-time Results**: Live display of generated icons in the browser
-- **Coins System**: Credit-based system for managing icon generation usage
-- **Personal Gallery**: Each user has their own gallery of generated icons
-- **Secure File Storage**: User-specific directories with UUID-based naming for security
+## Application Context (Landing Page + Product Positioning)
 
-## Prerequisites
+The app is positioned as an end-to-end design asset workflow, not just a single icon generator. The landing page highlights:
+- consistent icon style across full packs
+- fast generation cycles
+- export-ready outputs (PNG/WebP/ICO/SVG)
+- model variations (classic + newest model)
+- illustration generation
+- animated GIF icon generation
+- UI mockup generation
+- label generation
 
-- Java 21 or higher
-- Gradle 7.x or higher  
-- Flux AI API key (or compatible AI service)
-- Python 3.9+ with rembg installed (for background removal, optional)
-- Google OAuth2 credentials (for user authentication)
-- PostgreSQL database (for user data storage)
+From the user perspective: describe a visual direction once, generate assets, iterate with variations, then export in delivery-ready formats.
 
-## Google OAuth2 Setup
+## Core Flows
 
-This application uses Google OAuth2 for user authentication. Follow these steps to configure Google OAuth2:
+### 1) Icon Generation Flow
 
-### 1. Create Google OAuth2 Credentials
+Frontend mode: `icons`.
 
-1. **Go to the Google Cloud Console**:
-   - Visit [Google Cloud Console](https://console.cloud.google.com/)
-   - Sign in with your Google account
+Main path:
+1. User picks input type (`text` or `image`).
+2. User provides general description + optional per-icon descriptions.
+3. User chooses model strategy:
+   - base generation model: `standard` or `pro`
+   - optional additional variation model: `standard` or `pro`
+4. Frontend starts streaming generation and subscribes to SSE updates.
+5. Backend generates icons, crops the 3x3 grid into separate icons, persists outputs, and returns grouped results.
 
-2. **Create or select a project**:
-   - If you don't have a project, create one by clicking "Select a project" → "New Project"
-   - Give your project a name and click "Create"
+Important model mapping (from code):
+- `standard` => `GptModelService`
+- `pro` => `Gpt15ModelService`
 
-3. **Enable the Google+ API**:
-   - In the left sidebar, go to "APIs & Services" → "Library"
-   - Search for "Google+ API" and enable it
-   - Also enable "Google OAuth2 API" if available
+Reference-image behavior:
+- For icon image-to-image generation, frontend forces base and variation to `pro`, so reference-based icon generation goes through the pro path.
 
-4. **Configure the OAuth consent screen**:
-   - Go to "APIs & Services" → "OAuth consent screen"
-   - Choose "External" for user type (unless you have a Google Workspace)
-   - Fill in the required information:
-     - App name: "Icon Pack Generator"
-     - User support email: Your email
-     - Developer contact information: Your email
-   - Add authorized domains (for production): your domain (e.g., `yourdomain.com`)
-   - Save and continue through the scopes and test users sections
+Primary endpoints:
+- `POST /generate-stream`
+- `GET /stream/{requestId}`
+- `GET /status/{requestId}`
+- `POST /generate-more`
 
-5. **Create OAuth2 credentials**:
-   - Go to "APIs & Services" → "Credentials"
-   - Click "Create Credentials" → "OAuth 2.0 Client IDs"
-   - Select "Web application" as the application type
-   - Add authorized redirect URIs:
-     - For development: `http://localhost:8080/login/oauth2/code/google`
-     - For production: `https://yourdomain.com/login/oauth2/code/google`
-   - Click "Create"
-   - **Save the Client ID and Client Secret** - you'll need these for configuration
+### 2) SVG Export Flow
 
-### 2. Configure Environment Variables
+Icon export endpoint:
+- `POST /export`
 
-Set the following environment variables with your Google OAuth2 credentials:
+What export supports:
+- raster outputs: PNG, WebP, ICO (multiple sizes)
+- SVG package entries
+- optional vectorized SVG pipeline (`vectorized-svg/` in ZIP)
+- optional HQ upscale path (adds larger raster size)
+
+Export coin behavior:
+- vectorization and HQ upscale are premium options with additional coin costs.
+
+### 3) GIF Icon Making Flow
+
+GIF flow is asynchronous and streamed:
+1. User selects generated icons.
+2. Backend validates ownership and deducts coins.
+3. Each icon is animated (video generation) and converted to GIF.
+4. Progress is streamed by SSE.
+
+Endpoints:
+- `POST /api/icons/gif/start`
+- `GET /api/icons/gif/stream/{gifRequestId}`
+- gallery GIF export: `POST /api/gallery/export-gifs`
+
+Cost model in code:
+- `2` coins per icon for GIF generation.
+
+### 4) Regular vs Pro Icon Model Flow
+
+This is explicitly supported in dashboard UI and backend orchestration.
+
+Regular model flow:
+- uses `GptModelService` (service id `gpt`, UI label `Standard`)
+
+Pro model flow:
+- uses `Gpt15ModelService` (service id `gpt15`, UI label `Pro`)
+
+When variations are enabled:
+- generation 1 uses selected base model
+- generation 2 uses selected variation model
+
+### 5) Illustration Generation Flow
+
+Frontend mode: `illustrations`.
+
+Behavior:
+- generates illustration sets (4 by default in UI)
+- supports text or reference image input
+- uses streaming generation with service grouping
+
+Endpoints:
+- `POST /api/illustrations/generate/stream/start`
+- `GET /api/illustrations/generate/stream/{requestId}`
+- `GET /api/illustrations/generate/status/{requestId}`
+- `POST /api/illustrations/generate/more`
+- export: `POST /api/illustrations/export`
+
+### 6) UI Mockups Generation Flow
+
+Frontend mode: `mockups`.
+
+Behavior:
+- generates UI mockups (single mockup request shape, with variation generation path)
+- supports text and reference-image-driven generation
+- uses streaming updates, persistence, and export ZIP creation
+
+Endpoints:
+- `POST /api/mockups/generate/stream/start`
+- `GET /api/mockups/generate/stream/{requestId}`
+- `GET /api/mockups/generate/status/{requestId}`
+- `POST /api/mockups/generate/more`
+- export: `POST /api/mockups/export`
+
+### 7) Label Generation Flow
+
+Frontend mode: `labels`.
+
+Behavior:
+- generates style-consistent labels from `labelText` plus theme/reference context
+- supports streaming generation and status recovery
+- supports optional vectorized export path
+
+Endpoints:
+- `POST /api/labels/generate/stream/start`
+- `GET /api/labels/generate/stream/{requestId}`
+- `GET /api/labels/generate/status/{requestId}`
+- export: `POST /api/labels/export`
+
+## Trial and Coins Model
+
+The app uses coin accounting for generation and premium export features.
+
+In current UI/backend behavior:
+- base generation typically costs `1` coin
+- additional variations increase generation cost
+- GIF generation costs `2` coins per selected icon
+- premium export options (vectorization/HQ) consume extra coins
+- trial coin mode exists; trial generations are watermarked and have storage limitations
+
+## Technical Architecture
+
+### Backend
+- Java 21
+- Spring Boot 3.5
+- Spring Security + OAuth2 login
+- Spring Data JPA + PostgreSQL
+- Liquibase migrations
+- SSE streaming for live generation updates
+
+### Frontend
+- Next.js 14 (App Router)
+- React 18
+- Tailwind CSS
+- Dashboard-driven multi-mode generator UI (`icons`, `illustrations`, `mockups`, `labels`)
+
+### AI/Media Services in Project
+- `GptModelService` (regular icon model)
+- `Gpt15ModelService` (pro icon model)
+- `MinimaxVideoModelService` (GIF/video generation pipeline)
+- SVG vectorization and raster export services
+
+## Project Structure
+
+- `frontend/` - Next.js frontend
+- `src/main/java/...` - Spring Boot backend
+- `src/main/resources/application.yaml` - main config
+- `static/` - generated asset storage roots
+- `docker-compose.yml` - local containerized stack
+
+## Local Development
+
+### Prerequisites
+- Java 21+
+- Node.js 18+ (for frontend local work)
+- PostgreSQL 15+
+- API keys for enabled providers
+
+### Key Environment Variables
+- `FAL_KEY`
+- `OPENAI_API_KEY`
+- `GOOGLE_CLIENT_ID`
+- `GOOGLE_CLIENT_SECRET`
+- `POSTGRES_USER`
+- `POSTGRES_PASSWORD`
+- `APP_BASE_URL`
+- Stripe variables (if payments enabled)
+- SendGrid variables (if email enabled)
+
+See `src/main/resources/application.yaml` and `docker-compose.yml` for complete configuration.
+
+### Run with Docker Compose
 
 ```bash
-export GOOGLE_CLIENT_ID=your-google-client-id-here
-export GOOGLE_CLIENT_SECRET=your-google-client-secret-here
+docker compose up --build
 ```
 
-Or create a `.env` file in your project root:
+Default app endpoint from compose:
+- `http://localhost:8060`
 
-```env
-GOOGLE_CLIENT_ID=your-google-client-id-here
-GOOGLE_CLIENT_SECRET=your-google-client-secret-here
-```
-
-### 3. Database Configuration
-
-The application uses PostgreSQL to store user data. Make sure you have PostgreSQL running and configured:
-
-1. **Install PostgreSQL** (if not already installed)
-2. **Create a database**:
-   ```sql
-   CREATE DATABASE icon_pack_generator;
-   CREATE USER iconpack WITH PASSWORD 'iconpack123';
-   GRANT ALL PRIVILEGES ON DATABASE icon_pack_generator TO iconpack;
-   ```
-
-3. **Configure database connection** (already configured in `application.yaml`):
-   ```yaml
-   spring:
-     datasource:
-       url: jdbc:postgresql://localhost:5432/icon_pack_generator
-       username: ${POSTGRES_USER:iconpack}
-       password: ${POSTGRES_PASSWORD:iconpack123}
-   ```
-
-### 4. Authentication Flow
-
-After setup, the authentication flow works as follows:
-
-1. **Unauthenticated users** see a "Sign In" button in the navigation bar
-2. **Clicking "Sign In"** opens a modal with a "Continue with Google" button
-3. **OAuth2 flow** redirects users to Google for authentication
-4. **After successful authentication**, users are redirected back to the application
-5. **Authenticated users** can:
-   - Generate icons (costs coins from their account)
-   - View their icon gallery
-   - Access all application features
-6. **Each new user** starts with 0 coins and gets a unique UUID-based directory for their generated icons
-7. **Logout** is available via the logout button in the navigation bar
-
-### 5. User Data Storage
-
-- **User profiles** are automatically created on first login
-- **Directory structure**: Each user gets a unique UUID-based directory (e.g., `static/user-icons/a1b2c3d4-e5f6-7890-abcd-ef1234567890/`)
-- **Icon metadata** is stored in PostgreSQL with user associations
-- **Coins system** tracks user credits for icon generation
-
-## Setup
-
-1. **Clone the repository** (if not already done)
-
-2. **Configure Fal.ai API Settings**
-   - Open `src/main/resources/application.properties`
-   - Replace the placeholder values with your actual fal.ai API configuration:
-   ```properties
-   fal.ai.api-key=your-fal-api-key-here
-   fal.ai.model-endpoint=fal-ai/flux/dev
-   ```
-   
-   Alternatively, you can set the API key as an environment variable:
-   ```bash
-   export FAL_API_KEY=your-actual-fal-api-key-here
-   ```
-
-3. **Build the application**
-   ```bash
-   ./gradlew build
-   ```
-
-4. **Run the application**
-   ```bash
-   ./gradlew bootRun
-   ```
-
-5. **Access the application**
-   - Open your browser and go to `http://localhost:8080`
-
-## Usage
-
-### Web Interface
-
-1. **Fill in the form**:
-   - **General Theme Description**: Describe the overall theme for your icon pack (e.g., "Social media icons in flat design style")
-   - **Number of Icons**: Choose between 9 icons (3x3 grid) or 18 icons (2x 3x3 grids)
-   - **Individual Descriptions** (Optional): Provide specific descriptions for each icon
-
-2. **Generate Icons**:
-   - Click "Generate Icons" to start the process
-   - Wait for the AI to generate and process your icons (may take up to 2 minutes)
-   - View the results in the right panel
-
-### API Endpoints
-
-The application also provides REST API endpoints:
-
-- `POST /generate` - Generate icons programmatically
-  ```json
-  {
-    "generalDescription": "Social media icons",
-    "iconCount": 9,
-    "individualDescriptions": ["Facebook", "Twitter", "Instagram", ...]
-  }
-  ```
-
-## Architecture
-
-### Backend Components
-
-- **Controller Layer**: `IconPackController` - Handles web requests and API endpoints
-- **Service Layer**: 
-  - `IconGenerationService` - Orchestrates the icon generation process
-  - `AIModelService` - Abstract interface for AI model integration
-  - `FalAiModelService` - Concrete implementation using fal.ai Java client
-  - `IconExportService` - Handles ZIP file creation for icon downloads
-  - `ImageProcessingService` - Handles image cropping and processing
-  - `BackgroundRemovalService` - Handles background removal using rembg
-  - `PromptGenerationService` - Generates optimized prompts for AI models
-- **Model Layer**: DTOs and configuration classes
-- **Configuration**: `FalAiConfig` - Configures the fal.ai client
-
-### Frontend Components
-
-- **Thymeleaf Templates**: Server-side rendered HTML templates
-- **Bootstrap CSS**: Responsive styling and components
-- **Vanilla JavaScript**: Dynamic form handling and API interaction
-
-## Configuration
-
-Key configuration options in `application.properties`:
-
-```properties
-# Fal.ai Settings
-fal.ai.api-key=${FAL_API_KEY:your-fal-api-key-here}
-fal.ai.model-endpoint=fal-ai/flux/dev
-fal.ai.timeout-seconds=120
-fal.ai.max-retries=3
-fal.ai.image-size=landscape_4_3
-fal.ai.num-images=1
-fal.ai.enable-safety-checker=true
-
-# Server Settings
-server.port=8080
-
-# Background Removal Settings  
-background-removal.enabled=true
-background-removal.rembg-command=rembg
-background-removal.timeout-seconds=30
-background-removal.model=u2net
-
-# Development Settings
-spring.thymeleaf.cache=false
-spring.web.resources.cache.period=0
-```
-
-## Extending the Application
-
-### Adding New AI Models
-
-1. Implement the `AIModelService` interface
-2. Add your implementation as a Spring component
-3. Configure the service in your application properties
-4. Update the `FalAiConfig` if using a different client library
-
-### Customizing Prompts
-
-Modify the `PromptGenerationService` to customize how prompts are generated for the AI model.
-
-## Background Removal
-
-The application includes intelligent background removal using the `rembg` Python library. This feature automatically removes backgrounds from generated images before processing individual icons, resulting in cleaner icon extraction.
-
-### Configuration
-
-Background removal can be configured in `application.properties`:
-
-```properties
-# Background Removal Configuration
-background-removal.enabled=true
-background-removal.rembg-command=rembg
-background-removal.timeout-seconds=30
-background-removal.model=u2net
-```
-
-### Setup Options
-
-#### Option 1: Local Python Installation
-
-1. Install Python 3.9+ and rembg:
-   ```bash
-   pip install rembg[new]
-   ```
-
-2. Verify installation:
-   ```bash
-   rembg --help
-   ```
-
-#### Option 2: Docker (Recommended)
-
-Use the provided Dockerfile which includes Python and rembg:
+### Run Backend Locally
 
 ```bash
-docker build -t icon-pack-generator .
-docker run -p 8080:8080 -e FAL_API_KEY=your-key icon-pack-generator
+./gradlew bootRun
 ```
 
-### Health Monitoring
+Default backend endpoint:
+- `http://localhost:8080`
 
-The application includes a health indicator for background removal:
-- Visit `http://localhost:8080/actuator/health` to check if rembg is properly configured
-- The health check verifies that the rembg command is available and working
-
-### Fallback Behavior
-
-If rembg is not available or fails:
-- The application will log warnings but continue processing
-- Images will be processed without background removal
-- No functionality is lost - it's a graceful degradation
-
-## Troubleshooting
-
-### Common Issues
-
-1. **API Key Issues**: Ensure your fal.ai API key is correctly set and has sufficient credits
-2. **Timeout Errors**: Increase the timeout settings if generation takes longer than expected
-3. **Image Processing Errors**: Check that the AI is generating properly formatted grid images
-
-### Debugging Tools
-
-The application includes several debugging endpoints and features:
-
-1. **Health Check Endpoint**: Visit `http://localhost:8080/health/fal-ai` to test your fal.ai API connection
-2. **Enhanced Error Messages**: Detailed error messages with specific troubleshooting steps
-3. **API Key Validation**: Automatic validation of API key format and configuration
-4. **Detailed Logging**: Set logging level to DEBUG for comprehensive API call logging
-
-Example health check response:
-```json
-{
-  "service": "fal.ai",
-  "status": "UP",
-  "available": true,
-  "model": "fal-ai/flux/dev",
-  "message": "Fal.ai API is responding correctly",
-  "timestamp": 1755181142508
-}
-```
-
-### Logging
-
-Enable debug logging to troubleshoot issues:
-```properties
-logging.level.com.gosu.iconpackgenerator=DEBUG
-logging.level.org.springframework.web.reactive.function.client=DEBUG
-```
-
-## Development
-
-### Building for Production
+### Run Frontend Locally (optional separate dev loop)
 
 ```bash
-./gradlew clean build
-java -jar build/libs/icon-pack-generator-0.0.1-SNAPSHOT.jar
+cd frontend
+npm install
+npm run dev
 ```
 
-### Running Tests
+## API Docs
 
-#### Local Testing (without rembg)
-```bash
-./gradlew test
-```
+OpenAPI/Swagger UI is available at:
+- `/swagger-ui.html`
 
-#### Docker Testing (with rembg support)
+## Notes
 
-For comprehensive testing including background removal functionality:
-
-**Option 1: Test only background removal**
-```bash
-./test-docker.sh
-```
-
-**Option 2: Test everything**
-```bash
-./test-docker-all.sh
-```
-
-**Manual Docker testing:**
-```bash
-# Build the image
-docker build -t icon-pack-generator-test .
-
-# Run background removal tests
-docker run --rm \
-    -v "$(pwd)/src/test/resources/images/output:/app/src/test/resources/images/output" \
-    -e "test.rembg.enabled=true" \
-    icon-pack-generator-test \
-    ./gradlew test --tests "*BackgroundRemovalServiceSpec*" -Dtest.rembg.enabled=true
-```
-
-#### Test Output
-
-Tests generate visual output files in `src/test/resources/images/output/`:
-- `rembg_sample_processed.png` - Processed test image
-- `rembg_sample_background_removed.png` - Background removed result
-- `bg_removed_icon_*.png` - Sample icons with background removal
-- `original_icon_*.png` - Sample icons without background removal
-
-The background removal test (`BackgroundRemovalServiceSpec`) will:
-- ✅ Work locally (graceful fallback when rembg unavailable)
-- ✅ Work in Docker (full rembg functionality)
-- ✅ Test integration with the image processing pipeline
-- ✅ Generate comparison images for visual verification
-
-## Future Enhancements
-
-- Multiple output formats (SVG, different sizes)
-- Batch processing capabilities
-- User authentication and project management
-- Template and style presets
-- Integration with additional AI models
-- Advanced background removal models and options
-
-## License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
+- The README intentionally documents product workflows (not only infra), so new contributors understand how users move through generation, iteration, and export.
+- If you add a new generation mode or export path, update both the flow section and endpoint list in this file.
