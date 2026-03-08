@@ -238,7 +238,7 @@ export default function LandingPage() {
                             <div className="mt-8 bg-white/5 rounded-xl p-4 backdrop-blur-sm border border-white/10">
                                 <div className="flex items-center justify-between text-sm mb-2">
                                     <span className="text-slate-300">Generation Speed</span>
-                                    <span className="text-green-400 font-mono">&lt; 120s</span>
+                                    <span className="text-green-400 font-mono">&lt; 90s</span>
                                 </div>
                                 <div className="w-full h-2 bg-white/10 rounded-full overflow-hidden">
                                     <div className="h-full bg-gradient-to-r from-green-400 to-emerald-500 w-11/12 rounded-full"></div>
