@@ -67,4 +67,7 @@ public interface GeneratedIconRepository extends JpaRepository<GeneratedIcon, Lo
 
     @Query("SELECT MIN(g.createdAt) FROM GeneratedIcon g")
     LocalDateTime findEarliestGeneration();
+
+    @Query("SELECT DISTINCT g.filePath FROM GeneratedIcon g WHERE g.user.isCustomer = true")
+    List<String> findDistinctFilePathsForCustomerUsers();
 }

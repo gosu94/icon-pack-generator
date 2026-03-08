@@ -165,6 +165,9 @@ app:
     base-path: static/user-mockups
   labels-storage:
     base-path: static/user-labels
+  backup-storage:
+    base-path: ${APP_BACKUP_STORAGE_BASE_PATH:static-backup}
+    cron: ${APP_BACKUP_STORAGE_CRON:0 0 2 * * *}
   base-url: ${APP_BASE_URL:http://localhost:8080}
   security:
     remember-me:

@@ -73,6 +73,7 @@ RUN mkdir -p /app/static/user-illustrations && chown app:app /app/static/user-il
 RUN mkdir -p /app/static/user-illustrations-private && chown app:app /app/static/user-illustrations-private
 RUN mkdir -p /app/static/user-mockups && chown app:app /app/static/user-mockups
 RUN mkdir -p /app/static/user-labels && chown app:app /app/static/user-labels
+RUN mkdir -p /app/static-backup && chown app:app /app/static-backup
 
 # Switch to app user
 USER app

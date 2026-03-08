@@ -5,6 +5,7 @@ import com.gosu.iconpackgenerator.user.model.User;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
@@ -36,4 +37,7 @@ public interface GeneratedIllustrationRepository extends JpaRepository<Generated
     List<GeneratedIllustration> findByIsWatermarkedTrueAndCreatedAtBefore(LocalDateTime cutoff);
 
     List<GeneratedIllustration> findByRequestIdAndIllustrationIdInAndIsWatermarkedFalse(String requestId, List<String> illustrationIds);
+
+    @Query("SELECT DISTINCT g.filePath FROM GeneratedIllustration g WHERE g.user.isCustomer = true")
+    List<String> findDistinctFilePathsForCustomerUsers();
 }

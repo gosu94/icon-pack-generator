@@ -47,6 +47,7 @@ services:
      - FILE_STORAGE_PATH=/app/data/user-icons
      - APP_FILE_STORAGE_PRIVATE_BASE_PATH=/app/data/user-icons-private
      - APP_ILLUSTRATIONS_STORAGE_PRIVATE_BASE_PATH=/app/data/user-illustrations-private
+     - APP_BACKUP_STORAGE_BASE_PATH=/app/static-backup
      - STATIC_LOCATIONS=${STATIC_LOCATIONS:-classpath:/static/}
 
      # Google OAuth
@@ -79,6 +80,7 @@ services:
       - ./static/user-illustrations-private:/app/static/user-illustrations-private
       - ./static/user-mockups:/app/static/user-mockups
       - ./static/user-labels:/app/static/user-labels
+      - ./static-backup:/app/static-backup
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
       interval: 30s
