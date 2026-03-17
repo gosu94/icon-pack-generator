@@ -78,12 +78,12 @@ services:
      - PHONE_NUMBER=${PHONE_NUMBER:-}
      - CALLMEBOT_API_KEY=${CALLMEBOT_API_KEY:-}
     volumes:
-      - ./static/user-icons:/app/static/user-icons
-      - ./static/user-illustrations:/app/static/user-illustrations
-      - ./static/user-icons-private:/app/static/user-icons-private
-      - ./static/user-illustrations-private:/app/static/user-illustrations-private
-      - ./static/user-mockups:/app/static/user-mockups
-      - ./static/user-labels:/app/static/user-labels
+      - ./static/user-icons:/app/data/user-icons
+      - ./static/user-illustrations:/app/data/user-illustrations
+      - ./static/user-icons-private:/app/data/user-icons-private
+      - ./static/user-illustrations-private:/app/data/user-illustrations-private
+      - ./static/user-mockups:/app/data/user-mockups
+      - ./static/user-labels:/app/data/user-labels
       - ./static-backup:/app/static-backup
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
