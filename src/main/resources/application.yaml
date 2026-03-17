@@ -156,15 +156,15 @@ callmebot:
 
 app:
   file-storage:
-    base-path: static/user-icons
+    base-path: ${APP_FILE_STORAGE_BASE_PATH:${FILE_STORAGE_PATH:static/user-icons}}
     private-base-path: ${APP_FILE_STORAGE_PRIVATE_BASE_PATH:static/user-icons-private}
   illustrations-storage:
-    base-path: static/user-illustrations
+    base-path: ${APP_ILLUSTRATIONS_STORAGE_BASE_PATH:static/user-illustrations}
     private-base-path: ${APP_ILLUSTRATIONS_STORAGE_PRIVATE_BASE_PATH:static/user-illustrations-private}
   mockups-storage:
-    base-path: static/user-mockups
+    base-path: ${APP_MOCKUPS_STORAGE_BASE_PATH:static/user-mockups}
   labels-storage:
-    base-path: static/user-labels
+    base-path: ${APP_LABELS_STORAGE_BASE_PATH:static/user-labels}
   backup-storage:
     base-path: ${APP_BACKUP_STORAGE_BASE_PATH:static-backup}
     cron: ${APP_BACKUP_STORAGE_CRON:0 0 2 * * *}

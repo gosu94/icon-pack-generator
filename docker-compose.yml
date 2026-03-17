@@ -44,9 +44,13 @@ services:
 
      # Application Configuration
      - APP_BASE_URL=${APP_BASE_URL:-https://iconpackgen.com}
+     - APP_FILE_STORAGE_BASE_PATH=/app/data/user-icons
      - FILE_STORAGE_PATH=/app/data/user-icons
      - APP_FILE_STORAGE_PRIVATE_BASE_PATH=/app/data/user-icons-private
+     - APP_ILLUSTRATIONS_STORAGE_BASE_PATH=/app/data/user-illustrations
      - APP_ILLUSTRATIONS_STORAGE_PRIVATE_BASE_PATH=/app/data/user-illustrations-private
+     - APP_MOCKUPS_STORAGE_BASE_PATH=/app/data/user-mockups
+     - APP_LABELS_STORAGE_BASE_PATH=/app/data/user-labels
      - APP_BACKUP_STORAGE_BASE_PATH=/app/static-backup
      - STATIC_LOCATIONS=${STATIC_LOCATIONS:-classpath:/static/}
 
