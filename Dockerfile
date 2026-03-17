@@ -50,6 +50,7 @@ RUN mkdir -p /app
 WORKDIR /app
 
 COPY --from=backend-builder /app/backend/build/libs/*.jar icon-pack-generator.jar
+COPY docker-entrypoint.sh /app/docker-entrypoint.sh
 
 # Create runtime user for security
 RUN useradd --create-home --shell /bin/bash app
@@ -74,9 +75,7 @@ RUN mkdir -p /app/static/user-illustrations-private && chown app:app /app/static
 RUN mkdir -p /app/static/user-mockups && chown app:app /app/static/user-mockups
 RUN mkdir -p /app/static/user-labels && chown app:app /app/static/user-labels
 RUN mkdir -p /app/static-backup && chown app:app /app/static-backup
-
-# Switch to app user
-USER app
+RUN chmod +x /app/docker-entrypoint.sh
 
 # Set Java options for optimal container performance
 ENV JAVA_OPTS="-XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0"
@@ -96,4 +95,4 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
 # Note: This container uses x86_64 architecture for WebP native library compatibility
 # Build with: docker build --platform linux/amd64 -t icon-pack-generator .
 # Run with: docker run --platform linux/amd64 -p 8080:8080 icon-pack-generator
-CMD ["java", "-jar", "icon-pack-generator.jar"]
+ENTRYPOINT ["/app/docker-entrypoint.sh"]
