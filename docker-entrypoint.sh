@@ -19,4 +19,11 @@ ensure_writable_dir /app/static-backup
 ensure_writable_dir /app/generated-images
 ensure_writable_dir /tmp/rembg
 
-exec su -s /bin/sh app -c "exec java ${JAVA_OPTS:-} -jar /app/icon-pack-generator.jar"
+JAVA_BIN="$(command -v java)"
+
+if [ -z "$JAVA_BIN" ]; then
+  echo "java executable not found in PATH" >&2
+  exit 127
+fi
+
+exec su -s /bin/sh app -c "exec \"$JAVA_BIN\" ${JAVA_OPTS:-} -jar /app/icon-pack-generator.jar"
