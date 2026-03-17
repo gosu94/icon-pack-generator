@@ -2,6 +2,14 @@ databaseChangeLog:
   - changeSet:
       id: 001-add-users-is-customer
       author: codex
+      validCheckSum: ANY
+      preConditions:
+        - not:
+            columnExists:
+              tableName: users
+              columnName: is_customer
+        - onFail: MARK_RAN
+        - onError: HALT
       changes:
         - addColumn:
             tableName: users
@@ -12,6 +20,17 @@ databaseChangeLog:
                   defaultValueBoolean: false
                   constraints:
                     nullable: false
+  - changeSet:
+      id: 001-backfill-users-is-customer
+      author: codex
+      validCheckSum: ANY
+      preConditions:
+        - columnExists:
+            tableName: users
+            columnName: is_customer
+        - onFail: MARK_RAN
+        - onError: HALT
+      changes:
         - update:
             tableName: users
             columns:

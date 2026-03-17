@@ -71,6 +71,20 @@ const GeneratorForm: React.FC<GeneratorFormProps> = ({
   const isTrialOnly = regularCoins === 0 && trialCoins > 0;
   const showReferenceBanner =
     inputType === "image" && (mode === "icons" || mode === "illustrations");
+  const generationModelOptions = [
+    {
+      value: "standard",
+      label: "Standard",
+      imageSrc: "/images/new-model/old_icon1.webp",
+      imageAlt: "Standard model sample",
+    },
+    {
+      value: "pro",
+      label: "Pro",
+      imageSrc: "/images/new-model/new_icon1.webp",
+      imageAlt: "Pro model sample",
+    },
+  ] as const;
 
   // Automatically disable variations when user only has trial coins
   useEffect(() => {
@@ -518,7 +532,7 @@ const GeneratorForm: React.FC<GeneratorFormProps> = ({
             )}
 
             {mode === "icons" && inputType !== "image" && (
-              <div className="flex items-center justify-between">
+              <div className="space-y-4">
                 <div className="flex flex-col gap-1">
                   <div className="flex items-center gap-2">
                     <label className="text-lg font-semibold text-slate-900">
@@ -583,15 +597,56 @@ const GeneratorForm: React.FC<GeneratorFormProps> = ({
                     </div>
                   </div>
                 </div>
-                <select
-                  value={baseModel}
-                  onChange={(e) => setBaseModel(e.target.value)}
-                  disabled={isGenerating}
-                  className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-700 shadow-sm focus:border-purple-400 focus:outline-none focus:ring-2 focus:ring-purple-200 disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  <option value="standard">Standard</option>
-                  <option value="pro">Pro</option>
-                </select>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  {generationModelOptions.map((option) => {
+                    const isSelected = baseModel === option.value;
+
+                    return (
+                      <label
+                        key={option.value}
+                        className={`relative flex cursor-pointer flex-col rounded-2xl border bg-white p-3 transition-all duration-200 ${
+                          isSelected
+                            ? "border-purple-400 shadow-md ring-2 ring-purple-200"
+                            : "border-slate-200 hover:border-slate-300 hover:shadow-sm"
+                        } ${isGenerating ? "cursor-not-allowed opacity-60" : ""}`}
+                      >
+                        <input
+                          type="radio"
+                          name="generation-model"
+                          value={option.value}
+                          checked={isSelected}
+                          onChange={(e) => setBaseModel(e.target.value)}
+                          disabled={isGenerating}
+                          className="sr-only"
+                        />
+                        <div className="mb-3 flex items-center justify-between">
+                          <span className="text-sm font-semibold text-slate-900">
+                            {option.label}
+                          </span>
+                          <span
+                            className={`flex h-5 w-5 items-center justify-center rounded-full border transition-colors ${
+                              isSelected
+                                ? "border-purple-500 bg-purple-500"
+                                : "border-slate-300 bg-white"
+                            }`}
+                            aria-hidden="true"
+                          >
+                            <span className="h-2 w-2 rounded-full bg-white" />
+                          </span>
+                        </div>
+                        <div className="overflow-hidden rounded-xl border border-slate-200 bg-slate-50 p-2">
+                          <Image
+                            src={option.imageSrc}
+                            alt={option.imageAlt}
+                            width={160}
+                            height={160}
+                            className="h-32 w-full object-contain"
+                          />
+                        </div>
+                      </label>
+                    );
+                  })}
+                </div>
               </div>
             )}
 
