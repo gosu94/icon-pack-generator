@@ -6,9 +6,6 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
-
 @Service
 @Slf4j
 public class SignalMessageService {
@@ -29,13 +26,11 @@ public class SignalMessageService {
         if (!enabled) {
             return;
         }
-        String encodedMessage = URLEncoder.encode(message, StandardCharsets.UTF_8)
-                .replace("+", "%20");
         String url = String.format(
                 "https://signal.callmebot.com/signal/send.php?phone=%s&apikey=%s&text=%s",
                 phoneNumber,
                 apiKey,
-                encodedMessage
+                formatMessageForCallMeBot(message)
         );
 
         try {
@@ -44,5 +39,21 @@ public class SignalMessageService {
         } catch (Exception e) {
             log.error("Error sending Signal message: {}", e.getMessage(), e);
         }
+    }
+
+    private String formatMessageForCallMeBot(String message) {
+        if (message == null || message.isBlank()) {
+            return "";
+        }
+
+        return message
+                .replace("%", "%25")
+                .replace("&", "%26")
+                .replace("#", "%23")
+                .replace("+", "%2B")
+                .replace("=", "%3D")
+                .replace("\r\n", "%0A")
+                .replace("\n", "%0A")
+                .replace(" ", "+");
     }
 }

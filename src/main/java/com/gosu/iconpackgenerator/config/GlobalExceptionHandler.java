@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.context.request.async.AsyncRequestNotUsableException;
 import org.springframework.web.multipart.MultipartException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import jakarta.servlet.http.HttpServletRequest;
 
@@ -49,6 +50,19 @@ public class GlobalExceptionHandler {
 
         log.error("Async request failed", exception);
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+    }
+
+    @ExceptionHandler(NoResourceFoundException.class)
+    public ResponseEntity<Void> handleNoResourceFound(
+            HttpServletRequest request,
+            NoResourceFoundException exception
+    ) {
+        if (shouldSuppressMissingResource(request)) {
+            log.debug("Ignoring missing resource scan for {}", request.getRequestURI());
+        } else {
+            log.info("Missing static resource for {} {}: {}", request.getMethod(), request.getRequestURI(), getRootMessage(exception));
+        }
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
     }
 
     @ExceptionHandler(Exception.class)
@@ -108,5 +122,23 @@ public class GlobalExceptionHandler {
                 getRootMessage(exception)
         );
         signalMessageService.sendSignalMessage(message);
+    }
+
+    private boolean shouldSuppressMissingResource(HttpServletRequest request) {
+        String requestUri = request.getRequestURI();
+        if (requestUri == null) {
+            return false;
+        }
+
+        return "/robots.txt".equals(requestUri)
+                || "/favicon.ico".equals(requestUri)
+                || requestUri.startsWith("/.env")
+                || requestUri.startsWith("/wp-")
+                || requestUri.startsWith("/wordpress")
+                || requestUri.startsWith("/boaform")
+                || requestUri.startsWith("/cgi-bin")
+                || requestUri.startsWith("/vendor/")
+                || requestUri.startsWith("/php")
+                || requestUri.endsWith(".php");
     }
 }
