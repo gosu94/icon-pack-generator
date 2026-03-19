@@ -136,6 +136,8 @@ logging:
         web:
           client: INFO
       apache:
+        coyote:
+          http11: ERROR
         http: DEBUG
     httpclient:
       wire: DEBUG
@@ -155,6 +157,9 @@ callmebot:
   apikey: ${CALLMEBOT_API_KEY}
 
 app:
+  exception-alerting:
+    signal:
+      enabled: ${APP_EXCEPTION_SIGNAL_ENABLED:false}
   file-storage:
     base-path: ${APP_FILE_STORAGE_BASE_PATH:${FILE_STORAGE_PATH:static/user-icons}}
     private-base-path: ${APP_FILE_STORAGE_PRIVATE_BASE_PATH:static/user-icons-private}

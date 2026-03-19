@@ -1,17 +1,33 @@
 package com.gosu.iconpackgenerator.config;
 
+import com.gosu.iconpackgenerator.singal.SignalMessageService;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.tomcat.util.http.fileupload.MultipartStream;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.context.request.async.AsyncRequestNotUsableException;
 import org.springframework.web.multipart.MultipartException;
 
+import jakarta.servlet.http.HttpServletRequest;
+
 @ControllerAdvice
 @Slf4j
 public class GlobalExceptionHandler {
+
+    private final SignalMessageService signalMessageService;
+    private final boolean exceptionSignalEnabled;
+
+    public GlobalExceptionHandler(
+            SignalMessageService signalMessageService,
+            @Value("${app.exception-alerting.signal.enabled:false}") boolean exceptionSignalEnabled
+    ) {
+        this.signalMessageService = signalMessageService;
+        this.exceptionSignalEnabled = exceptionSignalEnabled;
+    }
 
     @ExceptionHandler(MultipartException.class)
     public ResponseEntity<Void> handleMultipartException(MultipartException exception) {
@@ -33,6 +49,14 @@ public class GlobalExceptionHandler {
 
         log.error("Async request failed", exception);
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+    }
+
+    @ExceptionHandler(Exception.class)
+    @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
+    public ResponseEntity<Void> handleUnexpectedException(HttpServletRequest request, Exception exception) {
+        log.error("Unhandled exception for {} {}", request.getMethod(), request.getRequestURI(), exception);
+        sendExceptionSignal(request, exception);
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
     }
 
     private boolean isClientDisconnected(MultipartException exception) {
@@ -71,5 +95,19 @@ public class GlobalExceptionHandler {
             current = current.getCause();
         }
         return current.getMessage() != null ? current.getMessage() : throwable.getMessage();
+    }
+
+    private void sendExceptionSignal(HttpServletRequest request, Exception exception) {
+        if (!exceptionSignalEnabled) {
+            return;
+        }
+
+        String message = String.format(
+                "[IconPackGen] Unhandled exception on %s %s: %s",
+                request.getMethod(),
+                request.getRequestURI(),
+                getRootMessage(exception)
+        );
+        signalMessageService.sendSignalMessage(message);
     }
 }

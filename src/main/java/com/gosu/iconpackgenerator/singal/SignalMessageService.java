@@ -4,6 +4,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
+import org.springframework.web.util.UriComponentsBuilder;
 import org.springframework.web.client.RestTemplate;
 
 @Service
@@ -26,14 +27,14 @@ public class SignalMessageService {
         if (!enabled) {
             return;
         }
-        String baseUrl = "https://signal.callmebot.com/signal/send.php";
-
-        String url = String.format("%s?phone=%s&apikey=%s&text=%s",
-                baseUrl,
-                phoneNumber,
-                apiKey,
-                message.replace(" ", "+")
-        );
+        String url = UriComponentsBuilder
+                .fromHttpUrl("https://signal.callmebot.com/signal/send.php")
+                .queryParam("phone", phoneNumber)
+                .queryParam("apikey", apiKey)
+                .queryParam("text", message)
+                .build()
+                .encode()
+                .toUriString();
 
         try {
             log.info("Sending Signal message via CallMeBot: {}", url);
