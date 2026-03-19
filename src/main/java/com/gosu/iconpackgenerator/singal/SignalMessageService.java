@@ -4,8 +4,10 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
-import org.springframework.web.util.UriComponentsBuilder;
 import org.springframework.web.client.RestTemplate;
+
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 
 @Service
 @Slf4j
@@ -27,17 +29,17 @@ public class SignalMessageService {
         if (!enabled) {
             return;
         }
-        String url = UriComponentsBuilder
-                .fromHttpUrl("https://signal.callmebot.com/signal/send.php")
-                .queryParam("phone", phoneNumber)
-                .queryParam("apikey", apiKey)
-                .queryParam("text", message)
-                .build()
-                .encode()
-                .toUriString();
+        String encodedMessage = URLEncoder.encode(message, StandardCharsets.UTF_8)
+                .replace("+", "%20");
+        String url = String.format(
+                "https://signal.callmebot.com/signal/send.php?phone=%s&apikey=%s&text=%s",
+                phoneNumber,
+                apiKey,
+                encodedMessage
+        );
 
         try {
-            log.info("Sending Signal message via CallMeBot: {}", url);
+            log.info("Sending Signal message via CallMeBot");
             restTemplate.getForObject(url, String.class);
         } catch (Exception e) {
             log.error("Error sending Signal message: {}", e.getMessage(), e);

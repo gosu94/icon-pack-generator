@@ -25,7 +25,7 @@ public class ErrorMessageSanitizer {
         }
         // Handle specific error patterns
         if (lowerMessage.contains("422") || lowerMessage.contains("unprocessable")) {
-            return "Request failed";
+            return "Your request could not be processed as it may violate content policy. Please try a different prompt. You have been refunded for this attempt";
         }
 
         if (lowerMessage.contains("401") || lowerMessage.contains("unauthorized")) {

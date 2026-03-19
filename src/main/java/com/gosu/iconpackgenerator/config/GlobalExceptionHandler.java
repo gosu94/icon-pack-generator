@@ -103,9 +103,8 @@ public class GlobalExceptionHandler {
         }
 
         String message = String.format(
-                "[IconPackGen] Unhandled exception on %s %s: %s",
-                request.getMethod(),
-                request.getRequestURI(),
+                "[IconPackGen]: Exception thrown - %s: %s",
+                exception.getClass().getName(),
                 getRootMessage(exception)
         );
         signalMessageService.sendSignalMessage(message);
