@@ -3,6 +3,7 @@ import { ChangeEvent } from "react";
 interface EmailTabProps {
   emailSubject: string;
   emailBody: string;
+  emailTemplate: "DEFAULT" | "REFUND";
   emailRecipientScope: "ME" | "EVERYBODY" | "SPECIFIC";
   manualEmail: string;
   requiresManualEmail: boolean;
@@ -10,8 +11,10 @@ interface EmailTabProps {
   emailStatus: string | null;
   emailError: string | null;
   isEmailFormValid: boolean;
+  templateLoading: boolean;
   onSubjectChange: (value: string) => void;
   onBodyChange: (value: string) => void;
+  onTemplateChange: (value: "DEFAULT" | "REFUND") => void;
   onRecipientChange: (value: "ME" | "EVERYBODY" | "SPECIFIC") => void;
   onManualEmailChange: (value: string) => void;
   onRequestSend: () => void;
@@ -21,6 +24,7 @@ interface EmailTabProps {
 export default function EmailTab({
   emailSubject,
   emailBody,
+  emailTemplate,
   emailRecipientScope,
   manualEmail,
   requiresManualEmail,
@@ -28,8 +32,10 @@ export default function EmailTab({
   emailStatus,
   emailError,
   isEmailFormValid,
+  templateLoading,
   onSubjectChange,
   onBodyChange,
+  onTemplateChange,
   onRecipientChange,
   onManualEmailChange,
   onRequestSend,
@@ -41,6 +47,10 @@ export default function EmailTab({
 
   const handleBodyChange = (event: ChangeEvent<HTMLTextAreaElement>) => {
     onBodyChange(event.target.value);
+  };
+
+  const handleTemplateChange = (event: ChangeEvent<HTMLSelectElement>) => {
+    onTemplateChange(event.target.value as "DEFAULT" | "REFUND");
   };
 
   const handleRecipientChange = (event: ChangeEvent<HTMLSelectElement>) => {
@@ -81,6 +91,29 @@ export default function EmailTab({
               className="mt-1 block w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
               placeholder="What's your email about?"
             />
+          </div>
+          <div>
+            <label
+              htmlFor="emailTemplate"
+              className="block text-sm font-medium text-slate-700"
+            >
+              Template
+            </label>
+            <select
+              id="emailTemplate"
+              value={emailTemplate}
+              onChange={handleTemplateChange}
+              disabled={templateLoading}
+              className="mt-1 block w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:cursor-wait disabled:bg-slate-100"
+            >
+              <option value="DEFAULT">Default</option>
+              <option value="REFUND">Refund</option>
+            </select>
+            <p className="mt-1 text-xs text-slate-500">
+              {templateLoading
+                ? "Loading selected template..."
+                : "Choose a starting template, then edit the HTML below if needed."}
+            </p>
           </div>
           <div>
             <label

@@ -29,6 +29,7 @@ import StatisticsTab from "./components/StatisticsTab";
 import DEFAULT_EMAIL_BODY from "./emailTemplate";
 
 type EmailRecipientScope = "ME" | "EVERYBODY" | "SPECIFIC";
+type EmailTemplateType = "DEFAULT" | "REFUND";
 
 export default function ControlPanelPage() {
   const router = useRouter();
@@ -83,6 +84,7 @@ export default function ControlPanelPage() {
   const [statsMonth, setStatsMonth] = useState<string | null>(null);
   const [emailSubject, setEmailSubject] = useState("");
   const [emailBody, setEmailBody] = useState(DEFAULT_EMAIL_BODY);
+  const [emailTemplate, setEmailTemplate] = useState<EmailTemplateType>("DEFAULT");
   const [emailRecipientScope, setEmailRecipientScope] =
     useState<EmailRecipientScope>("ME");
   const [manualEmail, setManualEmail] = useState("");
@@ -90,6 +92,8 @@ export default function ControlPanelPage() {
   const [emailSending, setEmailSending] = useState(false);
   const [emailStatus, setEmailStatus] = useState<string | null>(null);
   const [emailError, setEmailError] = useState<string | null>(null);
+  const [refundEmailTemplate, setRefundEmailTemplate] = useState<string | null>(null);
+  const [emailTemplateLoading, setEmailTemplateLoading] = useState(false);
   const [generationStatus, setGenerationStatus] =
     useState<GenerationStatus | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
@@ -574,6 +578,54 @@ export default function ControlPanelPage() {
     resetEmailStatusMessages();
   };
 
+  const loadRefundEmailTemplate = useCallback(async () => {
+    if (refundEmailTemplate) {
+      return refundEmailTemplate;
+    }
+
+    const response = await fetch("/templates/refund-email-template.html", {
+      credentials: "same-origin",
+    });
+
+    if (!response.ok) {
+      throw new Error("Failed to load refund email template");
+    }
+
+    const template = await response.text();
+    setRefundEmailTemplate(template);
+    return template;
+  }, [refundEmailTemplate]);
+
+  const handleEmailTemplateChange = useCallback(
+    async (value: EmailTemplateType) => {
+      if (value === emailTemplate) {
+        return;
+      }
+
+      resetEmailStatusMessages();
+      setEmailTemplateLoading(true);
+
+      try {
+        if (value === "DEFAULT") {
+          setEmailTemplate("DEFAULT");
+          setEmailBody(DEFAULT_EMAIL_BODY);
+          return;
+        }
+
+        const template = await loadRefundEmailTemplate();
+        setEmailTemplate("REFUND");
+        setEmailBody(template);
+      } catch (err) {
+        const message =
+          err instanceof Error ? err.message : "Failed to load email template";
+        setEmailError(message);
+      } finally {
+        setEmailTemplateLoading(false);
+      }
+    },
+    [emailTemplate, loadRefundEmailTemplate]
+  );
+
   const handleEmailRecipientScopeChange = (value: EmailRecipientScope) => {
     setEmailRecipientScope(value);
     resetEmailStatusMessages();
@@ -598,6 +650,7 @@ export default function ControlPanelPage() {
 
   const resetEmailForm = () => {
     setEmailSubject("");
+    setEmailTemplate("DEFAULT");
     setEmailBody(DEFAULT_EMAIL_BODY);
     setEmailRecipientScope("ME");
     setManualEmail("");
@@ -900,13 +953,16 @@ export default function ControlPanelPage() {
             <EmailTab
               emailSubject={emailSubject}
               emailBody={emailBody}
+              emailTemplate={emailTemplate}
               emailRecipientScope={emailRecipientScope}
               manualEmail={manualEmail}
               emailStatus={emailStatus}
               emailError={emailError}
               isEmailFormValid={isEmailFormValid}
+              templateLoading={emailTemplateLoading}
               onSubjectChange={handleEmailSubjectChange}
               onBodyChange={handleEmailBodyChange}
+              onTemplateChange={handleEmailTemplateChange}
               onRecipientChange={handleEmailRecipientScopeChange}
               onManualEmailChange={handleManualEmailChange}
               onRequestSend={handleConfirmSendEmail}
