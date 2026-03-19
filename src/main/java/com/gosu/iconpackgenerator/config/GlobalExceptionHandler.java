@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.context.request.async.AsyncRequestNotUsableException;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.multipart.MultipartException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
@@ -63,6 +64,19 @@ public class GlobalExceptionHandler {
             log.info("Missing static resource for {} {}: {}", request.getMethod(), request.getRequestURI(), getRootMessage(exception));
         }
         return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+    }
+
+    @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
+    public ResponseEntity<Void> handleMethodNotSupported(
+            HttpServletRequest request,
+            HttpRequestMethodNotSupportedException exception
+    ) {
+        if (shouldSuppressUnsupportedMethodRequest(request)) {
+            log.debug("Ignoring unsupported method scan for {} {}", request.getMethod(), request.getRequestURI());
+        } else {
+            log.info("Unsupported request method for {} {}: {}", request.getMethod(), request.getRequestURI(), getRootMessage(exception));
+        }
+        return ResponseEntity.status(HttpStatus.METHOD_NOT_ALLOWED).build();
     }
 
     @ExceptionHandler(Exception.class)
@@ -132,6 +146,7 @@ public class GlobalExceptionHandler {
 
         return "/robots.txt".equals(requestUri)
                 || "/favicon.ico".equals(requestUri)
+                || "/sdk".equals(requestUri)
                 || requestUri.startsWith("/.env")
                 || requestUri.startsWith("/wp-")
                 || requestUri.startsWith("/wordpress")
@@ -140,5 +155,9 @@ public class GlobalExceptionHandler {
                 || requestUri.startsWith("/vendor/")
                 || requestUri.startsWith("/php")
                 || requestUri.endsWith(".php");
+    }
+
+    private boolean shouldSuppressUnsupportedMethodRequest(HttpServletRequest request) {
+        return shouldSuppressMissingResource(request);
     }
 }
