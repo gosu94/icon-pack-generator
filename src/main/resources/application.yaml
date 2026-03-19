@@ -138,9 +138,9 @@ logging:
       apache:
         coyote:
           http11: ERROR
-        http: DEBUG
+        http: WARN
     httpclient:
-      wire: DEBUG
+      wire: WARN
 
 management:
   endpoints:
