@@ -2,6 +2,8 @@ package com.gosu.iconpackgenerator.config;
 
 import com.gosu.iconpackgenerator.admin.filter.AdminAuthorizationFilter;
 import com.gosu.iconpackgenerator.auth.provider.EmailPasswordAuthenticationProvider;
+import com.gosu.iconpackgenerator.auth.service.OAuth2RememberMeSuccessHandler;
+import com.gosu.iconpackgenerator.auth.service.OAuthRememberMeCookieService;
 import com.gosu.iconpackgenerator.user.service.CustomOAuth2UserService;
 import com.gosu.iconpackgenerator.user.service.CustomOidcUserService;
 import com.gosu.iconpackgenerator.user.service.CustomUserDetailsService;
@@ -19,6 +21,7 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.web.authentication.rememberme.JdbcTokenRepositoryImpl;
+import org.springframework.security.web.authentication.rememberme.PersistentTokenBasedRememberMeServices;
 import org.springframework.security.web.authentication.rememberme.PersistentTokenRepository;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
@@ -49,7 +52,10 @@ public class SecurityConfig {
     private String rememberMeKey;
 
     @Bean
-    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+    public SecurityFilterChain filterChain(
+        HttpSecurity http,
+        OAuth2RememberMeSuccessHandler oAuth2RememberMeSuccessHandler
+    ) throws Exception {
         http
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
             .csrf(csrf -> csrf.disable())
@@ -93,7 +99,7 @@ public class SecurityConfig {
                     .userService(customOAuth2UserService)
                     .oidcUserService(customOidcUserService)
                 )
-                .defaultSuccessUrl("/dashboard", true)
+                .successHandler(oAuth2RememberMeSuccessHandler)
                 .failureUrl("/login?error")
                 .loginPage("/login")
             )
@@ -102,15 +108,8 @@ public class SecurityConfig {
                 .permitAll()
             )
             // Remember Me configuration - handles AUTOMATIC AUTHENTICATION on subsequent visits
-            // Note: Token CREATION is handled manually in AuthController for REST API login
-            // This configuration provides the infrastructure for automatic login when users return
             .rememberMe(remember -> remember
-                .tokenRepository(persistentTokenRepository())
-                .tokenValiditySeconds(30 * 24 * 60 * 60) // 30 days
-                .key(rememberMeKey) // Use configurable secret key from environment
-                .userDetailsService(customUserDetailsService)
-                .rememberMeParameter("remember-me") // HTML form parameter name
-                .rememberMeCookieName("remember-me") // Cookie name
+                .rememberMeServices(rememberMeServices())
             )
             .exceptionHandling(exceptions -> exceptions
                 .authenticationEntryPoint((request, response, authException) -> {
@@ -134,7 +133,7 @@ public class SecurityConfig {
                 .logoutSuccessUrl("/")
                 .invalidateHttpSession(true)
                 .clearAuthentication(true)
-                .deleteCookies("JSESSIONID", "remember-me")
+                .deleteCookies("JSESSIONID", OAuthRememberMeCookieService.REMEMBER_ME_COOKIE, OAuthRememberMeCookieService.OAUTH_REMEMBER_ME_COOKIE)
             )
             .headers(headers -> headers
                 .contentSecurityPolicy(csp -> csp
@@ -225,6 +224,17 @@ public class SecurityConfig {
         JdbcTokenRepositoryImpl tokenRepository = new JdbcTokenRepositoryImpl();
         tokenRepository.setDataSource(dataSource);
         return tokenRepository;
+    }
+
+    @Bean
+    public PersistentTokenBasedRememberMeServices rememberMeServices() {
+        PersistentTokenBasedRememberMeServices rememberMeServices =
+            new PersistentTokenBasedRememberMeServices(rememberMeKey, customUserDetailsService, persistentTokenRepository());
+        rememberMeServices.setTokenValiditySeconds(30 * 24 * 60 * 60);
+        rememberMeServices.setAlwaysRemember(false);
+        rememberMeServices.setParameter("remember-me");
+        rememberMeServices.setCookieName(OAuthRememberMeCookieService.REMEMBER_ME_COOKIE);
+        return rememberMeServices;
     }
 
 }

@@ -8,12 +8,12 @@ import com.gosu.iconpackgenerator.auth.dto.LoginResponse;
 import com.gosu.iconpackgenerator.auth.dto.PasswordSetupRequest;
 import com.gosu.iconpackgenerator.auth.dto.SendEmailRequest;
 import com.gosu.iconpackgenerator.auth.dto.TokenValidationRequest;
+import com.gosu.iconpackgenerator.auth.service.OAuthRememberMeCookieService;
 import com.gosu.iconpackgenerator.user.service.EmailAuthService;
 import com.gosu.iconpackgenerator.user.model.User;
 import com.gosu.iconpackgenerator.user.service.CustomOAuth2User;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -23,20 +23,15 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.core.user.OAuth2User;
-import org.springframework.security.web.authentication.rememberme.PersistentRememberMeToken;
-import org.springframework.security.web.authentication.rememberme.PersistentTokenRepository;
+import org.springframework.security.web.authentication.rememberme.PersistentTokenBasedRememberMeServices;
 import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
-import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 import jakarta.validation.Valid;
-import java.security.SecureRandom;
-import java.util.Base64;
-import java.util.Date;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -47,10 +42,8 @@ public class AuthController {
 
     private final EmailAuthService emailAuthService;
     private final AuthenticationManager authenticationManager;
-    private final PersistentTokenRepository persistentTokenRepository;
-    
-    @Value("${app.security.remember-me.key:defaultRememberMeSecretKey123}")
-    private String rememberMeKey;
+    private final PersistentTokenBasedRememberMeServices rememberMeServices;
+    private final OAuthRememberMeCookieService oAuthRememberMeCookieService;
 
     @PostMapping("/check-email")
     public ResponseEntity<EmailCheckResponse> checkEmail(@Valid @RequestBody EmailCheckRequest request) {
@@ -102,12 +95,10 @@ public class AuthController {
             HttpSession session = httpRequest.getSession(true);
             session.setAttribute(HttpSessionSecurityContextRepository.SPRING_SECURITY_CONTEXT_KEY, securityContext);
             
-            // Handle remember me functionality if requested
-            // Note: This manually creates remember me tokens for REST API login
-            // SecurityConfig handles automatic authentication when users return with valid tokens
             if (request.isRememberMe()) {
-                log.debug("Creating remember me token for user: {}", request.getEmail());
-                createRememberMeToken(request.getEmail(), httpRequest, httpResponse);
+                rememberMeServices.loginSuccess(httpRequest, httpResponse, authentication);
+            } else {
+                oAuthRememberMeCookieService.clearPersistentRememberMeCookie(httpRequest, httpResponse);
             }
             
             // Extract user info from the authenticated principal
@@ -276,49 +267,4 @@ public class AuthController {
         }
     }
 
-    /**
-     * Manually create a remember me token and cookie
-     */
-    private void createRememberMeToken(String username, HttpServletRequest request, HttpServletResponse response) {
-        try {
-            // Generate secure random values for series and token
-            SecureRandom random = new SecureRandom();
-            byte[] seriesBytes = new byte[16];
-            byte[] tokenBytes = new byte[16];
-            
-            random.nextBytes(seriesBytes);
-            random.nextBytes(tokenBytes);
-            
-            String series = Base64.getEncoder().encodeToString(seriesBytes);
-            String tokenValue = Base64.getEncoder().encodeToString(tokenBytes);
-            
-            // Create persistent token
-            PersistentRememberMeToken persistentToken = new PersistentRememberMeToken(
-                    username, 
-                    series, 
-                    tokenValue, 
-                    new Date()
-            );
-            
-            // Save to database
-            persistentTokenRepository.createNewToken(persistentToken);
-            
-            // Create remember me cookie value: series:token
-            String cookieValue = series + ":" + tokenValue;
-            
-            // Create cookie
-            Cookie rememberMeCookie = new Cookie("remember-me", cookieValue);
-            rememberMeCookie.setMaxAge(30 * 24 * 60 * 60); // 30 days
-            rememberMeCookie.setPath("/");
-            rememberMeCookie.setHttpOnly(true);
-            rememberMeCookie.setSecure(request.isSecure()); // Use secure flag if HTTPS
-            
-            response.addCookie(rememberMeCookie);
-            
-            log.info("Remember me token created successfully for user: {}", username);
-            
-        } catch (Exception e) {
-            log.error("Error creating remember me token for user: {}", username, e);
-        }
-    }
 }

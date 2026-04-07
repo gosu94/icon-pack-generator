@@ -14,6 +14,7 @@ import {
     Sparkles,
 } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
+import { persistOAuthRememberMePreference } from "../../lib/rememberMe";
 
 function LoginPageContent() {
   const { authState, checkAuthenticationStatus } = useAuth();
@@ -41,6 +42,7 @@ function LoginPageContent() {
   const handleGoogleLogin = () => {
     // Store redirect URL in session storage so backend can use it after OAuth
     sessionStorage.setItem('loginRedirect', redirect);
+    persistOAuthRememberMePreference(rememberMe);
     window.location.href = "/oauth2/authorization/google";
   };
 
@@ -271,17 +273,29 @@ function LoginPageContent() {
                 <Mail className="w-5 h-5" />
                 <span className="font-medium">Continue with Email</span>
               </button>
-                <p className="text-xs text-slate-500 text-center pt-1">
-                    By continuing, you agree to our{' '}
-                    <a href="/terms" target="_blank" rel="noopener noreferrer" className="underline hover:text-slate-700">
-                        Terms and Conditions
-                    </a>{' '}
-                    and{' '}
-                    <a href="/privacy" target="_blank" rel="noopener noreferrer" className="underline hover:text-slate-700">
-                        Privacy Policy
-                    </a>
-                    .
-                </p>
+              <div className="flex items-center justify-center rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+                <input
+                  id="remember-me-method"
+                  type="checkbox"
+                  checked={rememberMe}
+                  onChange={(e) => setRememberMe(e.target.checked)}
+                  className="h-4 w-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                />
+                <label htmlFor="remember-me-method" className="ml-2 text-sm text-gray-700">
+                  Keep me signed in on this device
+                </label>
+              </div>
+              <p className="text-xs text-slate-500 text-center pt-1">
+                By continuing, you agree to our{' '}
+                <a href="/terms" target="_blank" rel="noopener noreferrer" className="underline hover:text-slate-700">
+                  Terms and Conditions
+                </a>{' '}
+                and{' '}
+                <a href="/privacy" target="_blank" rel="noopener noreferrer" className="underline hover:text-slate-700">
+                  Privacy Policy
+                </a>
+                .
+              </p>
             </div>
           )}
 

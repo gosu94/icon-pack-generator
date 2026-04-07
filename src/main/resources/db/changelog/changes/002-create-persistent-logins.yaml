@@ -1,0 +1,55 @@
+databaseChangeLog:
+  - changeSet:
+      id: 002-create-persistent-logins
+      author: codex
+      preConditions:
+        - not:
+            - tableExists:
+                tableName: persistent_logins
+        - onFail: MARK_RAN
+        - onError: MARK_RAN
+      changes:
+        - createTable:
+            tableName: persistent_logins
+            columns:
+              - column:
+                  name: username
+                  type: varchar(64)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: series
+                  type: varchar(64)
+                  constraints:
+                    nullable: false
+                    primaryKey: true
+                    primaryKeyName: pk_persistent_logins
+              - column:
+                  name: token
+                  type: varchar(64)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: last_used
+                  type: timestamp
+                  constraints:
+                    nullable: false
+  - changeSet:
+      id: 003-create-persistent-logins-username-index
+      author: codex
+      preConditions:
+        - tableExists:
+            tableName: persistent_logins
+        - not:
+            - indexExists:
+                tableName: persistent_logins
+                indexName: idx_persistent_logins_username
+        - onFail: MARK_RAN
+        - onError: MARK_RAN
+      changes:
+        - createIndex:
+            indexName: idx_persistent_logins_username
+            tableName: persistent_logins
+            columns:
+              - column:
+                  name: username

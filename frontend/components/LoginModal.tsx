@@ -11,6 +11,7 @@ import {
     AlertCircle,
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
+import { persistOAuthRememberMePreference } from "../lib/rememberMe";
 
 interface LoginModalProps {
   isOpen: boolean;
@@ -48,6 +49,7 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, isVisible, onClose, onS
   };
 
   const handleGoogleLogin = () => {
+    persistOAuthRememberMePreference(rememberMe);
     window.location.href = "/oauth2/authorization/google";
   };
 
@@ -267,6 +269,18 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, isVisible, onClose, onS
                 <Mail className="w-5 h-5" />
                 <span className="font-medium">Continue with Email</span>
               </button>
+              <div className="flex items-center justify-center rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+                <input
+                  id="remember-me-modal-method"
+                  type="checkbox"
+                  checked={rememberMe}
+                  onChange={(e) => setRememberMe(e.target.checked)}
+                  className="h-4 w-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                />
+                <label htmlFor="remember-me-modal-method" className="ml-2 text-sm text-gray-700">
+                  Keep me signed in on this device
+                </label>
+              </div>
               <p className="text-xs text-slate-500 text-center pt-1">
                 By continuing, you agree to our{' '}
                 <a href="/terms" target="_blank" rel="noopener noreferrer" className="underline hover:text-slate-700">

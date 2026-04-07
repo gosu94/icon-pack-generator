@@ -1,69 +1,124 @@
 # Remember Me Feature Setup
 
-## Environment Variable Configuration
+## What It Covers
 
-The Remember Me feature uses a configurable secret key for enhanced security. Set the following environment variable:
+The application now supports persistent remember-me login for:
+
+- email/password login from `/login`
+- email/password login from the landing page login modal
+- Google OAuth login from `/login`
+- Google OAuth login from the landing page login modal
+
+Logout at `/api/auth/logout` clears:
+
+- `JSESSIONID`
+- `remember-me`
+- `oauth-remember-me`
+
+## How It Works
+
+### Email/Password Login
+
+Email login posts `rememberMe` to `/api/auth/login`.
+
+If `rememberMe=true`, Spring Security issues the persistent `remember-me` cookie using `PersistentTokenBasedRememberMeServices`.
+
+If `rememberMe=false`, any existing `remember-me` cookie is explicitly cleared.
+
+### Google OAuth Login
+
+OAuth does not submit a JSON payload, so the frontend writes a short-lived helper cookie first:
+
+- cookie name: `oauth-remember-me`
+- values: `true` or `false`
+- max age: 10 minutes
+
+After Google sign-in succeeds, `OAuth2RememberMeSuccessHandler` reads that cookie:
+
+- if `true`, it creates the persistent Spring `remember-me` cookie
+- if `false`, it clears any existing `remember-me` cookie
+
+The helper `oauth-remember-me` cookie is always deleted after OAuth success.
+
+## Backend Requirements
+
+### Secret Key
+
+The remember-me feature uses a configurable secret key:
 
 ```bash
 REMEMBER_ME_SECRET_KEY=your-very-strong-secret-key-here-at-least-32-characters-long
 ```
 
+Configuration source:
+
+- production/default: `src/main/resources/application.yaml`
+- local dev override: `src/main/resources/application-local.yaml`
+
+### Database Table
+
+Spring persistent remember-me requires the `persistent_logins` table.
+
+This project now creates it through Liquibase:
+
+- [src/main/resources/db/changelog/changes/002-create-persistent-logins.yaml](/Users/tomasz.pilarczyk/IdeaProjects/icon-pack-generator/src/main/resources/db/changelog/changes/002-create-persistent-logins.yaml)
+
+The changelog is idempotent:
+
+- if `persistent_logins` already exists, Liquibase marks the table changeset as ran
+- if the username index already exists, Liquibase marks the index changeset as ran
+
 ## Security Recommendations
 
-### Production Environment
-- **MUST** use a strong, randomly generated key (minimum 32 characters)
-- Use a cryptographically secure random generator to create the key
-- Store the key securely (e.g., in your secret management system)
-- Never commit the production key to version control
+### Production
 
-### Example Key Generation
+- Use a strong random key with at least 32 characters.
+- Store `REMEMBER_ME_SECRET_KEY` in your secret manager, not in git.
+- Rotate the key if it is exposed.
+- Expect all existing remember-me sessions to be invalidated after key rotation.
+
+### Key Generation
+
 ```bash
-# Using openssl
+# OpenSSL
 openssl rand -base64 32
 
-# Using Python
+# Python
 python -c "import secrets; print(secrets.token_urlsafe(32))"
 
-# Using Node.js
+# Node.js
 node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
 ```
 
-## Configuration Files
+## Deployment Examples
 
-### Development
-- `application-local.yaml`: Contains a development-specific key
-- Used for local development only
+### Docker
 
-### Production
-- Set `REMEMBER_ME_SECRET_KEY` environment variable
-- Falls back to `defaultRememberMeSecretKey123` if not set (not recommended for production)
-
-## Docker/Container Deployment
 ```bash
-# Docker run example
 docker run -e REMEMBER_ME_SECRET_KEY=your-secret-key your-app
-
-# Docker Compose
-environment:
-  - REMEMBER_ME_SECRET_KEY=your-secret-key
-
-# Kubernetes
-env:
-- name: REMEMBER_ME_SECRET_KEY
-  valueFrom:
-    secretKeyRef:
-      name: app-secrets
-      key: remember-me-key
 ```
 
-## Key Rotation
-If you need to rotate the key:
-1. Update the environment variable with the new key
-2. Restart the application
-3. All existing remember-me tokens will be invalidated
-4. Users will need to log in again to get new remember-me tokens
+### Docker Compose
+
+```yaml
+environment:
+  - REMEMBER_ME_SECRET_KEY=your-secret-key
+```
+
+### Kubernetes
+
+```yaml
+env:
+  - name: REMEMBER_ME_SECRET_KEY
+    valueFrom:
+      secretKeyRef:
+        name: app-secrets
+        key: remember-me-key
+```
 
 ## Troubleshooting
-- If users can't stay logged in, check that the key is properly set
-- If the key changes, all remember-me sessions are invalidated
-- Check application logs for remember-me related errors
+
+- If users are not staying logged in, verify `REMEMBER_ME_SECRET_KEY` is set consistently across restarts.
+- If all remember-me sessions suddenly stop working, check whether the key changed.
+- If startup fails around remember-me persistence, verify Liquibase applied the `persistent_logins` changelog successfully.
+- If Google login does not persist but email login does, verify the frontend can set the `oauth-remember-me` helper cookie before redirecting to `/oauth2/authorization/google`.
