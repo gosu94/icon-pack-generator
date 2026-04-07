@@ -4,7 +4,7 @@ import { useState } from "react";
 import Navigation from "../components/Navigation";
 import Footer from "../components/Footer";
 import Image from "next/image";
-import { Download, Rocket, Sparkles, Zap, Palette, Monitor, Layers, ChevronRight, Play, CheckCircle2, Tag, PenTool, Home, User, Settings } from "lucide-react";
+import { Download, Rocket, Sparkles, Zap, Palette, Monitor, Layers, ChevronRight, Play, CheckCircle2, Tag, PenTool, Home, User, Settings, Users, AppWindow, ImageIcon } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import LoginModal from "../components/LoginModal";
 
@@ -75,6 +75,27 @@ export default function LandingPage() {
         "/images/illustrations/illustration11.webp", "/images/illustrations/illustration12.webp",
         "/images/illustrations/illustration13.webp", "/images/illustrations/illustration14.webp",
         "/images/illustrations/illustration15.webp", "/images/illustrations/illustration16.webp",
+    ];
+
+    const landingStats = [
+        {
+            value: "1000+",
+            label: "active users",
+            description: "Designers, founders, and product teams building asset systems faster.",
+            icon: Users,
+        },
+        {
+            value: "10k+",
+            label: "icons generated",
+            description: "Production-ready icon sets created across styles, brands, and use cases.",
+            icon: AppWindow,
+        },
+        {
+            value: "1k+",
+            label: "illustrations created",
+            description: "Cohesive supporting visuals generated to match icon packs and interfaces.",
+            icon: ImageIcon,
+        },
     ];
 
     return (
@@ -172,6 +193,61 @@ export default function LandingPage() {
                         {/* Decorative elements behind video */}
                         <div className="absolute -top-10 -right-10 w-32 h-32 bg-gradient-to-br from-blue-400 to-purple-400 rounded-full blur-3xl opacity-20 -z-10"></div>
                         <div className="absolute -bottom-10 -left-10 w-40 h-40 bg-gradient-to-br from-purple-400 to-pink-400 rounded-full blur-3xl opacity-20 -z-10"></div>
+                    </div>
+                </div>
+            </section>
+
+            <section className="relative -mt-8 pb-8 px-6 z-30">
+                <div className="max-w-6xl mx-auto">
+                    <div className="relative overflow-hidden rounded-[2rem] border border-slate-200/80 bg-white/90 shadow-[0_30px_80px_-40px_rgba(59,130,246,0.45)] backdrop-blur-xl">
+                        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(59,130,246,0.16),_transparent_32%),radial-gradient(circle_at_bottom_right,_rgba(168,85,247,0.16),_transparent_28%)]"></div>
+                        <div className="relative px-6 py-8 md:px-10 md:py-10">
+                            <div className="flex flex-col gap-8 lg:flex-row lg:items-end lg:justify-between">
+                                <div className="max-w-2xl">
+                                    <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50/80 px-3 py-1 text-sm font-medium text-slate-600">
+                                        <Rocket className="h-4 w-4 text-blue-600" />
+                                        Trusted momentum
+                                    </div>
+                                    <h2 className="mt-4 text-2xl font-bold tracking-tight text-slate-900 md:text-3xl">
+                                        Creators are already building full visual systems with IconPackGen.
+                                    </h2>
+                                    <p className="mt-3 max-w-xl text-sm leading-6 text-slate-600 md:text-base">
+                                        From icon packs to supporting illustrations, teams use the platform to move from idea to export-ready assets without piecing together mismatched tools.
+                                    </p>
+                                </div>
+
+                                <div className="grid gap-4 sm:grid-cols-3 lg:min-w-[720px]">
+                                    {landingStats.map((stat) => {
+                                        const Icon = stat.icon;
+
+                                        return (
+                                            <div
+                                                key={stat.label}
+                                                className="rounded-[1.5rem] border border-slate-200/80 bg-white/90 p-5 shadow-sm"
+                                            >
+                                                <div className="flex items-center justify-between">
+                                                    <div className="rounded-2xl bg-gradient-to-br from-blue-50 to-purple-50 p-3">
+                                                        <Icon className="h-5 w-5 text-slate-700" />
+                                                    </div>
+                                                    <span className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">
+                                                        and growing
+                                                    </span>
+                                                </div>
+                                                <div className="mt-5 text-3xl font-bold tracking-tight text-slate-900">
+                                                    {stat.value}
+                                                </div>
+                                                <div className="mt-1 text-sm font-semibold text-slate-700">
+                                                    {stat.label}
+                                                </div>
+                                                <p className="mt-3 text-sm leading-6 text-slate-500">
+                                                    {stat.description}
+                                                </p>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </section>
