@@ -1,11 +1,18 @@
 package com.gosu.iconpackgenerator.util;
 
+import com.gosu.iconpackgenerator.singal.SignalMessageService;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 @Component
 @Slf4j
+@RequiredArgsConstructor
 public class ErrorMessageSanitizer {
+
+    private static final String TEMPORARY_SERVICE_UNAVAILABLE_MESSAGE =
+            "The AI service is temporarily unavailable, so your icons could not be generated. Please try again in a few minutes.";
+    private final SignalMessageService signalMessageService;
 
     /**
      * Sanitizes error messages to provide user-friendly feedback while logging detailed errors
@@ -37,7 +44,8 @@ public class ErrorMessageSanitizer {
         }
 
         if (lowerMessage.contains("429") || lowerMessage.contains("rate limit")) {
-            return "Service temporarily unavailable";
+            sendTemporaryServiceFailureSignal(serviceName, originalMessage);
+            return TEMPORARY_SERVICE_UNAVAILABLE_MESSAGE;
         }
 
         if (lowerMessage.contains("500") || lowerMessage.contains("internal server error")) {
@@ -45,11 +53,13 @@ public class ErrorMessageSanitizer {
         }
 
         if (lowerMessage.contains("timeout") || lowerMessage.contains("timed out")) {
-            return "Request timeout";
+            sendTemporaryServiceFailureSignal(serviceName, originalMessage);
+            return TEMPORARY_SERVICE_UNAVAILABLE_MESSAGE;
         }
 
         if (lowerMessage.contains("network") || lowerMessage.contains("connection")) {
-            return "Connection error";
+            sendTemporaryServiceFailureSignal(serviceName, originalMessage);
+            return TEMPORARY_SERVICE_UNAVAILABLE_MESSAGE;
         }
 
         // For any other technical errors, return generic message
@@ -83,5 +93,15 @@ public class ErrorMessageSanitizer {
 
         String lowerMessage = errorMessage.toLowerCase();
         return lowerMessage.contains("422") || lowerMessage.contains("unprocessable");
+    }
+
+    private void sendTemporaryServiceFailureSignal(String serviceName, String originalMessage) {
+        String resolvedServiceName = serviceName != null && !serviceName.isBlank() ? serviceName : "unknown";
+        String resolvedMessage = originalMessage != null && !originalMessage.isBlank() ? originalMessage : "no details";
+        signalMessageService.sendSignalMessage(String.format(
+                "[IconPackGen]: Temporary AI service failure in %s - %s",
+                resolvedServiceName,
+                resolvedMessage
+        ));
     }
 }
