@@ -1,12 +1,6 @@
 package com.gosu.iconpackgenerator.domain.ai;
 
-import ai.fal.client.FalClient;
-import ai.fal.client.Output;
-import ai.fal.client.SubscribeOptions;
-import ai.fal.client.queue.QueueStatus;
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.google.gson.JsonObject;
 import com.gosu.iconpackgenerator.config.OpenAIConfig;
 import com.gosu.iconpackgenerator.exception.FalAiException;
 import com.gosu.iconpackgenerator.util.ErrorMessageSanitizer;
@@ -28,7 +22,6 @@ import java.io.InputStream;
 import java.net.URI;
 import java.net.URL;
 import java.util.Base64;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
@@ -42,13 +35,9 @@ public class GptModelService implements AIModelService {
         NONE
     }
 
-    private final FalClient falClient;
-    private final ObjectMapper objectMapper;
     private final OpenAIConfig openAIConfig;
     private final ErrorMessageSanitizer errorMessageSanitizer;
     private final RestTemplate restTemplate;
-
-    private static final String GPT_TEXT_TO_IMAGE_ENDPOINT = "fal-ai/gpt-image-1/text-to-image/byok";
 
     @Override
     public CompletableFuture<byte[]> generateImage(String prompt) {
@@ -123,7 +112,7 @@ public class GptModelService implements AIModelService {
     }
 
     private byte[] attemptGptGeneration(String prompt, Long seed, boolean isRetry, PromptAugmentation augmentation) throws Exception {
-        log.info("Generating GPT image with endpoint: {} (seed: {}, retry: {}, augmentation: {})", GPT_TEXT_TO_IMAGE_ENDPOINT, seed, isRetry, augmentation);
+        log.info("Generating GPT image with OpenAI API (seed: {}, retry: {}, augmentation: {})", seed, isRetry, augmentation);
 
         // Apply GPT-specific styling to the prompt with explicit constraints
         // Use the same prompt for both initial attempt and retry
@@ -131,45 +120,48 @@ public class GptModelService implements AIModelService {
                 ? prompt + " - clean icon design, no text, no labels, no grid lines, no borders, transparent background"
                 : prompt;
 
-        Map<String, Object> input = createGptTextToImageInputMap(gptPrompt, seed);
-        log.info("Making GPT text-to-image API call with input keys: {} (seed: {}, retry: {})", input.keySet(), seed, isRetry);
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        headers.setBearerAuth(openAIConfig.getApiKey());
 
-        // Use fal.ai client API with queue update handling
-        Output<JsonObject> output = falClient.subscribe(GPT_TEXT_TO_IMAGE_ENDPOINT,
-                SubscribeOptions.<JsonObject>builder()
-                        .input(input)
-                        .logs(true)
-                        .resultType(JsonObject.class)
-                        .onQueueUpdate(update -> {
-                            if (update instanceof QueueStatus.InProgress) {
-                                log.debug("GPT generation progress: {}",
-                                        ((QueueStatus.InProgress) update).getLogs());
-                            }
-                        })
-                        .build()
-        );
-        log.debug("Received output from GPT API: {}", output);
+        Map<String, Object> body = createGptTextToImageInputMap(gptPrompt, seed);
+        HttpEntity<Map<String, Object>> entity = new HttpEntity<>(body, headers);
 
-        // Extract the actual result from the Output wrapper
-        JsonObject result = output.getData();
-        log.debug("Extracted GPT result: {}", result);
+        log.info("Making OpenAI API call for image generation (seed: {}, retry: {})", seed, isRetry);
 
-        // Convert JsonObject to JsonNode for our processing
-        JsonNode jsonResult = objectMapper.readTree(result.toString());
+        try {
+            ResponseEntity<JsonNode> response = restTemplate.exchange(
+                    "https://api.openai.com/v1/images/generations",
+                    HttpMethod.POST,
+                    entity,
+                    JsonNode.class
+            );
 
-        return extractImageFromResult(jsonResult);
+            JsonNode responseBody = response.getBody();
+            log.debug("Received OpenAI API response: {}", responseBody);
+
+            if (responseBody == null) {
+                throw new FalAiException("Empty response from OpenAI API");
+            }
+
+            return extractImageFromOpenAIResponse(responseBody);
+        } catch (Exception e) {
+            log.error("Error calling OpenAI image generation API", e);
+            throw new FalAiException("Failed to generate image with OpenAI API: " + e.getMessage(), e);
+        }
     }
 
     private Map<String, Object> createGptTextToImageInputMap(String prompt, Long seed) {
         validateOpenAIConfiguration();
 
-        Map<String, Object> input = new HashMap<>();
+        Map<String, Object> input = new java.util.HashMap<>();
+        input.put("model", "gpt-image-1");
         input.put("prompt", prompt);
-        input.put("image_size", "1024x1024"); // Use 1024x1024 as specified
-        input.put("num_images", 1); // Always generate 1 image
-        input.put("quality", "auto"); // Use auto quality as specified
-        input.put("background", "transparent"); // Use transparent background as specified
-        input.put("openai_api_key", openAIConfig.getApiKey());
+        input.put("size", "1024x1024");
+        input.put("n", 1);
+        input.put("quality", "auto");
+        input.put("background", "transparent");
+        input.put("output_format", "png");
 
         log.debug("GPT text-to-image input parameters: {}", input);
         return input;
@@ -283,56 +275,6 @@ public class GptModelService implements AIModelService {
             throw new FalAiException("Failed to generate image with OpenAI API: " + e.getMessage(), e);
         }
     }
-
-
-    private byte[] extractImageFromResult(JsonNode result) {
-        try {
-            // GPT Image likely returns images in the 'images' array (following fal.ai pattern)
-            JsonNode imagesNode = result.path("images");
-            if (imagesNode.isArray() && !imagesNode.isEmpty()) {
-                JsonNode firstImage = imagesNode.get(0);
-                String imageUrl = firstImage.path("url").asText();
-
-                if (!imageUrl.isEmpty()) {
-                    log.info("Downloading image from GPT Image URL: {}", imageUrl);
-                    return downloadImageFromUrl(imageUrl);
-                }
-
-                // Check if there's direct base64 data (alternative format)
-                String base64Data = firstImage.path("base64").asText();
-                if (!base64Data.isEmpty()) {
-                    log.debug("Found base64 data in GPT Image response");
-                    return Base64.getDecoder().decode(base64Data);
-                }
-
-                // Check for data URL format
-                String dataUrl = firstImage.path("data").asText();
-                if (dataUrl.startsWith("data:image/")) {
-                    log.debug("Found data URL in GPT Image response");
-                    String base64Part = dataUrl.substring(dataUrl.indexOf(",") + 1);
-                    return Base64.getDecoder().decode(base64Part);
-                }
-            }
-
-            // Check if the result has a direct image field
-            JsonNode imageNode = result.path("image");
-            if (imageNode != null && !imageNode.isMissingNode()) {
-                String imageUrl = imageNode.path("url").asText();
-                if (!imageUrl.isEmpty()) {
-                    log.info("Downloading image from GPT Image URL: {}", imageUrl);
-                    return downloadImageFromUrl(imageUrl);
-                }
-            }
-
-            log.error("Could not extract image data from GPT Image result: {}", result);
-            throw new FalAiException("Invalid response format from GPT Image - no image URL or data found");
-
-        } catch (Exception e) {
-            log.error("Error extracting image from GPT Image response", e);
-            throw new FalAiException("Failed to extract image from GPT Image API response: " + e.getMessage(), e);
-        }
-    }
-
     /**
      * Extract image data from OpenAI API response
      * gpt-image-1 always returns base64-encoded images directly

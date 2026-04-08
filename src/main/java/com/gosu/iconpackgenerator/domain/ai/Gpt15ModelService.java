@@ -1,17 +1,20 @@
 package com.gosu.iconpackgenerator.domain.ai;
 
-import ai.fal.client.FalClient;
-import ai.fal.client.Output;
-import ai.fal.client.SubscribeOptions;
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.google.gson.JsonObject;
-import com.gosu.iconpackgenerator.domain.icons.model.AIModelConfig;
+import com.gosu.iconpackgenerator.config.OpenAIConfig;
 import com.gosu.iconpackgenerator.exception.FalAiException;
 import com.gosu.iconpackgenerator.util.ErrorMessageSanitizer;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.MultiValueMap;
+import org.springframework.web.client.RestTemplate;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -19,7 +22,6 @@ import java.io.InputStream;
 import java.net.URI;
 import java.net.URL;
 import java.util.Base64;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -29,13 +31,11 @@ import java.util.concurrent.CompletableFuture;
 @Slf4j
 public class Gpt15ModelService implements AIModelService {
 
-    private static final String TEXT_TO_IMAGE_ENDPOINT = "fal-ai/gpt-image-1.5";
-    private static final String IMAGE_TO_IMAGE_ENDPOINT = "fal-ai/gpt-image-1.5/edit";
+    private static final String OPENAI_MODEL = "gpt-image-1.5";
 
-    private final FalClient falClient;
-    private final ObjectMapper objectMapper;
+    private final OpenAIConfig openAIConfig;
     private final ErrorMessageSanitizer errorMessageSanitizer;
-    private final AIModelConfig aiModelConfig;
+    private final RestTemplate restTemplate;
 
     @Override
     public CompletableFuture<byte[]> generateImage(String prompt) {
@@ -58,24 +58,31 @@ public class Gpt15ModelService implements AIModelService {
     private CompletableFuture<byte[]> generateImageAsync(String prompt, Long seed) {
         return CompletableFuture.supplyAsync(() -> {
             try {
-                validateConfiguration();
+                validateOpenAIConfiguration();
+
+                HttpHeaders headers = new HttpHeaders();
+                headers.setContentType(MediaType.APPLICATION_JSON);
+                headers.setBearerAuth(openAIConfig.getApiKey());
 
                 Map<String, Object> input = createTextToImageInputMap(prompt);
-                log.info("Calling GPT-1.5 text-to-image endpoint {} with input keys {} (seed: {})",
-                        TEXT_TO_IMAGE_ENDPOINT, input.keySet(), seed);
+                HttpEntity<Map<String, Object>> entity = new HttpEntity<>(input, headers);
 
-                Output<JsonObject> output = falClient.subscribe(TEXT_TO_IMAGE_ENDPOINT,
-                        SubscribeOptions.<JsonObject>builder()
-                                .input(input)
-                                .logs(true)
-                                .resultType(JsonObject.class)
-                                .build()
+                log.info("Calling OpenAI GPT-1.5-style text-to-image with input keys {} (seed: {})",
+                        input.keySet(), seed);
+
+                ResponseEntity<JsonNode> response = restTemplate.exchange(
+                        "https://api.openai.com/v1/images/generations",
+                        HttpMethod.POST,
+                        entity,
+                        JsonNode.class
                 );
 
-                JsonObject result = output.getData();
-                JsonNode jsonResult = objectMapper.readTree(result.toString());
+                JsonNode responseBody = response.getBody();
+                if (responseBody == null) {
+                    throw new FalAiException("Empty response from OpenAI API");
+                }
 
-                return extractImageFromResult(jsonResult);
+                return extractImageFromOpenAIResponse(responseBody);
             } catch (Exception e) {
                 log.error("Error calling GPT-1.5 text-to-image API", e);
                 String sanitized = errorMessageSanitizer.sanitizeErrorMessage(e.getMessage(), "GPT1.5");
@@ -104,25 +111,46 @@ public class Gpt15ModelService implements AIModelService {
     private CompletableFuture<byte[]> generateImageToImageAsync(String prompt, byte[] sourceImageData, Long seed) {
         return CompletableFuture.supplyAsync(() -> {
             try {
-                validateConfiguration();
+                validateOpenAIConfiguration();
 
-                String imageDataUrl = convertToDataUrl(sourceImageData);
-                Map<String, Object> input = createImageToImageInputMap(prompt, imageDataUrl);
-                log.info("Calling GPT-1.5 image-to-image endpoint {} with input keys {} (seed: {})",
-                        IMAGE_TO_IMAGE_ENDPOINT, input.keySet(), seed);
+                HttpHeaders headers = new HttpHeaders();
+                headers.setContentType(MediaType.MULTIPART_FORM_DATA);
+                headers.setBearerAuth(openAIConfig.getApiKey());
 
-                Output<JsonObject> output = falClient.subscribe(IMAGE_TO_IMAGE_ENDPOINT,
-                        SubscribeOptions.<JsonObject>builder()
-                                .input(input)
-                                .logs(true)
-                                .resultType(JsonObject.class)
-                                .build()
+                MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
+
+                HttpHeaders imageHeaders = new HttpHeaders();
+                imageHeaders.setContentType(MediaType.IMAGE_PNG);
+                imageHeaders.setContentDispositionFormData("image", "image.png");
+                HttpEntity<byte[]> imageEntity = new HttpEntity<>(sourceImageData, imageHeaders);
+
+                body.add("image", imageEntity);
+                body.add("model", OPENAI_MODEL);
+                body.add("prompt", prompt);
+                body.add("size", "1024x1024");
+                body.add("quality", "high");
+                body.add("output_format", "png");
+                body.add("background", "transparent");
+                body.add("input_fidelity", "high");
+                body.add("n", 1);
+
+                HttpEntity<MultiValueMap<String, Object>> entity = new HttpEntity<>(body, headers);
+
+                log.info("Calling OpenAI GPT-1.5-style image-to-image with seed: {}", seed);
+
+                ResponseEntity<JsonNode> response = restTemplate.exchange(
+                        "https://api.openai.com/v1/images/edits",
+                        HttpMethod.POST,
+                        entity,
+                        JsonNode.class
                 );
 
-                JsonObject result = output.getData();
-                JsonNode jsonResult = objectMapper.readTree(result.toString());
+                JsonNode responseBody = response.getBody();
+                if (responseBody == null) {
+                    throw new FalAiException("Empty response from OpenAI API");
+                }
 
-                return extractImageFromResult(jsonResult);
+                return extractImageFromOpenAIResponse(responseBody);
             } catch (Exception e) {
                 log.error("Error calling GPT-1.5 image-to-image API", e);
                 String sanitized = errorMessageSanitizer.sanitizeErrorMessage(e.getMessage(), "GPT1.5");
@@ -133,59 +161,40 @@ public class Gpt15ModelService implements AIModelService {
 
     private Map<String, Object> createTextToImageInputMap(String prompt) {
         Map<String, Object> input = new HashMap<>();
+        input.put("model", OPENAI_MODEL);
         input.put("prompt", prompt);
-        input.put("image_size", "1024x1024");
+        input.put("size", "1024x1024");
         input.put("background", "transparent");
         input.put("quality", "high");
-        input.put("num_images", 1);
+        input.put("n", 1);
         input.put("output_format", "png");
         return input;
     }
 
-    private Map<String, Object> createImageToImageInputMap(String prompt, String imageDataUrl) {
-        Map<String, Object> input = new HashMap<>();
-        input.put("prompt", prompt);
-        input.put("image_urls", Collections.singletonList(imageDataUrl));
-        input.put("image_size", "1024x1024");
-        input.put("background", "transparent");
-        input.put("quality", "high");
-        input.put("input_fidelity", "high");
-        input.put("num_images", 1);
-        input.put("output_format", "png");
-        return input;
-    }
-
-    private byte[] extractImageFromResult(JsonNode result) {
+    private byte[] extractImageFromOpenAIResponse(JsonNode response) {
         try {
-            JsonNode imagesNode = result.path("images");
-            if (imagesNode.isArray() && imagesNode.size() > 0) {
-                JsonNode firstImage = imagesNode.get(0);
-                String imageUrl = firstImage.path("url").asText();
+            JsonNode dataNode = response.path("data");
+            if (dataNode.isArray() && !dataNode.isEmpty()) {
+                JsonNode firstImage = dataNode.get(0);
 
-                if (!imageUrl.isEmpty()) {
-                    log.info("Downloading GPT-1.5 image from URL: {}", imageUrl);
-                    return downloadImageFromUrl(imageUrl);
-                }
-
-                String base64Data = firstImage.path("base64").asText();
+                String base64Data = firstImage.path("b64_json").asText();
                 if (!base64Data.isEmpty()) {
-                    log.debug("Found base64 data in GPT-1.5 response");
+                    log.debug("Found base64 data in OpenAI response");
                     return Base64.getDecoder().decode(base64Data);
                 }
 
-                String dataUrl = firstImage.path("data").asText();
-                if (dataUrl.startsWith("data:image/")) {
-                    log.debug("Found data URL in GPT-1.5 response");
-                    String base64Part = dataUrl.substring(dataUrl.indexOf(",") + 1);
-                    return Base64.getDecoder().decode(base64Part);
+                String imageUrl = firstImage.path("url").asText();
+                if (!imageUrl.isEmpty()) {
+                    log.info("Downloading image from OpenAI URL: {}", imageUrl);
+                    return downloadImageFromUrl(imageUrl);
                 }
             }
 
-            log.error("Could not extract image data from GPT-1.5 result: {}", result);
-            throw new FalAiException("Invalid response format from GPT-1.5 - no image data found");
+            log.error("Could not extract image data from OpenAI response: {}", response);
+            throw new FalAiException("Invalid response format from OpenAI API - no image data found");
         } catch (Exception e) {
-            log.error("Error extracting image from GPT-1.5 response", e);
-            throw new FalAiException("Failed to extract image from GPT-1.5 response: " + e.getMessage(), e);
+            log.error("Error extracting image from OpenAI response", e);
+            throw new FalAiException("Failed to extract image from OpenAI API response: " + e.getMessage(), e);
         }
     }
 
@@ -207,25 +216,15 @@ public class Gpt15ModelService implements AIModelService {
         }
     }
 
-    private String convertToDataUrl(byte[] imageData) {
-        try {
-            String base64Data = Base64.getEncoder().encodeToString(imageData);
-            return "data:image/png;base64," + base64Data;
-        } catch (Exception e) {
-            log.error("Error converting GPT-1.5 source image to data URL", e);
-            throw new FalAiException("Failed to convert image to data URL", e);
-        }
-    }
-
     @Override
     public String getModelName() {
-        return TEXT_TO_IMAGE_ENDPOINT;
+        return "GPT Image 1.5 style (OpenAI API)";
     }
 
     @Override
     public boolean isAvailable() {
         try {
-            validateConfiguration();
+            validateOpenAIConfiguration();
             return true;
         } catch (Exception e) {
             log.warn("GPT-1.5 service is not available: {}", e.getMessage());
@@ -233,23 +232,13 @@ public class Gpt15ModelService implements AIModelService {
         }
     }
 
-    private void validateConfiguration() {
-        String apiKey = aiModelConfig.getApiKey();
-        if (apiKey == null || apiKey.trim().isEmpty()) {
-            throw new FalAiException("Fal.ai API key is not configured. Please set FAL_KEY environment variable or fal.ai.api-key property.");
+    private void validateOpenAIConfiguration() {
+        if (openAIConfig.getApiKey() == null || openAIConfig.getApiKey().trim().isEmpty()) {
+            throw new FalAiException("OpenAI API key is not configured. Please set OPENAI_API_KEY environment variable or openai.api-key property.");
         }
 
-        if ("your-fal-api-key-here".equals(apiKey)) {
-            throw new FalAiException("Fal.ai API key is still set to default value. Please provide a valid API key.");
+        if ("your-openai-api-key-here".equals(openAIConfig.getApiKey())) {
+            throw new FalAiException("OpenAI API key is still set to default value. Please provide a valid API key.");
         }
-
-        if (!isValidApiKeyFormat(apiKey)) {
-            throw new FalAiException("Fal.ai API key format appears to be invalid. Expected format: key_id:key_secret");
-        }
-    }
-
-    private boolean isValidApiKeyFormat(String apiKey) {
-        return apiKey.contains(":") && apiKey.split(":").length == 2 &&
-                apiKey.split(":")[0].length() > 10 && apiKey.split(":")[1].length() > 10;
     }
 }
