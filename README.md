@@ -43,6 +43,9 @@ Important model mapping (from code):
 - `standard` => `GptModelService`
 - `pro` => `Gpt15ModelService`
 
+Additional model availability note:
+- `Gpt2ModelService` (`gpt-image-2`) exists in the backend for admin/testing flows, but it is not enabled in the regular end-user icon generation flow yet because transparent background support is currently not available for that model in the way this product needs.
+
 Reference-image behavior:
 - For icon image-to-image generation, frontend forces base and variation to `pro`, so reference-based icon generation goes through the pro path.
 
@@ -91,6 +94,10 @@ Regular model flow:
 
 Pro model flow:
 - uses `Gpt15ModelService` (service id `gpt15`, UI label `Pro`)
+
+Experimental/admin-only model:
+- `Gpt2ModelService` is available for admin test-lab comparisons only at the moment.
+- It is intentionally excluded from the regular user-facing icon flow because the product depends on transparent-background icon outputs and `gpt-image-2` does not currently fit that requirement reliably.
 
 When variations are enabled:
 - generation 1 uses selected base model
@@ -173,6 +180,7 @@ In current UI/backend behavior:
 ### AI/Media Services in Project
 - `GptModelService` (regular icon model)
 - `Gpt15ModelService` (pro icon model)
+- `Gpt2ModelService` (admin/test-lab-only icon comparison model for `gpt-image-2`; not enabled in the regular user flow because of transparent background limitations)
 - `MinimaxVideoModelService` (GIF/video generation pipeline)
 - SVG vectorization and raster export services
 
