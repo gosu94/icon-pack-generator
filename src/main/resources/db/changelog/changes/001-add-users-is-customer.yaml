@@ -4,12 +4,14 @@ databaseChangeLog:
       author: codex
       validCheckSum: ANY
       preConditions:
-        - not:
-            columnExists:
-              tableName: users
-              columnName: is_customer
         - onFail: MARK_RAN
-        - onError: HALT
+        - onError: MARK_RAN
+        - tableExists:
+            tableName: users
+        - not:
+            - columnExists:
+                tableName: users
+                columnName: is_customer
       changes:
         - addColumn:
             tableName: users
@@ -25,11 +27,13 @@ databaseChangeLog:
       author: codex
       validCheckSum: ANY
       preConditions:
+        - onFail: MARK_RAN
+        - onError: MARK_RAN
+        - tableExists:
+            tableName: users
         - columnExists:
             tableName: users
             columnName: is_customer
-        - onFail: MARK_RAN
-        - onError: HALT
       changes:
         - update:
             tableName: users

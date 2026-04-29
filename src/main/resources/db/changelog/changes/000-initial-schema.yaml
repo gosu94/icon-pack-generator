@@ -1,0 +1,492 @@
+databaseChangeLog:
+  - changeSet:
+      id: 000-create-users-table
+      author: codex
+      preConditions:
+        - onFail: MARK_RAN
+        - onError: MARK_RAN
+        - not:
+            - tableExists:
+                tableName: users
+      changes:
+        - createTable:
+            tableName: users
+            columns:
+              - column:
+                  name: id
+                  type: BIGSERIAL
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_users
+                    nullable: false
+              - column:
+                  name: email
+                  type: VARCHAR(255)
+                  constraints:
+                    nullable: false
+                    unique: true
+                    uniqueConstraintName: uk_users_email
+              - column:
+                  name: password
+                  type: VARCHAR(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: last_login
+                  type: TIMESTAMP
+              - column:
+                  name: registered_at
+                  type: TIMESTAMP
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: TIMESTAMP
+              - column:
+                  name: directory_path
+                  type: VARCHAR(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: is_active
+                  type: BOOLEAN
+              - column:
+                  name: coins
+                  type: INTEGER
+              - column:
+                  name: trial_coins
+                  type: INTEGER
+              - column:
+                  name: email_verified
+                  type: BOOLEAN
+              - column:
+                  name: email_verification_token
+                  type: VARCHAR(255)
+              - column:
+                  name: password_reset_token
+                  type: VARCHAR(255)
+              - column:
+                  name: password_reset_token_expiry
+                  type: TIMESTAMP
+              - column:
+                  name: auth_provider
+                  type: VARCHAR(255)
+              - column:
+                  name: notifications
+                  type: BOOLEAN
+              - column:
+                  name: is_customer
+                  type: BOOLEAN
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+              - column:
+                  name: unsubscribe_token
+                  type: VARCHAR(255)
+
+  - changeSet:
+      id: 000-create-generated-icons-table
+      author: codex
+      preConditions:
+        - onFail: MARK_RAN
+        - onError: MARK_RAN
+        - not:
+            - tableExists:
+                tableName: generated_icons
+      changes:
+        - createTable:
+            tableName: generated_icons
+            columns:
+              - column:
+                  name: id
+                  type: BIGSERIAL
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_generated_icons
+                    nullable: false
+              - column:
+                  name: request_id
+                  type: VARCHAR(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: icon_id
+                  type: VARCHAR(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: user_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: file_name
+                  type: VARCHAR(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: file_path
+                  type: VARCHAR(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: service_source
+                  type: VARCHAR(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: grid_position
+                  type: INTEGER
+              - column:
+                  name: generation_index
+                  type: INTEGER
+              - column:
+                  name: description
+                  type: TEXT
+              - column:
+                  name: theme
+                  type: TEXT
+              - column:
+                  name: icon_count
+                  type: INTEGER
+              - column:
+                  name: file_size
+                  type: BIGINT
+              - column:
+                  name: used_prompt_enhancer
+                  type: BOOLEAN
+              - column:
+                  name: created_at
+                  type: TIMESTAMP
+                  constraints:
+                    nullable: false
+              - column:
+                  name: is_original_grid
+                  type: BOOLEAN
+              - column:
+                  name: icon_type
+                  type: VARCHAR(255)
+              - column:
+                  name: is_watermarked
+                  type: BOOLEAN
+        - addForeignKeyConstraint:
+            constraintName: fk_generated_icons_user
+            baseTableName: generated_icons
+            baseColumnNames: user_id
+            referencedTableName: users
+            referencedColumnNames: id
+
+  - changeSet:
+      id: 000-create-generated-illustrations-table
+      author: codex
+      preConditions:
+        - onFail: MARK_RAN
+        - onError: MARK_RAN
+        - not:
+            - tableExists:
+                tableName: generated_illustrations
+      changes:
+        - createTable:
+            tableName: generated_illustrations
+            columns:
+              - column:
+                  name: id
+                  type: BIGSERIAL
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_generated_illustrations
+                    nullable: false
+              - column:
+                  name: request_id
+                  type: VARCHAR(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: illustration_id
+                  type: VARCHAR(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: user_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: file_name
+                  type: VARCHAR(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: file_path
+                  type: VARCHAR(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: grid_position
+                  type: INTEGER
+              - column:
+                  name: generation_index
+                  type: INTEGER
+              - column:
+                  name: description
+                  type: TEXT
+              - column:
+                  name: theme
+                  type: TEXT
+              - column:
+                  name: illustration_count
+                  type: INTEGER
+              - column:
+                  name: file_size
+                  type: BIGINT
+              - column:
+                  name: created_at
+                  type: TIMESTAMP
+                  constraints:
+                    nullable: false
+              - column:
+                  name: is_original_grid
+                  type: BOOLEAN
+              - column:
+                  name: illustration_type
+                  type: VARCHAR(255)
+              - column:
+                  name: is_watermarked
+                  type: BOOLEAN
+        - addForeignKeyConstraint:
+            constraintName: fk_generated_illustrations_user
+            baseTableName: generated_illustrations
+            baseColumnNames: user_id
+            referencedTableName: users
+            referencedColumnNames: id
+
+  - changeSet:
+      id: 000-create-generated-mockups-table
+      author: codex
+      preConditions:
+        - onFail: MARK_RAN
+        - onError: MARK_RAN
+        - not:
+            - tableExists:
+                tableName: generated_mockups
+      changes:
+        - createTable:
+            tableName: generated_mockups
+            columns:
+              - column:
+                  name: id
+                  type: BIGSERIAL
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_generated_mockups
+                    nullable: false
+              - column:
+                  name: request_id
+                  type: VARCHAR(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: mockup_id
+                  type: VARCHAR(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: user_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: file_name
+                  type: VARCHAR(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: file_path
+                  type: VARCHAR(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: generation_index
+                  type: INTEGER
+              - column:
+                  name: description
+                  type: TEXT
+              - column:
+                  name: theme
+                  type: TEXT
+              - column:
+                  name: file_size
+                  type: BIGINT
+              - column:
+                  name: created_at
+                  type: TIMESTAMP
+                  constraints:
+                    nullable: false
+              - column:
+                  name: mockup_type
+                  type: VARCHAR(255)
+        - addForeignKeyConstraint:
+            constraintName: fk_generated_mockups_user
+            baseTableName: generated_mockups
+            baseColumnNames: user_id
+            referencedTableName: users
+            referencedColumnNames: id
+
+  - changeSet:
+      id: 000-create-generated-labels-table
+      author: codex
+      preConditions:
+        - onFail: MARK_RAN
+        - onError: MARK_RAN
+        - not:
+            - tableExists:
+                tableName: generated_labels
+      changes:
+        - createTable:
+            tableName: generated_labels
+            columns:
+              - column:
+                  name: id
+                  type: BIGSERIAL
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_generated_labels
+                    nullable: false
+              - column:
+                  name: request_id
+                  type: VARCHAR(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: label_id
+                  type: VARCHAR(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: user_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: file_name
+                  type: VARCHAR(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: file_path
+                  type: VARCHAR(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: service_source
+                  type: VARCHAR(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: generation_index
+                  type: INTEGER
+              - column:
+                  name: label_text
+                  type: TEXT
+              - column:
+                  name: theme
+                  type: TEXT
+              - column:
+                  name: label_type
+                  type: VARCHAR(255)
+              - column:
+                  name: file_size
+                  type: BIGINT
+              - column:
+                  name: created_at
+                  type: TIMESTAMP
+                  constraints:
+                    nullable: false
+        - addForeignKeyConstraint:
+            constraintName: fk_generated_labels_user
+            baseTableName: generated_labels
+            baseColumnNames: user_id
+            referencedTableName: users
+            referencedColumnNames: id
+
+  - changeSet:
+      id: 000-create-feedbacks-table
+      author: codex
+      preConditions:
+        - onFail: MARK_RAN
+        - onError: MARK_RAN
+        - not:
+            - tableExists:
+                tableName: feedbacks
+      changes:
+        - createTable:
+            tableName: feedbacks
+            columns:
+              - column:
+                  name: id
+                  type: BIGSERIAL
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_feedbacks
+                    nullable: false
+              - column:
+                  name: user_id
+                  type: BIGINT
+              - column:
+                  name: feedback
+                  type: TEXT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: TIMESTAMP
+                  constraints:
+                    nullable: false
+        - addForeignKeyConstraint:
+            constraintName: fk_feedbacks_user
+            baseTableName: feedbacks
+            baseColumnNames: user_id
+            referencedTableName: users
+            referencedColumnNames: id
+
+  - changeSet:
+      id: 000-create-persistent-logins-table
+      author: codex
+      preConditions:
+        - onFail: MARK_RAN
+        - onError: MARK_RAN
+        - not:
+            - tableExists:
+                tableName: persistent_logins
+      changes:
+        - createTable:
+            tableName: persistent_logins
+            columns:
+              - column:
+                  name: username
+                  type: VARCHAR(64)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: series
+                  type: VARCHAR(64)
+                  constraints:
+                    nullable: false
+                    primaryKey: true
+                    primaryKeyName: pk_persistent_logins
+              - column:
+                  name: token
+                  type: VARCHAR(64)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: last_used
+                  type: TIMESTAMP
+                  constraints:
+                    nullable: false
+        - createIndex:
+            indexName: idx_persistent_logins_username
+            tableName: persistent_logins
+            columns:
+              - column:
+                  name: username

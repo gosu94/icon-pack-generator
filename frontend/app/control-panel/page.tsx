@@ -26,6 +26,7 @@ import {
 import UsersTab from "./components/UsersTab";
 import EmailTab from "./components/EmailTab";
 import StatisticsTab from "./components/StatisticsTab";
+import TestLabTab from "./components/TestLabTab";
 import DEFAULT_EMAIL_BODY from "./emailTemplate";
 
 type EmailRecipientScope = "ME" | "EVERYBODY" | "SPECIFIC";
@@ -74,7 +75,7 @@ export default function ControlPanelPage() {
   const [totalIllustrations, setTotalIllustrations] = useState(0);
   const [totalMockups, setTotalMockups] = useState(0);
   const [totalLabels, setTotalLabels] = useState(0);
-  const [activeTab, setActiveTab] = useState<"users" | "email" | "stats">(
+  const [activeTab, setActiveTab] = useState<"users" | "email" | "stats" | "test-lab">(
     "users"
   );
   const [statsRange, setStatsRange] = useState<StatsRange>("week");
@@ -915,6 +916,16 @@ export default function ControlPanelPage() {
             >
               Statistics
             </button>
+            <button
+              onClick={() => setActiveTab("test-lab")}
+              className={`rounded-md px-4 py-2 text-sm font-semibold transition-colors ${
+                activeTab === "test-lab"
+                  ? "bg-purple-600 text-white shadow"
+                  : "text-slate-600 hover:bg-purple-100"
+              }`}
+            >
+              Test lab
+            </button>
           </div>
 
           {activeTab === "users" && (
@@ -984,6 +995,8 @@ export default function ControlPanelPage() {
               onMonthChange={handleMonthFilterChange}
             />
           )}
+
+          {activeTab === "test-lab" && <TestLabTab />}
         </div>
       </div>
 

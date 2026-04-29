@@ -82,6 +82,8 @@ ai:
       enabled: false
     gpt:
       enabled: true
+    gpt2:
+      enabled: true
     banana:
       enabled: false
 
@@ -97,6 +99,8 @@ fal:
 
 openai:
   api-key: ${OPENAI_API_KEY:your-openai-api-key-here}
+  connect-timeout-ms: ${OPENAI_CONNECT_TIMEOUT_MS:30000}
+  read-timeout-ms: ${OPENAI_READ_TIMEOUT_MS:300000}
 
 stripe:
   secret-key: ${STRIPE_SECRET_KEY:}

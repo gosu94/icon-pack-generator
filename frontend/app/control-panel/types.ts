@@ -83,3 +83,34 @@ export interface ActivityStats {
   totalRegistrations: number;
   totalIcons: number;
 }
+
+export interface AdminTestLabIcon {
+  id: string;
+  base64Data: string;
+  description: string;
+  gridPosition: number;
+  serviceSource: string;
+}
+
+export interface AdminTestLabModelResult {
+  modelId: string;
+  modelLabel: string;
+  status: string;
+  message: string;
+  generationTimeMs: number;
+  originalGridImageBase64: string;
+  icons: AdminTestLabIcon[];
+}
+
+export interface AdminTestLabResponse {
+  status: string;
+  message: string;
+  seed: number;
+  referenceImageMode: boolean;
+  promptEnhanced: boolean;
+  originalGeneralDescription: string;
+  effectiveGeneralDescription: string;
+  promptUsed: string;
+  individualDescriptions: string[];
+  results: AdminTestLabModelResult[];
+}

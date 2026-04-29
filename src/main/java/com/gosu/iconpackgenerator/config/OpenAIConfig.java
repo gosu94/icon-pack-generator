@@ -9,4 +9,6 @@ import org.springframework.context.annotation.Configuration;
 @Data
 public class OpenAIConfig {
     private String apiKey;
+    private int connectTimeoutMs = 30000;
+    private int readTimeoutMs = 300000;
 }

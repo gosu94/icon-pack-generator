@@ -8,6 +8,12 @@ import org.springframework.web.client.RestTemplate;
 
 @Configuration
 public class RestTemplateConfig {
+
+    private final OpenAIConfig openAIConfig;
+
+    public RestTemplateConfig(OpenAIConfig openAIConfig) {
+        this.openAIConfig = openAIConfig;
+    }
     
     @Bean
     public RestTemplate restTemplate() {
@@ -19,8 +25,8 @@ public class RestTemplateConfig {
     @Bean
     public ClientHttpRequestFactory clientHttpRequestFactory() {
         SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
-        factory.setConnectTimeout(30000); // 30 seconds
-        factory.setReadTimeout(120000);   // 120 seconds (for AI generation)
+        factory.setConnectTimeout(openAIConfig.getConnectTimeoutMs());
+        factory.setReadTimeout(openAIConfig.getReadTimeoutMs());
         return factory;
     }
 }

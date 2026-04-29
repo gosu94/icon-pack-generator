@@ -15,6 +15,7 @@ interface ExportModalProps {
   ) => void;
   iconCount: number;
   mode: GenerationMode;
+  ignoreCoinBalance?: boolean;
 }
 
 const ExportModal: React.FC<ExportModalProps> = ({
@@ -23,6 +24,7 @@ const ExportModal: React.FC<ExportModalProps> = ({
   onConfirm,
   iconCount,
   mode,
+  ignoreCoinBalance = false,
 }) => {
   const { authState } = useAuth();
   const availableCoins = authState?.user?.coins ?? 0;
@@ -100,7 +102,8 @@ const ExportModal: React.FC<ExportModalProps> = ({
   const vectorCoinCost = mode === "labels" ? labelVectorCost : totalVectorCost;
   const premiumCost =
     (vectorizeSvg ? vectorCoinCost : 0) + (hqUpscale ? totalHqCost : 0);
-  const hasPremiumBalance = premiumCost === 0 || availableCoins >= premiumCost;
+  const hasPremiumBalance =
+    ignoreCoinBalance || premiumCost === 0 || availableCoins >= premiumCost;
 
   useEffect(() => {
     if (!showHqOption && hqUpscale) {
@@ -278,7 +281,7 @@ const ExportModal: React.FC<ExportModalProps> = ({
           </div>
         </div>
         
-        {!hasPremiumBalance && premiumCost > 0 && (
+        {!ignoreCoinBalance && !hasPremiumBalance && premiumCost > 0 && (
           <p className="mt-4 text-sm text-red-600">
             You don't have enough coins for the selected premium options.
           </p>

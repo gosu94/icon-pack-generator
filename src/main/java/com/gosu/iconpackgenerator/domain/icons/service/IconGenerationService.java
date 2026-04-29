@@ -1,7 +1,6 @@
 package com.gosu.iconpackgenerator.domain.icons.service;
 
 import com.gosu.iconpackgenerator.config.AIServicesConfig;
-import com.gosu.iconpackgenerator.domain.ai.AnyLlmModelService;
 import com.gosu.iconpackgenerator.domain.ai.Gpt15ModelService;
 import com.gosu.iconpackgenerator.domain.ai.GptModelService;
 import com.gosu.iconpackgenerator.domain.icons.dto.IconGenerationRequest;
@@ -26,9 +25,6 @@ import static com.gosu.iconpackgenerator.domain.icons.service.PromptGenerationSe
 @RequiredArgsConstructor
 @Slf4j
 public class IconGenerationService {
-
-    private static final String PROMPT_ENHANCER_SYSTEM_PROMPT = "You are an art director specializing in crafting vivid, cohesive icon pack prompts. Rewrite the user input into a clear, descriptive but concise creative brief. Mention color palette, tone, shapes, and stylistic cues. Keep it under 80 words and in natural sentences without bullet points.";
-    private static final String PROMPT_ENHANCER_USER_TEMPLATE = "Original description: \"%s\". Rewrite this so it guides an AI model to design a cohesive icon pack with a unified style, colors, materials, and lighting.";
     private static final String MODEL_STANDARD = "standard";
     private static final String MODEL_PRO = "pro";
 
@@ -42,7 +38,7 @@ public class IconGenerationService {
     private final IconPersistenceService iconPersistenceService;
     private final TrialModeService trialModeService;
     private final ErrorMessageSanitizer errorMessageSanitizer;
-    private final AnyLlmModelService anyLlmModelService;
+    private final IconPromptEnhancementService iconPromptEnhancementService;
 
     public CompletableFuture<IconGenerationResponse> generateIcons(IconGenerationRequest request, User user) {
         return generateIcons(request, UUID.randomUUID().toString(), null, user);
@@ -389,21 +385,7 @@ public class IconGenerationService {
             return;
         }
 
-        try {
-            log.info("Enhancing icon prompt with AnyLlmModelService");
-            String detailedPrompt = anyLlmModelService
-                    .generateCompletion(String.format(PROMPT_ENHANCER_USER_TEMPLATE, trimmed), PROMPT_ENHANCER_SYSTEM_PROMPT)
-                    .join();
-            if (detailedPrompt != null) {
-                String cleaned = detailedPrompt.trim();
-                if (!cleaned.isEmpty()) {
-                    log.debug("Prompt enhanced from '{}' to '{}'", trimmed, cleaned);
-                    request.setGeneralDescription(cleaned);
-                }
-            }
-        } catch (Exception e) {
-            log.warn("Failed to enhance icon prompt, falling back to original description", e);
-        }
+        request.setGeneralDescription(iconPromptEnhancementService.enhanceIfPossible(trimmed));
     }
 
     private IconGenerationRequest createStyledVariationRequest(IconGenerationRequest originalRequest) {
