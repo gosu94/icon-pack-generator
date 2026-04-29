@@ -37,7 +37,6 @@ public class Gpt2ModelService implements AIModelService {
     private static final String IMAGE_SIZE = "1024x1024";
     private static final String IMAGE_QUALITY = "high";
     private static final String OUTPUT_FORMAT = "png";
-    private static final String BACKGROUND = "transparent";
 
     private final OpenAIConfig openAIConfig;
     private final ErrorMessageSanitizer errorMessageSanitizer;
@@ -110,7 +109,6 @@ public class Gpt2ModelService implements AIModelService {
                 body.add("size", IMAGE_SIZE);
                 body.add("quality", IMAGE_QUALITY);
                 body.add("output_format", OUTPUT_FORMAT);
-                body.add("background", BACKGROUND);
                 body.add("n", 1);
                 HttpEntity<MultiValueMap<String, Object>> entity = new HttpEntity<>(body, headers);
 
@@ -152,7 +150,6 @@ public class Gpt2ModelService implements AIModelService {
         input.put("quality", IMAGE_QUALITY);
         input.put("n", 1);
         input.put("output_format", OUTPUT_FORMAT);
-        input.put("background", BACKGROUND);
         return input;
     }
 

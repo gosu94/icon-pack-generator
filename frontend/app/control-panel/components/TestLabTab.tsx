@@ -17,6 +17,9 @@ function formatTime(ms: number) {
 }
 
 export default function TestLabTab() {
+  const [runGpt, setRunGpt] = useState(true);
+  const [runGpt15, setRunGpt15] = useState(true);
+  const [runGpt2, setRunGpt2] = useState(true);
   const [inputType, setInputType] = useState<"text" | "image">("text");
   const [generalDescription, setGeneralDescription] = useState("");
   const [individualDescriptions, setIndividualDescriptions] =
@@ -50,11 +53,14 @@ export default function TestLabTab() {
     if (loading) {
       return false;
     }
+    if (!runGpt && !runGpt15 && !runGpt2) {
+      return false;
+    }
     if (inputType === "image") {
       return referenceImageBase64.length > 0;
     }
     return generalDescription.trim().length > 0;
-  }, [generalDescription, inputType, loading, referenceImageBase64]);
+  }, [generalDescription, inputType, loading, referenceImageBase64, runGpt, runGpt15, runGpt2]);
 
   const formatFileSize = (bytes: number) => {
     if (bytes === 0) return "0 Bytes";
@@ -134,6 +140,9 @@ export default function TestLabTab() {
         iconCount: 9,
         individualDescriptions,
         enhancePrompt: inputType === "text" ? enhancePrompt : false,
+        runGpt,
+        runGpt15,
+        runGpt2,
       };
 
       const apiResponse = await fetch("/api/admin/test-lab/icons", {
@@ -401,6 +410,41 @@ export default function TestLabTab() {
             >
               Reference image
             </button>
+          </div>
+        </div>
+
+        <div className="mb-6 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+          <p className="mb-3 text-sm font-semibold text-slate-800">
+            Models to run
+          </p>
+          <div className="grid gap-3 md:grid-cols-3">
+            <label className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-800">
+              <input
+                type="checkbox"
+                checked={runGpt}
+                onChange={(event) => setRunGpt(event.target.checked)}
+                className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+              />
+              GPT-1
+            </label>
+            <label className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-800">
+              <input
+                type="checkbox"
+                checked={runGpt15}
+                onChange={(event) => setRunGpt15(event.target.checked)}
+                className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+              />
+              GPT-1.5
+            </label>
+            <label className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-800">
+              <input
+                type="checkbox"
+                checked={runGpt2}
+                onChange={(event) => setRunGpt2(event.target.checked)}
+                className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+              />
+              GPT-2
+            </label>
           </div>
         </div>
 

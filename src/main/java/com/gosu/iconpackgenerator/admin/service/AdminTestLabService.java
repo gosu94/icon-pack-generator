@@ -56,14 +56,20 @@ public class AdminTestLabService {
                 ? Base64.getDecoder().decode(request.getReferenceImageBase64())
                 : null;
 
-        List<CompletableFuture<AdminTestLabIconResponse.ModelResult>> futures = List.of(
-                runModel(MODEL_GPT_1, "GPT-1", aiServicesConfig.isGptEnabled(),
-                        () -> generateWithGpt1(promptUsed, referenceImageData, seed)),
-                runModel(MODEL_GPT_15, "GPT-1.5", aiServicesConfig.isGpt15Enabled(),
-                        () -> generateWithGpt15(promptUsed, referenceImageData, seed)),
-                runModel(MODEL_GPT_2, "GPT-2", aiServicesConfig.isGpt2Enabled(),
-                        () -> generateWithGpt2(promptUsed, referenceImageData, seed))
-        );
+        List<CompletableFuture<AdminTestLabIconResponse.ModelResult>> futures = new ArrayList<>();
+
+        if (request.isRunGpt()) {
+            futures.add(runModel(MODEL_GPT_1, "GPT-1", aiServicesConfig.isGptEnabled(),
+                    () -> generateWithGpt1(promptUsed, referenceImageData, seed)));
+        }
+        if (request.isRunGpt15()) {
+            futures.add(runModel(MODEL_GPT_15, "GPT-1.5", aiServicesConfig.isGpt15Enabled(),
+                    () -> generateWithGpt15(promptUsed, referenceImageData, seed)));
+        }
+        if (request.isRunGpt2()) {
+            futures.add(runModel(MODEL_GPT_2, "GPT-2", aiServicesConfig.isGpt2Enabled(),
+                    () -> generateWithGpt2(promptUsed, referenceImageData, seed)));
+        }
 
         return CompletableFuture.allOf(futures.toArray(new CompletableFuture[0]))
                 .thenApply(ignored -> {

@@ -53,6 +53,10 @@ public class AdminTestLabController {
             return CompletableFuture.completedFuture(ResponseEntity.badRequest()
                     .body(Map.of("error", "Either general description or reference image must be provided")));
         }
+        if (!request.hasAnyModelSelected()) {
+            return CompletableFuture.completedFuture(ResponseEntity.badRequest()
+                    .body(Map.of("error", "Select at least one model to run.")));
+        }
 
         return adminTestLabService.generateIconComparisons(request)
                 .thenApply(ResponseEntity::ok);
