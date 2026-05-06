@@ -9,6 +9,7 @@ import com.gosu.iconpackgenerator.auth.dto.PasswordSetupRequest;
 import com.gosu.iconpackgenerator.auth.dto.SendEmailRequest;
 import com.gosu.iconpackgenerator.auth.dto.TokenValidationRequest;
 import com.gosu.iconpackgenerator.auth.service.OAuthRememberMeCookieService;
+import com.gosu.iconpackgenerator.auth.service.RememberMeLoginService;
 import com.gosu.iconpackgenerator.user.service.EmailAuthService;
 import com.gosu.iconpackgenerator.user.model.User;
 import com.gosu.iconpackgenerator.user.service.CustomOAuth2User;
@@ -23,7 +24,6 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.core.user.OAuth2User;
-import org.springframework.security.web.authentication.rememberme.PersistentTokenBasedRememberMeServices;
 import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
@@ -42,7 +42,7 @@ public class AuthController {
 
     private final EmailAuthService emailAuthService;
     private final AuthenticationManager authenticationManager;
-    private final PersistentTokenBasedRememberMeServices rememberMeServices;
+    private final RememberMeLoginService rememberMeLoginService;
     private final OAuthRememberMeCookieService oAuthRememberMeCookieService;
 
     @PostMapping("/check-email")
@@ -96,7 +96,7 @@ public class AuthController {
             session.setAttribute(HttpSessionSecurityContextRepository.SPRING_SECURITY_CONTEXT_KEY, securityContext);
             
             if (request.isRememberMe()) {
-                rememberMeServices.loginSuccess(httpRequest, httpResponse, authentication);
+                rememberMeLoginService.loginSuccess(httpRequest, httpResponse, authentication);
             } else {
                 oAuthRememberMeCookieService.clearPersistentRememberMeCookie(httpRequest, httpResponse);
             }
