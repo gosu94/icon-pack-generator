@@ -28,6 +28,8 @@ interface GeneratorFormProps {
   formatFileSize: (bytes: number) => string;
   enhancePrompt: boolean;
   setEnhancePrompt: (value: boolean) => void;
+  designLogo: boolean;
+  setDesignLogo: (value: boolean) => void;
   baseModel: string;
   setBaseModel: (value: string) => void;
   variationModel: string;
@@ -58,6 +60,8 @@ const GeneratorForm: React.FC<GeneratorFormProps> = ({
   formatFileSize,
   enhancePrompt,
   setEnhancePrompt,
+  designLogo,
+  setDesignLogo,
   baseModel,
   setBaseModel,
   variationModel,
@@ -401,37 +405,76 @@ const GeneratorForm: React.FC<GeneratorFormProps> = ({
                     }
                   />
                   {mode === "icons" && (
-                    <label
-                      className={`mt-3 flex items-center justify-between gap-3 rounded-xl border ${
-                        enhancePrompt ? "border-blue-200 bg-white shadow-sm" : "border-slate-200 bg-white/80"
-                      } px-3 py-2 transition-all duration-200 cursor-pointer select-none`}
-                    >
-                      <div className="text-xs leading-tight">
-                        <span className="block text-sm font-semibold text-slate-900">Enhance prompt</span>
-                        <span className="text-slate-500">
-                          Let our AI model expand your theme with rich stylistic details
-                        </span>
-                      </div>
-                      <div className="relative inline-flex items-center">
-                        <input
-                          type="checkbox"
-                          className="sr-only peer"
-                          checked={enhancePrompt}
-                          onChange={(e) => setEnhancePrompt(e.target.checked)}
-                          disabled={isGenerating}
-                        />
-                        <div
-                          className={`h-6 w-11 rounded-full transition-all duration-200 ${
-                            enhancePrompt ? "bg-blue-600" : "bg-slate-300"
-                          } ${isGenerating ? "opacity-50" : ""}`}
-                        ></div>
-                        <div
-                          className={`absolute left-1 top-1 h-4 w-4 rounded-full bg-white transition-transform duration-200 ${
-                            enhancePrompt ? "translate-x-5" : ""
-                          }`}
-                        ></div>
-                      </div>
-                    </label>
+                    <div className="mt-3 space-y-2">
+                      <label
+                        className={`flex items-center justify-between gap-3 rounded-xl border ${
+                          enhancePrompt ? "border-blue-200 bg-white shadow-sm" : "border-slate-200 bg-white/80"
+                        } px-3 py-2 transition-all duration-200 cursor-pointer select-none`}
+                      >
+                        <div className="text-xs leading-tight">
+                          <span className="block text-sm font-semibold text-slate-900">Enhance prompt</span>
+                          <span className="text-slate-500">
+                            Let our AI model expand your theme with rich stylistic details
+                          </span>
+                        </div>
+                        <div className="relative inline-flex items-center">
+                          <input
+                            type="checkbox"
+                            className="sr-only peer"
+                            checked={enhancePrompt}
+                            onChange={(e) => setEnhancePrompt(e.target.checked)}
+                            disabled={isGenerating}
+                          />
+                          <div
+                            className={`h-6 w-11 rounded-full transition-all duration-200 ${
+                              enhancePrompt ? "bg-blue-600" : "bg-slate-300"
+                            } ${isGenerating ? "opacity-50" : ""}`}
+                          ></div>
+                          <div
+                            className={`absolute left-1 top-1 h-4 w-4 rounded-full bg-white transition-transform duration-200 ${
+                              enhancePrompt ? "translate-x-5" : ""
+                            }`}
+                          ></div>
+                        </div>
+                      </label>
+                      <label
+                        className={`flex items-center justify-between gap-3 rounded-xl border ${
+                          designLogo ? "border-blue-200 bg-white shadow-sm" : "border-slate-200 bg-white/80"
+                        } px-3 py-2 transition-all duration-200 cursor-pointer select-none`}
+                      >
+                        <div className="text-xs leading-tight">
+                          <span className="block text-sm font-semibold text-slate-900">Logo designs</span>
+                          <span className="text-slate-500">
+                            Auto-generate 9 logo concepts from your theme and skip manual icon descriptions
+                          </span>
+                        </div>
+                        <div className="relative inline-flex items-center">
+                          <input
+                            type="checkbox"
+                            className="sr-only peer"
+                            checked={designLogo}
+                            onChange={(e) => {
+                              const checked = e.target.checked;
+                              setDesignLogo(checked);
+                              if (checked) {
+                                setEnhancePrompt(false);
+                              }
+                            }}
+                            disabled={isGenerating}
+                          />
+                          <div
+                            className={`h-6 w-11 rounded-full transition-all duration-200 ${
+                              designLogo ? "bg-blue-600" : "bg-slate-300"
+                            } ${isGenerating ? "opacity-50" : ""}`}
+                          ></div>
+                          <div
+                            className={`absolute left-1 top-1 h-4 w-4 rounded-full bg-white transition-transform duration-200 ${
+                              designLogo ? "translate-x-5" : ""
+                            }`}
+                          ></div>
+                        </div>
+                      </label>
+                    </div>
                   )}
                 </div>
               ) : (
@@ -520,7 +563,7 @@ const GeneratorForm: React.FC<GeneratorFormProps> = ({
               )}
             </div>
 
-            {(mode === "icons" || mode === "illustrations") && (
+            {(mode === "icons" || mode === "illustrations") && !((mode === "icons") && designLogo) && (
               <div>
                 <label
                   className="block text-lg font-semibold text-slate-900 mb-4"
@@ -528,6 +571,12 @@ const GeneratorForm: React.FC<GeneratorFormProps> = ({
                   Individual {mode === "icons" ? "Icon" : "Illustration"} Descriptions (Optional)
                 </label>
                 {renderIconFields()}
+              </div>
+            )}
+
+            {mode === "icons" && designLogo && (
+              <div className="rounded-2xl border border-blue-200 bg-blue-50 px-4 py-4 text-sm text-blue-900">
+                Individual icon descriptions are disabled. The backend will generate 9 logo concepts from your general theme and pass them through the standard icon flow.
               </div>
             )}
 

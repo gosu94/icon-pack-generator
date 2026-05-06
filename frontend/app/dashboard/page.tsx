@@ -63,6 +63,8 @@ export default function Page() {
     formatFileSize,
     enhancePrompt,
     setEnhancePrompt,
+    designLogo,
+    setDesignLogo,
     baseModel,
     setBaseModel,
     variationModel,
@@ -137,6 +139,8 @@ export default function Page() {
           formatFileSize={formatFileSize}
           enhancePrompt={enhancePrompt}
           setEnhancePrompt={setEnhancePrompt}
+          designLogo={designLogo}
+          setDesignLogo={setDesignLogo}
           baseModel={baseModel}
           setBaseModel={setBaseModel}
           variationModel={variationModel}

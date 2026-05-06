@@ -31,6 +31,7 @@ export function useDashboardFormState({
   const [referenceImage, setReferenceImage] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string>("");
   const [enhancePrompt, setEnhancePrompt] = useState(false);
+  const [designLogo, setDesignLogo] = useState(false);
   const [baseModel, setBaseModel] = useState("standard");
   const [variationModel, setVariationModel] = useState("pro");
 
@@ -59,16 +60,31 @@ export function useDashboardFormState({
     if (mode === "mockups") {
       setGenerateVariations(true);
     }
+  }, [mode, resetFormForMode]);
+
+  useEffect(() => {
     if (mode !== "icons" && enhancePrompt) {
       setEnhancePrompt(false);
     }
-  }, [mode, resetFormForMode, enhancePrompt]);
+    if (mode !== "icons" && designLogo) {
+      setDesignLogo(false);
+    }
+  }, [designLogo, enhancePrompt, mode]);
 
   useEffect(() => {
     if (inputType === "image" && enhancePrompt) {
       setEnhancePrompt(false);
     }
-  }, [inputType, enhancePrompt]);
+    if (inputType === "image" && designLogo) {
+      setDesignLogo(false);
+    }
+  }, [designLogo, enhancePrompt, inputType]);
+
+  useEffect(() => {
+    if (designLogo && enhancePrompt) {
+      setEnhancePrompt(false);
+    }
+  }, [designLogo, enhancePrompt]);
 
   const handleImageSelect = useCallback(
     (event: ChangeEvent<HTMLInputElement>) => {
@@ -212,6 +228,8 @@ export function useDashboardFormState({
     formatFileSize,
     enhancePrompt,
     setEnhancePrompt,
+    designLogo,
+    setDesignLogo,
     baseModel,
     setBaseModel,
     variationModel,

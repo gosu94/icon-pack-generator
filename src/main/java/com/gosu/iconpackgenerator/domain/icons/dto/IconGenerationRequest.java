@@ -52,6 +52,12 @@ public class IconGenerationRequest {
      * before generating icons.
      */
     private boolean enhancePrompt;
+
+    /**
+     * When true, the backend should automatically generate 9 logo-oriented descriptions
+     * from the general theme and use them instead of manual per-icon descriptions.
+     */
+    private boolean designLogo;
     
     /**
      * Custom validation to ensure either generalDescription or referenceImageBase64 is provided

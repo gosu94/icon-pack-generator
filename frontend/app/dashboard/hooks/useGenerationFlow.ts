@@ -53,6 +53,7 @@ export function useGenerationFlow({
     fileToBase64,
     validateForm,
     enhancePrompt,
+    designLogo,
     baseModel,
     variationModel,
   } = formState;
@@ -793,9 +794,9 @@ export function useGenerationFlow({
       formData = {
         iconCount: count,
         generationsPerService: generateVariations ? 2 : 1,
-        individualDescriptions: individualDescriptions.filter((desc) =>
-          desc.trim(),
-        ),
+        individualDescriptions: designLogo
+          ? []
+          : individualDescriptions.filter((desc) => desc.trim()),
         baseModel: resolvedBaseModel,
         variationModel: resolvedVariationModel,
       };
@@ -810,6 +811,7 @@ export function useGenerationFlow({
         formData.generalDescription = generalDescription.trim();
         if (mode === "icons") {
           formData.enhancePrompt = enhancePrompt;
+          formData.designLogo = designLogo;
         }
       }
     } else if (inputType === "image" && referenceImage) {
@@ -967,6 +969,7 @@ export function useGenerationFlow({
     mode,
     referenceImage,
     saveGenerationState,
+    designLogo,
     setErrorMessage,
     setShowResultsPanes,
     startOverallProgressTimer,

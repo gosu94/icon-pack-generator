@@ -39,6 +39,7 @@ public class IconGenerationService {
     private final TrialModeService trialModeService;
     private final ErrorMessageSanitizer errorMessageSanitizer;
     private final IconPromptEnhancementService iconPromptEnhancementService;
+    private final LogoDescriptionGenerationService logoDescriptionGenerationService;
 
     public CompletableFuture<IconGenerationResponse> generateIcons(IconGenerationRequest request, User user) {
         return generateIcons(request, UUID.randomUUID().toString(), null, user);
@@ -70,6 +71,7 @@ public class IconGenerationService {
 
         Long seed = request.getSeed() != null ? request.getSeed() : generateRandomSeed();
         applyPromptEnhancementIfRequested(request);
+        applyLogoDescriptionsIfRequested(request);
 
         log.info("Starting icon generation for {} icons with GPT service (requestId={}, seed={}, trialMode={})",
                 request.getIconCount(), requestId, seed, isTrialMode);
@@ -388,6 +390,28 @@ public class IconGenerationService {
         request.setGeneralDescription(iconPromptEnhancementService.enhanceIfPossible(trimmed));
     }
 
+    private void applyLogoDescriptionsIfRequested(IconGenerationRequest request) {
+        if (!request.isDesignLogo()) {
+            return;
+        }
+
+        if (request.hasReferenceImage()) {
+            log.info("Skipping automatic logo descriptions because the request uses a reference image");
+            return;
+        }
+
+        String generalDescription = request.getGeneralDescription();
+        if (generalDescription == null || generalDescription.trim().isEmpty()) {
+            return;
+        }
+
+        List<String> generatedDescriptions = logoDescriptionGenerationService.generateDescriptions(generalDescription);
+        request.setIndividualDescriptions(new ArrayList<>(generatedDescriptions));
+        log.info("Generated {} automatic logo descriptions for theme '{}'",
+                generatedDescriptions.size(),
+                generalDescription.substring(0, Math.min(80, generalDescription.length())));
+    }
+
     private IconGenerationRequest createStyledVariationRequest(IconGenerationRequest originalRequest) {
         IconGenerationRequest modifiedRequest = new IconGenerationRequest();
         modifiedRequest.setIconCount(originalRequest.getIconCount());
@@ -396,6 +420,7 @@ public class IconGenerationService {
         modifiedRequest.setGenerationsPerService(originalRequest.getGenerationsPerService());
         modifiedRequest.setReferenceImageBase64(originalRequest.getReferenceImageBase64());
         modifiedRequest.setEnhancePrompt(originalRequest.isEnhancePrompt());
+        modifiedRequest.setDesignLogo(originalRequest.isDesignLogo());
         modifiedRequest.setBaseModel(originalRequest.getBaseModel());
         modifiedRequest.setVariationModel(originalRequest.getVariationModel());
 
