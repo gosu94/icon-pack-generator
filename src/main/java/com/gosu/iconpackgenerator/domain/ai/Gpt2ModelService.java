@@ -37,10 +37,15 @@ public class Gpt2ModelService implements AIModelService {
     private static final String IMAGE_SIZE = "1024x1024";
     private static final String IMAGE_QUALITY = "high";
     private static final String OUTPUT_FORMAT = "png";
+    private static final String BACKGROUND_CONTRAST_PROMPT = """
+
+            Important for post-processing: render the icon grid on a simple solid background color that strongly contrasts with every icon. Do not use a transparent, matching, patterned, or busy background.
+            """;
 
     private final OpenAIConfig openAIConfig;
     private final ErrorMessageSanitizer errorMessageSanitizer;
     private final RestTemplate restTemplate;
+    private final IdeoGramRemoveBackGroundService ideoGramRemoveBackGroundService;
 
     @Override
     public CompletableFuture<byte[]> generateImage(String prompt) {
@@ -72,7 +77,8 @@ public class Gpt2ModelService implements AIModelService {
                     throw new FalAiException("Empty response from OpenAI API");
                 }
 
-                return extractImageFromOpenAIResponse(responseBody);
+                byte[] generatedImage = extractImageFromOpenAIResponse(responseBody);
+                return removeBackground(generatedImage);
             } catch (Exception e) {
                 log.error("Error calling GPT Image 2 text-to-image API", e);
                 String sanitized = errorMessageSanitizer.sanitizeErrorMessage(e.getMessage(), "GPT2");
@@ -105,7 +111,7 @@ public class Gpt2ModelService implements AIModelService {
 
                 body.add("image", imageEntity);
                 body.add("model", OPENAI_MODEL);
-                body.add("prompt", prompt);
+                body.add("prompt", addBackgroundContrastInstruction(prompt));
                 body.add("size", IMAGE_SIZE);
                 body.add("quality", IMAGE_QUALITY);
                 body.add("output_format", OUTPUT_FORMAT);
@@ -126,7 +132,8 @@ public class Gpt2ModelService implements AIModelService {
                     throw new FalAiException("Empty response from OpenAI API");
                 }
 
-                return extractImageFromOpenAIResponse(responseBody);
+                byte[] generatedImage = extractImageFromOpenAIResponse(responseBody);
+                return removeBackground(generatedImage);
             } catch (Exception e) {
                 log.error("Error calling GPT Image 2 image-to-image API", e);
                 String sanitized = errorMessageSanitizer.sanitizeErrorMessage(e.getMessage(), "GPT2");
@@ -145,12 +152,16 @@ public class Gpt2ModelService implements AIModelService {
     private Map<String, Object> createTextToImageInputMap(String prompt) {
         Map<String, Object> input = new HashMap<>();
         input.put("model", OPENAI_MODEL);
-        input.put("prompt", prompt);
+        input.put("prompt", addBackgroundContrastInstruction(prompt));
         input.put("size", IMAGE_SIZE);
         input.put("quality", IMAGE_QUALITY);
         input.put("n", 1);
         input.put("output_format", OUTPUT_FORMAT);
         return input;
+    }
+
+    private String addBackgroundContrastInstruction(String prompt) {
+        return prompt + BACKGROUND_CONTRAST_PROMPT;
     }
 
     private byte[] extractImageFromOpenAIResponse(JsonNode response) {
@@ -178,6 +189,11 @@ public class Gpt2ModelService implements AIModelService {
             log.error("Error extracting image from OpenAI response", e);
             throw new FalAiException("Failed to extract image from OpenAI API response: " + e.getMessage(), e);
         }
+    }
+
+    private byte[] removeBackground(byte[] imageData) {
+        log.info("Removing GPT Image 2 background with Ideogram before icon grid processing");
+        return ideoGramRemoveBackGroundService.removeBackground(imageData);
     }
 
     private byte[] downloadImageFromUrl(String imageUrl) {
