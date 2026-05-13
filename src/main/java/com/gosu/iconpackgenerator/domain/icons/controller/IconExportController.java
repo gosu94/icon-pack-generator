@@ -80,6 +80,7 @@ public class IconExportController implements IconExportControllerAPI {
 
             iconsToExport = new ArrayList<>();
             List<IconGenerationResponse.ServiceResults> serviceResults = switch (requestedService) {
+                case "gpt2" -> generationResponse.getGpt2Results();
                 case "gpt15" -> generationResponse.getGpt15Results();
                 case "gpt" -> generationResponse.getGptResults();
                 default -> generationResponse.getGptResults();

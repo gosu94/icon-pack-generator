@@ -13,6 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 /**
  * Service responsible for persisting generated icons to database and file system.
@@ -52,14 +53,13 @@ public class IconPersistenceService {
             
             // Get all service results for metadata
             List<IconGenerationResponse.ServiceResults> allServiceResults = new ArrayList<>();
-            allServiceResults.addAll(response.getFalAiResults());
-            allServiceResults.addAll(response.getRecraftResults());
-            allServiceResults.addAll(response.getPhotonResults());
-            allServiceResults.addAll(response.getGptResults());
-            if (response.getGpt15Results() != null) {
-                allServiceResults.addAll(response.getGpt15Results());
-            }
-            allServiceResults.addAll(response.getBananaResults());
+            addServiceResults(allServiceResults, response.getFalAiResults());
+            addServiceResults(allServiceResults, response.getRecraftResults());
+            addServiceResults(allServiceResults, response.getPhotonResults());
+            addServiceResults(allServiceResults, response.getGptResults());
+            addServiceResults(allServiceResults, response.getGpt15Results());
+            addServiceResults(allServiceResults, response.getGpt2Results());
+            addServiceResults(allServiceResults, response.getBananaResults());
             
             int persistedCount = 0;
             for (IconGenerationResponse.GeneratedIcon icon : response.getIcons()) {
@@ -242,10 +242,29 @@ public class IconPersistenceService {
                                       List<IconGenerationResponse.ServiceResults> allServiceResults) {
         return allServiceResults.stream()
                 .filter(result -> icon.getServiceSource().equals(result.getServiceName()))
-                .filter(result -> result.getIcons() != null && result.getIcons().contains(icon))
+                .filter(result -> result.getIcons() != null && result.getIcons().stream()
+                        .anyMatch(resultIcon -> isSameGeneratedIcon(icon, resultIcon)))
                 .map(IconGenerationResponse.ServiceResults::getGenerationIndex)
                 .findFirst()
                 .orElse(1);
+    }
+
+    private void addServiceResults(List<IconGenerationResponse.ServiceResults> target,
+                                   List<IconGenerationResponse.ServiceResults> source) {
+        if (source != null) {
+            target.addAll(source);
+        }
+    }
+
+    private boolean isSameGeneratedIcon(IconGenerationResponse.GeneratedIcon first,
+                                        IconGenerationResponse.GeneratedIcon second) {
+        if (first == null || second == null) {
+            return false;
+        }
+
+        return Objects.equals(first.getId(), second.getId()) &&
+                Objects.equals(first.getServiceSource(), second.getServiceSource()) &&
+                first.getGridPosition() == second.getGridPosition();
     }
 
 }

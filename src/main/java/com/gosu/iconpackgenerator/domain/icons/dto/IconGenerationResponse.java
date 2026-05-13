@@ -16,6 +16,7 @@ public class IconGenerationResponse {
     private List<ServiceResults> photonResults;
     private List<ServiceResults> gptResults;
     private List<ServiceResults> gpt15Results;
+    private List<ServiceResults> gpt2Results;
     private List<ServiceResults> bananaResults;
     private boolean trialMode;
     

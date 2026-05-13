@@ -38,6 +38,7 @@ export interface GenerationResponse {
   photonResults?: ServiceResult[];
   gptResults?: ServiceResult[];
   gpt15Results?: ServiceResult[];
+  gpt2Results?: ServiceResult[];
   bananaResults?: ServiceResult[];
   trialMode?: boolean;
 }

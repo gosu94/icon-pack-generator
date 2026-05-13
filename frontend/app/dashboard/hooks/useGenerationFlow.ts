@@ -140,6 +140,7 @@ export function useGenerationFlow({
         photon: "Luma Photon",
         gpt: "Standard",
         gpt15: "Pro",
+        gpt2: "Pro+",
         banana: "Nano Banana",
       };
     return serviceNames[serviceId] || serviceId;
@@ -256,6 +257,7 @@ export function useGenerationFlow({
         { id: "photon", name: "Luma Photon" },
         { id: "gpt", name: "Standard" },
         { id: "gpt15", name: "Pro" },
+        { id: "gpt2", name: "Pro+" },
         { id: "banana", name: "Nano Banana" },
       ];
 
@@ -265,9 +267,11 @@ export function useGenerationFlow({
       const generationsNum = generateVariations ? 2 : 1;
       const getExpectedServiceId = (genIndex: number) => {
         if (genIndex === 1) {
+          if (baseModel === "pro_plus") return "gpt2";
           return baseModel === "pro" ? "gpt15" : "gpt";
         }
         if (genIndex === 2) {
+          if (variationModel === "pro_plus") return "gpt2";
           return variationModel === "standard" ? "gpt" : "gpt15";
         }
         return "gpt";
@@ -276,7 +280,10 @@ export function useGenerationFlow({
         serviceId: string,
         genIndex: number,
       ) => {
-        if (mode === "icons" && (serviceId === "gpt" || serviceId === "gpt15")) {
+        if (
+          mode === "icons" &&
+          (serviceId === "gpt" || serviceId === "gpt15" || serviceId === "gpt2")
+        ) {
           return serviceId === getExpectedServiceId(genIndex);
         }
         if (serviceId === "gpt" && genIndex > 1) {
@@ -386,6 +393,7 @@ export function useGenerationFlow({
             photonResults: [] as ServiceResult[],
             gptResults: [] as ServiceResult[],
             gpt15Results: [] as ServiceResult[],
+            gpt2Results: [] as ServiceResult[],
             bananaResults: [] as ServiceResult[],
           };
 
@@ -407,6 +415,9 @@ export function useGenerationFlow({
                   break;
                 case "gpt15":
                   groupedResults.gpt15Results.push(result);
+                  break;
+                case "gpt2":
+                  groupedResults.gpt2Results.push(result);
                   break;
                 case "banana":
                   groupedResults.bananaResults.push(result);
@@ -460,6 +471,7 @@ export function useGenerationFlow({
             photonResults: [] as ServiceResult[],
             gptResults: [] as ServiceResult[],
             gpt15Results: [] as ServiceResult[],
+            gpt2Results: [] as ServiceResult[],
             bananaResults: [] as ServiceResult[],
           };
           Object.entries(latestStreamingResults).forEach(
@@ -480,6 +492,9 @@ export function useGenerationFlow({
                   break;
                 case "gpt15":
                   groupedResults.gpt15Results.push(result);
+                  break;
+                case "gpt2":
+                  groupedResults.gpt2Results.push(result);
                   break;
                 case "banana":
                   groupedResults.bananaResults.push(result);
@@ -581,6 +596,7 @@ export function useGenerationFlow({
                   photonResults: { serviceId: "photon", itemsKey: "icons" },
                   gptResults: { serviceId: "gpt", itemsKey: "icons" },
                   gpt15Results: { serviceId: "gpt15", itemsKey: "icons" },
+                  gpt2Results: { serviceId: "gpt2", itemsKey: "icons" },
                   bananaResults: { serviceId: "banana", itemsKey: "icons" },
                 };
 
@@ -754,7 +770,14 @@ export function useGenerationFlow({
     clearAllAnimations();
 
     let duration = 40000;
-    if (inputType === "image") {
+    if (
+      mode === "icons" &&
+      inputType !== "image" &&
+      (baseModel === "pro_plus" ||
+        (generateVariations && variationModel === "pro_plus"))
+    ) {
+      duration = 220000;
+    } else if (inputType === "image") {
       duration = 70000;
     }
     startOverallProgressTimer(duration);
@@ -1022,6 +1045,9 @@ export function useGenerationFlow({
         case "gpt15":
           resultsArray = currentResponse.gpt15Results;
           break;
+        case "gpt2":
+          resultsArray = currentResponse.gpt2Results;
+          break;
         case "banana":
           resultsArray = currentResponse.bananaResults;
           break;
@@ -1044,8 +1070,17 @@ export function useGenerationFlow({
       const user = authState?.user;
       const regularCoins = user?.coins ?? 0;
       const trialCoins = user?.trialCoins ?? 0;
+      const moreIconsCost = serviceId === "gpt2" ? 2 : 1;
 
-      if (regularCoins < 1 && trialCoins === 0) {
+      if (serviceId === "gpt2" && regularCoins < moreIconsCost) {
+        setErrorMessage(
+          "Insufficient regular coins. Pro+ Generate More requires 2 regular coins.",
+        );
+        setUiState("error");
+        return;
+      }
+
+      if (serviceId !== "gpt2" && regularCoins < 1 && trialCoins === 0) {
         setErrorMessage(
           "Insufficient coins. You need 1 coin to generate more icons.",
         );
@@ -1065,7 +1100,7 @@ export function useGenerationFlow({
       setIsGenerating(true);
       setOverallProgress(0);
 
-      const duration = 35000;
+      const duration = serviceId === "gpt2" ? 220000 : 35000;
       startOverallProgressTimer(duration);
 
       setStreamingResults((prev) => ({

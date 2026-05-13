@@ -7,6 +7,28 @@ import {
 } from "react";
 import { GenerationMode } from "@/lib/types";
 
+const MODEL_PRO_PLUS = "pro_plus";
+
+const calculateIconGenerationCost = (
+  generateVariations: boolean,
+  baseModel: string,
+  variationModel: string,
+  inputType: string,
+) => {
+  if (inputType === "image") {
+    return 1;
+  }
+
+  let cost = generateVariations ? 2 : 1;
+  if (baseModel === MODEL_PRO_PLUS) {
+    cost += 1;
+  }
+  if (generateVariations && variationModel === MODEL_PRO_PLUS) {
+    cost += 1;
+  }
+  return cost;
+};
+
 interface AuthStateLike {
   user?: {
     coins?: number;
@@ -171,12 +193,28 @@ export function useDashboardFormState({
       }
 
       const cost =
-        generationMode === "mockups" ? 1 : generateVariations ? 2 : 1;
+        generationMode === "mockups"
+          ? 1
+          : generationMode === "icons"
+          ? calculateIconGenerationCost(
+              generateVariations,
+              baseModel,
+              variationModel,
+              inputType,
+            )
+          : generateVariations
+          ? 2
+          : 1;
       const user = authState?.user;
       const regularCoins = user?.coins ?? 0;
       const trialCoins = user?.trialCoins ?? 0;
+      const usesProPlus =
+        generationMode === "icons" &&
+        inputType !== "image" &&
+        (baseModel === MODEL_PRO_PLUS ||
+          (generateVariations && variationModel === MODEL_PRO_PLUS));
       const hasEnoughRegularCoins = regularCoins >= cost;
-      const hasTrialCoins = trialCoins > 0;
+      const hasTrialCoins = trialCoins > 0 && !usesProPlus;
 
       if (!hasEnoughRegularCoins && !hasTrialCoins) {
         const itemType =
@@ -188,9 +226,13 @@ export function useDashboardFormState({
             ? "labels"
             : "icons";
         setErrorMessage(
-          `Insufficient coins. You need ${cost} coin${
-            cost > 1 ? "s" : ""
-          } to generate ${itemType}, or you can use your trial coin for a limited experience.`,
+          usesProPlus
+            ? `Insufficient regular coins. Pro+ requires ${cost} regular coin${
+                cost > 1 ? "s" : ""
+              } and is not available with trial coins.`
+            : `Insufficient coins. You need ${cost} coin${
+                cost > 1 ? "s" : ""
+              } to generate ${itemType}, or you can use your trial coin for a limited experience.`,
         );
         return false;
       }
@@ -200,9 +242,11 @@ export function useDashboardFormState({
     [
       generateVariations,
       generalDescription,
+      baseModel,
       inputType,
       labelText,
       referenceImage,
+      variationModel,
     ],
   );
 

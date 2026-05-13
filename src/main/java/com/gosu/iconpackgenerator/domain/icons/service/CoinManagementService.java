@@ -139,12 +139,12 @@ public class CoinManagementService {
                 log.error("Failed to deduct regular coins from user {}", user.getEmail());
                 return CoinDeductionResult.failure("Failed to process payment. Please try again.");
             }
-            log.info("Deducted {} regular coin(s) from user {} for watermark removal", cost, user.getEmail());
+            log.info("Deducted {} regular coin(s) from user {}", cost, user.getEmail());
             return CoinDeductionResult.success(false, cost);
         }
 
         log.warn("User {} has insufficient regular coins: {}", user.getEmail(), regularCoins);
-        return CoinDeductionResult.failure("Insufficient regular coins. Please purchase coins to remove the watermark.");
+        return CoinDeductionResult.failure("Insufficient regular coins. Please purchase coins to continue.");
     }
     
     /**

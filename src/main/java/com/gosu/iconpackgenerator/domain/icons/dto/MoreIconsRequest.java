@@ -13,7 +13,7 @@ public class MoreIconsRequest {
     private String originalRequestId;
     
     /**
-     * The service to use for generation (gpt or gpt15)
+     * The service to use for generation (gpt, gpt15, or gpt2)
      */
     private String serviceName;
     

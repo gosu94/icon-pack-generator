@@ -502,6 +502,8 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
         return currentResponse?.gptResults;
       case "gpt15":
         return currentResponse?.gpt15Results;
+      case "gpt2":
+        return currentResponse?.gpt2Results;
       case "banana":
         return currentResponse?.bananaResults;
       default:
@@ -526,6 +528,7 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
     return results.map((result, index) => {
       const baseServiceId = result.serviceId.replace(/-gen\d+$/, "");
       const serviceName = getServiceDisplayName(baseServiceId);
+      const generateMoreCost = mode === "icons" && baseServiceId === "gpt2" ? 2 : 1;
       const displayIcons = getDisplayIcons(result, baseServiceId);
       const referenceIconBase64 =
         isTrialResult && displayIcons?.length ? displayIcons[0].base64Data : undefined;
@@ -759,7 +762,7 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
                       <span>Generate More</span>
                       <span className="flex items-center space-x-1 rounded-full bg-white/20 px-2 py-0.5 text-xs font-semibold">
                         <Image src="/images/coin.webp" alt="Coins" width={16} height={16} />
-                        <span>1</span>
+                        <span>{generateMoreCost}</span>
                       </span>
                     </div>
                   </button>
@@ -835,7 +838,7 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
                           <span>{mode === "icons" ? "Generate 9 More Icons" : "Generate 4 More Illustrations"}</span>
                           <span className="flex items-center space-x-1 rounded-full bg-white/20 px-2 py-0.5 text-xs font-semibold">
                             <Image src="/images/coin.webp" alt="Coins" width={16} height={16} />
-                            <span>1</span>
+                            <span>{generateMoreCost}</span>
                           </span>
                         </div>
                       )}

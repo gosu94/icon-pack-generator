@@ -11,6 +11,7 @@ import com.gosu.iconpackgenerator.domain.icons.dto.MoreIconsResponse;
 import com.gosu.iconpackgenerator.domain.icons.dto.ServiceProgressUpdate;
 import com.gosu.iconpackgenerator.domain.icons.service.CoinManagementService;
 import com.gosu.iconpackgenerator.domain.ai.Gpt15ModelService;
+import com.gosu.iconpackgenerator.domain.ai.Gpt2ModelService;
 import com.gosu.iconpackgenerator.domain.ai.GptModelService;
 import com.gosu.iconpackgenerator.domain.icons.service.IconGenerationService;
 import com.gosu.iconpackgenerator.domain.icons.service.IconPersistenceService;
@@ -54,10 +55,12 @@ public class IconGenerationController implements IconGenerationControllerAPI {
 
     private static final String MODEL_STANDARD = "standard";
     private static final String MODEL_PRO = "pro";
+    private static final String MODEL_PRO_PLUS = "pro_plus";
 
     private final IconGenerationService iconGenerationService;
     private final GptModelService gptModelService;
     private final Gpt15ModelService gpt15ModelService;
+    private final Gpt2ModelService gpt2ModelService;
     private final PromptGenerationService promptGenerationService;
     private final ImageProcessingService imageProcessingService;
     private final AIServicesConfig aiServicesConfig;
@@ -164,17 +167,22 @@ public class IconGenerationController implements IconGenerationControllerAPI {
         Map<String, Object> response = new HashMap<>();
         response.put("requestId", requestId);
 
-        boolean useGptForBase = !isProModel(request.getBaseModel()) && !request.hasReferenceImage();
+        boolean useGptForBase = isStandardModel(request.getBaseModel()) && !request.hasReferenceImage();
         boolean useGptForVariation = request.getGenerationsPerService() >= 2
                 && isStandardModel(request.getVariationModel())
                 && !request.hasReferenceImage();
         boolean useGpt15ForBase = isProModel(request.getBaseModel()) || request.hasReferenceImage();
         boolean useGpt15ForVariation = request.getGenerationsPerService() >= 2
-                && (!isStandardModel(request.getVariationModel()) || request.hasReferenceImage());
+                && (isProModel(request.getVariationModel()) || request.hasReferenceImage());
+        boolean useGpt2ForBase = isProPlusModel(request.getBaseModel()) && !request.hasReferenceImage();
+        boolean useGpt2ForVariation = request.getGenerationsPerService() >= 2
+                && isProPlusModel(request.getVariationModel())
+                && !request.hasReferenceImage();
 
         Map<String, Boolean> enabledServices = new HashMap<>();
         enabledServices.put("gpt", aiServicesConfig.isGptEnabled() && (useGptForBase || useGptForVariation));
         enabledServices.put("gpt15", aiServicesConfig.isGpt15Enabled() && (useGpt15ForBase || useGpt15ForVariation));
+        enabledServices.put("gpt2", aiServicesConfig.isGpt2Enabled() && (useGpt2ForBase || useGpt2ForVariation));
         response.put("enabledServices", enabledServices);
 
         return ResponseEntity.ok(response);
@@ -364,14 +372,8 @@ public class IconGenerationController implements IconGenerationControllerAPI {
 
         CompletableFuture.supplyAsync(() -> {
             long startTime = System.currentTimeMillis();
-
-            // Deduct coins using the dedicated service
-            CoinManagementService.CoinDeductionResult coinResult = coinManagementService.deductCoinForMoreIcons(user);
-            if (!coinResult.isSuccess()) {
-                return createErrorResponse(request, coinResult.getErrorMessage(), startTime);
-            }
-
-            final boolean usedTrialCoin = coinResult.isUsedTrialCoins();
+            boolean usedTrialCoin = false;
+            int deductedAmount = 0;
 
             try {
 
@@ -380,10 +382,20 @@ public class IconGenerationController implements IconGenerationControllerAPI {
                 }
 
                 String normalizedService = request.getServiceName().trim().toLowerCase();
-                if (!normalizedService.equals("gpt") && !normalizedService.equals("gpt15")) {
+                if (!normalizedService.equals("gpt") && !normalizedService.equals("gpt15") && !normalizedService.equals("gpt2")) {
                     return createErrorResponse(request, "Unsupported service for additional icons", startTime);
                 }
                 request.setServiceName(normalizedService);
+
+                int coinCost = getMoreIconsCoinCost(normalizedService);
+                CoinManagementService.CoinDeductionResult coinResult = "gpt2".equals(normalizedService)
+                        ? coinManagementService.deductRegularCoins(user, coinCost)
+                        : coinManagementService.deductCoinForMoreIcons(user);
+                if (!coinResult.isSuccess()) {
+                    return createErrorResponse(request, coinResult.getErrorMessage(), startTime);
+                }
+                usedTrialCoin = coinResult.isUsedTrialCoins();
+                deductedAmount = coinResult.getDeductedAmount();
 
                 if (request.getOriginalImageBase64() == null || request.getOriginalImageBase64().trim().isEmpty()) {
                     return createErrorResponse(request, "Original image is required", startTime);
@@ -446,9 +458,11 @@ public class IconGenerationController implements IconGenerationControllerAPI {
 
                 if (failureAnalysis.shouldRefund()) {
                     try {
-                        coinManagementService.refundCoins(user, 1, usedTrialCoin);
-                        log.info("Refunded {} coin to user {} due to temporary service unavailability for more icons generation",
-                                usedTrialCoin ? "trial" : "regular", user.getEmail());
+                        if (deductedAmount > 0) {
+                            coinManagementService.refundCoins(user, deductedAmount, usedTrialCoin);
+                            log.info("Refunded {} {} coin(s) to user {} due to temporary service unavailability for more icons generation",
+                                    deductedAmount, usedTrialCoin ? "trial" : "regular", user.getEmail());
+                        }
                         return createErrorResponse(request, failureAnalysis.getRefundMessage(), startTime);
                     } catch (Exception refundException) {
                         log.error("Failed to refund coins to user {} for more icons generation", user.getEmail(), refundException);
@@ -490,9 +504,18 @@ public class IconGenerationController implements IconGenerationControllerAPI {
                     throw new RuntimeException("GPT 1.5 service is disabled");
                 }
                 return gpt15ModelService.generateImageToImage(prompt, originalImageData, seed);
+            case "gpt2":
+                if (!aiServicesConfig.isGpt2Enabled()) {
+                    throw new RuntimeException("GPT 2 service is disabled");
+                }
+                return gpt2ModelService.generateImageToImage(prompt, originalImageData, seed);
             default:
                 throw new RuntimeException("Unknown service: " + serviceName);
         }
+    }
+
+    private int getMoreIconsCoinCost(String serviceName) {
+        return "gpt2".equalsIgnoreCase(serviceName) ? 2 : 1;
     }
 
     private List<IconGenerationResponse.GeneratedIcon> createIconList(List<String> base64Icons, MoreIconsRequest request) {
@@ -535,6 +558,10 @@ public class IconGenerationController implements IconGenerationControllerAPI {
 
     private boolean isProModel(String model) {
         return model != null && MODEL_PRO.equalsIgnoreCase(model.trim());
+    }
+
+    private boolean isProPlusModel(String model) {
+        return model != null && MODEL_PRO_PLUS.equalsIgnoreCase(model.trim());
     }
 
     private MoreIconsResponse createErrorResponse(MoreIconsRequest request, String errorMessage, long startTime) {
@@ -638,6 +665,7 @@ public class IconGenerationController implements IconGenerationControllerAPI {
             List<IconGenerationResponse.ServiceResults> serviceResults = switch (request.getServiceName().toLowerCase()) {
                 case "gpt" -> existingResponse.getGptResults();
                 case "gpt15" -> existingResponse.getGpt15Results();
+                case "gpt2" -> existingResponse.getGpt2Results();
                 default -> null;
             };
 

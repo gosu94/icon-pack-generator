@@ -73,20 +73,50 @@ const GeneratorForm: React.FC<GeneratorFormProps> = ({
   const regularCoins = authState.user?.coins ?? 0;
   const trialCoins = authState.user?.trialCoins ?? 0;
   const isTrialOnly = regularCoins === 0 && trialCoins > 0;
+  const usesProPlus =
+    mode === "icons" &&
+    inputType !== "image" &&
+    (baseModel === "pro_plus" ||
+      (generateVariations && variationModel === "pro_plus"));
+  const calculateGenerationCost = () => {
+    if (mode === "mockups") {
+      return 1;
+    }
+    if (mode !== "icons" || inputType === "image") {
+      return generateVariations ? 2 : 1;
+    }
+
+    let cost = generateVariations ? 2 : 1;
+    if (baseModel === "pro_plus") {
+      cost += 1;
+    }
+    if (generateVariations && variationModel === "pro_plus") {
+      cost += 1;
+    }
+    return cost;
+  };
   const showReferenceBanner =
     inputType === "image" && (mode === "icons" || mode === "illustrations");
   const generationModelOptions = [
     {
       value: "standard",
       label: "Standard",
-      imageSrc: "/images/new-model/old_icon1.webp",
+      imageSrc: "/images/models/standard.webp",
       imageAlt: "Standard model sample",
     },
     {
       value: "pro",
       label: "Pro",
-      imageSrc: "/images/new-model/new_icon1.webp",
+      imageSrc: "/images/models/pro.webp",
       imageAlt: "Pro model sample",
+    },
+    {
+      value: "pro_plus",
+      label: "Pro+",
+      imageSrc: "/images/models/pro_plus.webp",
+      imageAlt: "Pro+ model sample",
+      extraCoin: true,
+      experimental: false,
     },
   ] as const;
 
@@ -96,6 +126,15 @@ const GeneratorForm: React.FC<GeneratorFormProps> = ({
       setGenerateVariations(false);
     }
   }, [isTrialOnly, generateVariations, setGenerateVariations]);
+
+  useEffect(() => {
+    if (isTrialOnly && baseModel === "pro_plus") {
+      setBaseModel("pro");
+    }
+    if (isTrialOnly && variationModel === "pro_plus") {
+      setVariationModel("pro");
+    }
+  }, [baseModel, isTrialOnly, setBaseModel, setVariationModel, variationModel]);
 
   const handleDragEnter = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
@@ -609,20 +648,21 @@ const GeneratorForm: React.FC<GeneratorFormProps> = ({
                       </button>
                       <div className="absolute left-1/2 top-6 z-20 w-80 max-w-xs -translate-x-1/2 rounded-xl border border-slate-200 bg-white p-4 text-xs text-slate-600 shadow-xl opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity duration-200">
                         <p className="font-semibold text-slate-900 mb-2 text-sm">
-                          Standard vs Pro
+                          Standard, Pro, and Pro+
                         </p>
                         <p className="mb-3">
                           Standard produces simpler, cleaner icons. Pro adds
                           richer materials, deeper contrast, and more refined
-                          lighting for premium polish.
+                          lighting for premium polish. Pro+
+                          costs one additional regular coin each time it is used.
                         </p>
-                        <div className="grid grid-cols-2 gap-3">
+                        <div className="grid grid-cols-3 gap-3">
                           <div className="text-center">
                             <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
                               Standard
                             </span>
                             <Image
-                              src="/images/new-model/old_icon1.webp"
+                              src="/images/models/standard.webp"
                               alt="Standard model sample"
                               width={120}
                               height={120}
@@ -634,8 +674,20 @@ const GeneratorForm: React.FC<GeneratorFormProps> = ({
                               Pro
                             </span>
                             <Image
-                              src="/images/new-model/new_icon1.webp"
+                              src="/images/models/pro.webp"
                               alt="Pro model sample"
+                              width={120}
+                              height={120}
+                              className="mx-auto mt-1 rounded-lg border border-slate-200 object-cover"
+                            />
+                          </div>
+                          <div className="text-center">
+                            <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                              Pro+
+                            </span>
+                            <Image
+                              src="/images/models/pro_plus.webp"
+                              alt="Pro+ model sample"
                               width={120}
                               height={120}
                               className="mx-auto mt-1 rounded-lg border border-slate-200 object-cover"
@@ -646,9 +698,10 @@ const GeneratorForm: React.FC<GeneratorFormProps> = ({
                     </div>
                   </div>
                 </div>
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                   {generationModelOptions.map((option) => {
                     const isSelected = baseModel === option.value;
+                    const isDisabled = isGenerating || (isTrialOnly && option.value === "pro_plus");
 
                     return (
                       <label
@@ -657,7 +710,7 @@ const GeneratorForm: React.FC<GeneratorFormProps> = ({
                           isSelected
                             ? "border-purple-400 shadow-md ring-2 ring-purple-200"
                             : "border-slate-200 hover:border-slate-300 hover:shadow-sm"
-                        } ${isGenerating ? "cursor-not-allowed opacity-60" : ""}`}
+                        } ${isDisabled ? "cursor-not-allowed opacity-60" : ""}`}
                       >
                         <input
                           type="radio"
@@ -665,11 +718,11 @@ const GeneratorForm: React.FC<GeneratorFormProps> = ({
                           value={option.value}
                           checked={isSelected}
                           onChange={(e) => setBaseModel(e.target.value)}
-                          disabled={isGenerating}
+                          disabled={isDisabled}
                           className="sr-only"
                         />
                         <div className="mb-3 flex items-center justify-between">
-                          <span className="text-sm font-semibold text-slate-900">
+                          <span className="flex flex-wrap items-center gap-1 text-sm font-semibold text-slate-900">
                             {option.label}
                           </span>
                           <span
@@ -692,6 +745,24 @@ const GeneratorForm: React.FC<GeneratorFormProps> = ({
                             className="h-32 w-full object-contain"
                           />
                         </div>
+                        {"extraCoin" in option && option.extraCoin && (
+                          <div className="mt-2 flex items-center justify-between gap-2 text-xs">
+                      <span className="flex items-center space-x-1 rounded-full bg-gray-200 px-2 py-0.5 text-xs font-semibold text-gray-700">
+                        <span>+1</span>
+                        <Image
+                          src="/images/coin.webp"
+                          alt="Coin"
+                          width={16}
+                          height={16}
+                        />
+                      </span>
+                            {isTrialOnly && (
+                              <span className="text-[11px] font-semibold text-orange-700">
+                                No trial
+                              </span>
+                            )}
+                          </div>
+                        )}
                       </label>
                     );
                   })}
@@ -772,6 +843,7 @@ const GeneratorForm: React.FC<GeneratorFormProps> = ({
                 >
                   <option value="standard">Standard</option>
                   <option value="pro">Pro</option>
+                  <option value="pro_plus">Pro+ · +1 regular coin</option>
                 </select>
               </div>
             )}
@@ -849,7 +921,7 @@ const GeneratorForm: React.FC<GeneratorFormProps> = ({
                     <span className="flex items-center space-x-1 rounded-full bg-white/20 px-2 py-0.5 text-xs font-semibold">
                       {(() => {
                         // For mockups, cost is always 1 (variations don't cost extra)
-                        const cost = mode === "mockups" ? 1 : (generateVariations ? 2 : 1);
+                        const cost = calculateGenerationCost();
 
                         // Prioritize regular coins (same logic as backend)
                         if (regularCoins >= cost) {
@@ -864,7 +936,7 @@ const GeneratorForm: React.FC<GeneratorFormProps> = ({
                               <span>{cost}</span>
                             </>
                           );
-                        } else if (trialCoins > 0) {
+                        } else if (trialCoins > 0 && !usesProPlus) {
                           return (
                             <>
                               <div className="w-4 h-4 bg-green-500 rounded-full flex items-center justify-center">
