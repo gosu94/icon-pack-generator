@@ -95,6 +95,18 @@ const GeneratorForm: React.FC<GeneratorFormProps> = ({
     }
     return cost;
   };
+  const calculateIconGenerationEstimateSeconds = () => {
+    if (mode !== "icons") {
+      return null;
+    }
+    if (usesProPlus) {
+      return 220;
+    }
+    if (inputType === "image") {
+      return 70;
+    }
+    return 40;
+  };
   const showReferenceBanner =
     inputType === "image" && (mode === "icons" || mode === "illustrations");
   const generationModelOptions = [
@@ -960,6 +972,11 @@ const GeneratorForm: React.FC<GeneratorFormProps> = ({
                           );
                         }
                       })()}
+                    </span>
+                  )}
+                  {isAuthenticated && mode === "icons" && (
+                    <span className="text-xs font-semibold text-white/85">
+                      (~{calculateIconGenerationEstimateSeconds()}s)
                     </span>
                   )}
                 </div>
