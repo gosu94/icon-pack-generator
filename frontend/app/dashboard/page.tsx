@@ -18,12 +18,37 @@ export default function Page() {
   const { authState, checkAuthenticationStatus } = useAuth();
   const [mode, setMode] = useState<GenerationMode>("icons");
   const [gifRefreshToken, setGifRefreshToken] = useState(0);
+  const [proPlusEnabled, setProPlusEnabled] = useState(true);
 
   useEffect(() => {
     const interval = setInterval(() => {
       setGifRefreshToken((token) => (token + 1) % 100000);
     }, 4000);
     return () => clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    fetch("/api/app/config", { credentials: "include" })
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return response.json();
+      })
+      .then((config) => {
+        if (isMounted) {
+          setProPlusEnabled(Boolean(config.proPlusEnabled));
+        }
+      })
+      .catch((error) => {
+        console.warn("Failed to load app config:", error);
+      });
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   const iconAnimations = useIconAnimations();
@@ -70,6 +95,15 @@ export default function Page() {
     variationModel,
     setVariationModel,
   } = formState;
+
+  useEffect(() => {
+    if (!proPlusEnabled && baseModel === "pro_plus") {
+      setBaseModel("pro");
+    }
+    if (!proPlusEnabled && variationModel === "pro_plus") {
+      setVariationModel("pro");
+    }
+  }, [baseModel, proPlusEnabled, setBaseModel, setVariationModel, variationModel]);
 
   const {
     uiState,
@@ -145,6 +179,7 @@ export default function Page() {
           setBaseModel={setBaseModel}
           variationModel={variationModel}
           setVariationModel={setVariationModel}
+          proPlusEnabled={proPlusEnabled}
         />
 
         <ResultsDisplay

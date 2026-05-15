@@ -34,6 +34,7 @@ interface GeneratorFormProps {
   setBaseModel: (value: string) => void;
   variationModel: string;
   setVariationModel: (value: string) => void;
+  proPlusEnabled: boolean;
 }
 
 const GeneratorForm: React.FC<GeneratorFormProps> = ({
@@ -66,6 +67,7 @@ const GeneratorForm: React.FC<GeneratorFormProps> = ({
   setBaseModel,
   variationModel,
   setVariationModel,
+  proPlusEnabled,
 }) => {
   const { authState } = useAuth();
   const [isDragOver, setIsDragOver] = useState(false);
@@ -75,6 +77,7 @@ const GeneratorForm: React.FC<GeneratorFormProps> = ({
   const isTrialOnly = regularCoins === 0 && trialCoins > 0;
   const usesProPlus =
     mode === "icons" &&
+    proPlusEnabled &&
     inputType !== "image" &&
     (baseModel === "pro_plus" ||
       (generateVariations && variationModel === "pro_plus"));
@@ -122,14 +125,14 @@ const GeneratorForm: React.FC<GeneratorFormProps> = ({
       imageSrc: "/images/models/pro.webp",
       imageAlt: "Pro model sample",
     },
-    {
+    ...(proPlusEnabled ? [{
       value: "pro_plus",
       label: "Pro+",
       imageSrc: "/images/models/pro_plus.webp",
       imageAlt: "Pro+ model sample",
       extraCoin: true,
       experimental: false,
-    },
+    }] : []),
   ] as const;
 
   // Automatically disable variations when user only has trial coins
@@ -140,13 +143,13 @@ const GeneratorForm: React.FC<GeneratorFormProps> = ({
   }, [isTrialOnly, generateVariations, setGenerateVariations]);
 
   useEffect(() => {
-    if (isTrialOnly && baseModel === "pro_plus") {
+    if ((!proPlusEnabled || isTrialOnly) && baseModel === "pro_plus") {
       setBaseModel("pro");
     }
-    if (isTrialOnly && variationModel === "pro_plus") {
+    if ((!proPlusEnabled || isTrialOnly) && variationModel === "pro_plus") {
       setVariationModel("pro");
     }
-  }, [baseModel, isTrialOnly, setBaseModel, setVariationModel, variationModel]);
+  }, [baseModel, isTrialOnly, proPlusEnabled, setBaseModel, setVariationModel, variationModel]);
 
   const handleDragEnter = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
@@ -660,15 +663,15 @@ const GeneratorForm: React.FC<GeneratorFormProps> = ({
                       </button>
                       <div className="absolute left-1/2 top-6 z-20 w-80 max-w-xs -translate-x-1/2 rounded-xl border border-slate-200 bg-white p-4 text-xs text-slate-600 shadow-xl opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity duration-200">
                         <p className="font-semibold text-slate-900 mb-2 text-sm">
-                          Standard, Pro, and Pro+
+                          {proPlusEnabled ? "Standard, Pro, and Pro+" : "Standard and Pro"}
                         </p>
                         <p className="mb-3">
                           Standard produces simpler, cleaner icons. Pro adds
                           richer materials, deeper contrast, and more refined
-                          lighting for premium polish. Pro+
-                          costs one additional regular coin each time it is used.
+                          lighting for premium polish.
+                          {proPlusEnabled && " Pro+ costs one additional regular coin each time it is used."}
                         </p>
-                        <div className="grid grid-cols-3 gap-3">
+                        <div className={`grid gap-3 ${proPlusEnabled ? "grid-cols-3" : "grid-cols-2"}`}>
                           <div className="text-center">
                             <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
                               Standard
@@ -693,18 +696,20 @@ const GeneratorForm: React.FC<GeneratorFormProps> = ({
                               className="mx-auto mt-1 rounded-lg border border-slate-200 object-cover"
                             />
                           </div>
-                          <div className="text-center">
-                            <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-                              Pro+
-                            </span>
-                            <Image
-                              src="/images/models/pro_plus.webp"
-                              alt="Pro+ model sample"
-                              width={120}
-                              height={120}
-                              className="mx-auto mt-1 rounded-lg border border-slate-200 object-cover"
-                            />
-                          </div>
+                          {proPlusEnabled && (
+                            <div className="text-center">
+                              <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                                Pro+
+                              </span>
+                              <Image
+                                src="/images/models/pro_plus.webp"
+                                alt="Pro+ model sample"
+                                width={120}
+                                height={120}
+                                className="mx-auto mt-1 rounded-lg border border-slate-200 object-cover"
+                              />
+                            </div>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -855,7 +860,9 @@ const GeneratorForm: React.FC<GeneratorFormProps> = ({
                 >
                   <option value="standard">Standard</option>
                   <option value="pro">Pro</option>
-                  <option value="pro_plus">Pro+ · +1 regular coin</option>
+                  {proPlusEnabled && (
+                    <option value="pro_plus">Pro+ · +1 regular coin</option>
+                  )}
                 </select>
               </div>
             )}

@@ -83,7 +83,7 @@ ai:
     gpt:
       enabled: true
     gpt2:
-      enabled: true
+      enabled: ${AI_SERVICES_GPT2_ENABLED:true}
     banana:
       enabled: false
 

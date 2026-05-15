@@ -44,6 +44,7 @@ services:
 
      # Application Configuration
      - APP_BASE_URL=${APP_BASE_URL:-https://iconpackgen.com}
+     - AI_SERVICES_GPT2_ENABLED=${AI_SERVICES_GPT2_ENABLED:-true}
      - APP_FILE_STORAGE_BASE_PATH=/app/data/user-icons
      - FILE_STORAGE_PATH=/app/data/user-icons
      - APP_FILE_STORAGE_PRIVATE_BASE_PATH=/app/data/user-icons-private
