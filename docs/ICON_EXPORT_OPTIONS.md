@@ -173,18 +173,17 @@ This is the premium high-resolution raster option. It no longer uses SVG vectori
 Process for each icon:
 1. Read the original raster icon.
 2. Resize it to `256x256`.
-3. Choose a high-contrast temporary background color.
-4. Replace transparent pixels with that temporary background:
-   - fully transparent pixels become the selected background color
-   - partially transparent pixels are blended against the selected background
+3. Flatten transparency onto a white temporary background:
+   - fully transparent pixels become white
+   - partially transparent pixels are blended against white
    - opaque pixels remain unchanged
-5. Send the prepared `256x256` image to SeedVR with upscale factor `4.0`.
-6. SeedVR returns an upscaled `1024x1024` image.
-7. Send the upscaled image to Ideogram remove-background.
-8. Normalize the Ideogram result to `1024x1024` PNG.
-9. Use that transparent result as the working icon data for PNG, WebP, and ICO export.
+4. Send the prepared `256x256` image to SeedVR with upscale factor `4.0`.
+5. SeedVR returns an upscaled `1024x1024` image.
+6. Send the upscaled image to Ideogram remove-background.
+7. Normalize the Ideogram result to `1024x1024` PNG.
+8. Use that transparent result as the working icon data for PNG, WebP, and ICO export.
 
-The high-contrast background is selected from vivid candidate colors such as magenta, green, cyan, and yellow. The service estimates the average visible icon color and chooses the candidate with the largest color distance from it. This gives the background removal model a clearer separation between icon and background.
+White is used instead of a vivid temporary background to avoid introducing high-contrast color artifacts into intentionally transparent or semi-transparent icon elements before upscaling.
 
 Current behavior:
 - HQ adds a `1024x1024` raster size.
@@ -245,4 +244,3 @@ Controller-level behavior:
 - missing icons receive HTTP `404`
 - insufficient coins receive HTTP `402`
 - unexpected ZIP creation failures receive HTTP `500`
-

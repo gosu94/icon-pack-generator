@@ -49,12 +49,7 @@ public class IconExportService {
     private static final int HQ_UPSCALE_SOURCE_SIZE = 256;
     private static final float HQ_UPSCALE_FACTOR = 4.0f;
     private static final int HQ_THREAD_POOL_SIZE = 9;
-    private static final Color[] HQ_BACKGROUND_CANDIDATES = {
-            new Color(255, 0, 255),
-            new Color(0, 255, 0),
-            new Color(0, 255, 255),
-            new Color(255, 255, 0)
-    };
+    private static final Color HQ_UPSCALE_BACKGROUND = Color.WHITE;
     
     // Cache for WebP4j availability to avoid repeated checks
     private Boolean webp4jAvailable = null;
@@ -492,16 +487,12 @@ public class IconExportService {
         }
 
         BufferedImage resizedImage = resizeImage(sourceImage, HQ_UPSCALE_SOURCE_SIZE, HQ_UPSCALE_SOURCE_SIZE);
-        Color backgroundColor = chooseHighContrastBackground(resizedImage);
-        BufferedImage preparedImage = replaceTransparentPixels(resizedImage, backgroundColor);
+        BufferedImage preparedImage = replaceTransparentPixels(resizedImage, HQ_UPSCALE_BACKGROUND);
 
-        log.debug("Prepared icon {} for HQ upscale at {}x{} with background rgb({}, {}, {})",
+        log.debug("Prepared icon {} for HQ upscale at {}x{} with white background",
                 baseName,
                 HQ_UPSCALE_SOURCE_SIZE,
-                HQ_UPSCALE_SOURCE_SIZE,
-                backgroundColor.getRed(),
-                backgroundColor.getGreen(),
-                backgroundColor.getBlue());
+                HQ_UPSCALE_SOURCE_SIZE);
 
         return imageToBytes(preparedImage, "png");
     }
@@ -543,67 +534,6 @@ public class IconExportService {
         }
 
         return processed;
-    }
-
-    private Color chooseHighContrastBackground(BufferedImage image) {
-        long totalRed = 0;
-        long totalGreen = 0;
-        long totalBlue = 0;
-        long opaquePixelCount = 0;
-
-        int width = image.getWidth();
-        int height = image.getHeight();
-        int[] rowBuffer = new int[width];
-
-        for (int y = 0; y < height; y++) {
-            image.getRGB(0, y, width, 1, rowBuffer, 0, width);
-            for (int x = 0; x < width; x++) {
-                int argb = rowBuffer[x];
-                int alpha = (argb >> 24) & 0xFF;
-                if (alpha < 16) {
-                    continue;
-                }
-
-                totalRed += (argb >> 16) & 0xFF;
-                totalGreen += (argb >> 8) & 0xFF;
-                totalBlue += argb & 0xFF;
-                opaquePixelCount++;
-            }
-        }
-
-        if (opaquePixelCount == 0) {
-            return HQ_BACKGROUND_CANDIDATES[0];
-        }
-
-        int averageRed = Math.round((float) totalRed / opaquePixelCount);
-        int averageGreen = Math.round((float) totalGreen / opaquePixelCount);
-        int averageBlue = Math.round((float) totalBlue / opaquePixelCount);
-
-        Color bestCandidate = HQ_BACKGROUND_CANDIDATES[0];
-        double bestDistance = -1;
-        for (Color candidate : HQ_BACKGROUND_CANDIDATES) {
-            double distance = colorDistance(
-                    averageRed,
-                    averageGreen,
-                    averageBlue,
-                    candidate.getRed(),
-                    candidate.getGreen(),
-                    candidate.getBlue()
-            );
-            if (distance > bestDistance) {
-                bestDistance = distance;
-                bestCandidate = candidate;
-            }
-        }
-
-        return bestCandidate;
-    }
-
-    private double colorDistance(int redA, int greenA, int blueA, int redB, int greenB, int blueB) {
-        int redDelta = redA - redB;
-        int greenDelta = greenA - greenB;
-        int blueDelta = blueA - blueB;
-        return Math.sqrt(redDelta * redDelta + greenDelta * greenDelta + blueDelta * blueDelta);
     }
 
     private String createBaseName(IconGenerationResponse.GeneratedIcon icon, int index) {
