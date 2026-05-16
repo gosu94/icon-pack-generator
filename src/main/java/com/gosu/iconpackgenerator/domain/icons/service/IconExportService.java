@@ -1,15 +1,13 @@
 package com.gosu.iconpackgenerator.domain.icons.service;
 
+import com.gosu.iconpackgenerator.domain.ai.IdeoGramRemoveBackGroundService;
+import com.gosu.iconpackgenerator.domain.ai.SeedVrUpscaleService;
 import com.gosu.iconpackgenerator.domain.icons.dto.IconExportRequest;
 import com.gosu.iconpackgenerator.domain.icons.dto.IconGenerationResponse;
 import com.gosu.iconpackgenerator.domain.vectorization.SvgVectorizationService;
 import dev.matrixlab.webp4j.NativeWebP;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.batik.transcoder.TranscoderException;
-import org.apache.batik.transcoder.TranscoderInput;
-import org.apache.batik.transcoder.TranscoderOutput;
-import org.apache.batik.transcoder.image.PNGTranscoder;
 import org.springframework.stereotype.Service;
 
 import javax.imageio.ImageIO;
@@ -38,6 +36,8 @@ import java.util.zip.ZipOutputStream;
 public class IconExportService {
 
     private final SvgVectorizationService svgVectorizationService;
+    private final SeedVrUpscaleService seedVrUpscaleService;
+    private final IdeoGramRemoveBackGroundService ideoGramRemoveBackGroundService;
     
     // Standard icon sizes for PNG exports
     private static final int[] PNG_SIZES = {32, 64, 128, 256, 512};
@@ -46,7 +46,15 @@ public class IconExportService {
     private static final int[] ICO_SIZES = {32, 48, 64, 128, 256};
 
     private static final int HQ_ADDITIONAL_SIZE = 1024;
+    private static final int HQ_UPSCALE_SOURCE_SIZE = 256;
+    private static final float HQ_UPSCALE_FACTOR = 4.0f;
     private static final int HQ_THREAD_POOL_SIZE = 9;
+    private static final Color[] HQ_BACKGROUND_CANDIDATES = {
+            new Color(255, 0, 255),
+            new Color(0, 255, 0),
+            new Color(0, 255, 255),
+            new Color(255, 255, 0)
+    };
     
     // Cache for WebP4j availability to avoid repeated checks
     private Boolean webp4jAvailable = null;
@@ -69,14 +77,14 @@ public class IconExportService {
              ZipOutputStream zos = new ZipOutputStream(baos)) {
 
             List<PreparedIcon> preparedIcons = prepareIcons(exportRequest.getIcons());
-            boolean needsVectorization = exportRequest.isVectorizeSvg() || exportRequest.isHqUpscale();
+            boolean needsVectorization = exportRequest.isVectorizeSvg();
             Map<String, byte[]> vectorizedSvgs = needsVectorization
                     ? svgVectorizationService.vectorizeImages(
                     preparedIcons.stream()
                             .collect(Collectors.toMap(PreparedIcon::baseName, PreparedIcon::originalData)))
                     : Collections.emptyMap();
             Map<String, byte[]> hqIconData = exportRequest.isHqUpscale()
-                    ? processIconsForHighQuality(preparedIcons, vectorizedSvgs)
+                    ? processIconsForHighQuality(preparedIcons)
                     : Collections.emptyMap();
             int[] rasterSizes = getRasterSizes(exportRequest.isHqUpscale());
 
@@ -444,32 +452,25 @@ public class IconExportService {
         return sizes;
     }
 
-    private Map<String, byte[]> processIconsForHighQuality(List<PreparedIcon> preparedIcons,
-                                                           Map<String, byte[]> vectorizedSvgs) {
-        if (preparedIcons.isEmpty() || vectorizedSvgs.isEmpty()) {
-            log.warn("HQ vector rendering requested but vectorized SVG data is unavailable.");
+    private Map<String, byte[]> processIconsForHighQuality(List<PreparedIcon> preparedIcons) {
+        if (preparedIcons.isEmpty()) {
             return Collections.emptyMap();
         }
 
         Map<String, byte[]> processedIcons = new ConcurrentHashMap<>();
-        log.info("Starting HQ vector rendering for {} icons", preparedIcons.size());
+        log.info("Starting HQ raster upscale for {} icons", preparedIcons.size());
         ExecutorService executor = Executors.newFixedThreadPool(HQ_THREAD_POOL_SIZE);
 
         try {
             List<CompletableFuture<Void>> tasks = preparedIcons.stream()
                     .map(icon -> CompletableFuture.runAsync(() -> {
-                        byte[] svgData = vectorizedSvgs.get(icon.baseName());
-                        if (svgData == null || svgData.length == 0) {
-                            log.warn("Vectorized SVG missing for icon {}. Falling back to original raster.", icon.baseName());
-                            processedIcons.put(icon.baseName(), icon.originalData());
-                            return;
-                        }
-
                         try {
-                            byte[] renderedPng = convertSvgToPng(svgData, HQ_ADDITIONAL_SIZE);
-                            processedIcons.put(icon.baseName(), renderedPng);
+                            byte[] preparedImage = prepareImageForHighQualityUpscale(icon.originalData(), icon.baseName());
+                            byte[] upscaledImage = seedVrUpscaleService.upscaleImage(preparedImage, HQ_UPSCALE_FACTOR).join();
+                            byte[] transparentImage = ideoGramRemoveBackGroundService.removeBackground(upscaledImage);
+                            processedIcons.put(icon.baseName(), transparentImage);
                         } catch (Exception e) {
-                            log.error("HQ vector rendering failed for icon {}. Using original raster.", icon.baseName(), e);
+                            log.error("HQ raster upscale failed for icon {}. Using original raster.", icon.baseName(), e);
                             processedIcons.put(icon.baseName(), icon.originalData());
                         }
                     }, executor))
@@ -478,25 +479,131 @@ public class IconExportService {
             CompletableFuture.allOf(tasks.toArray(new CompletableFuture[0])).join();
         } finally {
             executor.shutdown();
-            log.info("Completed HQ vector rendering for {} icons", processedIcons.size());
+            log.info("Completed HQ raster upscale for {} icons", processedIcons.size());
         }
 
         return processedIcons;
     }
 
-    private byte[] convertSvgToPng(byte[] svgBytes, int size) throws IOException, TranscoderException {
-        PNGTranscoder transcoder = new PNGTranscoder();
-        transcoder.addTranscodingHint(PNGTranscoder.KEY_WIDTH, (float) size);
-        transcoder.addTranscodingHint(PNGTranscoder.KEY_HEIGHT, (float) size);
-        transcoder.addTranscodingHint(PNGTranscoder.KEY_BACKGROUND_COLOR, new Color(0, 0, 0, 0));
-
-        try (ByteArrayInputStream bais = new ByteArrayInputStream(svgBytes);
-             ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
-            TranscoderInput input = new TranscoderInput(bais);
-            TranscoderOutput output = new TranscoderOutput(baos);
-            transcoder.transcode(input, output);
-            return baos.toByteArray();
+    private byte[] prepareImageForHighQualityUpscale(byte[] imageData, String baseName) throws IOException {
+        BufferedImage sourceImage = ImageIO.read(new ByteArrayInputStream(imageData));
+        if (sourceImage == null) {
+            throw new IOException("Could not read icon image for HQ upscale: " + baseName);
         }
+
+        BufferedImage resizedImage = resizeImage(sourceImage, HQ_UPSCALE_SOURCE_SIZE, HQ_UPSCALE_SOURCE_SIZE);
+        Color backgroundColor = chooseHighContrastBackground(resizedImage);
+        BufferedImage preparedImage = replaceTransparentPixels(resizedImage, backgroundColor);
+
+        log.debug("Prepared icon {} for HQ upscale at {}x{} with background rgb({}, {}, {})",
+                baseName,
+                HQ_UPSCALE_SOURCE_SIZE,
+                HQ_UPSCALE_SOURCE_SIZE,
+                backgroundColor.getRed(),
+                backgroundColor.getGreen(),
+                backgroundColor.getBlue());
+
+        return imageToBytes(preparedImage, "png");
+    }
+
+    private BufferedImage replaceTransparentPixels(BufferedImage image, Color backgroundColor) {
+        int width = image.getWidth();
+        int height = image.getHeight();
+        BufferedImage processed = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
+        int backgroundArgb = backgroundColor.getRGB();
+        int[] rowBuffer = new int[width];
+
+        for (int y = 0; y < height; y++) {
+            image.getRGB(0, y, width, 1, rowBuffer, 0, width);
+            for (int x = 0; x < width; x++) {
+                int argb = rowBuffer[x];
+                int alpha = (argb >> 24) & 0xFF;
+
+                if (alpha == 255) {
+                    continue;
+                }
+
+                if (alpha == 0) {
+                    rowBuffer[x] = backgroundArgb;
+                    continue;
+                }
+
+                int r = (argb >> 16) & 0xFF;
+                int g = (argb >> 8) & 0xFF;
+                int b = argb & 0xFF;
+                float alphaFactor = alpha / 255.0f;
+
+                int blendedR = Math.round(alphaFactor * r + (1 - alphaFactor) * backgroundColor.getRed());
+                int blendedG = Math.round(alphaFactor * g + (1 - alphaFactor) * backgroundColor.getGreen());
+                int blendedB = Math.round(alphaFactor * b + (1 - alphaFactor) * backgroundColor.getBlue());
+
+                rowBuffer[x] = (0xFF << 24) | (blendedR << 16) | (blendedG << 8) | blendedB;
+            }
+            processed.setRGB(0, y, width, 1, rowBuffer, 0, width);
+        }
+
+        return processed;
+    }
+
+    private Color chooseHighContrastBackground(BufferedImage image) {
+        long totalRed = 0;
+        long totalGreen = 0;
+        long totalBlue = 0;
+        long opaquePixelCount = 0;
+
+        int width = image.getWidth();
+        int height = image.getHeight();
+        int[] rowBuffer = new int[width];
+
+        for (int y = 0; y < height; y++) {
+            image.getRGB(0, y, width, 1, rowBuffer, 0, width);
+            for (int x = 0; x < width; x++) {
+                int argb = rowBuffer[x];
+                int alpha = (argb >> 24) & 0xFF;
+                if (alpha < 16) {
+                    continue;
+                }
+
+                totalRed += (argb >> 16) & 0xFF;
+                totalGreen += (argb >> 8) & 0xFF;
+                totalBlue += argb & 0xFF;
+                opaquePixelCount++;
+            }
+        }
+
+        if (opaquePixelCount == 0) {
+            return HQ_BACKGROUND_CANDIDATES[0];
+        }
+
+        int averageRed = Math.round((float) totalRed / opaquePixelCount);
+        int averageGreen = Math.round((float) totalGreen / opaquePixelCount);
+        int averageBlue = Math.round((float) totalBlue / opaquePixelCount);
+
+        Color bestCandidate = HQ_BACKGROUND_CANDIDATES[0];
+        double bestDistance = -1;
+        for (Color candidate : HQ_BACKGROUND_CANDIDATES) {
+            double distance = colorDistance(
+                    averageRed,
+                    averageGreen,
+                    averageBlue,
+                    candidate.getRed(),
+                    candidate.getGreen(),
+                    candidate.getBlue()
+            );
+            if (distance > bestDistance) {
+                bestDistance = distance;
+                bestCandidate = candidate;
+            }
+        }
+
+        return bestCandidate;
+    }
+
+    private double colorDistance(int redA, int greenA, int blueA, int redB, int greenB, int blueB) {
+        int redDelta = redA - redB;
+        int greenDelta = greenA - greenB;
+        int blueDelta = blueA - blueB;
+        return Math.sqrt(redDelta * redDelta + greenDelta * greenDelta + blueDelta * blueDelta);
     }
 
     private String createBaseName(IconGenerationResponse.GeneratedIcon icon, int index) {
