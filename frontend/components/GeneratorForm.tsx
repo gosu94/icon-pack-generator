@@ -715,7 +715,7 @@ const GeneratorForm: React.FC<GeneratorFormProps> = ({
                     </div>
                   </div>
                 </div>
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
                   {generationModelOptions.map((option) => {
                     const isSelected = baseModel === option.value;
                     const isDisabled = isGenerating || (isTrialOnly && option.value === "pro_plus");
@@ -723,7 +723,7 @@ const GeneratorForm: React.FC<GeneratorFormProps> = ({
                     return (
                       <label
                         key={option.value}
-                        className={`relative flex cursor-pointer flex-col rounded-2xl border bg-white p-3 transition-all duration-200 ${
+                        className={`relative flex cursor-pointer flex-col rounded-xl border bg-white p-2 transition-all duration-200 ${
                           isSelected
                             ? "border-purple-400 shadow-md ring-2 ring-purple-200"
                             : "border-slate-200 hover:border-slate-300 hover:shadow-sm"
@@ -738,43 +738,43 @@ const GeneratorForm: React.FC<GeneratorFormProps> = ({
                           disabled={isDisabled}
                           className="sr-only"
                         />
-                        <div className="mb-3 flex items-center justify-between">
-                          <span className="flex flex-wrap items-center gap-1 text-sm font-semibold text-slate-900">
+                        <div className="mb-2 flex items-center justify-between">
+                          <span className="flex flex-wrap items-center gap-1 text-xs font-semibold text-slate-900">
                             {option.label}
                           </span>
                           <span
-                            className={`flex h-5 w-5 items-center justify-center rounded-full border transition-colors ${
+                            className={`flex h-4 w-4 items-center justify-center rounded-full border transition-colors ${
                               isSelected
                                 ? "border-purple-500 bg-purple-500"
                                 : "border-slate-300 bg-white"
                             }`}
                             aria-hidden="true"
                           >
-                            <span className="h-2 w-2 rounded-full bg-white" />
+                            <span className="h-1.5 w-1.5 rounded-full bg-white" />
                           </span>
                         </div>
-                        <div className="overflow-hidden rounded-xl border border-slate-200 bg-slate-50 p-2">
+                        <div className="overflow-hidden rounded-lg border border-slate-200 bg-slate-50 p-1.5">
                           <Image
                             src={option.imageSrc}
                             alt={option.imageAlt}
                             width={160}
                             height={160}
-                            className="h-32 w-full object-contain"
+                            className="h-24 w-full object-contain"
                           />
                         </div>
                         {"extraCoin" in option && option.extraCoin && (
-                          <div className="mt-2 flex items-center justify-between gap-2 text-xs">
-                      <span className="flex items-center space-x-1 rounded-full bg-gray-200 px-2 py-0.5 text-xs font-semibold text-gray-700">
+                          <div className="mt-1.5 flex items-center justify-between gap-1.5 text-[11px]">
+                      <span className="flex items-center space-x-1 rounded-full bg-gray-200 px-1.5 py-0.5 text-[11px] font-semibold text-gray-700">
                         <span>+1</span>
                         <Image
                           src="/images/coin.webp"
                           alt="Coin"
-                          width={16}
-                          height={16}
+                          width={14}
+                          height={14}
                         />
                       </span>
                             {isTrialOnly && (
-                              <span className="text-[11px] font-semibold text-orange-700">
+                              <span className="text-[10px] font-semibold text-orange-700">
                                 No trial
                               </span>
                             )}
