@@ -51,7 +51,7 @@ public class IconCenteringService {
 
         int backgroundThreshold = 240;
 
-        boolean hasTransparent = image.getColorModel().hasAlpha();
+        boolean hasTransparentPixels = hasTransparentPixels(image);
         boolean foundContent = false;
 
         for (int y = 0; y < height; y++) {
@@ -62,11 +62,11 @@ public class IconCenteringService {
                 int green = (rgb >> 8) & 0xFF;
                 int blue = rgb & 0xFF;
 
-                if (hasTransparent && alpha < 10) {
-                    continue;
-                }
-
-                if (red > backgroundThreshold && green > backgroundThreshold && blue > backgroundThreshold) {
+                if (hasTransparentPixels) {
+                    if (alpha < 10) {
+                        continue;
+                    }
+                } else if (red > backgroundThreshold && green > backgroundThreshold && blue > backgroundThreshold) {
                     continue;
                 }
 
@@ -84,6 +84,25 @@ public class IconCenteringService {
         }
 
         return new Rectangle(minX, minY, Math.max(1, maxX - minX + 1), Math.max(1, maxY - minY + 1));
+    }
+
+    private boolean hasTransparentPixels(BufferedImage image) {
+        if (!image.getColorModel().hasAlpha()) {
+            return false;
+        }
+
+        int width = image.getWidth();
+        int height = image.getHeight();
+        for (int y = 0; y < height; y++) {
+            for (int x = 0; x < width; x++) {
+                int alpha = (image.getRGB(x, y) >> 24) & 0xFF;
+                if (alpha < 250) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
     }
 
     private Rectangle detectContentBoundsIncludingBlack(BufferedImage image) {
